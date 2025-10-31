@@ -1,0 +1,51 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.build/
+dist/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ---- Virtual env ----
+.venv/
+venv/
+env/
+
+# ---- IDE ----
+.vscode/
+.idea/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Logs & data ----
+data/logs/
+*.log
+
+# ---- Secrets ----
+.env
+.env.*
+
+# ---- Notebooks output ----
+*.nbconvert.ipynb
+
+# ---- Wheel caches ----
+pip-wheel-metadata/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ---- Coverage ----
+.coverage
+htmlcov/
+.cache/
+
+# ---- Reports ----
+reports/
+artifacts/

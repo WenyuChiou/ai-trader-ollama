@@ -1,4 +1,35 @@
 from __future__ import annotations
+from typing import Dict, Any
+
+def run_market_analyst(market_json: Dict[str, Any]) -> Dict[str, Any]:
+    observations = []
+    picks = []
+    for sym, sd in market_json["stocks"].items():
+        sig = int(sd.get("signal_score", 0))
+        ma20, ma50 = sd.get("ma_20"), sd.get("ma_50")
+        rsi14 = sd.get("rsi14")
+        macd_val, macd_sig, macd_hist = sd.get("macd"), sd.get("macd_signal"), sd.get("macd_hist")
+
+        note = f"{sym}: score={sig} | MA20 {('>' if (ma20==ma20 and ma50==ma50 and ma20>ma50) else '<=')} MA50, RSI14={rsi14:.1f} MACD={macd_val:.3f}/{macd_sig:.3f}({macd_hist:.3f})"
+        observations.append(note)
+
+        # Simple rule: score >= 2 is candidate
+        if sig >= 2:
+            picks.append(sym)
+
+    sentiment = "bullish" if picks else "neutral"
+    return {
+        "market_sentiment": sentiment,
+        "key_observations": observations,
+        "recommended_stocks": picks[:3],  # top-3 only
+        "concerns": ["Avoid overbought if RSI>70", "Prefer MA20>MA50 & MACD>signal"],
+    }
+""")
+
+# 4) Improve run.py error handling (catch OllamaInitError and show guidance)
+run_path = ROOT / "run.py"
+w(run_path, r"""
+from __future__ import annotations
 import json
 from pathlib import Path
 from dotenv import load_dotenv

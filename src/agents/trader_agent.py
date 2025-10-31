@@ -1,29 +1,48 @@
 from __future__ import annotations
 from typing import Dict, Any
-from ..tools.trading_tools import buy_stock, sell_stock, portfolio_status
-from ..data.trade_log import TradeLogger
 
-logger = TradeLogger()
+def run_trader(market: Dict[str, Any],
+               mview: Dict[str, Any],
+               rview: Dict[str, Any] | None,
+               convo: Dict[str, Any],
+               last_prices: Dict[str, float]) -> Dict[str, Any]:
+    """
+    Trader Agent（停損/停利全由 Agent 自主判斷）：
+    - 不設固定停損/停利參數；僅輸出目前這一輪的建議行動。
+    - 是否出場（止盈/止損）交由下一輪分析來觸發（ex: VIX 恐慌、新聞利空、技術轉弱）。
+    - 若 VIX 風險偏高（>6），停止加倉、維持觀望。
+    """
+    vix = (mview.get("vix") or {}) if isinstance(mview, dict) else {}
+    vix_risk = float(vix.get("risk_score", 4.0))
+    stance = "cautious" if vix_risk > 6.0 else mview.get("market_sentiment", "neutral")
 
-def run_trader(market_json: Dict[str, Any], market_view: Dict[str, Any], risk_view: Dict[str, Any], consensus: Dict[str, Any], last_prices: Dict[str, float]) -> Dict[str, Any]:
-    rec = consensus.get("final_recommendation", {"action":"HOLD"})
-    action = rec.get("action")
-    result = {"decision": action, "execution_status": "skipped"}
+    recs = mview.get("recommended_stocks", []) if isinstance(mview, dict) else []
+    final_stance = (convo or {}).get("final_stance", "neutral")
 
-    if action == "BUY":
-        sym = rec["symbol"]
-        px = float(market_json["stocks"][sym]["price"])
-        amt = max(1, int(rec["position_size"] * 10000 // px))
-        exec_msg = buy_stock.invoke({"symbol": sym, "amount": amt, "price": px})
-        status = portfolio_status.invoke({})
-        result.update({"symbol": sym, "amount": amt, "price": px, "execution_status": "success", "portfolio_after": status})
+    # 若新聞/情緒最終 stance 偏空或 VIX 高風險，保守處理
+    if vix_risk > 6.0 or final_stance in ("bearish", "cautious"):
+        return {
+            "action": "HOLD",
+            "targets": [],
+            "rationale": f"Hold due to VIX risk={vix_risk:.1f} / news stance={final_stance}",
+            "stance": final_stance,
+            "vix_risk": vix_risk
+        }
 
-    record = {
-        "market_data": market_json,
-        "market_analysis": market_view,
-        "risk_analysis": risk_view,
-        "consensus": consensus,
-        "trader_decision": result
+    if recs:
+        targets = [{"symbol": s, "price": float(last_prices.get(s, float('nan')))} for s in recs]
+        return {
+            "action": "BUY",
+            "targets": targets,
+            "rationale": f"TA + news consensus supports entry; stance={final_stance}, VIX risk={vix_risk:.1f}",
+            "stance": final_stance,
+            "vix_risk": vix_risk
+        }
+
+    return {
+        "action": "HOLD",
+        "targets": [],
+        "rationale": f"No strong consensus; stance={final_stance}, VIX risk={vix_risk:.1f}",
+        "stance": final_stance,
+        "vix_risk": vix_risk
     }
-    logger.log(record)
-    return result

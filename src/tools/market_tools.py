@@ -4,59 +4,89 @@ from typing import List, Dict, Any
 import math
 import pandas as pd
 from langchain.tools import tool
-from ..data.market_data import get_multi_prices
+from ..data.market_data import get_multi_prices, get_vix_close
 from .ta_indicators import rsi, macd, bbands
 
 def _to_float(x) -> float:
-    """Safely convert scalar/Series/ndarray to float (last value if Series)."""
+    """Safely convert scalar/Series/ndarray to float (use last value if Series)."""
     try:
         if isinstance(x, pd.Series):
             if x.empty:
                 return float("nan")
-            x = x.iloc[-1]
-        # numpy scalar or python scalar
+            # use numpy scalar to avoid FutureWarning on Series -> float
+            return float(x.to_numpy()[-1])
+        # numpy scalar / python scalar
         return float(x)
     except Exception:
-        try:
-            import numpy as np
-            return float(np.asarray(x).item())
-        except Exception:
-            return float("nan")
+        return float("nan")
 
-def _calc_indicators(df: pd.DataFrame) -> dict:
-    close = df["Close"]
-    ma20 = _to_float(close.rolling(20).mean().iloc[-1]) if len(close) >= 20 else float("nan")
-    ma50 = _to_float(close.rolling(50).mean().iloc[-1]) if len(close) >= 50 else float("nan")
-    change_pct = ((close.iloc[-1] / close.iloc[0]) - 1.0) * 100.0 if len(close) > 1 else 0.0
-
-    # === 技術指標 ===
-    rsi14 = _to_float(rsi(close, 14).iloc[-1]) if len(close) >= 15 else float("nan")
-
-    if len(close) >= 35:
-        macd_line, signal_line, hist = macd(close)
-        macd_val = _to_float(macd_line.iloc[-1])
-        macd_sig = _to_float(signal_line.iloc[-1])
-        macd_hist = _to_float(hist.iloc[-1])
-    else:
-        macd_val = macd_sig = macd_hist = float("nan")
-
-    if len(close) >= 20:
-        bb_u, bb_m, bb_l = bbands(close)
-        if not bb_u.empty and not bb_l.empty:
-            u = _to_float(bb_u.iloc[-1])
-            l = _to_float(bb_l.iloc[-1])
-            c = _to_float(close.iloc[-1])
-            denom = (u - l)
-            if (denom is not None) and math.isfinite(denom) and abs(denom) > 1e-12:
-                bb_pos = float((c - l) / denom)
-            else:
-                bb_pos = float("nan")
+def _safe_dict(**kwargs) -> Dict[str, Any]:
+    """
+    Always return a full indicator dict schema.
+    Any missing numeric becomes NaN; missing text stays None.
+    """
+    keys = [
+        "price","change_pct","volume",
+        "ma20","ma50","rsi14","macd","macd_signal","macd_hist",
+        "bb_pos","signal_score"
+    ]
+    out = {}
+    for k in keys:
+        v = kwargs.get(k, None)
+        if v is None:
+            out[k] = float("nan") if k != "signal_score" else 0
         else:
-            bb_pos = float("nan")
+            out[k] = v
+    return out
+
+def _calc_indicators(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Compute indicators and simple composite signal for the latest bar of df.
+    Expects columns: Open, High, Low, Close, Volume (yfinance default, capitalized via market_data).
+    Always returns a dict with the full set of keys.
+    """
+    try:
+        close = df["Close"]
+    except KeyError:
+        # fallback if column capitalization failed upstream
+        close = df[df.columns[df.columns.str.lower().eq("close")][0]]
+
+    try:
+        vol = df["Volume"]
+    except KeyError:
+        vol = pd.Series([float("nan")] * len(close), index=close.index)
+
+    # Moving averages (warmup to avoid NaN in short windows)
+    ma20_series = close.rolling(20, min_periods=1).mean()
+    ma50_series = close.rolling(50, min_periods=1).mean()
+    ma20 = _to_float(ma20_series)
+    ma50 = _to_float(ma50_series)
+
+    # RSI
+    rsi_series = rsi(close, period=14)
+    rsi14 = _to_float(rsi_series)
+
+    # MACD
+    macd_line, macd_sig_line, macd_hist_line = macd(close, fast=12, slow=26, signal=9)
+    macd_val = _to_float(macd_line)
+    macd_sig = _to_float(macd_sig_line)
+    macd_hist = _to_float(macd_hist_line)
+
+    # Bollinger Bands + position (0=lower, 1=upper)
+    upper, mid, lower = bbands(close, period=20, n_std=2.0)
+    c = _to_float(close)
+    u = _to_float(upper)
+    l = _to_float(lower)
+    if all(map(math.isfinite, [c, u, l])) and (u - l) != 0:
+        bb_pos = max(0.0, min(1.0, (c - l) / (u - l)))
     else:
         bb_pos = float("nan")
 
-    # === 簡單訊號 ===
+    # Daily pct change (last)
+    chg_series = close.pct_change()
+    change_pct = _to_float(chg_series)
+
+    # Simple composite signal score (0–3)
     sig_up_ma = (math.isfinite(ma20) and math.isfinite(ma50) and ma20 > ma50)
     sig_macd_cross_up = (
         math.isfinite(macd_val) and math.isfinite(macd_sig) and math.isfinite(macd_hist)
@@ -65,25 +95,61 @@ def _calc_indicators(df: pd.DataFrame) -> dict:
     sig_rsi_strong = (math.isfinite(rsi14) and 55 <= rsi14 <= 70)
     signal_score = int(sig_up_ma) + int(sig_macd_cross_up) + int(sig_rsi_strong)
 
-    return {
-        "price": _to_float(close.iloc[-1]),
-        "change_pct": float(change_pct),
-        "ma_20": ma20,
-        "ma_50": ma50,
-        "volume": int(df["Volume"].iloc[-1]),
-        "rsi14": rsi14,
-        "macd": macd_val,
-        "macd_signal": macd_sig,
-        "macd_hist": macd_hist,
-        "bb_pos": bb_pos,            # 0=lower band, 1=upper band
-        "signal_score": signal_score
-    }
+    return _safe_dict(
+        price=c,
+        change_pct=change_pct,
+        volume=_to_float(vol),
+        ma20=ma20,
+        ma50=ma50,
+        rsi14=rsi14,
+        macd=macd_val,
+        macd_signal=macd_sig,
+        macd_hist=macd_hist,
+        bb_pos=bb_pos,
+        signal_score=signal_score
+    )
+
+def _calc_vix_features(vix_close: pd.Series) -> dict:
+    """
+    Compute VIX-level features (latest) and a simple 21-day z-score.
+    Returns: {'level': float, 'chg_1d': float, 'zscore': float}
+    """
+    v = vix_close.dropna()
+    if v.empty:
+        return {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+    # use numpy to avoid FutureWarning "float(Series) is deprecated"
+    level = float(v.to_numpy()[-1])
+    pct = v.pct_change().to_numpy()
+    chg_1d = float(pct[-1]) if len(pct) > 0 and pct[-1] == pct[-1] else float("nan")
+    roll = v.rolling(21)
+    mean = roll.mean().iloc[-1]
+    std = roll.std(ddof=0).iloc[-1]
+    z = float((level - mean) / (std if std and std == std else 1e-9))
+    return {"level": level, "chg_1d": chg_1d, "zscore": z}
 
 @tool("fetch_market_batch", return_direct=False)
 def fetch_market_batch(symbols: List[str], start: str, end: str) -> Dict[str, Any]:
-    """Fetch OHLCV for multiple symbols and compute indicators + lightweight TA signals."""
+    """
+    Fetch OHLCV for multiple symbols and compute indicators + lightweight TA signals.
+    Also attaches VIX sentiment features under key 'VIX'.
+    Returns:
+    {
+      "stocks": { "AAPL": {...indicators...}, ... },
+      "VIX":   { "level": ..., "chg_1d": ..., "zscore": ... }
+    }
+    """
     data = get_multi_prices(symbols, start, end)
-    out = {}
+    out: Dict[str, Any] = {"stocks": {}}
     for s, df in data.items():
-        out[s] = _calc_indicators(df)
+        try:
+            out["stocks"][s] = _calc_indicators(df)
+        except Exception:
+            # still ensure schema to avoid "missing keys" in downstream tests
+            out["stocks"][s] = _safe_dict()
+    # Attach VIX features
+    try:
+        vix_series = get_vix_close(start, end)
+        out["VIX"] = _calc_vix_features(vix_series)
+    except Exception:
+        out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
     return out

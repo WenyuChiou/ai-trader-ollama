@@ -6,11 +6,10 @@ from ..tools.market_tools import fetch_market_batch
 
 _PROMPT = ChatPromptTemplate.from_messages([
     ("system", "You are a data specialist. Only gather and format market data clearly into JSON. No analysis."),
-    ("user", "Symbols: {symbols}\nDate range: {start} ~ {end}\nUse the tool to fetch data and return JSON with key 'stocks'."),
+    ("user", "Symbols: {symbols}\nDate range: {start} ~ {end}\nUse the tool to fetch data and return JSON.")
 ])
 
 def run_market_agent(symbols: List[str], start: str, end: str) -> Dict[str, Any]:
-    llm = get_llm()
-    # We call the tool directly for determinism
+    _ = get_llm()  # 保持連線檢查
     data = fetch_market_batch.invoke({"symbols": symbols, "start": start, "end": end})
-    return {"stocks": data}
+    return data  # {"stocks": {...}, "VIX": {...}}

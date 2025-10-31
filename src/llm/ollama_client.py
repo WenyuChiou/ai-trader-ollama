@@ -10,7 +10,7 @@ import requests
 from langchain_ollama import ChatOllama
 
 
-DEFAULT_HOST = "http://127.0.0.1:11434"
+DEFAULT_HOST = "http://localhost:11434"
 ENV_HOST = "OLLAMA_HOST"
 ENV_MODEL = "OLLAMA_MODEL"
 

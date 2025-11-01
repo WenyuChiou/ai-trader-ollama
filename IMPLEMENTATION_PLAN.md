@@ -199,3 +199,67 @@ Stage 3–4 ⚙️ In Progress（含 VIX + News 情緒）
 Stage 5 ⏳ Planned
 
 全系統測試 ✅ 通過，Ollama 互動正常
+
+
+以下是你可以直接追加到 IMPLEMENTATION.md 最後一節的新任務紀錄區塊👇
+我幫你整理成標準格式（含背景說明、實作目標、預期成果、檔案位置）。
+
+🧩 Upcoming Task – Rolling Discussion Loop (TAO Mechanism)
+🎯 Goal
+
+升級 run_analyst_discussion() 為 滾動式推理框架 (Thought → Action → Observation)，
+讓每一輪的分析結果與行動觀察都能被下一輪吸收，形成真正的「連續決策代理 (rolling synthesis agent)」。
+
+🧠 Concept
+
+現行版本為「獨立回合」(每輪僅基於初始 market view)。
+升級後改為 循環學習架構：
+
+Round 1:
+   Thought → Action (e.g. 查 FGI, 查新聞) → Observation → Summary
+
+Round 2:
+   引用 Round 1 summary + Observation
+   → Re-think → Action (補缺資訊) → Observation → 更新 Summary
+
+Round 3:
+   整合過去所有輪次 context → Final synthesis → Final stance
+
+🧱 Implementation Plan
+Step	Component	Description
+1	src/agents/analyst_discussion.py	建立新函式 run_analyst_discussion_rolling()（保留舊版為 _static()）
+2	Thought Phase	每輪開頭加入 Previous summary、Previous observation 文字提示，指導 LLM 延續思考
+3	Action Phase	檢查缺失資訊（VIX、FGI、News），透過 ToolBox 自動補足
+4	Observation Phase	將工具返回結果整理成文字摘要（headline, index value, etc.）
+5	Synthesis Phase	將舊摘要與新觀察一併送入 LLM → 生成新的整合結論
+6	Context Memory	儲存每輪的 summary / actions / observation 至 context_memory（list 或 JSONL）
+7	Config Switch	支援 config/config.json 新鍵值： "discussion_mode": "rolling" 以切換模式
+8	Testing	以 tests/test_02_discussion_rounds.py 改為多輪滾動測試，檢查每輪是否有引用上一輪內容
+📁 File Targets
+
+Main logic:
+src/agents/analyst_discussion.py
+
+Config toggle:
+config/config.json → "discussion_mode": "rolling"
+
+Test case:
+tests/test_02_discussion_rounds.py → 檢查 transcript 每輪差異
+
+Optional:
+data/logs/discussion_memory.jsonl → 紀錄完整 Thought→Action→Observation 流程
+
+📈 Expected Outcome
+
+每輪 LLM 都能引用前一輪的結論與行動結果（顯示 “Previous summary” 區塊）
+
+最終 final_stance 綜合所有輪次觀察，更接近真實市場決策過程
+
+context_memory 成為後續 Trader 或 Reinforcement 模組的學習資料來源
+
+🗓️ Planned for Next Session
+
+✅ Prepare new rolling discussion loop structure
+✅ Implement config toggle (discussion_mode)
+🔄 Test iterative refinement with 3–5 rounds
+🔄 Save intermediate context logs for later reinforcement learning

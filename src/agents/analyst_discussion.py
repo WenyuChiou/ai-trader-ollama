@@ -1,150 +1,179 @@
+# src/agents/analyst_discussion.py
 from __future__ import annotations
-from typing import Dict, Any, List
-from langchain_core.prompts import ChatPromptTemplate
-from ..llm.ollama_client import get_llm
-from ..tools.news_tools import business_rss, google_news_rss
-from ..tools.sentiment_tools import fetch_fear_greed, vix_term_structure
-from ..tools.analysis_tools import vix_regime, vix_risk_score
-import json
-import re as _re
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+import datetime as dt
 
-_PROMPT_KEYWORDS = ChatPromptTemplate.from_messages([
-    ("system",
-     "You are a market research assistant. "
-     "Given a list of target tickers and brief TA/VIX context, "
-     "propose 3–6 concise Google News search queries that best capture market-moving catalysts "
-     "(e.g., earnings, guidance, litigation, product launch, regulatory, macro). "
-     "Return a pure JSON list of strings (no commentary)."),
-    ("user",
-     "Tickers: {tickers}\nContext: {context}\nConstraints: queries must be short (<6 words), business/finance oriented.")
-])
+from src.llm.ollama_client import get_llm
+from src.agents.toolbox import ToolBox
+from src.utils.io import append_jsonl  # 檔頭加
 
-_PROMPT_ROUND = ChatPromptTemplate.from_messages([
-    ("system",
-     "You are an ensemble of disciplined market analysts. Prefer business/finance sources. "
-     "You may revise your stance across rounds as new headlines and sentiment arrive. "
-     "Output must be concise, structured, and avoid speculation."),
-    ("user",
-     "Round {round_idx}/{rounds}\n"
-     "Context (TA/VIX): {context}\n"
-     "Fresh signals: {fresh_signals}\n"
-     "Headlines:\n{headlines}\n\n"
-     "Task: Summarize key takeaways (opportunities/risks/catalysts), "
-     "then provide a single final stance word: 'bullish'|'bearish'|'neutral'|'cautious'.")
-])
+# ---------- helpers ----------
 
-def _fmt_headlines(items: List[Dict[str, Any]], k: int = 12) -> str:
-    lines = []
-    for h in items[:k]:
-        title = h.get("title", "")
-        src = h.get("source", "")
-        link = h.get("link", "")
-        lines.append(f"- [{src}] {title} ({link})")
-    return "\n".join(lines) if lines else "- (no headlines)"
+def _now_iso() -> str:
+    return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
-def _render_prompt(template: ChatPromptTemplate, **kwargs) -> str:
-    """Format a ChatPromptTemplate and flatten messages into a single string."""
-    msgs = template.format_messages(**kwargs)
-    return "\n".join(m.content for m in msgs if getattr(m, "content", None))
-
-def _choose_queries(llm, tickers: List[str], context: Dict[str, Any]) -> List[str]:
-    prompt_text = _render_prompt(_PROMPT_KEYWORDS, tickers=", ".join(tickers[:5]), context=context)
-    resp = llm.invoke(prompt_text)
-    txt = getattr(resp, "content", str(resp)).strip()
-    try:
-        q = json.loads(txt)
-        if isinstance(q, list):
-            qs = [str(s).strip() for s in q if isinstance(s, (str, int, float))]
-            qs = [s for s in qs if 1 <= len(s) <= 60]
-            return qs or [f"{tickers[0]} stock", "Fed rate outlook", "earnings guidance"]
-    except Exception:
-        pass
-    return [f"{tickers[0]} stock", "earnings guidance", "SEC filing", "macroeconomy inflation"]
-
-def run_analyst_discussion(market_view: Dict[str, Any],
-                           risk_view: Dict[str, Any] | None = None,
-                           rounds: int = 3) -> Dict[str, Any]:
+def _need_info(obs: Dict[str, Any]) -> List[str]:
     """
-    自我循環分析 3–5 輪（預設 3）。每輪：
-      * Round 1: 讓 LLM 自選新聞關鍵字 → 以 Google News RSS 補抓
-      * 各輪：商業/金融 RSS + 關鍵字 RSS → CNN F&G + VIX term structure → LLM 彙整 stance
+    檢查觀測是否缺關鍵訊息；依優先序回傳要補的工具名稱
     """
-    from ..tools.news_tools import fetch_rss  # local import to avoid cycle
+    needs: List[str] = []
+    # 1) VIX term structure
+    vix_term = obs.get("vix_term")
+    if not vix_term or not isinstance(vix_term, dict) or not vix_term.get("ratio"):
+        needs.append("vix_term")
+    # 2) Fear & Greed Index
+    fgi = obs.get("fear_greed")
+    if not fgi or fgi.get("fgi") is None:
+        needs.append("fear_greed")
+    # 3) 商業新聞 / 官網
+    news = obs.get("news")
+    if not news or not isinstance(news, dict) or not news.get("hits"):
+        needs.append("news_scan")
+    return needs
 
+def _compose_prompt(
+    goal: str,
+    market_view: Dict[str, Any],
+    risk_view: Optional[Dict[str, Any]],
+    prev_summary: str,
+    obs: Dict[str, Any],
+) -> str:
+    """
+    建立 LLM prompt：包含目標、最新觀測（含工具補齊）、上一輪摘要。
+    """
+    lines: List[str] = []
+    lines.append(f"TIME(UTC): {_now_iso()}")
+    lines.append(f"GOAL: {goal}")
+    lines.append("CONTEXT:")
+    lines.append(f"- market_view: {market_view}")
+    lines.append(f"- risk_view: {risk_view}")
+    lines.append(f"- latest_observation: {obs}")
+    if prev_summary:
+        lines.append(f"- previous_round_summary: {prev_summary}")
+
+    lines.append(
+        "\nYou are the Analyst Discussion Agent. "
+        "Given the context, produce a compact markdown block with:\n"
+        "1) Summary of Key Takeaways\n"
+        "2) Opportunities/Risks/Catalysts (bullet points)\n"
+        "3) Final Stance: one of {bullish, bearish, neutral, cautious}\n"
+        "Be decisive but justify briefly."
+    )
+    return "\n".join(lines)
+
+def _parse_stance(text: str) -> str:
+    t = (text or "").lower()
+    for k in ("bearish", "bullish", "cautious", "neutral"):
+        if k in t:
+            return k
+    return "neutral"
+
+@dataclass
+class DiscussionResult:
+    rounds: int
+    final_stance: str
+    transcript: List[str] = field(default_factory=list)
+    actions: List[Dict[str, Any]] = field(default_factory=list)  # 自動補資料紀錄
+
+# ---------- main API ----------
+
+def run_analyst_discussion(
+    market_view: Dict[str, Any],
+    risk_view: Optional[Dict[str, Any]] = None,
+    *,
+    goal: str = "Form a consolidated market stance for today’s trade.",
+    rounds: int = 3,
+    auto_tools: bool = True,
+    tool_budget: int = 2,
+    preferred_domains: Optional[List[str]] = None,
+    log_actions_path: Optional[str] = "data/logs/discussion_actions.jsonl"
+) -> Dict[str, Any]:
+    """
+    多輪對話，帶「經驗調整機制」：若資訊不足則自動補齊再繼續收斂。
+    - preferred_domains：例如 CBOE/WSJ/Reuters/FT/FRED/CME/Treasury 的白名單
+    """
     rounds = max(1, min(5, int(rounds)))
     llm = get_llm()
+    tb = ToolBox()
 
-    # TA / VIX 基礎上下文
-    vix = market_view.get("vix") or market_view.get("VIX") or {}
-    regime = vix_regime.invoke({"vix": vix})
-    vrisk = vix_risk_score.invoke({"vix": vix})
-    tickers = list((market_view.get("stocks") or {}).keys()) or ["QQQ"]
-
-    base_context = {
-        "vix_regime": regime,
-        "vix_risk": vrisk,
-        "ta_samples": {
-            s: {
-                "score": d.get("signal_score"),
-                "rsi": d.get("rsi14"),
-                "ma20": d.get("ma20"),
-                "ma50": d.get("ma50"),
-                "macd": d.get("macd"),
-            } for s, d in (market_view.get("stocks") or {}).items()
-        }
+    # 初始觀測（market_analyst 若已提供就直接沿用；否則留空待補）
+    obs: Dict[str, Any] = {
+        "vix_term": market_view.get("vix_term"),
+        "fear_greed": market_view.get("fear_greed"),
+        "news": market_view.get("news"),
+        "signal_score_top": market_view.get("signal_score_top"),
     }
 
-    transcripts: List[str] = []
-    last_stance = None
-    queries: List[str] = []
+    transcript: List[str] = []
+    actions: List[Dict[str, Any]] = []
+    prev_summary = ""
+    stance = "neutral"
 
-    for ri in range(1, rounds + 1):
-        # 1) 商業/金融 RSS
-        headlines = business_rss.invoke({})
+    # 為新聞搜尋準備關鍵字（若沒 symbols，就用保守預設）
+    symbols = market_view.get("symbols")
+    if not symbols or not isinstance(symbols, list):
+        symbols = ["VIX", "volatility", "NASDAQ-100"]
 
-        # 2) 關鍵字：第一輪由 LLM 自選；後續輪次沿用（簡化）
-        if ri == 1:
-            queries = _choose_queries(llm, tickers, base_context)
-        for q in queries[:6]:
-            headlines += google_news_rss.invoke({"query": q})
+    # 預設可信資料來源（可傳入覆蓋）
+    if preferred_domains is None:
+        preferred_domains = [
+            "www.cboe.com", "www.wsj.com", "www.reuters.com", "www.ft.com",
+            "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov",
+        ]
 
-        # 3) CNN Fear & Greed & VIX term structure
-        fng = fetch_fear_greed()
-        term = vix_term_structure()
+    for r in range(1, rounds + 1):
+        # 1) 檢查缺訊 → 自動補（受 tool_budget 限制）
+        if auto_tools and tool_budget > 0:
+            for need in _need_info(obs):
+                if tool_budget <= 0:
+                    break
+                record = {"round": r, "action": f"invoke_{need}"}
+                if need == "vix_term":
+                    res = tb.invoke("vix_term")
+                    obs["vix_term"] = res.get("result")
+                    record["ok"] = res.get("ok")
+                elif need == "fear_greed":
+                    res = tb.invoke("fear_greed")
+                    obs["fear_greed"] = res.get("result")
+                    record["ok"] = res.get("ok")
+                elif need == "news_scan":
+                    res = tb.invoke(
+                        "news_scan",
+                        keywords=symbols[:10],
+                        max_articles=8,
+                        recency_days=7,
+                        domains=preferred_domains,
+                    )
+                    obs["news"] = res.get("result")
+                    record["ok"] = res.get("ok")
+                else:
+                    record["ok"] = False
+                    record["error"] = f"unknown need {need}"
+                actions.append(record)
+                tool_budget -= 1
 
-        fresh_signals = {
-            "fear_greed": {"value": fng.get("value"), "label": fng.get("label")},
-            "vix_term": term
-        }
+        # 2) 建立 prompt → 由 LLM 綜整生成該輪摘要 + 立場
+        prompt = _compose_prompt(goal, market_view, risk_view, prev_summary, obs)
+        out = llm.invoke(prompt)
+        text = out if isinstance(out, str) else getattr(out, "content", str(out))
+        transcript.append(text)
+        stance = _parse_stance(text)
+        prev_summary = text
 
-        prompt_text = _render_prompt(
-            _PROMPT_ROUND,
-            round_idx=ri, rounds=rounds,
-            context=base_context,
-            fresh_signals=fresh_signals,
-            headlines=_fmt_headlines(headlines, k=12)
-        )
-        resp = llm.invoke(prompt_text)
-        text = getattr(resp, "content", str(resp)).strip()
-        transcripts.append(text)
+    result = DiscussionResult(
+        rounds=rounds,
+        final_stance=stance,
+        transcript=transcript,
+        actions=actions
+    ).__dict__
 
-        # 嘗試從回覆中抓最終 stance
-        stance = None
-        for kw in ("bullish", "bearish", "neutral", "cautious"):
-            if _re.search(rf"\b{kw}\b", text, flags=_re.IGNORECASE):
-                stance = kw.lower()
-                break
-        last_stance = stance or last_stance
+    if log_actions_path:
+        append_jsonl(log_actions_path, {
+            "ts": _now_iso(),
+            "final_stance": stance,
+            "actions": actions,
+            "symbols": symbols,
+        })
 
-    return {
-        "rounds": rounds,
-        "final_stance": last_stance or "neutral",
-        "transcript": transcripts,
-        "used_signals": {
-            "fear_greed": fng,
-            "vix_term": term,
-            "vix_regime": regime,
-            "vix_risk": vrisk,
-            "queries": queries
-        }
-    }
+    return result

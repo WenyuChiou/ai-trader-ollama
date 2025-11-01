@@ -22,5 +22,18 @@
     "start": "2024-01-02",
     "end": "2024-01-31"
   },
-  "discussion_rounds": 3
+  "discussion_rounds": 3,
+  "discussion_auto_tools": true,
+  "discussion_tool_budget": 2,
+  "preferred_domains": [
+    "www.cboe.com",
+    "www.wsj.com",
+    "www.reuters.com",
+    "www.ft.com",
+    "www.cmegroup.com",
+    "fred.stlouisfed.org",
+    "home.treasury.gov"
+  ]
+
+  
 }

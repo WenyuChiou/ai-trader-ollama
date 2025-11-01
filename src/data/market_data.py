@@ -73,3 +73,25 @@ def get_latest_close(symbol: str, start: str, end: str, interval: str = "1d",
     if df.empty or "Close" not in df:
         raise ValueError(f"No Close data for {symbol}")
     return float(df["Close"].dropna().to_numpy()[-1])  # avoid FutureWarning
+
+def get_vix_smart(start: str, end: str, interval: str = "1d", auto_adjust: bool = False) -> pd.DataFrame:
+    """
+    Try normal ^VIX fetch; if empty, fallback to recent period=3mo.
+    """
+    df = yf.download("^VIX", start=start, end=end, interval=interval,
+                     progress=False, auto_adjust=auto_adjust, group_by="column")
+    if df is not None and not df.empty:
+        return df.rename(columns=str.title)
+    # fallback: last 3 months
+    df2 = yf.download("^VIX", period="3mo", interval=interval,
+                      progress=False, auto_adjust=auto_adjust, group_by="column")
+    if df2 is None or df2.empty:
+        raise ValueError("VIX data unavailable (both window and 3mo fallback failed).")
+    return df2.rename(columns=str.title)
+
+def get_vix_close_smart(start: str, end: str, interval: str = "1d", auto_adjust: bool = False) -> pd.Series:
+    """
+    Return ^VIX Close with fallback. Keeps original interface for callers.
+    """
+    df = get_vix_smart(start, end, interval=interval, auto_adjust=auto_adjust)
+    return df["Close"].copy()

@@ -223,44 +223,145 @@ Each agent:
 
 ---
 
+## 🔄 Feedback Loop Mechanism
+
+The system implements a **feedback loop** where tool results are injected back into agent prompts, enabling agents to:
+
+1. **Call Tools**: Agents can call tools during discussion rounds
+2. **Receive Results**: Tool results are summarized and added to `[TOOLS CONTEXT]`
+3. **Reflect & Decide**: Agents see previous tool results and can avoid redundant calls
+4. **Form Consensus**: Multiple agents contribute viewpoints based on tool-enhanced information
+
+### Feedback Loop Flow
+
+```
+Round 1:
+  Agent analyzes → Calls tool (e.g., fear_greed) → Gets result
+  ↓
+  Tool result summarized → Added to [TOOLS CONTEXT]
+  ↓
+Round 2:
+  Agent sees [TOOLS CONTEXT] → Reflects on previous results → Calls new tool if needed
+  ↓
+  New tool result → Added to context
+  ↓
+Round N:
+  Agent has full context → Forms final viewpoint → Contributes to consensus
+```
+
+### Tool Budget & Control
+
+- **Per-Agent Tool Budget**: Each agent in multi-agent discussion has a limited tool budget (default: `tool_budget_per_agent`)
+- **Global Tool Context**: All agents see previous tool results to avoid redundant calls
+- **Auto-Tools**: Agents can automatically call tools when information is insufficient
+
+---
+
 ## 🧪 Testing
 
 All tests are in `backend/tests/`:
 
+### Quick Tests
+
 ```bash
 cd backend
 
-# Run all tests
-python -m tests.run_all
+# Test basic functionality
+python test_trading_loop.py              # Minimal trading loop test
 
-# Individual tests
-python tests/test_00_config.py        # config file check
-python tests/test_01_market_batch_vix.py
-python tests/test_02_discussion_rounds.py
-python tests/test_03_trading_cycle_e2e.py
+# Test multi-agent discussion
+python tests/test_multi_agent_loop_quick.py    # Quick test (few stocks, 1 round)
+python tests/test_multi_agent_loop_simple.py   # Simple test (more stocks, 2 rounds)
+python tests/test_multi_agent_discussion_loop.py  # Full test (large universe, 3 rounds)
 ```
 
-✔️ Expected output example:
+### Individual Component Tests
+
+```bash
+# Test specific components
+python tests/test_00_config.py           # Config file check
+python tests/test_01_market_batch_vix.py # Market data fetching
+python tests/test_02_discussion_rounds.py # Discussion rounds
+python tests/test_03_trading_cycle_e2e.py # End-to-end trading cycle
+python tests/test_04_discussion_tools.py # Tool usage in discussion
+python tests/test_05_backend_integration.py # Portfolio, Risk, Trader integration
+
+# Test information flow
+python tests/test_information_flow.py    # Verify data flow between agents
+
+# Test tools
+python test_crypto_data.py              # Cryptocurrency data fetching
+python test_jin10_tool.py               # Jin10 news tool
+python test_jin10_economic_extraction.py  # Jin10 economic data extraction
+python test_fear_greed_final.py         # Fear & Greed Index tool
+```
+
+### Detailed Test (Full Cycle Output)
+
+```bash
+# Run detailed test with full output
+python run_detailed_test.py
+
+# This shows:
+# - Market data collection
+# - Discussion rounds (transcript, tool calls, agent reasoning)
+# - Risk analysis
+# - Trading decisions (buy/sell orders)
+# - Trade execution
+# - Portfolio status
+```
+
+### Test All Agents
+
+```bash
+# Verify all agents can be created
+python test_all_agents.py
+
+# Verify agents used in trading cycle
+python test_trading_cycle_agents.py
+```
+
+### Expected Test Output
 
 ```
 [CONFIG] OK
-[MARKET] OK
-[DISCUSSION] final_stance = cautious
-[E2E] decision.action = HOLD
+[MARKET] OK - Fetched 3 symbols
+[STOCK_SELECTION] OK - Found 2 potential buys
+[DISCUSSION] OK - Final stance = cautious (3 rounds)
+[RISK] OK - Risk level = medium
+[TRADER] OK - Action = HOLD
+[EXECUTION] OK - 0 trades executed
+[PORTFOLIO] Cash = $10000.00, Positions = {}
+[E2E] All tests passed!
 ```
 
 ---
 
-## 📊 Features
+## 🛠️ Available Tools
 
-- ✅ Local Ollama integration via LangChain
-- ✅ Technical analysis with RSI, MACD, Bollinger Bands
-- ✅ VIX integration (auto fallback to recent 3mo / VIXY)
-- ⚙️ News & sentiment agent (auto keyword selection from NASDAQ100)
-- ⚙️ Self-managed stop-loss / take-profit by Trader Agent
-- ✅ Automated testing & validation scripts
-- ✅ Multi-agent discussion system with feedback loops
-- ✅ Tool calling system with adapters
+The system provides the following tools that agents can use:
+
+### Market & Sentiment Tools
+- **`vix_term`**: Fetch ^VIX & ^VIX3M term structure
+- **`vix_close`**: Fetch ^VIX close series (start, end)
+- **`fear_greed`**: Fetch Fear & Greed Index from [feargreedmeter.com](https://feargreedmeter.com/) or CNN (returns value 0-100, label, date info)
+- **`fetch_crypto_batch`**: Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)
+- **`get_crypto_price`**: Get current price and indicators for a single cryptocurrency
+
+### News & Economic Data Tools
+- **`news_scan`**: Scan news for sentiment indicators (keywords, recency_days, max_articles)
+- **`plan_and_scan_news`**: Intelligently plan and scan news (LLM→queries→news_scan→optional fetch_url)
+- **`web_search`**: DuckDuckGo search with whitelist domains
+- **`fetch_url`**: Fetch & extract main content from a URL
+- **`fetch_jin10_news`**: Fetch financial news and market flash from [Jin10](https://www.jin10.com/) (Chinese financial data platform)
+- **`fetch_jin10_economic_data`**: Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment rates, trade data, etc.
+
+### Trading Tools
+- **`portfolio_status`**: Return current cash, positions, equity value, and total account value
+- **`buy`**: Execute buy order (symbol, quantity, price)
+- **`sell`**: Execute sell order (symbol, quantity, price)
+
+All tools are registered in `ToolBox` and can be invoked by agents during discussions.
 
 ---
 

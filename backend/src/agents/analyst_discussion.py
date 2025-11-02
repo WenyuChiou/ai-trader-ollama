@@ -282,7 +282,8 @@ def run_analyst_discussion(
 
     return {
         "final_stance": final_stance,
-        "rounds": rounds,
+        "rounds": len(transcript),
         "transcript": transcript,
         "actions": [{"action": a} for a in actions_taken],
+        "tool_context": tool_context_lines,  # 添加工具上下文用于测试和调试
     }

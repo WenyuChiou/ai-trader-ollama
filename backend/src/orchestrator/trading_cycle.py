@@ -80,13 +80,13 @@ def execute_daily_trade(
         ]
 
     # ---- (1) 市場層 ----
-    market_view: Dict[str, Any] = fetch_market_batch(
-        symbols=universe,
-        start=start,
-        end=end,
-        interval="1d",
-        auto_adjust=False,
-    )
+    # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 调用
+    # 注意：fetch_market_batch 只接受 symbols, start, end 三个参数
+    market_view: Dict[str, Any] = fetch_market_batch.invoke({
+        "symbols": universe,
+        "start": start,
+        "end": end,
+    })
     # market_view 典型：
     # {
     #   "stocks": {SYM: {price, change_pct, rsi14, macd, bb_pos, signal_score, ...}, ...},
@@ -126,7 +126,7 @@ def execute_daily_trade(
     # ---- (2) 討論層（自動補工具）----
     convo = run_analyst_discussion(
         enriched_market,
-        risk_view=None,                 # Discussion 阶段暂不需要 risk_view
+        _unused=None,                   # 第二个参数是 _unused（用于向后兼容）
         rounds=rounds,
         auto_tools=auto_tools,
         tool_budget=tool_budget,
@@ -287,6 +287,7 @@ def execute_daily_trade(
         "stance": final_stance,
         "decision": decision,
         "risk_report": risk_report,
+        "discussion": convo,  # 添加完整的讨论信息（包含 transcript, actions 等）
         "rounds": convo.get("rounds"),
         "symbols": symbols,
         "top_signals": signal_top,

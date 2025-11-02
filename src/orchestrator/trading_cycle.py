@@ -1,16 +1,47 @@
 # src/orchestrator/trading_cycle.py
 from __future__ import annotations
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from datetime import date, timedelta
 
-# --- Market: 批次抓價 + 指標 ---
-from src.tools.market_tools import fetch_market_batch
+# --- Market Agent: 市場數據抓取（支持多資產類別）---
+from src.agents.market_agent import run_market_agent
 
-# --- Discussion: 帶經驗調整機制（auto-tools）---
-from src.agents.analyst_discussion import run_analyst_discussion
+# --- Market Analyst: 市場分析 ---
+from src.agents.market_analyst import run_market_analyst
 
+# --- Multi-Agent Discussion: 真正的多 Agent 讨论系统 ---
+from src.agents.multi_agent_discussion import run_multi_agent_discussion
 
+# --- Stock Selection Agent: 股票篩選 ---
+try:
+    from src.agents.stock_selection_agent import run_stock_selection_agent
+except ImportError:
+    # 如果 stock_selection_agent 不存在，创建一个占位符
+    def run_stock_selection_agent(*args, **kwargs):
+        return {"potential_buys": [], "stock_rankings": []}
+
+# --- Risk Analyst: 評估倉位風險 ---
+try:
+    from src.agents.risk_analyst import run_risk_analyst
+except ImportError:
+    # 如果 risk_analyst 不存在，创建一个占位符
+    def run_risk_analyst(*args, **kwargs):
+        return {"overall_risk_level": "medium", "risk_score": 5.0}
+
+# --- Trader Agent: 交易決策 ---
 from src.agents.trader_agent import run_trader
+
+# --- Portfolio: 持倉管理 ---
+try:
+    from src.data.portfolio import Portfolio
+except ImportError:
+    Portfolio = None
+
+# --- Trade Logger: 交易記錄 ---
+try:
+    from src.data.trade_log import TradeLogger
+except ImportError:
+    TradeLogger = None
 
 
 def _default_universe() -> List[str]:
@@ -43,16 +74,28 @@ def execute_daily_trade(
     start: str | None = None,
     end: str | None = None,
     universe: List[str] | None = None,
+    asset_classes: Dict[str, List[str]] | None = None,
     rounds: int = 3,
     auto_tools: bool = True,
     tool_budget: int = 2,
     preferred_domains: List[str] | None = None,
+    portfolio: Optional[Any] = None,
+    trade_logger: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
-    單日交易流程（零設定檔版本）：
-      1) Market：抓取 universe 的 OHLCV + 指標（fetch_market_batch）
-      2) Analyst Discussion：若資訊不足自動用工具補齊（news_scan / vix_term / fear_greed）
-      3) Trader：依最終 stance + VIX 風險做 BUY/HOLD/SELL 建議（停損停利由 agent 自主）
+    每日交易前分析流程（基于昨天收盘数据 + 昨天/今日新闻 → 今天交易决策）：
+    
+    流程：
+      1) Market Agent：抓取多资产类别市场数据（股票、债券、商品、指数、波动率）
+         - 昨天收盘数据 + 历史数据用于技术指标计算
+      2) Market Analyst：分析市场数据，评估市场情绪和趋势
+      3) Stock Selection Agent：评估所有候选股票，生成 potential_buys 列表
+      4) Multi-Agent Discussion：真正的多 Agent 讨论系统
+         - Technical Analyst, Fundamental Analyst, Risk Analyst, Sentiment Analyst
+         - 每个 Agent 可以使用自己的工具，进行多轮讨论，最终形成共识
+      5) Risk Analyst：评估当前仓位风险，提出仓位控管报告
+      6) Trader Agent：综合所有信息做出最终交易决策（买入、卖出、持有、调整）
+      7) 执行交易：更新 Portfolio 并记录 Trade Logger（如果提供）
     """
 
     # ---- 參數預設 ----
@@ -66,50 +109,30 @@ def execute_daily_trade(
             "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov"
         ]
 
-    # ---- (1) 市場層 ----
-    market_view: Dict[str, Any] = fetch_market_batch(
+    # ---- (1) Market Agent：市場數據抓取（支持多資產類別）----
+    market_agent_result = run_market_agent(
         symbols=universe,
         start=start,
         end=end,
-        interval="1d",
-        auto_adjust=False,
+        asset_classes=asset_classes,
     )
-    # market_view 典型：
-    # {
-    #   "stocks": {SYM: {price, change_pct, rsi14, macd, bb_pos, signal_score, ...}, ...},
-    #   "vix": {"level": ..., "chg_1d": ..., "zscore": ...}
-    # }
-
-    # ---- (1b) 輕量 enriched 給討論層 ----
+    market_view = market_agent_result.get("market_data", {})
+    
+    # ---- (2) Market Analyst：市場分析 ----
+    market_analysis = run_market_analyst(market_view)
+    
+    # ---- (2b) 準備基礎數據 ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
     signal_top = _top_by_signal(stocks, k=5)
 
-    enriched_market: Dict[str, Any] = {
-        "symbols": symbols,
-        # 交給 discussion 自動補：vix_term / fear_greed / news
-        "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
-        "fear_greed": market_view.get("fear_greed"),
-        "news": None,
-        "signal_score_top": signal_top,
-        "stocks": stocks,
-        "vix": market_view.get("vix"),
-    }
+    # ---- 初始化 Portfolio 和 Trade Logger（如果未提供且可用）----
+    if portfolio is None and Portfolio is not None:
+        portfolio = Portfolio()
+    if trade_logger is None and TradeLogger is not None:
+        trade_logger = TradeLogger()
 
-    # ---- (2) 討論層（自動補工具）----
-    convo = run_analyst_discussion(
-        enriched_market,
-        risk_view=None,                 # 目前沒有 risk_agent 就留空
-        rounds=rounds,
-        auto_tools=auto_tools,
-        tool_budget=tool_budget,
-        preferred_domains=preferred_domains,
-        # 若你的 analyst_discussion 有支援 log_actions_path，可視需要加上
-        # log_actions_path="data/logs/discussion_actions.jsonl",
-    )
-    final_stance = convo.get("final_stance", "neutral")
-
-    # ---- 最新收盤價（傳給 trader）----
+    # ---- 最新收盤價（用於多處）----
     last_prices = {}
     for s, d in stocks.items():
         try:
@@ -117,19 +140,243 @@ def execute_daily_trade(
         except Exception:
             pass
 
-    # ---- (3) Trader 決策 ----
+    # ---- (3) Stock Selection Agent：評估所有候選股票 ----
+    vix_info = market_view.get("VIX", {}) or {}
+    vix_risk = float(vix_info.get("risk_score", 4.0))
+    
+    # 调用 Stock Selection Agent 评估所有候选股票
+    stock_selection = run_stock_selection_agent(
+        market_data=market_view,
+        universe=universe,
+        last_prices=last_prices,
+        vix_risk=vix_risk,
+        min_score=3.0,  # 最小评分阈值
+        top_n=20,  # 返回前 20 名
+    )
+    
+    potential_buys = stock_selection.get("potential_buys", [])
+    stock_rankings = stock_selection.get("stock_rankings", [])
+    
+    enriched_market: Dict[str, Any] = {
+        "symbols": symbols,
+        # Market Analyst 的分析结果
+        "market_analysis": market_analysis,
+        # 交给 Discussion Agent 自动补：vix_term / fear_greed / news
+        "vix_term": market_view.get("vix_term"),
+        "fear_greed": market_view.get("fear_greed"),
+        "news": None,  # 由 Discussion Agent 主导填充
+        "signal_score_top": signal_top,
+        "stocks": stocks,
+        "bonds": market_view.get("bonds", {}),
+        "commodities": market_view.get("commodities", {}),
+        "indices": market_view.get("indices", {}),
+        "volatility": market_view.get("volatility", {}),
+        "vix": market_view.get("VIX"),
+        # 新增：股票选择结果
+        "potential_buys": potential_buys,
+        "stock_rankings": stock_rankings[:10],  # 只包含前 10 名用于讨论
+    }
+
+    # ---- (4) Multi-Agent Discussion：真正的多 Agent 討論系統 ----
+    # 使用多 Agent 讨论系统（Technical, Fundamental, Risk, Sentiment）
+    # 每个 Agent 可以使用自己的工具，进行多轮讨论，最终形成共识
+    
+    # 准备当前持仓信息（用于 Multi-Agent Discussion 的 Risk Analyst）
+    current_positions_info = {}
+    portfolio_value_for_discussion = 10000.0
+    if portfolio and hasattr(portfolio, '_positions'):
+        portfolio_value_for_discussion = portfolio.value(last_prices) if hasattr(portfolio, 'value') else 10000.0
+        for symbol, pos in portfolio._positions.items():
+            current_price = last_prices.get(symbol, pos.avg_cost)
+            current_positions_info[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": current_price,
+                "market_value": pos.quantity * current_price,
+            }
+    
+    # 使用真正的多 Agent 讨论系统
+    convo = run_multi_agent_discussion(
+        market_view=enriched_market,
+        potential_buys=potential_buys,
+        current_positions=current_positions_info if current_positions_info else None,
+        portfolio_value=portfolio_value_for_discussion,
+        rounds=rounds,
+        auto_tools=auto_tools,
+        tool_budget_per_agent=tool_budget // 4,  # 每个 Agent 的工具预算（总预算 / 4）
+        preferred_domains=preferred_domains,
+    )
+    
+    # 提取共识信息
+    consensus = convo.get("consensus", {})
+    final_stance = consensus.get("final_stance", "neutral")
+    
+    # 提取 Discussion 的风险信号（用于 Risk Analyst）
+    agent_views = convo.get("agent_views", {})
+    risk_agent_view = agent_views.get("risk", {})
+    discussion_risk_signals = {
+        "risk_level": "medium",
+        "risk_signals": risk_agent_view.get("signals", []),
+    }
+    
+    # 添加讨论轮次信息
+    discussion_rounds = convo.get("discussion_rounds", [])
+
+    # ---- (5) Risk Analyst：評估倉位風險 ----
+    # 准备当前持仓信息（用于 Risk Analyst）
+    portfolio_value = portfolio_value_for_discussion
+    
+    # 调用 Risk Analyst
+    risk_report = run_risk_analyst(
+        market_json=market_view,
+        current_positions=current_positions_info if current_positions_info else None,
+        portfolio_value=portfolio_value,
+        discussion_risk_signals=discussion_risk_signals,
+    )
+
+    # ---- (6) Trader Agent：交易決策 ----
+    # 传入所有候选股票（universe）给 Trader Agent
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
-        rview=None,
+        rview=risk_report,  # 传入 Risk Report
         convo=convo,
         last_prices=last_prices,
+        current_positions=current_positions_info if current_positions_info else None,
+        portfolio_value=portfolio_value,
+        all_candidates=universe,  # 传入所有候选股票
     )
+
+    # ---- (7) 執行交易並更新 Portfolio ----
+    executed_trades = []
+    execution_errors = []
+    
+    if portfolio and hasattr(portfolio, 'buy'):
+        # 执行买入订单
+        buy_orders = decision.get("buy_orders", [])
+        for order in buy_orders:
+            symbol = order.get("symbol")
+            buy_price = order.get("buy_price")
+            quantity = order.get("quantity")
+            total_cost = order.get("total_cost", buy_price * quantity) if buy_price and quantity else 0.0
+            
+            if symbol and buy_price and quantity:
+                try:
+                    portfolio.buy(symbol, quantity, buy_price)
+                    # 记录交易（如果 TradeLogger 可用）
+                    if trade_logger and hasattr(trade_logger, 'log'):
+                        trade_logger.log(
+                            symbol=symbol,
+                            action="BUY",
+                            price=buy_price,
+                            quantity=quantity,
+                            amount=total_cost,
+                            status="SUCCESS",
+                            reason=decision.get("rationale"),
+                            rationale=decision.get("rationale"),
+                            stance=decision.get("stance"),
+                            vix_risk=decision.get("vix_risk"),
+                        )
+                    executed_trades.append({
+                        "symbol": symbol,
+                        "action": "BUY",
+                        "price": buy_price,
+                        "quantity": quantity,
+                        "amount": total_cost,
+                        "status": "SUCCESS",
+                    })
+                except Exception as e:
+                    execution_errors.append(f"BUY {symbol} failed: {e}")
+        
+        # 执行卖出订单
+        sell_orders = decision.get("sell_orders", [])
+        for order in sell_orders:
+            symbol = order.get("symbol")
+            sell_price = order.get("sell_price")
+            quantity = order.get("quantity")
+            total_proceeds = order.get("total_proceeds", sell_price * quantity) if sell_price and quantity else 0.0
+            
+            if symbol and sell_price and quantity:
+                try:
+                    portfolio.sell(symbol, quantity, sell_price)
+                    # 记录交易（如果 TradeLogger 可用）
+                    if trade_logger and hasattr(trade_logger, 'log'):
+                        trade_logger.log(
+                            symbol=symbol,
+                            action="SELL",
+                            price=sell_price,
+                            quantity=quantity,
+                            amount=total_proceeds,
+                            status="SUCCESS",
+                            reason=decision.get("rationale"),
+                            rationale=decision.get("rationale"),
+                            stance=decision.get("stance"),
+                            vix_risk=decision.get("vix_risk"),
+                        )
+                    executed_trades.append({
+                        "symbol": symbol,
+                        "action": "SELL",
+                        "price": sell_price,
+                        "quantity": quantity,
+                        "amount": total_proceeds,
+                        "status": "SUCCESS",
+                    })
+                except Exception as e:
+                    execution_errors.append(f"SELL {symbol} failed: {e}")
+    
+    # ---- 計算當前持倉 P&L（用於後端展示）----
+    portfolio_pnl = {}
+    total_pnl = 0.0
+    total_pnl_pct = 0.0
+    equity_value = 0.0
+    
+    if portfolio and hasattr(portfolio, '_positions'):
+        if hasattr(portfolio, 'total_pnl'):
+            total_pnl = portfolio.total_pnl(last_prices)
+        if hasattr(portfolio, 'total_pnl_pct'):
+            total_pnl_pct = portfolio.total_pnl_pct(last_prices)
+        if hasattr(portfolio, 'equity_value'):
+            equity_value = portfolio.equity_value(last_prices)
+        
+        # 计算每个持仓的 P&L
+        if hasattr(portfolio, 'get_all_positions_pnl'):
+            portfolio_pnl = portfolio.get_all_positions_pnl(last_prices)
+    
+    # 重新构建 current_positions_info（用于返回）
+    current_positions_info = {}
+    if portfolio and hasattr(portfolio, '_positions'):
+        for symbol, pos in portfolio._positions.items():
+            current_price = last_prices.get(symbol, pos.avg_cost)
+            current_positions_info[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": current_price,
+                "market_value": pos.quantity * current_price,
+            }
 
     return {
         "stance": final_stance,
         "decision": decision,
-        "rounds": convo.get("rounds"),
+        "risk_report": risk_report,
+        "stock_selection": stock_selection,  # 股票选择结果
+        "market_agent": market_agent_result,  # Market Agent 结果（多资产类别）
+        "market_analysis": market_analysis,  # Market Analyst 结果
+        "discussion": convo,  # Discussion 结果（多 Agent 讨论）
+        "discussion_rounds": discussion_rounds,  # 多 Agent 讨论轮次
+        "rounds": len(discussion_rounds),
         "symbols": symbols,
         "top_signals": signal_top,
+        # 执行结果
+        "executed_trades": executed_trades,
+        "execution_errors": execution_errors,
+        # Portfolio 信息（用于后端展示）
+        "portfolio": {
+            "cash": portfolio.cash if portfolio and hasattr(portfolio, 'cash') else 0.0,
+            "positions": current_positions_info,
+            "total_value": portfolio_value,
+            "equity_value": equity_value,
+            "total_pnl": total_pnl,
+            "total_pnl_pct": total_pnl_pct,
+            "positions_pnl": portfolio_pnl,
+        },
     }

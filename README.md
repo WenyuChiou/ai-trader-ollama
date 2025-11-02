@@ -78,11 +78,7 @@ cd backend
 python run.py
 ```
 
-This executes:
-
-```
-Market Agent → Analysts (Market + Risk) → Discussion → Trader → Log
-```
+This executes the complete trading cycle (see **Information Flow** below).
 
 Results are stored under:
 
@@ -92,14 +88,136 @@ backend/data/logs/trades.jsonl
 
 ---
 
+## 🔄 Information Flow
+
+The trading system follows a multi-stage information flow where data flows through specialized agents:
+
+### Complete Trading Cycle
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│         Daily Trading Analysis Cycle                        │
+│  (Yesterday's Close Data + News → Today's Trading Decision)│
+└─────────────────────────────────────────────────────────────┘
+
+1. Market Agent 📊
+   ├─ Input: universe (from config.json), asset_classes
+   ├─ Fetches: Stocks, Bonds, Commodities, Indices, Volatility
+   │  - Stocks: From universe list (NASDAQ-100)
+   │  - Volatility: Scraped from CME Group website
+   │  - Other assets: From config.json
+   └─ Output: market_data {stocks, bonds, commodities, indices, volatility, VIX}
+   
+   ↓
+   
+2. Market Analyst 📈
+   ├─ Input: market_data (from Market Agent)
+   ├─ Analyzes: Market sentiment, trends, technical indicators
+   └─ Output: market_analysis {sentiment, observations, recommendations}
+   
+   ↓
+   
+3. Stock Selection Agent 🎯
+   ├─ Input: market_data, universe, last_prices, vix_risk
+   ├─ Evaluates: All candidate stocks (technical indicators, trend, risk)
+   └─ Output: 
+      - potential_buys: [{symbol, score, trend, recommendation, ...}]
+      - stock_rankings: [all stocks sorted by score]
+   
+   ↓
+   
+4. Multi-Agent Discussion 🤖🤖🤖🤖
+   ├─ Agents:
+   │  ├─ Technical Analyst: Technical analysis, chart patterns, indicators
+   │  ├─ Fundamental Analyst: Company fundamentals, earnings, financials
+   │  ├─ Risk Analyst (Discussion): Risk assessment, position sizing
+   │  └─ Sentiment Analyst: Market sentiment, news sentiment, investor psychology
+   ├─ Each agent can:
+   │  ├─ Use their own tools (news_scan, vix_term, fear_greed, etc.)
+   │  ├─ See previous discussion rounds
+   │  └─ Contribute to consensus formation
+   ├─ Input: enriched_market, potential_buys, current_positions
+   ├─ Process: Multi-round discussion where agents debate and form consensus
+   └─ Output: consensus {
+      ├─ final_stance: "bullish" | "neutral" | "cautious" | "constructive"
+      ├─ agent_views: {technical, fundamental, risk, sentiment}
+      ├─ discussion_rounds: [round-by-round discussion records]
+      └─ risk_signals: [...]
+   }
+   
+   ↓
+   
+5. Risk Analyst ⚠️
+   ├─ Input: market_data, current_positions, discussion_risk_signals
+   ├─ Assesses: Position risk, concentration, market risk
+   └─ Output: risk_report {
+      ├─ overall_risk_level: "high" | "medium" | "low"
+      ├─ current_position_risk: {concentration, exposure, ...}
+      └─ position_control_report: {recommended_sizes, limits, ...}
+   }
+   
+   ↓
+   
+6. Trader Agent 💰
+   ├─ Input: market_data, market_analysis, consensus, risk_report, potential_buys
+   ├─ Makes decision: Buy, Sell, Hold, or Adjust positions
+   └─ Output: decision {
+      ├─ action: "BUY" | "SELL" | "HOLD"
+      ├─ buy_orders: [{symbol, quantity, price, ...}]
+      ├─ sell_orders: [{symbol, quantity, price, ...}]
+      ├─ potential_buys: [filtered and prioritized stocks]
+      └─ position_adjustments: [...]
+   }
+   
+   ↓
+   
+7. Execution ⚙️
+   ├─ Updates: Portfolio (cash, positions, average cost)
+   ├─ Logs: Trade Logger (detailed trade records)
+   └─ Output: {
+      ├─ executed_trades: [...]
+      ├─ portfolio: {cash, positions, total_value, P&L, ...}
+      └─ execution_errors: [...]
+   }
+```
+
+### Key Data Flow Points
+
+| Data | Source | Destination | Purpose |
+|------|--------|-------------|---------|
+| `market_data` | Market Agent | All downstream agents | Base market data for all analysis |
+| `market_analysis` | Market Analyst | Discussion, Trader | Market sentiment and trends |
+| `potential_buys` | Stock Selection | Discussion, Trader | Candidate stocks for trading |
+| `consensus` | Multi-Agent Discussion | Trader | Discussion consensus and stance |
+| `risk_report` | Risk Analyst | Trader | Risk assessment and position limits |
+| `decision` | Trader Agent | Execution | Final trading decisions |
+
+### Multi-Agent Discussion System
+
+The system uses a **true multi-agent discussion** where 4 specialized analyst agents:
+- **Technical Analyst**: Focuses on technical indicators, chart patterns, price action
+- **Fundamental Analyst**: Analyzes company fundamentals, earnings, financial health
+- **Risk Analyst (Discussion)**: Assesses risk from discussion perspective
+- **Sentiment Analyst**: Evaluates market sentiment, news sentiment, investor psychology
+
+Each agent:
+- Independently analyzes the market data and potential buys
+- Can use their own tools (news_scan, vix_term, fear_greed, web_search, etc.)
+- Contributes their viewpoint in each discussion round
+- Can see previous rounds and adjust their analysis
+- Final consensus is formed from all agent viewpoints
+
+---
+
 ## 🧠 Agent Overview
 
 | Agent | Function | Status |
 |-------|----------|--------|
 | Market Agent | Fetch OHLCV, compute TA indicators (RSI, MACD, BBands) | ✅ |
-| Market Analyst | Combine technicals + sentiment (VIX, Fear & Greed, news) | ⚙️ |
-| Risk Analyst | Evaluate volatility, max drawdown, and exposure limits | ⚙️ |
-| Analyst Discussion | Run multi-round reasoning to form consensus | ✅ |
+| Market Analyst | Combine technicals + sentiment (VIX, Fear & Greed, news) | ✅ |
+| Stock Selection Agent | Evaluate all candidate stocks, generate potential_buys | ✅ |
+| Multi-Agent Discussion | Technical/Fundamental/Risk/Sentiment analysts discuss | ✅ |
+| Risk Analyst | Evaluate volatility, position risk, exposure limits | ✅ |
 | Trader Agent | Make final BUY/SELL/HOLD decisions | ✅ |
 | Performance Agent | Backtesting, Sharpe/MDD reporting | ⏳ |
 
@@ -206,11 +324,18 @@ Lehigh University
 
 ---
 
+## 📚 Documentation
+
+For detailed information, see:
+- `docs/MULTI_AGENT_DISCUSSION.md` - Multi-agent discussion system details
+- `docs/INFORMATION_FLOW_COMPLETE.md` - Complete information flow analysis
+- `docs/TEST_MULTI_AGENT_LOOP.md` - Testing guide
+- `docs/PHASE2_SUMMARY.md` - Latest development phase summary
+
 ## 📝 Migration Notes
 
-This project is currently undergoing migration to a Monorepo structure. See:
+This project has completed migration to a Monorepo structure. See:
 - `docs/PHASE1_SUMMARY.md` - Phase 1 completion
 - `docs/PHASE2_SUMMARY.md` - Phase 2 completion
-- `MIGRATION_MASTER_PLAN.md` - Full migration plan
 
 **Current Development Branch**: `master` (will merge to `main`)

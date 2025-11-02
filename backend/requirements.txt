@@ -1,0 +1,22 @@
+langchain>=0.3.0
+langchain-ollama>=0.2.0
+ollama>=0.3.0
+python-dotenv>=1.0.1
+pandas>=2.2.2
+numpy>=1.26.4
+yfinance>=0.2.40
+pydantic>=2.9.0
+tqdm>=4.66.4
+feedparser>=6.0.11
+beautifulsoup4>=4.12.3
+requests>=2.32.3
+duckduckgo-search==8.1.1
+trafilatura==1.7.0
+lxml==5.1.0
+pyyaml>=6.0.1
+
+# Frontend integration (optional)
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+websockets>=13.0
+

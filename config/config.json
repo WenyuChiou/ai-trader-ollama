@@ -17,14 +17,6 @@
   ],
 
   "market_data": {
-    "stocks": {
-      "us": [
-        "NVDA", "MSFT", "AAPL", "GOOG", "GOOGL", "AMZN", "META", "AVGO", "TSLA"
-      ],
-      "international": [
-        "^N225", "^FTSE", "^GDAXI", "^FCHI", "^HSI", "^STI"
-      ]
-    },
     "bonds": {
       "us_treasury": [
         "^TNX", "^IRX", "^FVX"
@@ -51,10 +43,7 @@
       "international": [
         "^N225", "^FTSE", "^GDAXI", "^FCHI", "^HSI"
       ]
-    },
-    "volatility": [
-      "^VIX", "^VIX3M"
-    ]
+    }
   },
   "initial_cash": 10000,
   "position_limit_per_stock": 0.2,

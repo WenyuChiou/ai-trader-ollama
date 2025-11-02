@@ -6,6 +6,7 @@ import pandas as pd
 from langchain.tools import tool
 from ..data.market_data import get_multi_prices, get_vix_close
 from .ta_indicators import rsi, macd, bbands
+from .volatility_tools import fetch_cme_volatility_indexes
 
 def _to_float(x) -> float:
     """Safely convert scalar/Series/ndarray to float (use last value if Series)."""
@@ -181,16 +182,17 @@ def fetch_market_batch(
         all_symbols.extend(symbols)
     
     # New: if asset_classes is provided, extract symbols
+    # Note: stocks are always from universe (symbols parameter), not from asset_classes
     if asset_classes:
         for asset_class, syms in asset_classes.items():
-            if isinstance(syms, list):
+            # Skip stocks - they come from symbols (universe)
+            if asset_class != "stocks" and isinstance(syms, list):
                 all_symbols.extend(syms)
     
-    if not all_symbols:
-        raise ValueError("Either 'symbols' or 'asset_classes' must be provided")
-    
-    # Fetch all symbols
-    data = get_multi_prices(all_symbols, start, end, interval=interval, auto_adjust=auto_adjust)
+    # Fetch all symbols (if any)
+    data = {}
+    if all_symbols:
+        data = get_multi_prices(all_symbols, start, end, interval=interval, auto_adjust=auto_adjust)
     
     # Organize by asset class
     out: Dict[str, Any] = {
@@ -208,10 +210,8 @@ def fetch_market_batch(
             
             # Categorize by symbol pattern
             if s.startswith("^"):
-                # Indices or volatility
-                if s in ("^VIX", "^VIX3M"):
-                    out["volatility"][s] = indicators
-                else:
+                # Indices (volatility from CME Group is scraped separately, not from yfinance)
+                if s not in ("^VIX", "^VIX3M"):  # Skip VIX symbols - we use CME Group scraping
                     out["indices"][s] = indicators
             elif s.endswith("=F"):
                 # Commodities futures
@@ -226,20 +226,62 @@ def fetch_market_batch(
             # Skip symbols that fail indicator calculation
             continue
     
-    # Attach VIX features (always try to fetch VIX if not in data)
-    if "^VIX" not in data:
-        try:
-            vix_series = get_vix_close(start, end)
-            out["VIX"] = _calc_vix_features(vix_series)
-        except Exception:
+    # Attach volatility data from CME Group (scraped)
+    cme_vol_result = fetch_cme_volatility_indexes()
+    if cme_vol_result.get("ok"):
+        cme_data = cme_vol_result.get("data", {})
+        # 转换 CME 数据格式为统一的波动率格式
+        for index_name, index_data in cme_data.items():
+            value = index_data.get("value")
+            change_pct = index_data.get("change_pct")
+            if value is not None:
+                # 添加到 volatility 类别
+                if index_name not in out["volatility"]:
+                    out["volatility"][index_name] = {
+                        "price": value,
+                        "change_pct": change_pct if change_pct is not None else float("nan"),
+                        "volume": float("nan"),
+                        "ma20": float("nan"),
+                        "ma50": float("nan"),
+                        "rsi14": float("nan"),
+                        "macd": float("nan"),
+                        "macd_signal": float("nan"),
+                        "macd_hist": float("nan"),
+                        "bb_pos": float("nan"),
+                        "signal_score": 0,
+                    }
+        
+        # 如果有主要波动率指数（如 CVOL），计算 VIX 特征
+        # 使用第一个可用的波动率指数作为主要参考
+        if cme_data:
+            first_index = list(cme_data.values())[0]
+            main_value = first_index.get("value")
+            main_change = first_index.get("change_pct")
+            if main_value is not None:
+                # 简化计算：使用 CME 波动率数据作为 VIX 特征的近似
+                out["VIX"] = {
+                    "level": main_value,
+                    "chg_1d": main_change if main_change is not None else float("nan"),
+                    "zscore": float("nan"),  # 需要历史数据才能计算 z-score
+                }
+            else:
+                out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+        else:
             out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
     else:
-        # Use VIX data already fetched
-        try:
-            vix_df = data["^VIX"]
-            vix_series = vix_df["Close"] if "Close" in vix_df.columns else vix_df.iloc[:, -1]
-            out["VIX"] = _calc_vix_features(vix_series)
-        except Exception:
-            out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+        # 如果 CME 数据获取失败，尝试使用传统的 ^VIX（作为后备）
+        if "^VIX" in data:
+            try:
+                vix_df = data["^VIX"]
+                vix_series = vix_df["Close"] if "Close" in vix_df.columns else vix_df.iloc[:, -1]
+                out["VIX"] = _calc_vix_features(vix_series)
+            except Exception:
+                out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+        else:
+            try:
+                vix_series = get_vix_close(start, end)
+                out["VIX"] = _calc_vix_features(vix_series)
+            except Exception:
+                out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
     
     return out

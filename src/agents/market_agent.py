@@ -14,24 +14,23 @@ def run_market_agent(
     Market Agent: 抓取市场数据（支持多资产类别）
     
     支持资产类别：
-    - stocks: 股票（NVDA, MSFT, AAPL, etc.）
+    - stocks: 股票（使用 universe 清单，从 symbols 参数传入）
     - bonds: 债券（^TNX, ^IRX, LQD, HYG, etc.）
     - commodities: 商品（GC=F 黄金, CL=F 原油, etc.）
     - indices: 指数（^GSPC, ^DJI, ^N225 日经, ^FTSE 富时, ^GDAXI 德指, ^HSI 恒指, etc.）
-    - volatility: 波动率（^VIX, ^VIX3M）
+    - volatility: 波动率（从 CME Group 网站爬取，https://www.cmegroup.com/market-data/cme-group-benchmark-administration/cme-group-volatility-indexes.html）
     
     Args:
         symbols: 股票代码列表（legacy 参数）
         start: 开始日期（YYYY-MM-DD），默认 180 天前
         end: 结束日期（YYYY-MM-DD），默认今天
-        asset_classes: 资产类别字典
+        asset_classes: 资产类别字典（不包含 stocks，stocks 从 symbols 参数传入）
             {
-                "stocks": ["NVDA", "MSFT", ...],
                 "bonds": ["^TNX", "LQD", ...],
                 "commodities": ["GC=F", "CL=F", ...],
-                "indices": ["^GSPC", "^N225", ...],
-                "volatility": ["^VIX", "^VIX3M"]
+                "indices": ["^GSPC", "^N225", ...]
             }
+        注意：波动率数据从 CME Group 网站爬取，不需要在 asset_classes 中指定
     
     Returns:
         {

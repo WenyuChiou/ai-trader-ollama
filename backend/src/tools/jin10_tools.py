@@ -157,93 +157,201 @@ def fetch_jin10_news(
         }
 
 
-@tool("fetch_jin10_calendar", return_direct=False)
-def fetch_jin10_calendar(
-    date: str | None = None,
+@tool("fetch_jin10_economic_data", return_direct=False)
+def fetch_jin10_economic_data(
+    max_items: int = 20,
+    data_type: str = "all",
 ) -> Dict[str, Any]:
     """
-    从金十数据获取财经日历（重要经济数据发布时间）。
+    从金十数据获取经济数据和就业数据（非VIP内容）。
+    专门筛选包含经济指标、就业数据、CPI、PMI、GDP等数据的新闻。
     
     Args:
-        date: 日期 (YYYY-MM-DD)，默认为今天
+        max_items: 最大获取数量，默认 20
+        data_type: 数据类型，可选 "all", "employment", "inflation", "gdp", "pmi"
     
     Returns:
         {
             "ok": True/False,
-            "date": "日期",
-            "events": [
+            "items": [
                 {
+                    "title": "标题",
                     "time": "时间",
+                    "content": "内容",
+                    "data_type": "数据类型",
+                    "indicators": ["CPI", "PMI", ...],  # 提取的数据指标
+                    "values": {"CPI": "2.5%", ...},  # 提取的数值
                     "country": "国家",
-                    "event": "事件名称",
-                    "importance": "重要性",
-                    "previous": "前值",
-                    "forecast": "预期",
-                    "actual": "实际值"
+                    "url": "链接"
                 }
             ],
-            "count": 事件数量
+            "count": 实际获取数量
         }
     """
-    # 金十数据的日历API或页面URL
-    # 可能需要特定的API端点
-    url = "https://www.jin10.com/calendar"
+    url = "https://www.jin10.com/"
     
     try:
-        if date is None:
-            date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-        
         resp = requests.get(url, timeout=DEFAULT_TIMEOUT, headers={
             "User-Agent": USER_AGENT,
-            "Accept": "application/json, text/html",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
         })
         
         if resp.status_code != 200:
             return {
                 "ok": False,
                 "error": f"HTTP {resp.status_code}",
-                "date": date,
-                "events": [],
+                "items": [],
                 "count": 0
             }
         
-        # 尝试解析JSON（如果API返回JSON）
-        try:
-            data = resp.json()
-            # 根据实际API结构解析
-            events = []
-            # TODO: 解析API返回的数据结构
-            return {
-                "ok": True,
-                "date": date,
-                "events": events,
-                "count": len(events),
-                "source": "jin10_api"
-            }
-        except json.JSONDecodeError:
-            # 如果不是JSON，尝试HTML解析
-            html = resp.text
-            soup = BeautifulSoup(html, 'html.parser')
+        html = resp.text
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        items = []
+        
+        # 经济数据关键词模式
+        economic_keywords = {
+            "employment": [r'就业', r'失业', r'非农', r'NFP', r'就业率', r'失业率', r'就业数据'],
+            "inflation": [r'CPI', r'通胀', r'通胀率', r'物价', r'消费者物价'],
+            "gdp": [r'GDP', r'国内生产总值', r'经济增速', r'经济增长'],
+            "pmi": [r'PMI', r'采购经理人', r'制造业PMI', r'服务业PMI'],
+            "trade": [r'贸易', r'进出口', r'贸易帐', r'出口', r'进口'],
+            "central_bank": [r'利率', r'央行', r'美联储', r'央行决议', r'利率决议'],
+            "other": [r'数据', r'指标', r'经济数据', r'%']
+        }
+        
+        # 根据 data_type 选择关键词
+        if data_type == "all":
+            all_patterns = []
+            for patterns in economic_keywords.values():
+                all_patterns.extend(patterns)
+            selected_patterns = all_patterns
+        elif data_type in economic_keywords:
+            selected_patterns = economic_keywords[data_type]
+        else:
+            selected_patterns = economic_keywords["all"]
+        
+        # 编译正则表达式
+        compiled_patterns = [re.compile(p, re.IGNORECASE) for p in selected_patterns]
+        
+        # 策略1: 从新闻标题和内容中提取经济数据
+        time_pattern = re.compile(r'\d{2}:\d{2}:\d{2}')
+        all_text_nodes = soup.find_all(string=time_pattern)
+        
+        for time_node in all_text_nodes[:max_items * 3]:
+            time_match = time_pattern.search(time_node)
+            if not time_match:
+                continue
             
-            events = []
-            # TODO: 解析HTML页面中的日历数据
-            # 这需要了解金十数据日历页面的具体HTML结构
+            time_str = time_match.group(0)
+            parent = time_node.parent
             
-            return {
-                "ok": True,
-                "date": date,
-                "events": events,
-                "count": len(events),
-                "source": "jin10_html",
-                "note": "HTML parsing not fully implemented yet"
-            }
+            # 向上查找包含新闻内容的父元素
+            max_depth = 6
+            depth = 0
+            found_item = False
+            
+            while parent and depth < max_depth and not found_item:
+                # 获取完整文本内容
+                text_content = parent.get_text(strip=True)
+                
+                # 检查是否包含经济数据关键词
+                matches = []
+                matched_indicators = []
+                for pattern in compiled_patterns:
+                    if pattern.search(text_content):
+                        match_text = pattern.findall(text_content)
+                        if match_text:
+                            matches.extend(match_text)
+                            # 提取指标名称
+                            indicator_name = pattern.pattern.replace(r'[^<]*', '').replace('(', '').replace(')', '')
+                            matched_indicators.append(indicator_name)
+                
+                if matches:
+                    # 提取标题
+                    title_elem = parent.find('a', href=True)
+                    if not title_elem:
+                        title_elem = parent.find_next('a', href=True)
+                    
+                    if title_elem:
+                        title = title_elem.get_text(strip=True)
+                        link = title_elem.get('href', '')
+                        
+                        if link and not link.startswith('http'):
+                            link = f"https://www.jin10.com{link}" if link.startswith('/') else f"https://www.jin10.com/{link}"
+                        
+                        # 提取数值
+                        # 查找数字+%的模式，或百分比模式
+                        value_pattern = re.compile(r'([\d.]+)\s*%|([\d.,]+)\s*(?:万亿|亿|万)')
+                        values = {}
+                        value_matches = value_pattern.findall(text_content)
+                        
+                        # 尝试提取具体数值
+                        for match in value_matches:
+                            if match[0]:  # 百分比
+                                values[f"{matches[0] if matches else 'value'}"] = f"{match[0]}%"
+                            elif match[1]:  # 金额
+                                values[f"{matches[0] if matches else 'value'}"] = match[1]
+                        
+                        # 提取国家（中国、美国、欧元区等）
+                        country_pattern = re.compile(r'(中国|美国|欧元区|欧洲|日本|英国|德国|法国|韩国)')
+                        country_match = country_pattern.search(text_content)
+                        country = country_match.group(1) if country_match else ""
+                        
+                        # 判断数据类型
+                        detected_type = "other"
+                        for dtype, patterns in economic_keywords.items():
+                            if any(re.search(p, text_content, re.IGNORECASE) for p in patterns):
+                                detected_type = dtype
+                                break
+                        
+                        if title and len(title) > 5:
+                            items.append({
+                                "title": title[:200],
+                                "time": time_str,
+                                "content": text_content[:1000],  # 保留更多内容以便提取数据
+                                "data_type": detected_type,
+                                "indicators": list(set(matches[:5])),  # 去重
+                                "values": values,
+                                "country": country,
+                                "url": link
+                            })
+                            found_item = True
+                            if len(items) >= max_items:
+                                break
+                
+                parent = parent.parent if parent.parent else None
+                depth += 1
+            
+            if len(items) >= max_items:
+                break
+        
+        # 去重
+        seen_titles = set()
+        unique_items = []
+        for item in items:
+            title_key = item.get("title", "").lower()[:50]
+            if title_key and title_key not in seen_titles:
+                seen_titles.add(title_key)
+                unique_items.append(item)
+                if len(unique_items) >= max_items:
+                    break
+        
+        return {
+            "ok": True if unique_items else False,
+            "items": unique_items,
+            "count": len(unique_items),
+            "source": "jin10",
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "data_type_filter": data_type
+        }
         
     except Exception as e:
         return {
             "ok": False,
             "error": str(e),
-            "date": date or datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-            "events": [],
+            "items": [],
             "count": 0
         }
 

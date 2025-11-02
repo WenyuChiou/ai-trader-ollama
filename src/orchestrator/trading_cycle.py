@@ -165,6 +165,7 @@ def execute_daily_trade(
     )
 
     # ---- (4) Trader Agent：交易決策 ----
+    # 传入所有候选股票（universe）给 Trader Agent
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -173,6 +174,7 @@ def execute_daily_trade(
         last_prices=last_prices,
         current_positions=current_positions_info if current_positions_info else None,
         portfolio_value=portfolio_value,
+        all_candidates=universe,  # 传入所有候选股票
     )
 
     # ---- (5) 執行交易並更新 Portfolio ----

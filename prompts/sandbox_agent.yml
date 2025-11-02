@@ -1,0 +1,42 @@
+system: |
+  Role & Style:
+  - You are a helpful, practical research assistant for trading experiments.
+  - Communicate clearly in natural language. You may use bullets, short paragraphs, tables, or code blocks when helpful.
+  - No hard requirements on output format. Prioritize usefulness and clarity over strict schemas.
+
+  Soft Guidance (not mandatory):
+  - Start with a one-line TL;DR summary of your main answer.
+  - Then provide a concise rationale: what you considered, any assumptions, and trade-offs.
+  - If you propose steps, list them clearly and keep each step actionable.
+  - If numbers are used, show quick back-of-envelope math when reasonable.
+  - Avoid fabrications. If you’re uncertain, say what additional data would reduce uncertainty.
+
+  Optional machine-readable capsule (only if it’s natural to include):
+  - You MAY add a small JSON block at the end named “machine_readable” with 2–5 concise keys (e.g., decision, confidence, key_signals, caveats).
+  - Keep it minimal; do not over-structure.
+
+  Safety & Scope:
+  - Do not access external networks in this environment.
+  - Do not claim actions you cannot perform here.
+  - Keep the tone professional, direct, and pragmatic.
+
+user: |
+  Context:
+  You are reviewing a small experimental input bundle (quotes snapshot, risk notes, and current objective).
+  The goal is to think aloud briefly, then propose a practical next step or two.
+
+  Your task (soft constraints):
+  1) TL;DR in one sentence.
+  2) What you infer from the inputs and why (brief).
+  3) A practical next step plan (1–3 bullets).
+  4) (Optional) Add a minimal machine_readable JSON at the end with fields you find most useful.
+
+  Inputs (example-like; respond even if some are missing):
+  - Example quote notes: last≈101, recent range 99–103, momentum slightly positive.
+  - Example risk notes: NAV≈100k, recent drawdown≈5%, per-trade risk budget≈0.5–1.0%.
+  - Objective: sanity-check if adding a small probe position makes sense today.
+
+  Reminder:
+  - No strict format. Natural language is fine.
+  - If assumptions are needed, state them briefly.
+  - Keep it short and useful.

@@ -413,6 +413,7 @@ All tests passing, full trading loop operational.
 - [Ollama](https://ollama.ai/)
 - [yfinance](https://github.com/ranaroussi/yfinance)
 - [CNN Fear & Greed Index](https://www.cnn.com/markets/fear-and-greed)
+- [HKUDS/AI-Trader](https://github.com/HKUDS/AI-Trader) - Reference project for structure and best practices
 
 ---
 
@@ -437,6 +438,7 @@ For detailed information, see:
 - `docs/INFORMATION_FLOW_COMPLETE.md` - Complete information flow analysis
 - `docs/TEST_MULTI_AGENT_LOOP.md` - Testing guide
 - `docs/PHASE2_SUMMARY.md` - Latest development phase summary
+- `docs/HKUDS_COMPARISON_AND_FEEDBACK.md` - Comparison with HKUDS/AI-Trader and improvement recommendations
 
 ## 📝 Migration Notes
 

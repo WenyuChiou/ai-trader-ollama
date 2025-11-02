@@ -143,7 +143,7 @@ def fetch_market_batch(
     - Bonds: ^TNX, ^IRX, ^FVX, LQD, HYG, etc.
     - Commodities: GC=F (gold), CL=F (oil), NG=F (gas), etc.
     - Indices: ^GSPC, ^DJI, ^N225, ^FTSE, ^GDAXI, etc.
-    - Volatility: ^VIX, ^VIX3M
+    - Volatility: Scraped from CME Group website (https://www.cmegroup.com/market-data/cme-group-benchmark-administration/cme-group-volatility-indexes.html)
     
     Args:
         symbols: List of stock symbols from universe list (stocks only)

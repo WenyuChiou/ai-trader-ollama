@@ -12,6 +12,9 @@ from src.agents.market_analyst import run_market_analyst
 # --- Discussion: 帶經驗調整機制（auto-tools，主導新聞和工具使用）---
 from src.agents.analyst_discussion import run_analyst_discussion
 
+# --- Multi-Agent Discussion: 真正的多 Agent 讨论系统 ---
+from src.agents.multi_agent_discussion import run_multi_agent_discussion
+
 # --- Stock Selection Agent: 股票篩選 ---
 from src.agents.stock_selection_agent import run_stock_selection_agent
 
@@ -65,6 +68,7 @@ def execute_daily_trade(
     preferred_domains: List[str] | None = None,
     portfolio: Optional[Portfolio] = None,
     trade_logger: Optional[TradeLogger] = None,
+    use_multi_agent: bool = True,  # NEW: 使用多 Agent 讨论系统
 ) -> Dict[str, Any]:
     """
     每日交易前分析流程（基于昨天收盘数据 + 昨天/今日新闻 → 今天交易决策）：
@@ -188,34 +192,15 @@ def execute_daily_trade(
         "stock_rankings": stock_rankings[:10],  # 只包含前 10 名用于讨论
     }
 
-    # ---- (4) Discussion Agent：多輪討論（主導新聞和工具使用 + 股票選擇討論）----
-    # Discussion Agent 主导：
-    # - 新闻扫描（news_scan, plan_and_scan_news）：扫描昨天/今日新闻
-    # - VIX 期限结构（vix_term）
-    # - 恐慌贪婪指数（fear_greed）
-    # - 股票选择讨论（potential_buys）
-    convo = run_analyst_discussion(
-        enriched_market,
-        None,  # _unused parameter
-        rounds=rounds,
-        auto_tools=auto_tools,
-        tool_budget=tool_budget,
-        preferred_domains=preferred_domains,
-        potential_buys=potential_buys,  # 传入潜在购买公司列表供讨论
-    )
-    final_stance = convo.get("final_stance", "neutral")
+    # ---- (4) Multi-Agent Discussion：真正的多 Agent 討論系統 ----
+    # 使用多 Agent 讨论系统（Technical, Fundamental, Risk, Sentiment）
+    # 每个 Agent 可以使用自己的工具，进行多轮讨论，最终形成共识
     
-    # 提取 Discussion 的风险信号（用于 Risk Analyst）
-    discussion_risk_signals = {
-        "risk_level": "medium",
-        "risk_signals": convo.get("risk_signals", []),
-    }
-
-    # ---- (5) Risk Analyst：評估倉位風險 ----
-    # 准备当前持仓信息（用于 Risk Analyst）
+    # 准备当前持仓信息（用于 Multi-Agent Discussion 的 Risk Analyst）
     current_positions_info = {}
+    portfolio_value_for_discussion = 10000.0
     if portfolio:
-        portfolio_value = portfolio.value(last_prices)
+        portfolio_value_for_discussion = portfolio.value(last_prices)
         for symbol, pos in portfolio._positions.items():
             current_price = last_prices.get(symbol, pos.avg_cost)
             current_positions_info[symbol] = {
@@ -224,8 +209,71 @@ def execute_daily_trade(
                 "current_price": current_price,
                 "market_value": pos.quantity * current_price,
             }
+    
+    if use_multi_agent:
+        # 使用真正的多 Agent 讨论系统
+        convo = run_multi_agent_discussion(
+            market_view=enriched_market,
+            potential_buys=potential_buys,
+            current_positions=current_positions_info if current_positions_info else None,
+            portfolio_value=portfolio_value_for_discussion,
+            rounds=rounds,
+            auto_tools=auto_tools,
+            tool_budget_per_agent=tool_budget // 4,  # 每个 Agent 的工具预算（总预算 / 4）
+            preferred_domains=preferred_domains,
+        )
+        
+        # 提取共识信息
+        consensus = convo.get("consensus", {})
+        final_stance = consensus.get("final_stance", "neutral")
+        
+        # 提取 Discussion 的风险信号（用于 Risk Analyst）
+        agent_views = convo.get("agent_views", {})
+        risk_agent_view = agent_views.get("risk", {})
+        discussion_risk_signals = {
+            "risk_level": "medium",
+            "risk_signals": risk_agent_view.get("signals", []),
+        }
+        
+        # 添加讨论轮次信息
+        discussion_rounds = convo.get("discussion_rounds", [])
     else:
-        portfolio_value = 10000.0  # 默认初始净值
+        # 使用旧的单 Agent 讨论系统（向后兼容）
+        convo = run_analyst_discussion(
+            enriched_market,
+            None,  # _unused parameter
+            rounds=rounds,
+            auto_tools=auto_tools,
+            tool_budget=tool_budget,
+            preferred_domains=preferred_domains,
+            potential_buys=potential_buys,  # 传入潜在购买公司列表供讨论
+        )
+        final_stance = convo.get("final_stance", "neutral")
+        
+        # 提取 Discussion 的风险信号（用于 Risk Analyst）
+        discussion_risk_signals = {
+            "risk_level": "medium",
+            "risk_signals": convo.get("risk_signals", []),
+        }
+        discussion_rounds = []
+
+    # ---- (5) Risk Analyst：評估倉位風險 ----
+    # 准备当前持仓信息（用于 Risk Analyst）
+    # 注意：如果使用多 Agent 讨论，这里的 portfolio_value 应该和讨论时一致
+    portfolio_value = portfolio_value_for_discussion if use_multi_agent else (portfolio.value(last_prices) if portfolio else 10000.0)
+    
+    if not use_multi_agent:
+        # 只在非多 Agent 模式下重新构建 current_positions_info
+        current_positions_info = {}
+        if portfolio:
+            for symbol, pos in portfolio._positions.items():
+                current_price = last_prices.get(symbol, pos.avg_cost)
+                current_positions_info[symbol] = {
+                    "quantity": pos.quantity,
+                    "avg_cost": pos.avg_cost,
+                    "current_price": current_price,
+                    "market_value": pos.quantity * current_price,
+                }
     
     # 调用 Risk Analyst
     risk_report = run_risk_analyst(
@@ -363,8 +411,10 @@ def execute_daily_trade(
         "stock_selection": stock_selection,  # 股票选择结果
         "market_agent": market_agent_result,  # Market Agent 结果（多资产类别）
         "market_analysis": market_analysis,  # Market Analyst 结果
-        "discussion": convo,  # Discussion Agent 结果（主导新闻和工具使用）
-        "rounds": convo.get("rounds"),
+        "discussion": convo,  # Discussion 结果（多 Agent 讨论或单 Agent 讨论）
+        "discussion_rounds": discussion_rounds if use_multi_agent else [],  # 多 Agent 讨论轮次
+        "rounds": len(discussion_rounds) if use_multi_agent else convo.get("rounds", 0),
+        "use_multi_agent": use_multi_agent,  # 是否使用多 Agent 讨论
         "symbols": symbols,
         "top_signals": signal_top,
         # 执行结果

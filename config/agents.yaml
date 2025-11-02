@@ -22,6 +22,30 @@ discussion_agent:
   temperature: 0.3
   prompt_file: ../prompts/discussion_agent.yml
 
+technical_analyst:
+  name: Technical Analyst
+  model: llama3.1
+  temperature: 0.2
+  prompt_file: ../prompts/technical_analyst.yml
+
+fundamental_analyst:
+  name: Fundamental Analyst
+  model: llama3.1
+  temperature: 0.25
+  prompt_file: ../prompts/fundamental_analyst.yml
+
+risk_analyst_discussion:
+  name: Risk Analyst (Discussion)
+  model: llama3.1
+  temperature: 0.2
+  prompt_file: ../prompts/risk_analyst_discussion.yml
+
+sentiment_analyst:
+  name: Sentiment Analyst
+  model: llama3.1
+  temperature: 0.3
+  prompt_file: ../prompts/sentiment_analyst.yml
+
 trader_agent:
   name: Trader / Order Proposals
   model: llama3.1

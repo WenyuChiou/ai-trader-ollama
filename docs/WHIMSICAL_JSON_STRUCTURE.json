@@ -1,0 +1,258 @@
+{
+  "title": "AI Trader Agent System",
+  "nodes": [
+    {
+      "id": "goal",
+      "text": "Daily Trading Goal",
+      "description": "Make trading decisions (BUY/SELL/HOLD with positions)",
+      "icon": "target",
+      "color": "#e1f5ff",
+      "position": {"x": 100, "y": 50}
+    },
+    {
+      "id": "market_agent",
+      "text": "Market Agent",
+      "description": "Collect Market Data",
+      "icon": "robot",
+      "color": "#ffe1f5",
+      "position": {"x": 100, "y": 150},
+      "children": [
+        "Fetch Stock Prices (OHLCV)",
+        "Fetch VIX Data",
+        "Fetch Market Indicators",
+        "Fetch Technical Signals"
+      ]
+    },
+    {
+      "id": "market_data",
+      "text": "Market Data",
+      "description": "Raw market data collected",
+      "icon": "chart",
+      "color": "#e1f5ff",
+      "position": {"x": 100, "y": 250},
+      "children": [
+        "Stock Prices",
+        "VIX",
+        "Indicators"
+      ]
+    },
+    {
+      "id": "market_analyst",
+      "text": "Market Analyst",
+      "description": "Analyze Market",
+      "icon": "person",
+      "color": "#ffe1f5",
+      "position": {"x": 100, "y": 350},
+      "children": [
+        "Analyze Technical Patterns",
+        "Analyze Market Sentiment",
+        "Generate Recommendations",
+        "Key Observations"
+      ]
+    },
+    {
+      "id": "market_analysis",
+      "text": "Market Analysis",
+      "description": "Analysis results",
+      "icon": "chart-line",
+      "color": "#e1f5ff",
+      "position": {"x": 100, "y": 450},
+      "children": [
+        "Sentiment: bullish/neutral/bearish",
+        "Recommended Stocks",
+        "Key Signals"
+      ]
+    },
+    {
+      "id": "analyst_discussion",
+      "text": "Analyst Discussion",
+      "description": "Multi-Round Consensus Building",
+      "icon": "group",
+      "color": "#e1ffe1",
+      "position": {"x": 100, "y": 550},
+      "children": [
+        "Round 1: Initial Consensus",
+        "Round 2: Tool Execution",
+        "Round 3: Final Consensus",
+        "Tools: news_scan, vix_term, fear_greed"
+      ]
+    },
+    {
+      "id": "discussion_consensus",
+      "text": "Discussion Consensus",
+      "description": "Final consensus from discussion",
+      "icon": "speech-bubble",
+      "color": "#e1ffe1",
+      "position": {"x": 100, "y": 650},
+      "children": [
+        "final_stance",
+        "rationale",
+        "signals_used",
+        "risk_signals"
+      ]
+    },
+    {
+      "id": "risk_analyst",
+      "text": "Risk Analyst",
+      "description": "Position Risk Assessment",
+      "icon": "shield",
+      "color": "#fff4e1",
+      "position": {"x": 300, "y": 550},
+      "children": [
+        "Evaluate Market Risk",
+        "Evaluate Current Position Risk",
+        "Position Concentration Analysis",
+        "Generate Position Control Report"
+      ]
+    },
+    {
+      "id": "portfolio",
+      "text": "Current Portfolio",
+      "description": "Current positions and value",
+      "icon": "money",
+      "color": "#e8d5ff",
+      "position": {"x": 300, "y": 650},
+      "children": [
+        "Positions",
+        "Cash",
+        "Total Value"
+      ]
+    },
+    {
+      "id": "risk_report",
+      "text": "Risk Report",
+      "description": "Risk assessment results",
+      "icon": "warning",
+      "color": "#fff4e1",
+      "position": {"x": 300, "y": 750},
+      "children": [
+        "risk_level",
+        "risk_score",
+        "current_position_risk",
+        "max_position_size",
+        "Position Control Report"
+      ]
+    },
+    {
+      "id": "trader_agent",
+      "text": "Trader Agent",
+      "description": "Trading Decision",
+      "icon": "briefcase",
+      "color": "#ffe1f5",
+      "position": {"x": 500, "y": 650},
+      "children": [
+        "Evaluate All Inputs",
+        "Consider Risk Constraints",
+        "Determine BUY/SELL/HOLD",
+        "Calculate Position Sizes",
+        "Set Buy/Sell Prices"
+      ]
+    },
+    {
+      "id": "trading_decision",
+      "text": "Trading Decision",
+      "description": "Final trading decision",
+      "icon": "check",
+      "color": "#e1ffe1",
+      "position": {"x": 500, "y": 750},
+      "children": [
+        "action: BUY/SELL/HOLD",
+        "buy_orders",
+        "sell_orders",
+        "rationale"
+      ]
+    },
+    {
+      "id": "execution",
+      "text": "Execute Orders",
+      "description": "Execute and update portfolio",
+      "icon": "gear",
+      "color": "#f0f0f0",
+      "position": {"x": 500, "y": 850},
+      "children": [
+        "Execute Buy Orders",
+        "Execute Sell Orders",
+        "Update Portfolio",
+        "Log Trades"
+      ]
+    },
+    {
+      "id": "backend_display",
+      "text": "Backend Display System",
+      "description": "Portfolio & Trade History Display",
+      "icon": "computer",
+      "color": "#f0f0f0",
+      "position": {"x": 500, "y": 950},
+      "children": [
+        "P&L Display",
+        "Trade History Display",
+        "Position Display",
+        "Risk Metrics Display",
+        "Performance Display"
+      ]
+    },
+    {
+      "id": "evaluation",
+      "text": "Evaluation & Feedback",
+      "description": "Compare results and generate feedback",
+      "icon": "refresh",
+      "color": "#e1ffe1",
+      "position": {"x": 500, "y": 1050},
+      "children": [
+        "Compare Results vs Goal",
+        "Analyze Performance",
+        "Generate Feedback",
+        "Update for Next Cycle"
+      ]
+    }
+  ],
+  "connections": [
+    {"from": "goal", "to": "market_agent"},
+    {"from": "market_agent", "to": "market_data"},
+    {"from": "market_data", "to": "market_analyst"},
+    {"from": "market_analyst", "to": "market_analysis"},
+    {"from": "market_analysis", "to": "analyst_discussion"},
+    {"from": "analyst_discussion", "to": "discussion_consensus", "type": "loop"},
+    {"from": "discussion_consensus", "to": "risk_analyst"},
+    {"from": "market_data", "to": "risk_analyst"},
+    {"from": "market_analysis", "to": "risk_analyst"},
+    {"from": "portfolio", "to": "risk_analyst", "bidirectional": true},
+    {"from": "risk_analyst", "to": "risk_report"},
+    {"from": "risk_report", "to": "trader_agent"},
+    {"from": "discussion_consensus", "to": "trader_agent"},
+    {"from": "market_data", "to": "trader_agent"},
+    {"from": "market_analysis", "to": "trader_agent"},
+    {"from": "trader_agent", "to": "trading_decision"},
+    {"from": "trading_decision", "to": "execution"},
+    {"from": "execution", "to": "backend_display"},
+    {"from": "backend_display", "to": "evaluation"},
+    {"from": "evaluation", "to": "market_agent", "type": "feedback"}
+  ],
+  "groups": [
+    {
+      "name": "Data Collection Layer",
+      "nodes": ["market_agent", "market_data"]
+    },
+    {
+      "name": "Analysis Layer",
+      "nodes": ["market_analyst", "market_analysis", "analyst_discussion", "discussion_consensus"]
+    },
+    {
+      "name": "Risk Management Layer",
+      "nodes": ["risk_analyst", "portfolio", "risk_report"]
+    },
+    {
+      "name": "Decision Layer",
+      "nodes": ["trader_agent", "trading_decision"]
+    },
+    {
+      "name": "Execution Layer",
+      "nodes": ["execution"]
+    },
+    {
+      "name": "Display Layer",
+      "nodes": ["backend_display"]
+    }
+  ]
+}
+

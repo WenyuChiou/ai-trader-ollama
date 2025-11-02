@@ -1,0 +1,131 @@
+AI Trader Agent System
+├── Goal: Daily Trading Decision
+│   └── Make trading decisions (BUY/SELL/HOLD with positions)
+│
+├── 1. Market Data Collection
+│   ├── Market Agent
+│   │   ├── Fetch Stock Prices (OHLCV)
+│   │   ├── Fetch VIX Data
+│   │   ├── Fetch Market Indicators
+│   │   └── Fetch Technical Signals
+│   └── Output: Raw Market Data
+│
+├── 2. Market Analysis
+│   ├── Market Analyst
+│   │   ├── Analyze Technical Patterns
+│   │   ├── Analyze Market Sentiment
+│   │   ├── Generate Recommendations
+│   │   └── Key Observations
+│   └── Output: Market Analysis
+│       ├── Sentiment (bullish/neutral/bearish)
+│       ├── Recommended Stocks
+│       └── Key Signals
+│
+├── 3. Collaborative Discussion
+│   ├── Analyst Discussion
+│   │   ├── Round 1: Initial Consensus
+│   │   ├── Round 2: Tool Execution
+│   │   ├── Round 3: Final Consensus
+│   │   └── Use Tools:
+│   │       ├── news_scan
+│   │       ├── vix_term
+│   │       ├── fear_greed
+│   │       ├── fetch_url
+│   │       └── plan_and_scan_news
+│   └── Output: Discussion Consensus
+│       ├── final_stance
+│       ├── rationale
+│       ├── signals_used
+│       └── risk_signals
+│
+├── 4. Risk Assessment
+│   ├── Risk Analyst
+│   │   ├── Inputs:
+│   │   │   ├── Market Data
+│   │   │   ├── Market Analysis
+│   │   │   ├── Discussion Consensus
+│   │   │   └── Current Portfolio Positions
+│   │   ├── Evaluate:
+│   │   │   ├── Market Risk
+│   │   │   ├── Current Position Risk
+│   │   │   ├── Position Concentration
+│   │   │   └── Single Stock Exposure
+│   │   └── Generate:
+│   │       ├── Overall Risk Level
+│   │       ├── Risk Score
+│   │       ├── Position Control Report
+│   │       └── Recommended Position Sizes
+│   └── Output: Risk Report
+│       ├── risk_level
+│       ├── risk_score
+│       ├── current_position_risk
+│       ├── max_position_size
+│       └── Position Control Report
+│
+├── 5. Trading Decision
+│   ├── Trader Agent
+│   │   ├── Inputs:
+│   │   │   ├── Market View
+│   │   │   ├── Market Analysis
+│   │   │   ├── Discussion Consensus
+│   │   │   ├── Risk Report
+│   │   │   ├── Current Positions
+│   │   │   └── Last Prices
+│   │   ├── Decision Process:
+│   │   │   ├── Evaluate All Inputs
+│   │   │   ├── Consider Risk Constraints
+│   │   │   ├── Check Position Limits
+│   │   │   ├── Determine BUY/SELL/HOLD
+│   │   │   ├── Select Target Stocks
+│   │   │   ├── Calculate Position Sizes
+│   │   │   └── Set Buy/Sell Prices
+│   │   └── Output: Trading Decision
+│   │       ├── action (BUY/SELL/HOLD)
+│   │       ├── buy_orders
+│   │       │   ├── symbol
+│   │       │   ├── buy_price
+│   │       │   ├── quantity
+│   │       │   └── total_cost
+│   │       ├── sell_orders
+│   │       │   ├── symbol
+│   │       │   ├── sell_price
+│   │       │   ├── quantity
+│   │       │   └── total_proceeds
+│   │       └── rationale
+│   └── Output: Trading Decision
+│
+├── 6. Execution
+│   ├── Execute Orders
+│   │   ├── Execute Buy Orders
+│   │   ├── Execute Sell Orders
+│   │   └── Update Portfolio
+│   └── Update Portfolio
+│       ├── Update Positions
+│       ├── Update Cash
+│       └── Log Trades
+│
+├── 7. Backend Display
+│   ├── P&L Display
+│   │   ├── Real-time P&L Calculation
+│   │   ├── Portfolio Net Value
+│   │   └── Per-stock P&L Details
+│   ├── Trade History Display
+│   │   ├── Trade Records List
+│   │   ├── Trade Statistics
+│   │   └── Execution Status
+│   ├── Position Display
+│   │   ├── Position Distribution
+│   │   └── Position Status
+│   ├── Risk Metrics Display
+│   │   ├── Risk Indicators
+│   │   └── Risk Warnings
+│   └── Performance Display
+│       ├── Performance Metrics
+│       └── Performance Trends
+│
+└── 8. Evaluation & Feedback
+    ├── Compare Results vs Goal
+    ├── Analyze Performance
+    ├── Generate Feedback
+    └── Update for Next Cycle
+

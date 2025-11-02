@@ -9,6 +9,7 @@ from src.tools.news_tools import (
     search_web, fetch_url, news_scan, plan_and_scan_news
 )
 from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
+from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_calendar
 
 
 @dataclass
@@ -34,6 +35,10 @@ class ToolBox:
         # crypto
         self.register(Tool("fetch_crypto_batch", fetch_crypto_batch, "Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)"))
         self.register(Tool("get_crypto_price", get_crypto_price, "Get current price and indicators for a single cryptocurrency"))
+        
+        # jin10 economic data
+        self.register(Tool("fetch_jin10_news", fetch_jin10_news, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
+        self.register(Tool("fetch_jin10_calendar", fetch_jin10_calendar, "Fetch economic calendar from Jin10 (https://www.jin10.com/) - important economic data release schedule"))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))

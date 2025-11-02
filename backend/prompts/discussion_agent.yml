@@ -9,6 +9,7 @@ system: |
   
   You have access to tools that can fetch:
   - Recent news articles (news_scan)
+  - Jin10 financial news (fetch_jin10_news) - Chinese financial data platform with real-time market news
   - VIX term structure (vix_term)
   - Fear & Greed Index (fear_greed)
   - Cryptocurrency data (fetch_crypto_batch, get_crypto_price)

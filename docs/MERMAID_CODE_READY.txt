@@ -1,0 +1,200 @@
+# Mermaid 流程图代码 - 直接复制使用
+
+## 1. 主流程图（完整系统）
+
+```mermaid
+graph TD
+    Start([Daily Trading Goal:<br/>Make Trading Decisions]) --> MarketAgent[Market Agent<br/>Collect Market Data]
+    
+    MarketAgent --> MarketData[Market Data<br/>• Stock Prices<br/>• VIX<br/>• Indicators]
+    
+    MarketData --> MarketAnalyst[Market Analyst<br/>Analyze Market]
+    
+    MarketAnalyst --> Analysis[Market Analysis<br/>• Sentiment<br/>• Recommendations<br/>• Observations]
+    
+    Analysis --> Discussion[Analyst Discussion<br/>Multi-Round Consensus]
+    
+    Discussion --> |Round 1, 2, 3...| Tools[Use Tools:<br/>• news_scan<br/>• vix_term<br/>• fear_greed]
+    
+    Tools --> Discussion
+    
+    Discussion --> Consensus[Discussion Consensus<br/>• final_stance<br/>• rationale<br/>• risk_signals]
+    
+    Consensus --> RiskAnalyst[Risk Analyst<br/>Risk Assessment]
+    
+    MarketData --> RiskAnalyst
+    Analysis --> RiskAnalyst
+    
+    RiskAnalyst --> |Evaluate| Portfolio[Current Portfolio<br/>Positions]
+    
+    Portfolio --> RiskAnalyst
+    
+    RiskAnalyst --> RiskReport[Risk Report<br/>• risk_level<br/>• position_risk<br/>• Position Control Report<br/>• recommended_sizes]
+    
+    RiskReport --> TraderAgent[Trader Agent<br/>Trading Decision]
+    
+    Consensus --> TraderAgent
+    MarketData --> TraderAgent
+    Analysis --> TraderAgent
+    
+    TraderAgent --> Decision[Trading Decision<br/>• action: BUY/SELL/HOLD<br/>• buy_orders<br/>• sell_orders<br/>• prices & quantities]
+    
+    Decision --> Execution[Execute Orders<br/>Update Portfolio]
+    
+    Execution --> TradeLog[Log Trades<br/>TradeLogger]
+    
+    TradeLog --> BackendDisplay[Backend Display System]
+    
+    BackendDisplay --> PnL[P&L Display<br/>• Real-time P&L<br/>• Portfolio value<br/>• Per-stock P&L]
+    
+    BackendDisplay --> TradeHistory[Trade History<br/>• Trade records<br/>• Statistics<br/>• Status]
+    
+    BackendDisplay --> Positions[Position Display<br/>• Distribution<br/>• Status]
+    
+    BackendDisplay --> RiskMetrics[Risk Metrics<br/>• Indicators<br/>• Warnings]
+    
+    BackendDisplay --> Performance[Performance<br/>• Metrics<br/>• Trends]
+    
+    PnL --> Evaluation[Evaluation & Feedback]
+    TradeHistory --> Evaluation
+    Positions --> Evaluation
+    RiskMetrics --> Evaluation
+    Performance --> Evaluation
+    
+    Evaluation --> |Feedback Loop| NextCycle[Next Trading Cycle]
+    
+    NextCycle --> MarketAgent
+    
+    style Start fill:#e1f5ff
+    style MarketAgent fill:#ffe1f5
+    style MarketAnalyst fill:#ffe1f5
+    style Discussion fill:#e1ffe1
+    style RiskAnalyst fill:#fff4e1
+    style TraderAgent fill:#ffe1f5
+    style BackendDisplay fill:#f0f0f0
+    style Evaluation fill:#e1ffe1
+```
+
+## 2. 详细轮次流程图
+
+```mermaid
+graph LR
+    subgraph Round1["Round 1: Market Data Collection"]
+        MA1[Market Agent] --> MD1[Raw Market Data<br/>• Prices<br/>• VIX<br/>• Indicators]
+    end
+    
+    subgraph Round2["Round 2: Analysis & Discussion"]
+        MA2[Market Analyst] --> AN2[Market Analysis]
+        AD2[Analyst Discussion] --> CON2[Consensus<br/>• Stance<br/>• Signals<br/>• Risk signals]
+        AN2 --> CON2
+    end
+    
+    subgraph Round3["Round 3: Risk Assessment"]
+        RA3[Risk Analyst] --> RR3[Risk Report<br/>• Position risk<br/>• Control report<br/>• Recommendations]
+        P3[Portfolio] --> RA3
+    end
+    
+    subgraph Round4["Round 4: Trading Decision"]
+        TA4[Trader Agent] --> TD4[Trading Decision<br/>• Buy/Sell orders<br/>• Prices<br/>• Quantities]
+    end
+    
+    subgraph Round5["Round 5: Execution & Display"]
+        EX5[Execution] --> P5[Portfolio Updated]
+        P5 --> BD5[Backend Display<br/>• P&L<br/>• Trade history<br/>• Positions]
+    end
+    
+    MD1 --> AN2
+    CON2 --> RA3
+    RR3 --> TA4
+    TD4 --> EX5
+    
+    style Round1 fill:#ffe1f5
+    style Round2 fill:#e1ffe1
+    style Round3 fill:#fff4e1
+    style Round4 fill:#ffe1f5
+    style Round5 fill:#f0f0f0
+```
+
+## 3. Agent 交互图
+
+```mermaid
+graph TB
+    subgraph Agents["Agent Roles"]
+        MA[Market Agent<br/>Data Collector]
+        MAN[Market Analyst<br/>Technical Analyst]
+        AD[Analyst Discussion<br/>Consensus Builder]
+        RA[Risk Analyst<br/>Risk Evaluator]
+        TA[Trader Agent<br/>Decision Maker]
+    end
+    
+    subgraph Tools["Tools Available"]
+        T1[news_scan]
+        T2[vix_term]
+        T3[fear_greed]
+        T4[fetch_url]
+        T5[plan_and_scan_news]
+    end
+    
+    subgraph Data["Data Sources"]
+        D1[Market Data]
+        D2[Portfolio]
+        D3[Trade History]
+    end
+    
+    subgraph Backend["Backend System"]
+        BD1[P&L Display]
+        BD2[Trade History]
+        BD3[Position Display]
+        BD4[Risk Metrics]
+        BD5[Performance]
+    end
+    
+    MA --> D1
+    MAN --> D1
+    AD --> T1
+    AD --> T2
+    AD --> T3
+    AD --> T4
+    AD --> T5
+    RA --> D2
+    TA --> D3
+    
+    MA --> MAN
+    MAN --> AD
+    AD --> RA
+    RA --> TA
+    TA --> D2
+    
+    D2 --> BD1
+    D2 --> BD2
+    D2 --> BD3
+    D3 --> BD2
+    RA --> BD4
+    TA --> BD5
+    
+    style MA fill:#ffe1f5
+    style MAN fill:#ffe1f5
+    style AD fill:#e1ffe1
+    style RA fill:#fff4e1
+    style TA fill:#ffe1f5
+    style Backend fill:#f0f0f0
+```
+
+## 使用方法
+
+### 在线工具
+1. 打开 https://mermaid.live/
+2. 复制上面的任意代码块（不包括 ```mermaid 和 ```）
+3. 粘贴到左侧编辑器
+4. 右侧实时预览
+5. 点击右上角 "Actions" → "Download PNG" 或 "Download SVG"
+
+### VS Code
+1. 安装 "Markdown Preview Mermaid Support" 扩展
+2. 在 Markdown 文件中使用上面的代码
+3. 预览即可看到图表
+
+### GitHub/GitLab
+1. 直接在 Markdown 文件中使用上面的代码
+2. GitHub/GitLab 会自动渲染 Mermaid 图表
+

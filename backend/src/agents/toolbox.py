@@ -8,6 +8,7 @@ from src.data.market_data import get_vix_close
 from src.tools.news_tools import (
     search_web, fetch_url, news_scan, plan_and_scan_news
 )
+from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
 
 
 @dataclass
@@ -29,6 +30,10 @@ class ToolBox:
         self.register(Tool("vix_term", self._vix_term_adapter, "Fetch ^VIX & ^VIX3M term structure"))
         self.register(Tool("vix_close", self._vix_close_adapter, "Fetch ^VIX close series (start,end)"))
         self.register(Tool("fear_greed", fetch_fear_greed, "Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)"))
+        
+        # crypto
+        self.register(Tool("fetch_crypto_batch", fetch_crypto_batch, "Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)"))
+        self.register(Tool("get_crypto_price", get_crypto_price, "Get current price and indicators for a single cryptocurrency"))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))

@@ -131,25 +131,53 @@ def _calc_vix_features(vix_close: pd.Series) -> dict:
 def fetch_market_batch(symbols: List[str], start: str, end: str) -> Dict[str, Any]:
     """
     Fetch OHLCV for multiple symbols and compute indicators + lightweight TA signals.
+    Supports stocks, bonds, commodities, indices, and cryptocurrencies.
     Also attaches VIX sentiment features under key 'VIX'.
+    
+    Args:
+        symbols: List of symbols. Supports:
+            - Stocks: "NVDA", "MSFT", "AAPL", etc.
+            - Bonds: "^TNX", "^IRX", "^FVX", etc.
+            - Commodities: "GC=F" (gold), "CL=F" (oil), etc.
+            - Indices: "^GSPC", "^DJI", "^N225", etc.
+            - Crypto: "BTC-USD", "ETH-USD", "SOL-USD", etc.
+        start: Start date (YYYY-MM-DD)
+        end: End date (YYYY-MM-DD)
+    
     Returns:
     {
-      "stocks": { "AAPL": {...indicators...}, ... },
+      "stocks": { "AAPL": {...indicators...}, ... },  # All symbols (stocks, bonds, crypto, etc.)
+      "crypto": { "BTC-USD": {...indicators...}, ... },  # Separated crypto symbols
       "VIX":   { "level": ..., "chg_1d": ..., "zscore": ... }
     }
+    
+    Note: All symbols appear in "stocks" for backward compatibility.
+    Crypto symbols (ending with -USD) are also separated into "crypto" key.
     """
     data = get_multi_prices(symbols, start, end)
-    out: Dict[str, Any] = {"stocks": {}}
+    out: Dict[str, Any] = {"stocks": {}, "crypto": {}}
+    
     for s, df in data.items():
         try:
-            out["stocks"][s] = _calc_indicators(df)
+            indicators = _calc_indicators(df)
+            # All symbols go to "stocks" for backward compatibility
+            out["stocks"][s] = indicators
+            
+            # Separate crypto symbols (ending with -USD) into "crypto" key
+            if s.endswith("-USD"):
+                out["crypto"][s] = indicators
         except Exception:
             # still ensure schema to avoid "missing keys" in downstream tests
-            out["stocks"][s] = _safe_dict()
+            safe_dict = _safe_dict()
+            out["stocks"][s] = safe_dict
+            if s.endswith("-USD"):
+                out["crypto"][s] = safe_dict
+    
     # Attach VIX features
     try:
         vix_series = get_vix_close(start, end)
         out["VIX"] = _calc_vix_features(vix_series)
     except Exception:
         out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+    
     return out

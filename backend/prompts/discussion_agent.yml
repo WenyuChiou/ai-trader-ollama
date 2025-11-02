@@ -11,6 +11,7 @@ system: |
   - Recent news articles (news_scan)
   - VIX term structure (vix_term)
   - Fear & Greed Index (fear_greed)
+  - Cryptocurrency data (fetch_crypto_batch, get_crypto_price)
   - Web search (web_search, fetch_url)
   
   Use tools strategically when you need additional information to make a well-informed decision.

@@ -37,10 +37,22 @@ def get_stock_price(symbol: str, start: str, end: str, interval: str = "1d",
 
 def get_multi_prices(symbols: List[str], start: str, end: str, interval: str = "1d",
                      auto_adjust: bool = False) -> Dict[str, pd.DataFrame]:
-    """Download multiple symbols; returns {symbol: DataFrame}."""
+    """
+    Download multiple symbols (stocks, bonds, commodities, indices); returns {symbol: DataFrame}.
+    Supports:
+    - Stocks: NVDA, MSFT, AAPL, etc.
+    - Bonds: ^TNX, ^IRX, ^FVX, LQD, HYG, etc.
+    - Commodities: GC=F (gold), CL=F (oil), etc.
+    - Indices: ^GSPC, ^DJI, ^N225, ^FTSE, etc.
+    - Volatility: ^VIX, ^VIX3M
+    """
     out: Dict[str, pd.DataFrame] = {}
     for s in symbols:
-        out[s] = get_stock_price(s, start, end, interval=interval, auto_adjust=auto_adjust)
+        try:
+            out[s] = get_stock_price(s, start, end, interval=interval, auto_adjust=auto_adjust)
+        except Exception:
+            # Skip symbols that fail to download, continue with others
+            continue
     return out
 
 # ---------------- VIX helpers ----------------

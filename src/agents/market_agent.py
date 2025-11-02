@@ -1,26 +1,72 @@
 # src/agents/market_agent.py
 from __future__ import annotations
-from typing import Dict, Any, Iterable
+from typing import Dict, Any, Iterable, List, Optional
+from src.tools.market_tools import fetch_market_batch
 
-from src.agents.factory import AgentFactory
 
-
-def run_market_agent(symbols: Iterable[str], start: str, end: str) -> Dict[str, Any]:
+def run_market_agent(
+    symbols: Optional[Iterable[str]] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    asset_classes: Optional[Dict[str, List[str]]] = None,
+) -> Dict[str, Any]:
     """
-    呼叫 market_agent；先以自然語言回覆為主（expect_json=False），
-    方便在討論環節直接把文字餵給下一個 agent。
+    Market Agent: 抓取市场数据（支持多资产类别）
+    
+    支持资产类别：
+    - stocks: 股票（NVDA, MSFT, AAPL, etc.）
+    - bonds: 债券（^TNX, ^IRX, LQD, HYG, etc.）
+    - commodities: 商品（GC=F 黄金, CL=F 原油, etc.）
+    - indices: 指数（^GSPC, ^DJI, ^N225 日经, ^FTSE 富时, ^GDAXI 德指, ^HSI 恒指, etc.）
+    - volatility: 波动率（^VIX, ^VIX3M）
+    
+    Args:
+        symbols: 股票代码列表（legacy 参数）
+        start: 开始日期（YYYY-MM-DD），默认 180 天前
+        end: 结束日期（YYYY-MM-DD），默认今天
+        asset_classes: 资产类别字典
+            {
+                "stocks": ["NVDA", "MSFT", ...],
+                "bonds": ["^TNX", "LQD", ...],
+                "commodities": ["GC=F", "CL=F", ...],
+                "indices": ["^GSPC", "^N225", ...],
+                "volatility": ["^VIX", "^VIX3M"]
+            }
+    
+    Returns:
+        {
+            "raw": LLM 生成的文本描述（如果有使用 LLM Agent）
+            "market_data": {
+                "stocks": {...},
+                "bonds": {...},
+                "commodities": {...},
+                "indices": {...},
+                "volatility": {...},
+                "VIX": {...}
+            },
+            "inputs": {...}
+        }
     """
-    fac = AgentFactory()  # 新介面，預設讀 ./config
-    agent = fac.create("market_agent")
-
-    vars: Dict[str, Any] = {
-        "symbols": list(symbols),
+    # 使用 fetch_market_batch 工具抓取数据
+    market_data = fetch_market_batch.invoke({
+        "symbols": list(symbols) if symbols else None,
+        "asset_classes": asset_classes,
         "start": start,
         "end": end,
-    }
-
-    out_text = agent.run(vars, expect_json=False)
+        "interval": "1d",
+        "auto_adjust": False,
+    })
+    
     return {
-        "raw": out_text,
-        "inputs": {"symbols": list(symbols), "start": start, "end": end},
+        "raw": f"Market data fetched for {len(market_data.get('stocks', {}))} stocks, "
+               f"{len(market_data.get('bonds', {}))} bonds, "
+               f"{len(market_data.get('commodities', {}))} commodities, "
+               f"{len(market_data.get('indices', {}))} indices.",
+        "market_data": market_data,
+        "inputs": {
+            "symbols": list(symbols) if symbols else None,
+            "asset_classes": asset_classes,
+            "start": start,
+            "end": end,
+        },
     }

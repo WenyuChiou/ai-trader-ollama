@@ -128,28 +128,118 @@ def _calc_vix_features(vix_close: pd.Series) -> dict:
     return {"level": level, "chg_1d": chg_1d, "zscore": z}
 
 @tool("fetch_market_batch", return_direct=False)
-def fetch_market_batch(symbols: List[str], start: str, end: str) -> Dict[str, Any]:
+def fetch_market_batch(
+    symbols: List[str] | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    asset_classes: Dict[str, List[str]] | None = None,
+    **kwargs
+) -> Dict[str, Any]:
     """
-    Fetch OHLCV for multiple symbols and compute indicators + lightweight TA signals.
-    Also attaches VIX sentiment features under key 'VIX'.
+    Fetch OHLCV for multiple symbols across different asset classes and compute indicators.
+    Supports:
+    - Stocks: NVDA, MSFT, AAPL, etc.
+    - Bonds: ^TNX, ^IRX, ^FVX, LQD, HYG, etc.
+    - Commodities: GC=F (gold), CL=F (oil), NG=F (gas), etc.
+    - Indices: ^GSPC, ^DJI, ^N225, ^FTSE, ^GDAXI, etc.
+    - Volatility: ^VIX, ^VIX3M
+    
+    Args:
+        symbols: List of symbols to fetch (legacy parameter)
+        asset_classes: Dict with keys: stocks, bonds, commodities, indices, volatility
+                      Each value is a list of symbols for that asset class
+        start: Start date (YYYY-MM-DD)
+        end: End date (YYYY-MM-DD)
+        **kwargs: Additional parameters (interval, auto_adjust, etc.)
+    
     Returns:
     {
       "stocks": { "AAPL": {...indicators...}, ... },
-      "VIX":   { "level": ..., "chg_1d": ..., "zscore": ... }
+      "bonds": { "^TNX": {...indicators...}, ... },
+      "commodities": { "GC=F": {...indicators...}, ... },
+      "indices": { "^GSPC": {...indicators...}, ... },
+      "volatility": { "^VIX": {...indicators...}, ... },
+      "VIX": { "level": ..., "chg_1d": ..., "zscore": ... }
     }
     """
-    data = get_multi_prices(symbols, start, end)
-    out: Dict[str, Any] = {"stocks": {}}
+    from datetime import date, timedelta
+    
+    # Default date range: yesterday close to today
+    if end is None:
+        end = date.today().isoformat()
+    if start is None:
+        start = (date.today() - timedelta(days=180)).isoformat()
+    
+    interval = kwargs.get("interval", "1d")
+    auto_adjust = kwargs.get("auto_adjust", False)
+    
+    # Collect all symbols to fetch
+    all_symbols: List[str] = []
+    
+    # Legacy: if symbols is provided, use it
+    if symbols:
+        all_symbols.extend(symbols)
+    
+    # New: if asset_classes is provided, extract symbols
+    if asset_classes:
+        for asset_class, syms in asset_classes.items():
+            if isinstance(syms, list):
+                all_symbols.extend(syms)
+    
+    if not all_symbols:
+        raise ValueError("Either 'symbols' or 'asset_classes' must be provided")
+    
+    # Fetch all symbols
+    data = get_multi_prices(all_symbols, start, end, interval=interval, auto_adjust=auto_adjust)
+    
+    # Organize by asset class
+    out: Dict[str, Any] = {
+        "stocks": {},
+        "bonds": {},
+        "commodities": {},
+        "indices": {},
+        "volatility": {},
+    }
+    
+    # Categorize symbols by pattern
     for s, df in data.items():
         try:
-            out["stocks"][s] = _calc_indicators(df)
+            indicators = _calc_indicators(df)
+            
+            # Categorize by symbol pattern
+            if s.startswith("^"):
+                # Indices or volatility
+                if s in ("^VIX", "^VIX3M"):
+                    out["volatility"][s] = indicators
+                else:
+                    out["indices"][s] = indicators
+            elif s.endswith("=F"):
+                # Commodities futures
+                out["commodities"][s] = indicators
+            elif s.startswith("^") or s in ("LQD", "HYG", "TLT", "SHY", "IEF"):
+                # Bonds (treasury yields or bond ETFs)
+                out["bonds"][s] = indicators
+            else:
+                # Default: stocks
+                out["stocks"][s] = indicators
         except Exception:
-            # still ensure schema to avoid "missing keys" in downstream tests
-            out["stocks"][s] = _safe_dict()
-    # Attach VIX features
-    try:
-        vix_series = get_vix_close(start, end)
-        out["VIX"] = _calc_vix_features(vix_series)
-    except Exception:
-        out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+            # Skip symbols that fail indicator calculation
+            continue
+    
+    # Attach VIX features (always try to fetch VIX if not in data)
+    if "^VIX" not in data:
+        try:
+            vix_series = get_vix_close(start, end)
+            out["VIX"] = _calc_vix_features(vix_series)
+        except Exception:
+            out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+    else:
+        # Use VIX data already fetched
+        try:
+            vix_df = data["^VIX"]
+            vix_series = vix_df["Close"] if "Close" in vix_df.columns else vix_df.iloc[:, -1]
+            out["VIX"] = _calc_vix_features(vix_series)
+        except Exception:
+            out["VIX"] = {"level": float("nan"), "chg_1d": float("nan"), "zscore": float("nan")}
+    
     return out

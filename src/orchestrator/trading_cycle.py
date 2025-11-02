@@ -3,10 +3,13 @@ from __future__ import annotations
 from typing import Dict, Any, List, Tuple, Optional
 from datetime import date, timedelta
 
-# --- Market: 批次抓價 + 指標 ---
-from src.tools.market_tools import fetch_market_batch
+# --- Market Agent: 市場數據抓取（支持多資產類別）---
+from src.agents.market_agent import run_market_agent
 
-# --- Discussion: 帶經驗調整機制（auto-tools）---
+# --- Market Analyst: 市場分析 ---
+from src.agents.market_analyst import run_market_analyst
+
+# --- Discussion: 帶經驗調整機制（auto-tools，主導新聞和工具使用）---
 from src.agents.analyst_discussion import run_analyst_discussion
 
 # --- Stock Selection Agent: 股票篩選 ---
@@ -55,6 +58,7 @@ def execute_daily_trade(
     start: str | None = None,
     end: str | None = None,
     universe: List[str] | None = None,
+    asset_classes: Dict[str, List[str]] | None = None,
     rounds: int = 3,
     auto_tools: bool = True,
     tool_budget: int = 2,
@@ -63,12 +67,25 @@ def execute_daily_trade(
     trade_logger: Optional[TradeLogger] = None,
 ) -> Dict[str, Any]:
     """
-    單日交易流程（集成 Portfolio 和 Risk Analyst）：
-      1) Market：抓取 universe 的 OHLCV + 指標（fetch_market_batch）
-      2) Analyst Discussion：若資訊不足自動用工具補齊（news_scan / vix_term / fear_greed）
-      3) Risk Analyst：評估當前倉位風險，提出倉位控管報告
-      4) Trader：依最終 stance + VIX 風險 + Risk Report 做 BUY/HOLD/SELL 建議（包含價格和數量）
-      5) 執行交易：更新 Portfolio 並記錄 Trade Logger
+    每日交易前分析流程（基于昨天收盘数据 + 昨天/今日新闻 → 今天交易决策）：
+    
+    流程：
+      1) Market Agent：抓取多资产类别市场数据（股票、债券、商品、指数、波动率）
+         - 昨天收盘数据 + 历史数据用于技术指标计算
+      2) Market Analyst：分析市场数据，评估市场情绪和趋势
+      3) Stock Selection Agent：评估所有候选股票，生成 potential_buys 列表
+      4) Discussion Agent：多轮讨论形成共识（主导新闻扫描和工具使用）
+         - 扫描昨天/今日新闻（news_scan, plan_and_scan_news）
+         - 获取 VIX 期限结构（vix_term）
+         - 获取恐慌贪婪指数（fear_greed）
+         - 讨论股票选择（potential_buys）
+      5) Risk Analyst：评估当前仓位风险，提出仓位控管报告
+      6) Trader Agent：综合所有信息做出最终交易决策（买入、卖出、持有、调整）
+      7) 执行交易：更新 Portfolio 并记录 Trade Logger
+    
+    注意：
+      - Discussion Agent 主导所有新闻和工具的使用（news_scan, vix_term, fear_greed, etc.）
+      - 这是日度交易前的分析流程：基于昨天收盘 + 昨天/今日新闻 → 决定今天交易
     """
 
     # ---- 參數預設 ----
@@ -82,21 +99,39 @@ def execute_daily_trade(
             "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov"
         ]
 
-    # ---- (1) 市場層 ----
-    market_view: Dict[str, Any] = fetch_market_batch.invoke({
-        "symbols": universe,
-        "start": start,
-        "end": end,
-        "interval": "1d",
-        "auto_adjust": False,
-    })
-    # market_view 典型：
+    # ---- (1) Market Agent：市場數據抓取（支持多資產類別）----
+    market_agent_result = run_market_agent(
+        symbols=universe,
+        start=start,
+        end=end,
+        asset_classes=asset_classes,
+    )
+    market_view = market_agent_result.get("market_data", {})
+    
+    # market_view 典型結構：
     # {
     #   "stocks": {SYM: {price, change_pct, rsi14, macd, bb_pos, signal_score, ...}, ...},
-    #   "vix": {"level": ..., "chg_1d": ..., "zscore": ...}
+    #   "bonds": {"^TNX": {...}, "LQD": {...}, ...},
+    #   "commodities": {"GC=F": {...}, "CL=F": {...}, ...},
+    #   "indices": {"^GSPC": {...}, "^N225": {...}, ...},
+    #   "volatility": {"^VIX": {...}, "^VIX3M": {...}},
+    #   "VIX": {"level": ..., "chg_1d": ..., "zscore": ...}
     # }
 
-    # ---- (1b) 輕量 enriched 給討論層 ----
+    # ---- (2) Market Analyst：市場分析 ----
+    market_analysis = run_market_analyst(market_view)
+    
+    # market_analysis 包含：
+    # {
+    #   "raw": LLM 生成的文本分析,
+    #   "market_sentiment": "bullish" / "neutral" / "cautious",
+    #   "key_observations": [...],
+    #   "recommended_stocks": [...],
+    #   "concerns": [...],
+    #   "vix": {...}
+    # }
+
+    # ---- (2b) 準備基礎數據 ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
     signal_top = _top_by_signal(stocks, k=5)
@@ -115,7 +150,7 @@ def execute_daily_trade(
         except Exception:
             pass
 
-    # ---- (1c) Stock Selection Agent：評估所有候選股票 ----
+    # ---- (3) Stock Selection Agent：評估所有候選股票 ----
     vix_info = market_view.get("VIX", {}) or {}
     vix_risk = float(vix_info.get("risk_score", 4.0))
     
@@ -134,19 +169,31 @@ def execute_daily_trade(
     
     enriched_market: Dict[str, Any] = {
         "symbols": symbols,
-        # 交給 discussion 自動補：vix_term / fear_greed / news
-        "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
+        # Market Analyst 的分析结果
+        "market_analysis": market_analysis,
+        # 交给 Discussion Agent 自动补：vix_term / fear_greed / news
+        # Discussion Agent 主导所有工具使用（news_scan, vix_term, fear_greed, plan_and_scan_news）
+        "vix_term": market_view.get("vix_term"),      # 如果你稍后在 market 层就算好也可带入
         "fear_greed": market_view.get("fear_greed"),
-        "news": None,
+        "news": None,  # 由 Discussion Agent 主导填充
         "signal_score_top": signal_top,
         "stocks": stocks,
+        "bonds": market_view.get("bonds", {}),
+        "commodities": market_view.get("commodities", {}),
+        "indices": market_view.get("indices", {}),
+        "volatility": market_view.get("volatility", {}),
         "vix": market_view.get("VIX"),  # 修正：使用 VIX 而不是 vix
         # 新增：股票选择结果
         "potential_buys": potential_buys,
         "stock_rankings": stock_rankings[:10],  # 只包含前 10 名用于讨论
     }
 
-    # ---- (2) 討論層（自動補工具 + 股票選擇討論）----
+    # ---- (4) Discussion Agent：多輪討論（主導新聞和工具使用 + 股票選擇討論）----
+    # Discussion Agent 主导：
+    # - 新闻扫描（news_scan, plan_and_scan_news）：扫描昨天/今日新闻
+    # - VIX 期限结构（vix_term）
+    # - 恐慌贪婪指数（fear_greed）
+    # - 股票选择讨论（potential_buys）
     convo = run_analyst_discussion(
         enriched_market,
         None,  # _unused parameter
@@ -164,7 +211,7 @@ def execute_daily_trade(
         "risk_signals": convo.get("risk_signals", []),
     }
 
-    # ---- (3) Risk Analyst：評估倉位風險 ----
+    # ---- (5) Risk Analyst：評估倉位風險 ----
     # 准备当前持仓信息（用于 Risk Analyst）
     current_positions_info = {}
     if portfolio:
@@ -188,7 +235,7 @@ def execute_daily_trade(
         discussion_risk_signals=discussion_risk_signals,
     )
 
-    # ---- (4) Trader Agent：交易決策 ----
+    # ---- (6) Trader Agent：交易決策 ----
     # 传入所有候选股票（universe）给 Trader Agent
     decision = run_trader(
         market=market_view,
@@ -314,6 +361,9 @@ def execute_daily_trade(
         "decision": decision,
         "risk_report": risk_report,
         "stock_selection": stock_selection,  # 股票选择结果
+        "market_agent": market_agent_result,  # Market Agent 结果（多资产类别）
+        "market_analysis": market_analysis,  # Market Analyst 结果
+        "discussion": convo,  # Discussion Agent 结果（主导新闻和工具使用）
         "rounds": convo.get("rounds"),
         "symbols": symbols,
         "top_signals": signal_top,

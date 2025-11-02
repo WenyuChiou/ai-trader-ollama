@@ -15,6 +15,47 @@
     "KDP", "MCHP", "GEHC", "VRSK", "CTSH", "CSGP", "KHC", "ODFL", "DXCM", "TTD",
     "ON", "BIIB", "LULU", "CDW", "GFS"
   ],
+
+  "market_data": {
+    "stocks": {
+      "us": [
+        "NVDA", "MSFT", "AAPL", "GOOG", "GOOGL", "AMZN", "META", "AVGO", "TSLA"
+      ],
+      "international": [
+        "^N225", "^FTSE", "^GDAXI", "^FCHI", "^HSI", "^STI"
+      ]
+    },
+    "bonds": {
+      "us_treasury": [
+        "^TNX", "^IRX", "^FVX"
+      ],
+      "corporate": [
+        "LQD", "HYG"
+      ]
+    },
+    "commodities": {
+      "metals": [
+        "GC=F", "SI=F"
+      ],
+      "energy": [
+        "CL=F", "NG=F"
+      ],
+      "agriculture": [
+        "ZC=F", "ZS=F"
+      ]
+    },
+    "indices": {
+      "us": [
+        "^GSPC", "^DJI", "^IXIC"
+      ],
+      "international": [
+        "^N225", "^FTSE", "^GDAXI", "^FCHI", "^HSI"
+      ]
+    },
+    "volatility": [
+      "^VIX", "^VIX3M"
+    ]
+  },
   "initial_cash": 10000,
   "position_limit_per_stock": 0.2,
   "position_limit_total": 0.8,

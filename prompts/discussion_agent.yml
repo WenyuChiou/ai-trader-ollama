@@ -53,3 +53,9 @@ user: |
 
   Your task:
   - Produce exactly ONE JSON object following the schema above.
+
+  STOCK SELECTION DISCUSSION (NEW):
+  - If potential_buys is provided, discuss these candidate stocks in your rationale.
+  - Consider which stocks are most promising based on their scores, trends, and risk levels.
+  - Incorporate stock selection discussions into your stance and rationale.
+  - Example: "Based on potential_buys, NVDA (score=5.0, uptrend, low_risk) and MSFT (score=4.5, uptrend) are strong candidates."

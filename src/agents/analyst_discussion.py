@@ -185,6 +185,26 @@ def run_analyst_discussion(
         "tool_budget": max(tool_budget, 0),
         "preferred_domains": preferred_domains,
     }
+    
+    # 如果有潜在购买公司列表，添加到讨论上下文中
+    if potential_buys:
+        # 格式化 potential_buys 为可读文本
+        potential_buys_text = []
+        for stock in potential_buys[:15]:  # 限制数量避免 prompt 过长
+            symbol = stock.get("symbol", "")
+            score = stock.get("score", 0.0)
+            trend = stock.get("trend", "")
+            risk = stock.get("risk_score", 5.0)
+            recommendation = stock.get("recommendation", "")
+            reasons = stock.get("reasons", [])
+            potential_buys_text.append(
+                f"{symbol}: score={score:.1f}, trend={trend}, risk={risk:.1f}, "
+                f"recommendation={recommendation}, reasons={', '.join(reasons)}"
+            )
+        
+        vars_ctx["potential_buys"] = "\n".join(potential_buys_text)
+    else:
+        vars_ctx["potential_buys"] = ""
 
     for r in range(1, rounds + 1):
         # 每一輪把已有的 tool 摘要串到 prompt 的 user 補充文字

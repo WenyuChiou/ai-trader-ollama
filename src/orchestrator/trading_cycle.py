@@ -9,6 +9,9 @@ from src.tools.market_tools import fetch_market_batch
 # --- Discussion: 帶經驗調整機制（auto-tools）---
 from src.agents.analyst_discussion import run_analyst_discussion
 
+# --- Stock Selection Agent: 股票篩選 ---
+from src.agents.stock_selection_agent import run_stock_selection_agent
+
 # --- Risk Analyst: 評估倉位風險 ---
 from src.agents.risk_analyst import run_risk_analyst
 
@@ -98,17 +101,6 @@ def execute_daily_trade(
     symbols = list(stocks.keys())
     signal_top = _top_by_signal(stocks, k=5)
 
-    enriched_market: Dict[str, Any] = {
-        "symbols": symbols,
-        # 交給 discussion 自動補：vix_term / fear_greed / news
-        "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
-        "fear_greed": market_view.get("fear_greed"),
-        "news": None,
-        "signal_score_top": signal_top,
-        "stocks": stocks,
-        "vix": market_view.get("vix"),
-    }
-
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
     if portfolio is None:
         portfolio = Portfolio()
@@ -123,7 +115,38 @@ def execute_daily_trade(
         except Exception:
             pass
 
-    # ---- (2) 討論層（自動補工具）----
+    # ---- (1c) Stock Selection Agent：評估所有候選股票 ----
+    vix_info = market_view.get("VIX", {}) or {}
+    vix_risk = float(vix_info.get("risk_score", 4.0))
+    
+    # 调用 Stock Selection Agent 评估所有候选股票
+    stock_selection = run_stock_selection_agent(
+        market_data=market_view,
+        universe=universe,
+        last_prices=last_prices,
+        vix_risk=vix_risk,
+        min_score=3.0,  # 最小评分阈值
+        top_n=20,  # 返回前 20 名
+    )
+    
+    potential_buys = stock_selection.get("potential_buys", [])
+    stock_rankings = stock_selection.get("stock_rankings", [])
+    
+    enriched_market: Dict[str, Any] = {
+        "symbols": symbols,
+        # 交給 discussion 自動補：vix_term / fear_greed / news
+        "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
+        "fear_greed": market_view.get("fear_greed"),
+        "news": None,
+        "signal_score_top": signal_top,
+        "stocks": stocks,
+        "vix": market_view.get("VIX"),  # 修正：使用 VIX 而不是 vix
+        # 新增：股票选择结果
+        "potential_buys": potential_buys,
+        "stock_rankings": stock_rankings[:10],  # 只包含前 10 名用于讨论
+    }
+
+    # ---- (2) 討論層（自動補工具 + 股票選擇討論）----
     convo = run_analyst_discussion(
         enriched_market,
         None,  # _unused parameter
@@ -131,6 +154,7 @@ def execute_daily_trade(
         auto_tools=auto_tools,
         tool_budget=tool_budget,
         preferred_domains=preferred_domains,
+        potential_buys=potential_buys,  # 传入潜在购买公司列表供讨论
     )
     final_stance = convo.get("final_stance", "neutral")
     
@@ -289,6 +313,7 @@ def execute_daily_trade(
         "stance": final_stance,
         "decision": decision,
         "risk_report": risk_report,
+        "stock_selection": stock_selection,  # 股票选择结果
         "rounds": convo.get("rounds"),
         "symbols": symbols,
         "top_signals": signal_top,

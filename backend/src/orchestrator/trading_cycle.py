@@ -97,6 +97,11 @@ def execute_daily_trade(
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
     signal_top = _top_by_signal(stocks, k=5)
+    
+    # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
+    from src.tools.market_analyst import run_market_analyst
+    market_analysis = run_market_analyst(market_view)
+    recommended_stocks = market_analysis.get("recommended_stocks", [])
 
     enriched_market: Dict[str, Any] = {
         "symbols": symbols,
@@ -107,6 +112,8 @@ def execute_daily_trade(
         "signal_score_top": signal_top,
         "stocks": stocks,
         "vix": market_view.get("vix"),
+        "recommended_stocks": recommended_stocks,  # 添加 Market Analyst 的推薦股票列表
+        "market_sentiment": market_analysis.get("market_sentiment", "neutral"),  # 添加市場情緒
     }
 
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----

@@ -20,8 +20,8 @@ def _calculate_position_size(
     if portfolio_value <= 0 or last_price <= 0:
         return 0
     
-    # 基础：单股最大15%
-    max_pct = 0.15
+    # 更激进：单股最大20%（从15%提高到20%）
+    max_pct = 0.20
     
     # 从风险报告获取推荐仓位大小
     if risk_report:
@@ -123,10 +123,31 @@ def run_trader(
     """
     vix = (mview.get("vix") or {}) if isinstance(mview, dict) else {}
     vix_risk = float(vix.get("risk_score", 4.0))
-    stance = "cautious" if vix_risk > 6.0 else mview.get("market_sentiment", "neutral")
+    # 更激进的阈值：降低 VIX 风险阈值，提高交易频率
+    stance = "cautious" if vix_risk > 7.5 else mview.get("market_sentiment", "neutral")  # 从6.0提高到7.5
 
     recs = mview.get("recommended_stocks", []) if isinstance(mview, dict) else []
     final_stance = (convo or {}).get("final_stance", "neutral")
+    
+    # 更激进：除了 Market Analyst 推荐的股票，还考虑所有 signal_score > 0 的股票
+    stocks = mview.get("stocks", {}) if isinstance(mview, dict) else {}
+    all_symbols = list(stocks.keys())
+    
+    # 从所有股票中筛选出信号良好的股票（不依赖 Market Analyst 的推荐）
+    additional_buys = []
+    for symbol, stock_data in stocks.items():
+        if isinstance(stock_data, dict):
+            try:
+                signal_score = float(stock_data.get("signal_score", 0))
+                # 更激进：signal_score > 2.0 就考虑买入（原来可能需要 uptrend + vix_risk <= 6.0）
+                if signal_score > 2.0 and symbol not in recs:
+                    additional_buys.append(symbol)
+            except Exception:
+                pass
+    
+    # 合并推荐列表
+    if additional_buys:
+        recs = list(set(recs + additional_buys))  # 去重
     
     # 默认组合净值（如果没有提供）
     if portfolio_value is None:
@@ -146,8 +167,9 @@ def run_trader(
         "warnings": [],
     }
 
-    # 若新聞/情緒最終 stance 偏空或 VIX 高風險，保守處理
-    if vix_risk > 6.0 or final_stance in ("bearish", "cautious"):
+    # 更激进的阈值：只有在 VIX 非常高时才保守处理
+    # 从 6.0 提高到 8.0，允许在中等风险时也交易
+    if vix_risk > 8.0 or final_stance == "bearish":  # 移除 "cautious"，允许 cautious 时也能买入
         # 检查是否需要减仓
         if current_positions and rview:
             for symbol, pos_info in current_positions.items():

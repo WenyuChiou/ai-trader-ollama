@@ -21,10 +21,20 @@ def run_market_analyst(market_json: Dict[str, Any]) -> Dict[str, Any]:
     sentiment = []
     rec_buy = []
     stocks = market_json.get("stocks", {})
+    # 确保评估所有 universe 中的股票（不仅仅是前几个）
     for sym, sd in stocks.items():
         t = assess_trend.invoke({"symbol_data": sd})
-        if t == "uptrend" and vix_risk <= 6.0:   # high VIX → suppress buy
-            rec_buy.append(sym)
+        # 更激进：降低 VIX 风险阈值，允许更多股票被推荐
+        # 从 vix_risk <= 6.0 提高到 vix_risk <= 7.0
+        # 同时考虑 signal_score：即使不是 uptrend，如果 signal_score 足够高也推荐
+        try:
+            signal_score = float(sd.get("signal_score", 0))
+            if (t == "uptrend" and vix_risk <= 7.0) or (signal_score > 3.0 and vix_risk <= 7.0):
+                rec_buy.append(sym)
+        except Exception:
+            # 如果无法获取 signal_score，使用原来的逻辑
+            if t == "uptrend" and vix_risk <= 7.0:
+                rec_buy.append(sym)
         sentiment.append((sym, t))
 
     out = {

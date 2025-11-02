@@ -13,8 +13,8 @@ system: |
   Your tools:
   - news_scan: Scan news for sentiment indicators
   - plan_and_scan_news: Intelligently plan and scan news
-  - fear_greed: Get Fear & Greed Index
-  - fetch_url: Get specific sentiment data
+  - fear_greed: Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info like "2 days ago")
+  - fetch_url: Get specific sentiment data from URLs
 
   Output format:
   {
@@ -47,8 +47,14 @@ user: |
   
   Sentiment Analysis Focus:
   - News sentiment (positive/negative)
-  - Fear & Greed Index
+  - Fear & Greed Index (from CNN: https://www.cnn.com/markets/fear-and-greed) - IMPORTANT: Use fear_greed tool to get current index value (0-100) and label
   - Market mood
   - Investor psychology
   - Contrarian signals
+  
+  When to use fear_greed tool:
+  - Always call fear_greed to get current market sentiment indicator
+  - The index ranges from 0 (Extreme Fear) to 100 (Extreme Greed)
+  - Use the value and label to assess investor sentiment
+  - Compare with historical values (previous_close, one_week_ago, etc.) to identify trends
 

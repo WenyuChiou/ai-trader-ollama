@@ -28,7 +28,7 @@ class ToolBox:
         # market / sentiment
         self.register(Tool("vix_term", self._vix_term_adapter, "Fetch ^VIX & ^VIX3M term structure"))
         self.register(Tool("vix_close", self._vix_close_adapter, "Fetch ^VIX close series (start,end)"))
-        self.register(Tool("fear_greed", fetch_fear_greed, "CNN Fear & Greed Index (stub)"))
+        self.register(Tool("fear_greed", fetch_fear_greed, "Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)"))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))

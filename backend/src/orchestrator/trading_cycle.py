@@ -186,9 +186,14 @@ def execute_daily_trade(
     executed_trades = []
     execution_errors = []
     
-    # 执行买入订单
+    # 执行买入订单（改进：支持同时买入多只股票）
     buy_orders = decision.get("buy_orders", [])
-    for order in buy_orders:
+    
+    # 按优先级排序（可以根据 signal_score 或其他指标排序）
+    # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
+    buy_orders_sorted = sorted(buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
+    
+    for order in buy_orders_sorted:
         symbol = order.get("symbol")
         buy_price = order.get("buy_price")
         quantity = order.get("quantity")
@@ -196,6 +201,20 @@ def execute_daily_trade(
         
         if symbol and buy_price and quantity:
             try:
+                # 检查现金是否足够（在买入前再次检查）
+                if total_cost > portfolio.cash:
+                    # 现金不足，尝试减少数量
+                    max_affordable_qty = floor(portfolio.cash / buy_price)
+                    if max_affordable_qty > 0:
+                        quantity = max_affordable_qty
+                        total_cost = buy_price * quantity
+                        order["quantity"] = quantity
+                        order["total_cost"] = total_cost
+                    else:
+                        # 现金完全不足，跳过这笔订单
+                        execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${total_cost:.2f}, have ${portfolio.cash:.2f})")
+                        continue
+                
                 portfolio.buy(symbol, quantity, buy_price)
                 # 记录交易
                 trade_logger.log(

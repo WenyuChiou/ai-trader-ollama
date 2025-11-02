@@ -10,33 +10,78 @@ def _calculate_position_size(
     last_price: float,
     risk_report: Optional[Dict[str, Any]] = None,
     current_positions: Optional[Dict[str, Any]] = None,
+    *,
+    max_position_per_stock: float = 0.15,  # 单股最大仓位（可配置）
+    max_total_position: float = 0.80,  # 总仓位上限（可配置）
+    min_position_per_stock: float = 0.03,  # 单股最小仓位（新增：允许更小的仓位）
 ) -> int:
     """
-    计算买入数量（基于风险控管建议）
-    - 单股最大15%仓位
-    - 考虑风险报告的建议
-    - 考虑当前持仓
+    计算买入数量（改进版：支持多股票分散投资，更灵活的仓位分配）
+    
+    改进点：
+    - 支持同时持有多只股票
+    - 单股仓位可以更小（最小3%），允许更多股票同时持有
+    - 考虑总仓位限制，避免过度杠杆
+    - 根据推荐股票数量动态调整单股仓位
+    
+    参数:
+    - max_position_per_stock: 单股最大仓位（默认15%，但可以根据推荐股票数量调整）
+    - max_total_position: 总仓位上限（默认80%，保留20%现金）
+    - min_position_per_stock: 单股最小仓位（默认3%，允许更小的仓位分散投资）
     """
     if portfolio_value <= 0 or last_price <= 0:
         return 0
-    
-    # 更激进：单股最大20%（从15%提高到20%）
-    max_pct = 0.20
     
     # 从风险报告获取推荐仓位大小
     if risk_report:
         control_report = risk_report.get("position_control_report", {})
         recommended_sizes = control_report.get("recommended_position_sizes", {})
         if symbol in recommended_sizes:
-            max_pct = recommended_sizes[symbol].get("max_pct", 0.15)
+            suggested_max = recommended_sizes[symbol].get("max_pct", max_position_per_stock)
+            max_position_per_stock = min(max_position_per_stock, suggested_max)
     
-    # 计算目标市值
-    target_value = portfolio_value * max_pct
+    # 计算当前总仓位（已持有的股票总价值占比）
+    current_total_position = 0.0
+    if current_positions:
+        for sym, pos_info in current_positions.items():
+            if isinstance(pos_info, dict):
+                qty = pos_info.get("quantity", 0)
+                current_price = pos_info.get("current_price", 0.0)
+            else:
+                qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                current_price = 0.0
+            
+            if qty > 0 and current_price > 0:
+                position_value = qty * current_price
+                current_total_position += position_value / portfolio_value
     
-    # 计算数量（向下取整）
-    quantity = floor(target_value / last_price)
+    # 动态调整单股仓位：根据推荐股票数量调整
+    # 如果有更多推荐股票，单股仓位可以更小，允许分散投资
+    num_recommended = len(recommended_stocks) if recommended_stocks else 1
     
-    # 考虑当前持仓（避免过度集中）
+    # 计算可用仓位空间
+    available_position_space = max_total_position - current_total_position
+    
+    if available_position_space <= 0:
+        # 已达到总仓位上限
+        return 0
+    
+    # 动态调整：如果有多个推荐股票，单股仓位可以更小
+    # 例如：3只股票时，每只10%；5只股票时，每只6%；10只股票时，每只5%
+    if num_recommended > 1:
+        # 根据推荐股票数量动态调整单股最大仓位
+        # 但不超过 max_position_per_stock，也不小于 min_position_per_stock
+        dynamic_max_pct = min(max_position_per_stock, available_position_space / num_recommended)
+        dynamic_max_pct = max(min_position_per_stock, dynamic_max_pct)
+        
+        # 确保不超过可用仓位空间
+        dynamic_max_pct = min(dynamic_max_pct, available_position_space)
+    else:
+        # 只有1只推荐股票时，可以使用更大的仓位
+        dynamic_max_pct = min(max_position_per_stock, available_position_space)
+    
+    # 检查当前持仓
+    current_symbol_position = 0.0
     if current_positions:
         pos_info = current_positions.get(symbol)
         if pos_info:
@@ -47,14 +92,27 @@ def _calculate_position_size(
                 current_qty = pos_info if isinstance(pos_info, (int, float)) else 0
                 current_price = last_price
             
-            current_value = current_qty * current_price
-            if current_value >= target_value:
-                # 已达到目标仓位
-                return 0
-            # 计算还需要买入的数量
-            remaining_value = target_value - current_value
-            additional_qty = floor(remaining_value / last_price)
-            return additional_qty
+            if current_qty > 0 and current_price > 0:
+                current_value = current_qty * current_price
+                current_symbol_position = current_value / portfolio_value
+    
+    # 计算目标仓位（考虑已有持仓）
+    target_position_pct = dynamic_max_pct
+    if current_symbol_position >= target_position_pct:
+        # 已达到目标仓位
+        return 0
+    
+    # 计算还需要买入的仓位百分比
+    remaining_position_pct = target_position_pct - current_symbol_position
+    
+    # 计算目标市值（但不能超过可用现金）
+    target_value = portfolio_value * remaining_position_pct
+    
+    # 计算数量（向下取整）
+    quantity = floor(target_value / last_price)
+    
+    # 确保不超过可用现金（如果有现金限制，这里可以进一步检查）
+    # 但通常 portfolio_value 已经考虑了现金，所以这里不做额外检查
     
     return max(0, quantity)
 
@@ -101,6 +159,7 @@ def run_trader(
     last_prices: Dict[str, float],
     current_positions: Optional[Dict[str, Any]] = None,
     portfolio_value: Optional[float] = None,
+    position_config: Optional[Dict[str, float]] = None,  # 新增：仓位配置参数
 ) -> Dict[str, Any]:
     """
     Trader Agent: 决定是否买卖（包含买卖那些公司、部位、买进价格、卖出价格等）
@@ -203,31 +262,78 @@ def run_trader(
             "risk_compliance": risk_compliance,
         }
 
-    # 生成买入订单
+    # 生成买入订单（改进：支持同时买入多只股票，每只股票仓位更灵活）
     if recs and portfolio_value > 0:
-        for symbol in recs:
-            if symbol not in last_prices:
-                continue
-            
-            last_price = last_prices[symbol]
-            if last_price <= 0:
-                continue
-            
-            # 计算买入数量
-            quantity = _calculate_position_size(
-                symbol, recs, portfolio_value, last_price, rview, current_positions
-            )
-            
-            if quantity > 0:
-                buy_price = last_price
-                total_cost = buy_price * quantity
+        # 从配置中读取仓位限制参数
+        if position_config:
+            max_position_per_stock = position_config.get("max_position_per_stock", 0.15)
+            max_total_position = position_config.get("max_total_position", 0.80)
+            min_position_per_stock = position_config.get("min_position_per_stock", 0.03)
+        else:
+            # 默认值
+            max_position_per_stock = 0.15  # 默认单股最大15%
+            max_total_position = 0.80  # 默认总仓位80%
+            min_position_per_stock = 0.03  # 默认单股最小3%（允许更小的仓位）
+        
+        # 计算当前总仓位（用于限制买入）
+        current_total_value = 0.0
+        if current_positions:
+            for sym, pos_info in current_positions.items():
+                if isinstance(pos_info, dict):
+                    qty = pos_info.get("quantity", 0)
+                    current_price = pos_info.get("current_price", last_prices.get(sym, 0.0))
+                else:
+                    qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                    current_price = last_prices.get(sym, 0.0)
                 
-                buy_orders.append({
-                    "symbol": symbol,
-                    "buy_price": buy_price,
-                    "quantity": quantity,
-                    "total_cost": total_cost,
-                })
+                if qty > 0 and current_price > 0:
+                    current_total_value += qty * current_price
+        
+        # 计算可用资金（考虑总仓位限制）
+        current_total_position_pct = current_total_value / portfolio_value if portfolio_value > 0 else 0.0
+        available_position_pct = max_total_position - current_total_position_pct
+        
+        if available_position_pct <= 0:
+            # 已达到总仓位上限，不买入新股票
+            pass
+        else:
+            # 遍历所有推荐股票，计算每只股票的买入数量
+            for symbol in recs:
+                if symbol not in last_prices:
+                    continue
+                
+                last_price = last_prices[symbol]
+                if last_price <= 0:
+                    continue
+                
+                # 计算买入数量（使用改进后的函数）
+                quantity = _calculate_position_size(
+                    symbol, 
+                    recs, 
+                    portfolio_value, 
+                    last_price, 
+                    rview, 
+                    current_positions,
+                    max_position_per_stock=max_position_per_stock,
+                    max_total_position=max_total_position,
+                    min_position_per_stock=min_position_per_stock,
+                )
+                
+                if quantity > 0:
+                    buy_price = last_price
+                    total_cost = buy_price * quantity
+                    
+                    # 检查可用资金（这里检查现金是否足够）
+                    # 注意：portfolio_value 是总净值，需要检查现金部分
+                    # 但由于我们在 _calculate_position_size 中已经考虑了总仓位限制，
+                    # 这里主要检查单笔交易是否可行
+                    
+                    buy_orders.append({
+                        "symbol": symbol,
+                        "buy_price": buy_price,
+                        "quantity": quantity,
+                        "total_cost": total_cost,
+                    })
     
     # 检查是否有超限持仓需要卖出
     if current_positions and rview:
@@ -287,8 +393,14 @@ def run_trader(
         if limit_checks:
             risk_compliance["position_limits_ok"] = False
     
-    rationale = f"TA + news consensus supports entry; stance={final_stance}, VIX risk={vix_risk:.1f}"
-    if not buy_orders and not sell_orders:
+    # 生成决策理由
+    if buy_orders:
+        buy_symbols = [o["symbol"] for o in buy_orders]
+        rationale = f"Buying {len(buy_orders)} stocks ({', '.join(buy_symbols[:5])}{'...' if len(buy_symbols) > 5 else ''}); stance={final_stance}, VIX risk={vix_risk:.1f}"
+    elif sell_orders:
+        sell_symbols = [o["symbol"] for o in sell_orders]
+        rationale = f"Selling {len(sell_orders)} stocks ({', '.join(sell_symbols[:5])}{'...' if len(sell_symbols) > 5 else ''}); stance={final_stance}, VIX risk={vix_risk:.1f}"
+    else:
         rationale = f"No strong consensus; stance={final_stance}, VIX risk={vix_risk:.1f}"
 
     return {

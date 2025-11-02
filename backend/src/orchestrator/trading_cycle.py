@@ -172,6 +172,30 @@ def execute_daily_trade(
     )
 
     # ---- (4) Trader Agent：交易決策 ----
+    # 从配置文件中读取仓位限制参数（如果可用）
+    from pathlib import Path
+    import json
+    
+    position_config = {
+        "max_position_per_stock": 0.15,  # 默认单股最大15%
+        "max_total_position": 0.85,  # 默认总仓位85%（保留15%现金）
+        "min_position_per_stock": 0.03,  # 默认单股最小3%（允许更小的仓位分散投资）
+    }
+    
+    # 尝试从 config.json 读取仓位限制
+    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+    try:
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+                position_config["max_position_per_stock"] = float(config_data.get("position_limit_per_stock", 0.15))
+                position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
+                # min_position_per_stock 如果配置中没有，使用默认值
+                position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
+    except Exception:
+        # 如果读取失败，使用默认值
+        pass
+    
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -180,6 +204,7 @@ def execute_daily_trade(
         last_prices=last_prices,
         current_positions=current_positions_info if current_positions_info else None,
         portfolio_value=portfolio_value,
+        position_config=position_config,  # 传入仓位配置
     )
 
     # ---- (5) 執行交易並更新 Portfolio ----
@@ -191,6 +216,7 @@ def execute_daily_trade(
     
     # 按优先级排序（可以根据 signal_score 或其他指标排序）
     # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
+    from math import floor
     buy_orders_sorted = sorted(buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
     
     for order in buy_orders_sorted:

@@ -126,7 +126,7 @@ def execute_daily_trade(
     # ---- (2) 討論層（自動補工具）----
     convo = run_analyst_discussion(
         enriched_market,
-        risk_view=None,                 # Discussion 阶段暂不需要 risk_view
+        None,  # _unused parameter
         rounds=rounds,
         auto_tools=auto_tools,
         tool_budget=tool_budget,

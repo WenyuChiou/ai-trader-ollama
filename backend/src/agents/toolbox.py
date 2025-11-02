@@ -9,7 +9,7 @@ from src.tools.news_tools import (
     search_web, fetch_url, news_scan, plan_and_scan_news
 )
 from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
-from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_calendar
+from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data
 
 
 @dataclass
@@ -39,7 +39,6 @@ class ToolBox:
         # jin10 economic data
         self.register(Tool("fetch_jin10_news", fetch_jin10_news, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
         self.register(Tool("fetch_jin10_economic_data", fetch_jin10_economic_data, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
-        self.register(Tool("fetch_jin10_calendar", fetch_jin10_calendar, "Fetch economic calendar from Jin10 (https://www.jin10.com/) - important economic data release schedule"))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))

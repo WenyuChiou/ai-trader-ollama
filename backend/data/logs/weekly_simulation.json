@@ -1,0 +1,21 @@
+{
+  "simulation_date": "2025-11-02T18:43:03.392224",
+  "week_dates": [
+    "2025-10-20",
+    "2025-10-21",
+    "2025-10-22",
+    "2025-10-23",
+    "2025-10-24"
+  ],
+  "initial_capital": 10000.0,
+  "final_portfolio_value": 10000.0,
+  "total_pnl": 0.0,
+  "total_pnl_pct": 0.0,
+  "final_cash": 10000.0,
+  "final_positions": {},
+  "trading_stats": {
+    "total_trades": 0,
+    "total_buys": 0,
+    "total_sells": 0
+  }
+}

@@ -17,16 +17,16 @@
   ],
   
   "crypto": [
-    "BTC-USD",  # Bitcoin
-    "ETH-USD",  # Ethereum
-    "SOL-USD",  # Solana
-    "BNB-USD",  # Binance Coin
-    "USDT-USD",  # Tether
-    "XRP-USD",  # Ripple
-    "ADA-USD",  # Cardano
-    "DOGE-USD",  # Dogecoin
-    "MATIC-USD",  # Polygon
-    "DOT-USD"  # Polkadot
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD",
+    "BNB-USD",
+    "USDT-USD",
+    "XRP-USD",
+    "ADA-USD",
+    "DOGE-USD",
+    "MATIC-USD",
+    "DOT-USD"
   ],
   "initial_cash": 10000,
   "position_limit_per_stock": 0.2,

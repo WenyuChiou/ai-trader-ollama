@@ -66,25 +66,7 @@
 
 ---
 
-### 4. **Whimsical** ⭐⭐⭐⭐
-
-**网址**: https://whimsical.com/
-
-**优点**:
-- ✅ 现代化界面
-- ✅ 易于使用
-- ✅ 美观的流程图
-- ✅ 免费版有限制
-
-**使用方法**:
-1. 注册账号（免费）
-2. 创建 Flowchart
-3. 手动绘制
-4. 导出为 PNG/PDF
-
----
-
-### 5. **Lucidchart** ⭐⭐⭐
+### 4. **Lucidchart** ⭐⭐⭐
 
 **网址**: https://www.lucidchart.com/
 
@@ -101,7 +83,7 @@
 
 ---
 
-### 6. **PlantUML** ⭐⭐⭐
+### 5. **PlantUML** ⭐⭐⭐
 
 **网址**: 
 - Online: http://www.plantuml.com/plantuml/
@@ -257,7 +239,7 @@ graph TD
 
 1. **使用 Excalidraw** - 最接近手绘风格
 2. **使用 Draw.io** - 可以选择手绘风格主题
-3. **使用 Whimsical** - 现代化但简洁的风格
+3. **使用 Figma** - 专业设计工具，精美输出
 
 如果想要**专业流程图**：
 1. **使用 Mermaid Live Editor** - 代码驱动，易于维护

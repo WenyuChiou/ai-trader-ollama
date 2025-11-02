@@ -126,24 +126,24 @@ The trading system follows a multi-stage information flow where data flows throu
    
    ↓
    
-4. Multi-Agent Discussion 🤖🤖🤖🤖
-   ├─ Agents:
-   │  ├─ Technical Analyst: Technical analysis, chart patterns, indicators
-   │  ├─ Fundamental Analyst: Company fundamentals, earnings, financials
-   │  ├─ Risk Analyst (Discussion): Risk assessment, position sizing
-   │  └─ Sentiment Analyst: Market sentiment, news sentiment, investor psychology
-   ├─ Each agent can:
-   │  ├─ Use their own tools (news_scan, vix_term, fear_greed, etc.)
-   │  ├─ See previous discussion rounds
-   │  └─ Contribute to consensus formation
-   ├─ Input: enriched_market, potential_buys, current_positions
-   ├─ Process: Multi-round discussion where agents debate and form consensus
+4. Discussion Agent 🤖
+   ├─ Uses tools automatically when information is insufficient
+   ├─ Tools available: news_scan, vix_term, fear_greed, fetch_jin10_news, fetch_jin10_economic_data, web_search, etc.
+   ├─ Process: Multi-round discussion with feedback loop
+   │  ├─ Round 1: Analyzes market → Calls tools if needed → Gets results
+   │  ├─ Round 2: Sees [TOOLS CONTEXT] → Reflects → Calls new tools if needed
+   │  └─ Round N: Has full context → Forms final stance
+   ├─ Input: enriched_market, potential_buys (optional)
+   ├─ Feedback Loop: Tool results are injected back into prompts as [TOOLS CONTEXT]
    └─ Output: consensus {
-      ├─ final_stance: "bullish" | "neutral" | "cautious" | "constructive"
-      ├─ agent_views: {technical, fundamental, risk, sentiment}
-      ├─ discussion_rounds: [round-by-round discussion records]
-      └─ risk_signals: [...]
+      ├─ final_stance: "bullish" | "neutral" | "cautious" | "bearish"
+      ├─ transcript: [round-by-round discussion records]
+      ├─ actions: ["consider_probe", "finalize", ...]
+      └─ tool_context: [summary of all tool results]
    }
+   
+   Note: Currently using single Discussion Agent with multi-round feedback loop.
+   Future enhancement: True multi-agent discussion with Technical/Fundamental/Risk/Sentiment analysts.
    
    ↓
    
@@ -188,24 +188,29 @@ The trading system follows a multi-stage information flow where data flows throu
 | `market_data` | Market Agent | All downstream agents | Base market data for all analysis |
 | `market_analysis` | Market Analyst | Discussion, Trader | Market sentiment and trends |
 | `potential_buys` | Stock Selection | Discussion, Trader | Candidate stocks for trading |
-| `consensus` | Multi-Agent Discussion | Trader | Discussion consensus and stance |
+| `consensus` | Discussion Agent | Trader | Discussion consensus and stance |
 | `risk_report` | Risk Analyst | Trader | Risk assessment and position limits |
 | `decision` | Trader Agent | Execution | Final trading decisions |
 
-### Multi-Agent Discussion System
+### Discussion System with Feedback Loop
 
-The system uses a **true multi-agent discussion** where 4 specialized analyst agents:
-- **Technical Analyst**: Focuses on technical indicators, chart patterns, price action
-- **Fundamental Analyst**: Analyzes company fundamentals, earnings, financial health
-- **Risk Analyst (Discussion)**: Assesses risk from discussion perspective
-- **Sentiment Analyst**: Evaluates market sentiment, news sentiment, investor psychology
+The system uses a **single Discussion Agent** with a **feedback loop** mechanism:
 
-Each agent:
-- Independently analyzes the market data and potential buys
-- Can use their own tools (news_scan, vix_term, fear_greed, web_search, etc.)
-- Contributes their viewpoint in each discussion round
-- Can see previous rounds and adjust their analysis
-- Final consensus is formed from all agent viewpoints
+- **Discussion Agent**: Analyzes market conditions, calls tools when needed, and forms consensus
+- **Multi-Round Process**: Multiple rounds where the agent can:
+  - Call tools (news_scan, vix_term, fear_greed, fetch_jin10_news, etc.)
+  - See previous tool results in `[TOOLS CONTEXT]`
+  - Reflect and decide whether to call more tools or finalize stance
+  - Form final consensus based on all information
+
+**Feedback Loop Mechanism**:
+1. Agent analyzes market data
+2. If information insufficient → Calls tools
+3. Tool results summarized → Added to `[TOOLS CONTEXT]`
+4. Agent sees `[TOOLS CONTEXT]` → Reflects → Avoids redundant calls
+5. Process repeats until agent finalizes or tool budget exhausted
+
+**Future Enhancement**: True multi-agent discussion with Technical/Fundamental/Risk/Sentiment analysts debating independently.
 
 ---
 
@@ -216,7 +221,7 @@ Each agent:
 | Market Agent | Fetch OHLCV, compute TA indicators (RSI, MACD, BBands) | ✅ |
 | Market Analyst | Combine technicals + sentiment (VIX, Fear & Greed, news) | ✅ |
 | Stock Selection Agent | Evaluate all candidate stocks, generate potential_buys | ✅ |
-| Multi-Agent Discussion | Technical/Fundamental/Risk/Sentiment analysts discuss | ✅ |
+| Discussion Agent | Multi-round discussion with feedback loop (calls tools, forms consensus) | ✅ |
 | Risk Analyst | Evaluate volatility, position risk, exposure limits | ✅ |
 | Trader Agent | Make final BUY/SELL/HOLD decisions | ✅ |
 | Performance Agent | Backtesting, Sharpe/MDD reporting | ⏳ |
@@ -251,9 +256,10 @@ Round N:
 
 ### Tool Budget & Control
 
-- **Per-Agent Tool Budget**: Each agent in multi-agent discussion has a limited tool budget (default: `tool_budget_per_agent`)
-- **Global Tool Context**: All agents see previous tool results to avoid redundant calls
-- **Auto-Tools**: Agents can automatically call tools when information is insufficient
+- **Tool Budget**: Discussion Agent has a limited tool budget (default: `tool_budget = 2`)
+- **Tool Context**: Agent sees previous tool results in `[TOOLS CONTEXT]` to avoid redundant calls
+- **Auto-Tools**: Agent automatically calls tools when information is insufficient
+- **Early Exit**: If 2 consecutive rounds without new tools, discussion finalizes early
 
 ---
 
@@ -269,10 +275,9 @@ cd backend
 # Test basic functionality
 python test_trading_loop.py              # Minimal trading loop test
 
-# Test multi-agent discussion
-python tests/test_multi_agent_loop_quick.py    # Quick test (few stocks, 1 round)
-python tests/test_multi_agent_loop_simple.py   # Simple test (more stocks, 2 rounds)
-python tests/test_multi_agent_discussion_loop.py  # Full test (large universe, 3 rounds)
+# Test discussion with feedback loop
+python tests/test_02_discussion_rounds.py       # Discussion rounds test
+python tests/test_04_discussion_tools.py        # Tool usage in discussion
 ```
 
 ### Individual Component Tests

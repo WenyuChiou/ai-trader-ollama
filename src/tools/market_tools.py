@@ -139,16 +139,16 @@ def fetch_market_batch(
     """
     Fetch OHLCV for multiple symbols across different asset classes and compute indicators.
     Supports:
-    - Stocks: NVDA, MSFT, AAPL, etc.
+    - Stocks: From universe list (via symbols parameter)
     - Bonds: ^TNX, ^IRX, ^FVX, LQD, HYG, etc.
     - Commodities: GC=F (gold), CL=F (oil), NG=F (gas), etc.
     - Indices: ^GSPC, ^DJI, ^N225, ^FTSE, ^GDAXI, etc.
     - Volatility: ^VIX, ^VIX3M
     
     Args:
-        symbols: List of symbols to fetch (legacy parameter)
-        asset_classes: Dict with keys: stocks, bonds, commodities, indices, volatility
-                      Each value is a list of symbols for that asset class
+        symbols: List of stock symbols from universe list (stocks only)
+        asset_classes: Dict with keys: bonds, commodities, indices (NOT stocks - stocks come from symbols parameter)
+                      Volatility is scraped from CME Group website, not from asset_classes
         start: Start date (YYYY-MM-DD)
         end: End date (YYYY-MM-DD)
         **kwargs: Additional parameters (interval, auto_adjust, etc.)

@@ -192,9 +192,11 @@ Daily Trading Cycle Starts (09:00)
   ├─ Input: market_view
   └─ Output: market_analysis (recommended_stocks, sentiment)
   ↓
-[Load Historical Memories]
-  ├─ Load last 5 days of memory summaries
-  └─ Inject into Discussion Agent context
+[Step 1.5] Load Historical Memories ⚡ MEMORY USAGE #1
+  ├─ When: After Market Analyst, before Discussion Agent
+  ├─ Action: Load last 5 days of memory summaries
+  ├─ Format: summary_only=True (only key info)
+  └─ Inject: Pass as historical_memories to Discussion Agent
   ↓
 [Step 2] Discussion Agent (run_analyst_discussion)
   ├─ Trigger: After Market Analyst completes
@@ -221,10 +223,11 @@ Daily Trading Cycle Starts (09:00)
   ├─ Fill Check: Verify prices are within order ranges
   └─ Output: executed_trades, updated portfolio
   ↓
-[Step 7] Memory Save
-  ├─ Trigger: After execution completes
-  ├─ Save: Complete daily memory to memory/daily/
-  └─ Compress: Old memories (>30 days) to memory/weekly/
+[Step 7] Memory Save ⚡ MEMORY USAGE #2
+  ├─ When: After execution completes
+  ├─ Action: Save complete daily memory to memory/daily/YYYY-MM-DD.json
+  ├─ Includes: Full cycle data (market, analysis, discussion, decisions, portfolio)
+  └─ Compress: Old memories (>30 days) to memory/weekly/ (auto)
 ```
 
 **Key Timing Points**:
@@ -689,9 +692,98 @@ Daily Trading Cycle Starts (09:00)
 
 ## 🧠 Memory Management
 
-### Automatic Memory Saving
+### When Memory is Used
 
-After each trading cycle completes, the system **automatically saves** daily memories to `backend/data/logs/memory/daily/YYYY-MM-DD.json`
+Memory is used at **two key points** in the trading cycle:
+
+#### 1. **Loading Historical Memories (Step 1.5) - BEFORE Discussion Agent**
+
+**When**: After Market Analyst completes, **before** Discussion Agent starts
+
+**Location**: `backend/src/orchestrator/trading_cycle.py` (Step 1.5)
+
+**Process**:
+```python
+# Load last 5 days of memory summaries
+historical_memories = memory_manager.load_recent_memories(
+    days=5,
+    end_date=end if end else None,
+    summary_only=True,  # Only summaries to reduce prompt length
+)
+```
+
+**Purpose**: Provide context to Discussion Agent about past trading decisions
+
+**What is Loaded**:
+- Last 5 days of memory summaries
+- Includes: date, stance, recommended_stocks, decisions, portfolio_snapshot, risk_level
+- **summary_only=True**: Only key information, not full transcripts (to save token space)
+
+**Usage**: Injected into Discussion Agent as `historical_context` in the prompt
+
+---
+
+#### 2. **Saving Daily Memory (Step 7) - AFTER Trading Execution**
+
+**When**: After all trading execution completes
+
+**Location**: `backend/src/orchestrator/trading_cycle.py` (Step 7)
+
+**Process**:
+```python
+memory_manager.save_daily_memory(
+    date=today,
+    market_view=market_view,
+    market_analysis=market_analysis,
+    discussion=convo,
+    risk_report=risk_report,
+    decision=decision,
+    portfolio_snapshot=portfolio_snapshot,
+)
+```
+
+**Purpose**: Save complete daily trading cycle for future reference
+
+**What is Saved**:
+- Complete market view (compressed)
+- Market analysis results
+- Full discussion transcript
+- Risk report
+- Trading decisions (buy/sell orders)
+- Portfolio snapshot (cash, positions, P&L)
+
+**Storage**: `backend/data/logs/memory/daily/YYYY-MM-DD.json`
+
+---
+
+### Memory Usage Flow
+
+```
+Trading Cycle Starts
+  ↓
+[Step 1] Market Agent collects data
+  ↓
+[Step 1c] Market Analyst analyzes
+  ↓
+[Step 1.5] ⚡ LOAD HISTORICAL MEMORIES
+  ├─ Load last 5 days of summaries
+  ├─ Format as historical_context
+  └─ Prepare for Discussion Agent
+  ↓
+[Step 2] Discussion Agent
+  ├─ Receives: enriched_market + historical_memories
+  ├─ Uses historical_context in prompt
+  └─ Makes decisions considering past trends
+  ↓
+[Step 3-6] Risk Analyst → Trader Agent → Execution
+  ↓
+[Step 7] ⚡ SAVE DAILY MEMORY
+  ├─ Save complete cycle to daily/YYYY-MM-DD.json
+  ├─ Update index for fast retrieval
+  └─ Compress old memories (>30 days) to weekly/
+```
+
+---
 
 ### Memory Features
 
@@ -700,10 +792,11 @@ After each trading cycle completes, the system **automatically saves** daily mem
 - ✅ **Auto Compression**: Memories older than 30 days are automatically compressed
 - ✅ **Historical Search**: `search_memories()` supports multi-criteria search
 
-### When Memory is Called
+### When Memory Files are Created/Updated
 
-#### Daily Memory
-- **Called**: After each trading cycle completes (in `execute_daily_trade()`)
+#### Daily Memory Files
+- **Created**: After each trading cycle completes (Step 7)
+- **Location**: `memory/daily/YYYY-MM-DD.json`
 - **Action**: Saves complete daily memory to `memory/daily/YYYY-MM-DD.json`
 - **Includes**: Full market view, analysis, discussion, risk report, decisions, portfolio snapshot
 
@@ -712,23 +805,6 @@ After each trading cycle completes, the system **automatically saves** daily mem
 - **Trigger**: When saving a new daily memory, checks for memories older than 30 days
 - **Action**: Compresses old memories to `memory/weekly/YYYY-WXX.jsonl` (JSON Lines format)
 - **Purpose**: Saves storage space by keeping only key summaries instead of full data
-
-**Memory Flow**:
-```
-Trading Cycle Completes
-  ↓
-save_daily_memory() called
-  ↓
-Save to daily/YYYY-MM-DD.json
-  ↓
-_compress_old_memories() (if compress_old=True)
-  ↓
-Check daily/ for files older than 30 days
-  ↓
-Compress to weekly/YYYY-WXX.jsonl (only summaries)
-  ↓
-Delete original daily file
-```
 
 ### Memory Usage
 

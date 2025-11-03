@@ -166,14 +166,74 @@ python scripts/run_daily_trading.py --force
 
 ### Agent Types (6 Core Agents)
 
-| Agent Type | Purpose | Input | Output | LLM Model |
-|-----------|---------|-------|--------|-----------|
-| **Market Agent** | Fetch OHLCV + Technical Indicators | `symbols[]`, `start`, `end` | `market_view` (stocks data with TA) | llama3.1 |
-| **Market Analyst** | Analyze trends, generate recommendations | `market_view` | `market_analysis` (sentiment, recommended stocks) | llama3.1 |
-| **Discussion Agent** | Multi-round analysis with tool calls | `enriched_market` | `consensus` (stance, reasoning, tool results) | llama3.1 |
-| **Risk Analyst** | Assess portfolio risk and position limits | `market_view`, `positions`, `portfolio_value` | `risk_report` (risk level, position control) | llama3.1 |
-| **Trader Agent** | Generate buy/sell orders | `market_view`, `consensus`, `risk_report` | `decision` (buy_orders, sell_orders) | llama3.1 |
-| **Execution** | Execute trades, update portfolio | `decision` | `executed_trades`, `portfolio` status | No LLM |
+| Agent Type | When Called | Purpose | Input | Output | LLM Model |
+|-----------|------------|---------|-------|--------|-----------|
+| **Market Agent** | **Step 1** - Immediately at cycle start | Fetch OHLCV + Technical Indicators | `symbols[]`, `start`, `end` | `market_view` (stocks data with TA) | llama3.1 |
+| **Market Analyst** | **Step 1c** - Right after market data collection | Analyze trends, generate recommendations | `market_view` | `market_analysis` (sentiment, recommended stocks) | llama3.1 |
+| **Discussion Agent** | **Step 2** - After Market Analyst, with historical memories | Multi-round analysis with tool calls | `enriched_market`, `historical_memories` | `consensus` (stance, reasoning, tool results) | llama3.1 |
+| **Risk Analyst** | **Step 3** - After Discussion Agent, when positions exist | Assess portfolio risk and position limits | `market_view`, `positions`, `portfolio_value` | `risk_report` (risk level, position control) | llama3.1 |
+| **Trader Agent** | **Step 4** - After Risk Analyst, to make final decisions | Generate buy/sell orders | `market_view`, `consensus`, `risk_report` | `decision` (buy_orders, sell_orders) | llama3.1 |
+| **Execution** | **Step 5** - Immediately after Trader Agent decisions | Execute trades, update portfolio | `decision` | `executed_trades`, `portfolio` status | No LLM |
+
+### Agent Call Timing & Sequence
+
+**Execution Flow**:
+```
+Daily Trading Cycle Starts (09:00)
+  ↓
+[Step 1] Market Agent (fetch_market_batch)
+  ├─ Trigger: Cycle start
+  ├─ Purpose: Collect OHLCV + technical indicators
+  └─ Output: market_view
+  ↓
+[Step 1c] Market Analyst (run_market_analyst)
+  ├─ Trigger: Immediately after market data collection
+  ├─ Purpose: Analyze trends, generate stock recommendations
+  ├─ Input: market_view
+  └─ Output: market_analysis (recommended_stocks, sentiment)
+  ↓
+[Load Historical Memories]
+  ├─ Load last 5 days of memory summaries
+  └─ Inject into Discussion Agent context
+  ↓
+[Step 2] Discussion Agent (run_analyst_discussion)
+  ├─ Trigger: After Market Analyst completes
+  ├─ Purpose: Multi-round analysis with automatic tool calling
+  ├─ Input: enriched_market, historical_memories
+  ├─ Auto-tools: news_scan, vix_term, fear_greed (if info insufficient)
+  └─ Output: consensus (final_stance, reasoning)
+  ↓
+[Step 3] Risk Analyst (run_risk_analyst)
+  ├─ Trigger: After Discussion Agent, if positions exist
+  ├─ Purpose: Assess portfolio risk, position limits
+  ├─ Input: market_view, current_positions, portfolio_value
+  └─ Output: risk_report (risk_level, position_control_report)
+  ↓
+[Step 4] Trader Agent (run_trader)
+  ├─ Trigger: After Risk Analyst completes
+  ├─ Purpose: Generate final buy/sell orders with position sizing
+  ├─ Input: market_view, consensus, risk_report, position_config
+  └─ Output: decision (buy_orders, sell_orders with price ranges)
+  ↓
+[Step 5] Execution
+  ├─ Trigger: Immediately after Trader Agent decisions
+  ├─ Purpose: Execute trades, update portfolio
+  ├─ Fill Check: Verify prices are within order ranges
+  └─ Output: executed_trades, updated portfolio
+  ↓
+[Step 7] Memory Save
+  ├─ Trigger: After execution completes
+  ├─ Save: Complete daily memory to memory/daily/
+  └─ Compress: Old memories (>30 days) to memory/weekly/
+```
+
+**Key Timing Points**:
+- **Market Agent**: Called **first** - no dependencies
+- **Market Analyst**: Called **immediately after** market data is ready
+- **Discussion Agent**: Called **after** Market Analyst, with **historical memories** loaded
+- **Risk Analyst**: Called **only if** portfolio has positions (can be skipped on first day)
+- **Trader Agent**: Called **after** all analysis complete, makes final decisions
+- **Execution**: Called **immediately** after Trader Agent, executes orders with fill checks
 
 ---
 
@@ -244,6 +304,8 @@ python scripts/run_daily_trading.py --force
 
 **Agent**: Market Analyst (LLM-based analysis)
 
+**When Called**: Immediately after Step 1 (market data collection)
+
 **Input**: `market_view` (from Step 1)
 
 **Process**:
@@ -280,6 +342,8 @@ python scripts/run_daily_trading.py --force
 ### Step 3: Discussion Agent 🤖
 
 **Agent**: Discussion Agent (Multi-round with feedback loop)
+
+**When Called**: After Market Analyst completes, with historical memories loaded (last 5 days)
 
 **Input**: `enriched_market`
 ```python
@@ -331,6 +395,8 @@ python scripts/run_daily_trading.py --force
 ### Step 4: Risk Analysis ⚠️
 
 **Agent**: Risk Analyst
+
+**When Called**: After Discussion Agent completes, only if portfolio has existing positions (can be skipped on first trading day)
 
 **Input**:
 ```python
@@ -393,6 +459,8 @@ python scripts/run_daily_trading.py --force
 ### Step 5: Trading Decision 💰
 
 **Agent**: Trader Agent
+
+**When Called**: After Risk Analyst completes (or after Discussion Agent if no positions exist)
 
 **Input**:
 ```python

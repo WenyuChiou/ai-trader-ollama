@@ -202,8 +202,10 @@
 
         .chart-header h2 {
             margin: 0;
-            font-size: 20px;
+            font-size: 22px;
+            font-weight: 600;
             color: #1f2937;
+            letter-spacing: 0.2px;
         }
 
         .chart-container {
@@ -237,8 +239,10 @@
 
         .section-header h2 {
             margin: 0;
-            font-size: 20px;
+            font-size: 22px;
+            font-weight: 600;
             color: #1f2937;
+            letter-spacing: 0.2px;
         }
 
         .position-count {
@@ -693,6 +697,7 @@
             <div class="tabs">
                 <button class="tab-btn active" id="tabOverview" onclick="switchTab('overview')">Overview</button>
                 <button class="tab-btn" id="tabTrades" onclick="switchTab('trades')">Trades</button>
+                <button class="tab-btn" id="tabAllocation" onclick="switchTab('allocation')">Allocation</button>
             </div>
         </div>
 
@@ -727,15 +732,11 @@
                 </div>
             </div>
 
-            <!-- Asset Distribution (Pie) -->
-            <div class="chart-section" id="pieSection" style="display: none;">
-                <div class="chart-header">
-                    <h2>Asset Allocation</h2>
+            <!-- Quick link to Allocation -->
+            <div class="positions-section" style="padding:16px;">
+                <div style="display:flex; justify-content:flex-end;">
+                    <button class="tab-btn" onclick="switchTab('allocation')">View Asset Allocation →</button>
                 </div>
-                <div class="pie-container">
-                    <svg id="pieSvg" viewBox="0 0 300 300" width="300" height="300"></svg>
-                </div>
-                <div class="legend" id="pieLegend"></div>
             </div>
 
             <!-- Positions Section -->
@@ -810,6 +811,20 @@
                             <tbody id="tradesBody"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- Allocation Page -->
+            <div id="allocationPage" style="display: none;">
+                <div class="chart-section">
+                    <div class="chart-header">
+                        <h2>Asset Allocation</h2>
+                        <div class="position-count" id="allocTotal">—</div>
+                    </div>
+                    <div class="pie-container">
+                        <svg id="pieSvg" viewBox="0 0 300 300" width="300" height="300"></svg>
+                    </div>
+                    <div class="legend" id="pieLegend"></div>
                 </div>
             </div>
         </div>
@@ -1467,17 +1482,20 @@
             const svg = document.getElementById('pieSvg');
             const legend = document.getElementById('pieLegend');
             if (!portfolio || !portfolio.positions) {
-                document.getElementById('pieSection').style.display = 'none';
+                const allocPage = document.getElementById('allocationPage');
+                if (allocPage) allocPage.style.display = 'none';
                 return;
             }
 
             const totalValue = portfolio.total_value || 0;
             if (totalValue <= 0) {
-                document.getElementById('pieSection').style.display = 'none';
+                const allocPage = document.getElementById('allocationPage');
+                if (allocPage) allocPage.style.display = 'none';
                 return;
             }
 
-            document.getElementById('pieSection').style.display = 'block';
+            const allocPage = document.getElementById('allocationPage');
+            if (allocPage) allocPage.style.display = 'block';
             svg.innerHTML = '';
             legend.innerHTML = '';
 
@@ -1504,6 +1522,8 @@
             let startAngle = -Math.PI / 2; // start at top
 
             const sum = data.reduce((s, d) => s + d.value, 0);
+            const allocTotal = document.getElementById('allocTotal');
+            if (allocTotal) allocTotal.textContent = `Total: ${formatCurrency(totalValue)}`;
             data.forEach(d => {
                 const angle = (d.value / sum) * Math.PI * 2;
                 const endAngle = startAngle + angle;
@@ -1568,19 +1588,34 @@
         function switchTab(tab) {
             const o = document.getElementById('dashboardPage');
             const t = document.getElementById('tradesPage');
+            const a = document.getElementById('allocationPage');
             const btnO = document.getElementById('tabOverview');
             const btnT = document.getElementById('tabTrades');
+            const btnA = document.getElementById('tabAllocation');
             if (tab === 'trades') {
                 o.style.display = 'none';
                 t.style.display = 'block';
+                if (a) a.style.display = 'none';
                 btnO.classList.remove('active');
                 btnT.classList.add('active');
+                if (btnA) btnA.classList.remove('active');
                 // load trades
                 fetchTrades(200).then(renderTrades);
+            } else if (tab === 'allocation') {
+                o.style.display = 'none';
+                t.style.display = 'none';
+                if (a) a.style.display = 'block';
+                btnO.classList.remove('active');
+                if (btnA) btnA.classList.add('active');
+                btnT.classList.remove('active');
+                // redraw allocation using last known portfolio if available
+                // will be updated on next refresh automatically
             } else {
                 o.style.display = 'block';
                 t.style.display = 'none';
+                if (a) a.style.display = 'none';
                 btnT.classList.remove('active');
+                if (btnA) btnA.classList.remove('active');
                 btnO.classList.add('active');
             }
         }

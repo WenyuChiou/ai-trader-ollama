@@ -1,11 +1,11 @@
 import React from 'react';
-import SimpleMonitor from './components/SimpleMonitor';
+import PortfolioMonitor from './components/PortfolioMonitor';
 import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <SimpleMonitor />
+      <PortfolioMonitor />
     </div>
   );
 }

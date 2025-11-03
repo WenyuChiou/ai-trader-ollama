@@ -330,6 +330,134 @@ async def list_tools():
     return {"tools": tb.list()}
 
 
+@app.get("/api/system/info")
+async def get_system_info():
+    """Get system information including LLM model and configuration"""
+    try:
+        import json
+        from pathlib import Path
+        
+        # Load config.json
+        config_file = Path("config/config.json")
+        llm_config = {}
+        config = {}
+        if config_file.exists():
+            with config_file.open("r", encoding="utf-8") as f:
+                config = json.load(f)
+                llm_config = config.get("llm", {})
+        
+        # Load agents.yaml to get agent-specific models
+        agent_models = {}
+        try:
+            from pathlib import Path
+            import yaml
+            
+            agents_file = Path("config/agents.yaml")
+            if agents_file.exists():
+                with agents_file.open("r", encoding="utf-8") as f:
+                    agents_conf = yaml.safe_load(f)
+                    if agents_conf:
+                        for agent_key, agent_conf in agents_conf.items():
+                            if isinstance(agent_conf, dict):
+                                agent_models[agent_key] = agent_conf.get("model", llm_config.get("default_model", "llama3.1"))
+        except Exception:
+            pass
+        
+        return {
+            "ok": True,
+            "llm": {
+                "default_model": llm_config.get("default_model", "llama3.1"),
+                "ollama_host": llm_config.get("ollama_host", "http://localhost:11434"),
+                "auto_pull": llm_config.get("auto_pull", True),
+            },
+            "agent_models": agent_models,
+            "config": {
+                "discussion_rounds": config.get("discussion_rounds", 3),
+                "discussion_tool_budget": config.get("discussion_tool_budget", 2),
+            }
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )
+
+
+@app.get("/api/agents/conversations")
+async def get_agent_conversations(
+    limit: int = 50,
+    date: str | None = None
+):
+    """Get recent agent conversations/discussions"""
+    try:
+        import json
+        from pathlib import Path
+        
+        # Load from discussion_actions.jsonl
+        log_file = Path("data/logs/discussion_actions.jsonl")
+        conversations = []
+        
+        if log_file.exists():
+            with log_file.open("r", encoding="utf-8") as f:
+                lines = f.readlines()
+                # Read last N lines
+                for line in lines[-limit * 2:]:  # Get more lines, then filter
+                    try:
+                        entry = json.loads(line.strip())
+                        if date:
+                            entry_date = entry.get("date", entry.get("timestamp", ""))
+                            if entry_date and not entry_date.startswith(date):
+                                continue
+                        conversations.append(entry)
+                    except json.JSONDecodeError:
+                        continue
+        
+        # Also try to load from memory if available
+        try:
+            from src.data.memory_manager import MemoryManager
+            memory_manager = MemoryManager(root="data/logs")
+            
+            # Get recent memories
+            recent_memories = memory_manager.load_recent_memories(days=7, limit=limit)
+            for memory in recent_memories:
+                discussion = memory.get("discussion", {})
+                if discussion:
+                    transcript = discussion.get("transcript", [])
+                    if transcript:
+                        # Extract individual messages from transcript
+                        for msg in transcript:
+                            if isinstance(msg, dict):
+                                conversations.append({
+                                    "date": memory.get("date", ""),
+                                    "type": "memory",
+                                    "agent": msg.get("agent", "Unknown"),
+                                    "content": msg.get("content", msg.get("message", "")),
+                                    "round": msg.get("round"),
+                                })
+        except Exception as e:
+            print(f"[WARN] Failed to load from memory: {e}")
+        
+        # Sort by date (newest first)
+        conversations.sort(
+            key=lambda x: x.get("date", x.get("timestamp", "")), 
+            reverse=True
+        )
+        
+        # Limit results
+        return {
+            "ok": True,
+            "conversations": conversations[:limit],
+            "count": len(conversations[:limit])
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )
+
+
 @app.get("/")
 async def root():
     """API root endpoint"""

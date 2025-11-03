@@ -167,6 +167,11 @@
             margin-top: 8px;
         }
 
+        /* Value coloring for total asset */
+        .value-positive { color: #10b981; }
+        .value-negative { color: #ef4444; }
+        .value-subpercent { font-size: 14px; margin-top: 6px; font-weight: 600; }
+
         .card.pnl.positive .card-value,
         .card.pnl.positive .card-percent {
             color: #10b981;
@@ -566,6 +571,23 @@
             background: #5568d3;
         }
 
+        /* Tabs */
+        .tabs { display:flex; gap:10px; }
+        .tab-btn { padding:8px 12px; border:1px solid #e5e7eb; background:#fff; border-radius:8px; cursor:pointer; }
+        .tab-btn.active { background:#eef2ff; border-color:#c7d2fe; color:#4338ca; }
+
+        /* Trades */
+        .trades-section { background:white; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+        .trade-buy { color:#10b981; font-weight:600; }
+        .trade-sell { color:#ef4444; font-weight:600; }
+        .status-pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:#f3f4f6; }
+
+        /* Pie chart */
+        .pie-container { width:100%; height:320px; display:flex; align-items:center; justify-content:center; }
+        .legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+        .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; }
+        .legend-color { width:10px; height:10px; border-radius:50%; display:inline-block; }
+
         /* Footer */
         .footer {
             background: white;
@@ -666,6 +688,14 @@
             </div>
         </header>
 
+        <!-- Tabs -->
+        <div class="header" style="padding: 12px 16px; margin-top: -10px;">
+            <div class="tabs">
+                <button class="tab-btn active" id="tabOverview" onclick="switchTab('overview')">Overview</button>
+                <button class="tab-btn" id="tabTrades" onclick="switchTab('trades')">Trades</button>
+            </div>
+        </div>
+
         <!-- Loading State -->
         <div class="loading" id="loadingState" style="display: none;">
             <div class="spinner"></div>
@@ -681,6 +711,7 @@
 
         <!-- Main Content -->
         <div id="mainContent" style="display: none;">
+            <div id="dashboardPage">
             <!-- Summary Cards -->
             <div class="summary-grid" id="summaryCards"></div>
 
@@ -694,6 +725,17 @@
                         <!-- Chart will be drawn here -->
                     </svg>
                 </div>
+            </div>
+
+            <!-- Asset Distribution (Pie) -->
+            <div class="chart-section" id="pieSection" style="display: none;">
+                <div class="chart-header">
+                    <h2>Asset Allocation</h2>
+                </div>
+                <div class="pie-container">
+                    <svg id="pieSvg" viewBox="0 0 300 300" width="300" height="300"></svg>
+                </div>
+                <div class="legend" id="pieLegend"></div>
             </div>
 
             <!-- Positions Section -->
@@ -743,6 +785,32 @@
                 <button class="view-conversations-btn" onclick="openConversationsModal()">
                     💬 View Agent Conversations
                 </button>
+            </div>
+            </div> <!-- end dashboardPage -->
+
+            <!-- Trades Page -->
+            <div id="tradesPage" style="display: none;">
+                <div class="trades-section">
+                    <div class="section-header">
+                        <h2>Trade Details</h2>
+                        <span class="position-count" id="tradesCount">0 trades</span>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tradesBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1165,10 +1233,14 @@
 
             const cashPercent = totalValue > 0 ? ((cash / totalValue) * 100).toFixed(1) : 0;
 
+            const valueUp = totalValue >= initialValue;
+            const valuePct = initialValue > 0 ? ((totalValue - initialValue) / initialValue * 100) : 0;
+
             container.innerHTML = `
                 <div class="card">
                     <div class="card-label">Total Portfolio Value</div>
-                    <div class="card-value">${formatCurrency(totalValue)}</div>
+                    <div class="card-value ${valueUp ? 'value-positive' : 'value-negative'}">${formatCurrency(totalValue)}</div>
+                    <div class="value-subpercent ${valueUp ? 'value-positive' : 'value-negative'}">${valueUp ? '+' : ''}${formatNumber(valuePct)}%</div>
                     <div class="card-subtitle">Initial: ${formatCurrency(initialValue)}</div>
                 </div>
                 <div class="card pnl ${totalPnL >= 0 ? 'positive' : 'negative'}">
@@ -1390,6 +1462,129 @@
             svg.appendChild(maxLabel);
         }
 
+        // Draw asset allocation pie (cash + positions)
+        function drawPie(portfolio) {
+            const svg = document.getElementById('pieSvg');
+            const legend = document.getElementById('pieLegend');
+            if (!portfolio || !portfolio.positions) {
+                document.getElementById('pieSection').style.display = 'none';
+                return;
+            }
+
+            const totalValue = portfolio.total_value || 0;
+            if (totalValue <= 0) {
+                document.getElementById('pieSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('pieSection').style.display = 'block';
+            svg.innerHTML = '';
+            legend.innerHTML = '';
+
+            const data = [];
+            const colors = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16", "#f97316"];  
+            let colorIdx = 0;
+
+            // Cash slice
+            const cashValue = portfolio.cash || 0;
+            if (cashValue > 0) {
+                data.push({ label: 'CASH', value: cashValue, color: '#9ca3af' });
+            }
+
+            // Positions slices
+            Object.entries(portfolio.positions).forEach(([symbol, pos]) => {
+                const v = pos.market_value || 0;
+                if (v > 0) {
+                    data.push({ label: symbol, value: v, color: colors[colorIdx % colors.length] });
+                    colorIdx++;
+                }
+            });
+
+            const cx = 150, cy = 150, r = 100;
+            let startAngle = -Math.PI / 2; // start at top
+
+            const sum = data.reduce((s, d) => s + d.value, 0);
+            data.forEach(d => {
+                const angle = (d.value / sum) * Math.PI * 2;
+                const endAngle = startAngle + angle;
+                const x1 = cx + r * Math.cos(startAngle);
+                const y1 = cy + r * Math.sin(startAngle);
+                const x2 = cx + r * Math.cos(endAngle);
+                const y2 = cy + r * Math.sin(endAngle);
+                const largeArc = angle > Math.PI ? 1 : 0;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const dPath = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                path.setAttribute('d', dPath);
+                path.setAttribute('fill', d.color);
+                path.setAttribute('opacity', '0.9');
+                svg.appendChild(path);
+
+                // Legend
+                const pct = ((d.value / sum) * 100).toFixed(1);
+                const li = document.createElement('div');
+                li.className = 'legend-item';
+                li.innerHTML = `<span class="legend-color" style="background:${d.color}"></span>${d.label} - ${pct}%`;
+                legend.appendChild(li);
+
+                startAngle = endAngle;
+            });
+        }
+
+        // Trades API
+        async function fetchTrades(limit = 100) {
+            try {
+                const resp = await fetch(`${API_BASE}/api/trades/recent?limit=${limit}`, { signal: AbortSignal.timeout(8000) });
+                if (!resp.ok) return [];
+                const data = await resp.json();
+                return data.ok ? (data.trades || []) : [];
+            } catch (e) {
+                console.error('fetchTrades error', e);
+                return [];
+            }
+        }
+
+        function renderTrades(trades) {
+            const tbody = document.getElementById('tradesBody');
+            document.getElementById('tradesCount').textContent = `${trades.length} trades`;
+            tbody.innerHTML = trades.map(t => {
+                const side = (t.side || '').toUpperCase();
+                const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
+                const ts = t.timestamp ? new Date(t.timestamp).toLocaleString() : '';
+                const price = (t.price != null) ? `$${Number(t.price).toFixed(2)}` : '-';
+                return `
+                    <tr>
+                        <td>${ts}</td>
+                        <td class="symbol-cell">${t.symbol || '-'}</td>
+                        <td class="${sideClass}">${side || '-'}</td>
+                        <td>${t.quantity ?? '-'}</td>
+                        <td>${price}</td>
+                        <td><span class="status-pill">${t.status || '-'}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function switchTab(tab) {
+            const o = document.getElementById('dashboardPage');
+            const t = document.getElementById('tradesPage');
+            const btnO = document.getElementById('tabOverview');
+            const btnT = document.getElementById('tabTrades');
+            if (tab === 'trades') {
+                o.style.display = 'none';
+                t.style.display = 'block';
+                btnO.classList.remove('active');
+                btnT.classList.add('active');
+                // load trades
+                fetchTrades(200).then(renderTrades);
+            } else {
+                o.style.display = 'block';
+                t.style.display = 'none';
+                btnT.classList.remove('active');
+                btnO.classList.add('active');
+            }
+        }
+
         // Main refresh function
         async function refreshData(showLoading = false) {
             const loadingState = document.getElementById('loadingState');
@@ -1424,6 +1619,7 @@
                 // Update UI
                 renderSummaryCards(portfolio);
                 renderPositions(portfolio);
+                drawPie(portfolio);
                 drawChart(history);
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 

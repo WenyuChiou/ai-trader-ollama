@@ -492,6 +492,68 @@ async def demo_conversation_tick():
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
+
+@app.get("/api/trades/recent")
+async def get_recent_trades(limit: int = 100):
+    """Return recent trade records from logs (filled and general)."""
+    try:
+        import json
+        from datetime import datetime
+
+        logs_dir = Path("data/logs")
+        trades_file = logs_dir / "trades.jsonl"
+        filled_file = logs_dir / "filled_orders.jsonl"
+
+        def read_jsonl(path: Path) -> list[dict]:
+            if not path.exists():
+                return []
+            items: list[dict] = []
+            with path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        items.append(json.loads(line.strip()))
+                    except Exception:
+                        continue
+            return items
+
+        trades = read_jsonl(trades_file)
+        filled = read_jsonl(filled_file)
+
+        # normalize and merge
+        records: list[dict] = []
+        def norm(x: dict, source: str) -> dict:
+            return {
+                "timestamp": x.get("timestamp") or x.get("time") or x.get("date"),
+                "symbol": x.get("symbol") or x.get("ticker"),
+                "side": x.get("side") or x.get("action"),
+                "quantity": x.get("quantity") or x.get("qty"),
+                "price": x.get("price") or x.get("fill_price") or x.get("avg_price"),
+                "status": x.get("status") or ("FILLED" if source == "filled" else x.get("state")),
+                "order_id": x.get("order_id") or x.get("id"),
+                "source": source,
+                "details": x,
+            }
+
+        for x in trades[-limit:]:
+            records.append(norm(x, "trades"))
+        for x in filled[-limit:]:
+            records.append(norm(x, "filled"))
+
+        # sort by timestamp desc
+        def ts_key(r: dict):
+            t = r.get("timestamp") or ""
+            try:
+                return datetime.fromisoformat(t.replace("Z", "+00:00"))
+            except Exception:
+                return datetime.min
+        records.sort(key=ts_key, reverse=True)
+
+        return {"ok": True, "trades": records[:limit], "count": len(records[:limit])}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+
 @app.get("/api/system/info")
 async def get_system_info():
     """Get system information including LLM model and configuration"""

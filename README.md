@@ -22,21 +22,21 @@ AI-Trader Ollama is an autonomous trading system that uses multiple specialized 
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Step 1: Prerequisites
 
 ```bash
 # Install Python dependencies
 cd backend
 pip install -r requirements.txt
 
-# Start Ollama service
+# Start Ollama service (keep this running)
 ollama serve
 
-# Pull LLM model
+# Pull LLM model (in another terminal)
 ollama pull llama3.1
 ```
 
-### Initialize Data (First Time)
+### Step 2: Initialize Data (First Time Only)
 
 ```bash
 cd backend
@@ -48,18 +48,73 @@ This initializes:
 - Memory directory structure
 - Trade log files
 
-### First Run
+**Note**: Run `python scripts/init_data.py --force` to reset all data.
+
+### Step 3: Start Backend API
+
+**Option A: Quick Start Script (Windows)**
+
+```powershell
+cd backend\scripts
+.\start_api_background.ps1
+```
+
+This opens API in a separate window. Close the window to stop the API.
+
+**Option B: Manual Start**
 
 ```bash
 cd backend
+uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
+```
 
-# Edit config/config.json to set your universe and dates
-# Then run:
+**Verify API is Running:**
+
+Open in browser or run:
+```bash
+curl http://localhost:8000/
+```
+
+You should see JSON response like:
+```json
+{
+  "message": "AI Trader API",
+  "version": "1.0.0"
+}
+```
+
+**Keep API Running**: See [`backend/scripts/keep_api_running.md`](backend/scripts/keep_api_running.md) for methods to keep API running in background.
+
+### Step 4: Start Frontend (Monitoring Dashboard)
+
+**In a new terminal:**
+
+```bash
+cd frontend
+npm install  # First time only
+npm run dev
+```
+
+**Then open:** `http://localhost:5173` in your browser
+
+**Check Connection Status:**
+- ✅ Green: Connected to API
+- ❌ Red: API not running or connection error
+- The dashboard shows "Connection Error" if API is unavailable
+
+### Step 5: Run Trading Cycle (Optional)
+
+After initialization, you can run a trading cycle:
+
+```bash
+cd backend
 python scripts/run_daily_trading.py
 ```
 
-**Detailed Setup**: See [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)  
-**Data Initialization**: See [`docs/DATA_INITIALIZATION.md`](docs/DATA_INITIALIZATION.md)
+**See**: 
+- [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) - Detailed setup guide
+- [`docs/DATA_INITIALIZATION.md`](docs/DATA_INITIALIZATION.md) - Data initialization details
+- [`docs/QUICK_MONITORING.md`](docs/QUICK_MONITORING.md) - Monitoring setup guide
 
 ---
 
@@ -198,40 +253,34 @@ This generates:
 
 ### Real-Time Monitoring Dashboard
 
-The system includes an hourly real-time P&L and NAV update system with a web dashboard:
+**Prerequisites:**
+- ✅ Backend API must be running (Step 3 above)
+- ✅ Frontend server running (Step 4 above)
+- ✅ Portfolio data initialized (Step 2 above)
 
-```bash
-# Terminal 1: Start Backend API
-cd backend
-uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
-
-# Terminal 2: Start Frontend (in another terminal)
-cd frontend
-npm install  # if not installed
-npm run dev
-```
-
-Then open `http://localhost:5173` in your browser.
-
-**Simple Monitor Features**:
+**Dashboard Features**:
 - 📈 Real-time portfolio value tracking (auto-refresh every 30 seconds)
 - 💰 Total P&L with percentage
 - 💵 Cash and equity value
 - 📊 Position details with unrealized P&L
 - 🔄 Auto-refresh toggle
+- ✅ Connection status indicator
 
-**Full Dashboard** (optional):
-- 📈 Asset evolution chart (last 30 days)
-- 📊 Enhanced position cards
-- 🔄 Recent trading actions
+**Troubleshooting Connection:**
 
-**Quick Start**: See [`docs/QUICK_MONITORING.md`](docs/QUICK_MONITORING.md) for step-by-step guide
+If you see "Connection Error":
+1. ✅ Check backend API is running: `curl http://localhost:8000/`
+2. ✅ Verify port 8000 is not blocked by firewall
+3. ✅ Check browser console for detailed error messages
+4. ✅ Ensure API address matches: Default is `http://localhost:8000`
 
-**Setup Hourly Updates**:
+**Setup Hourly Updates** (Optional):
 ```powershell
 cd backend\scripts
 .\schedule_hourly_update.ps1
 ```
+
+This updates real-time prices every hour automatically.
 
 **See**: [`docs/REALTIME_MONITORING.md`](docs/REALTIME_MONITORING.md) for detailed setup
 
@@ -288,12 +337,41 @@ python tests/test_05_full_trading_loop.py
 
 ## 🔧 Troubleshooting
 
+### Common Issues
+
 | Problem | Solution |
 |---------|----------|
 | `ModuleNotFoundError: src` | Run from `backend/` directory |
 | Ollama connection error | Run `ollama serve` |
 | VIX level = nan | System auto-falls back to VIXY |
 | Config path error | Ensure `backend/config/agents.yaml` exists |
+| **Frontend: "Connection Error"** | Check backend API is running on port 8000 |
+| **API won't start** | Check port 8000 is available: `netstat -ano \| findstr :8000` (Windows) |
+| **No portfolio data** | Run `python scripts/init_data.py` first |
+
+### Verify System Status
+
+**Check Backend API:**
+```bash
+# Test API endpoint
+curl http://localhost:8000/api/portfolio/real-time
+
+# Should return JSON with portfolio data or error message
+```
+
+**Check Frontend Connection:**
+- Open browser console (F12)
+- Look for network errors or CORS issues
+- Verify API_BASE in frontend matches backend address
+
+**Check Data Initialization:**
+```bash
+# Verify portfolio state exists
+ls backend/data/logs/portfolio_state.json
+
+# If missing, run:
+python backend/scripts/init_data.py
+```
 
 **More Help**: See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 

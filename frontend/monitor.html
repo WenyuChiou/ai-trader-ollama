@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Trader Portfolio Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #1f2937;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #10b981;
+            box-shadow: 0 0 4px #10b981;
+        }
+
+        .status-dot.disconnected {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .auto-refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .refresh-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover:not(:disabled) {
+            background: #5568d3;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .last-update {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-label {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .card-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .card-percent {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .card.pnl.positive .card-value,
+        .card.pnl.positive .card-percent {
+            color: #10b981;
+        }
+
+        .card.pnl.negative .card-value,
+        .card.pnl.negative .card-percent {
+            color: #ef4444;
+        }
+
+        /* Chart Section */
+        .chart-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .chart-header h2 {
+            margin: 0;
+            font-size: 20px;
+            color: #1f2937;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            position: relative;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Positions Table */
+        .positions-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .section-header h2 {
+            margin: 0;
+            font-size: 20px;
+            color: #1f2937;
+        }
+
+        .position-count {
+            font-size: 14px;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f9fafb;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        th:last-child {
+            text-align: right;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+
+        td:last-child {
+            text-align: right;
+        }
+
+        .symbol-cell {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .positive {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .profit-row {
+            border-left: 3px solid #10b981;
+        }
+
+        .loss-row {
+            border-left: 3px solid #ef4444;
+        }
+
+        .total-row {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+
+        .total-row td {
+            padding: 16px;
+            border-top: 2px solid #e5e7eb;
+            font-size: 15px;
+        }
+
+        /* Loading & Error States */
+        .loading, .error, .no-data {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #ef4444;
+        }
+
+        .error button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .error button:hover {
+            background: #5568d3;
+        }
+
+        /* Footer */
+        .footer {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .footer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .api-url {
+            font-family: monospace;
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #6b7280;
+            margin: 8px 0;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <h1>📊 AI-Trader Portfolio Monitor</h1>
+                <div class="connection-status">
+                    <span class="status-dot disconnected" id="statusDot"></span>
+                    <span id="statusText">Checking...</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <label class="auto-refresh-toggle">
+                    <input type="checkbox" id="autoRefresh" checked>
+                    <span>Auto Refresh (30s)</span>
+                </label>
+                <button class="refresh-btn" id="refreshBtn" onclick="refreshData(true)">
+                    🔄 Refresh
+                </button>
+                <span class="last-update" id="lastUpdate"></span>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div class="loading" id="loadingState" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading portfolio data...</p>
+        </div>
+
+        <!-- Error State -->
+        <div class="error" id="errorState" style="display: none;">
+            <h2>❌ Connection Error</h2>
+            <p id="errorMessage"></p>
+            <button onclick="refreshData(true)">Retry Connection</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent" style="display: none;">
+            <!-- Summary Cards -->
+            <div class="summary-grid" id="summaryCards"></div>
+
+            <!-- Chart Section -->
+            <div class="chart-section" id="chartSection" style="display: none;">
+                <div class="chart-header">
+                    <h2>Total Asset Value Over Time</h2>
+                </div>
+                <div class="chart-container">
+                    <svg class="chart-svg" id="chartSvg" viewBox="0 0 800 400" preserveAspectRatio="none">
+                        <!-- Chart will be drawn here -->
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Positions Section -->
+            <div class="positions-section" id="positionsSection" style="display: none;">
+                <div class="section-header">
+                    <h2>Current Holdings</h2>
+                    <span class="position-count" id="positionCount">0 holdings</span>
+                </div>
+                <div class="table-container">
+                    <table id="positionsTable">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Shares</th>
+                                <th>Avg Cost</th>
+                                <th>Current Price</th>
+                                <th>Market Value</th>
+                                <th>Unrealized P&L</th>
+                                <th>P&L %</th>
+                                <th>Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positionsBody"></tbody>
+                        <tfoot id="positionsFooter"></tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- No Positions State -->
+            <div class="positions-section" id="noPositionsState" style="display: none;">
+                <div class="empty-state">
+                    <div class="empty-icon">📊</div>
+                    <h3>No Positions</h3>
+                    <p>You don't have any open positions yet.</p>
+                    <p class="hint">Run a trading cycle to generate positions</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-info">
+                <div>
+                    <span style="font-weight: 600;">API:</span>
+                    <span class="api-url" id="apiUrl">http://localhost:8000</span>
+                </div>
+                <div id="dataTimestamp"></div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8000';
+        const REFRESH_INTERVAL = 30000; // 30 seconds
+        let refreshTimer = null;
+        let equityHistory = [];
+
+        // Format number to currency
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        // Format number
+        function formatNumber(value, decimals = 2) {
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            }).format(value);
+        }
+
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (connected) {
+                dot.className = 'status-dot connected';
+                text.textContent = 'Connected';
+            } else {
+                dot.className = 'status-dot disconnected';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        // Fetch portfolio data
+        async function fetchPortfolio() {
+            try {
+                const response = await fetch(`${API_BASE}/api/portfolio/real-time`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    signal: AbortSignal.timeout(10000),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.ok || data.error) {
+                    throw new Error(data.error || 'Failed to load portfolio');
+                }
+
+                return data;
+            } catch (err) {
+                if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+                    throw new Error('Request timeout, please check your network connection');
+                }
+                throw err;
+            }
+        }
+
+        // Fetch equity history
+        async function fetchEquityHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/api/portfolio/equity-history?limit=60`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    signal: AbortSignal.timeout(10000),
+                });
+
+                if (!response.ok) {
+                    return [];
+                }
+
+                const data = await response.json();
+                
+                if (!data.ok || data.error) {
+                    return [];
+                }
+
+                return (data.records || []).map(item => ({
+                    date: item.date || item.timestamp?.split('T')[0] || '',
+                    value: item.total_value || 0,
+                    pnl: item.total_pnl || 0,
+                }));
+            } catch (err) {
+                console.error('Failed to fetch equity history:', err);
+                return [];
+            }
+        }
+
+        // Render summary cards
+        function renderSummaryCards(portfolio) {
+            const container = document.getElementById('summaryCards');
+            const initialValue = portfolio.initial_value || 10000;
+            const totalValue = portfolio.total_value || 0;
+            const cash = portfolio.cash || 0;
+            const equityValue = portfolio.equity_value || 0;
+            const totalPnL = portfolio.total_pnl || 0;
+            const totalPnLPct = portfolio.total_pnl_pct || 0;
+            const positions = Object.keys(portfolio.positions || {}).length;
+
+            const cashPercent = totalValue > 0 ? ((cash / totalValue) * 100).toFixed(1) : 0;
+
+            container.innerHTML = `
+                <div class="card">
+                    <div class="card-label">Total Portfolio Value</div>
+                    <div class="card-value">${formatCurrency(totalValue)}</div>
+                    <div class="card-subtitle">Initial: ${formatCurrency(initialValue)}</div>
+                </div>
+                <div class="card pnl ${totalPnL >= 0 ? 'positive' : 'negative'}">
+                    <div class="card-label">Total P&L</div>
+                    <div class="card-value">${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}</div>
+                    <div class="card-percent">${totalPnLPct >= 0 ? '+' : ''}${formatNumber(totalPnLPct)}%</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Available Cash</div>
+                    <div class="card-value">${formatCurrency(cash)}</div>
+                    <div class="card-subtitle">${cashPercent}% of portfolio</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Equity Value</div>
+                    <div class="card-value">${formatCurrency(equityValue)}</div>
+                    <div class="card-subtitle">${positions} position${positions !== 1 ? 's' : ''}</div>
+                </div>
+            `;
+        }
+
+        // Render positions table
+        function renderPositions(portfolio) {
+            const positions = portfolio.positions || {};
+            const positionsPnL = portfolio.positions_pnl || {};
+            const totalValue = portfolio.total_value || 0;
+            
+            const positionsArray = Object.entries(positions);
+            
+            if (positionsArray.length === 0) {
+                document.getElementById('positionsSection').style.display = 'none';
+                document.getElementById('noPositionsState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('positionsSection').style.display = 'block';
+            document.getElementById('noPositionsState').style.display = 'none';
+            document.getElementById('positionCount').textContent = `${positionsArray.length} holdings`;
+
+            const tbody = document.getElementById('positionsBody');
+            const tfoot = document.getElementById('positionsFooter');
+
+            let totalPositionsValue = 0;
+            let totalUnrealizedPnL = 0;
+
+            tbody.innerHTML = positionsArray.map(([symbol, pos]) => {
+                const pnl = positionsPnL[symbol] || { unrealized_pnl: 0, unrealized_pnl_pct: 0 };
+                const isProfit = pnl.unrealized_pnl >= 0;
+                const weight = totalValue > 0 ? ((pos.market_value / totalValue) * 100).toFixed(2) : '0.00';
+                
+                totalPositionsValue += pos.market_value || 0;
+                totalUnrealizedPnL += pnl.unrealized_pnl || 0;
+
+                return `
+                    <tr class="${isProfit ? 'profit-row' : 'loss-row'}">
+                        <td class="symbol-cell">${symbol}</td>
+                        <td>${pos.quantity}</td>
+                        <td>${formatCurrency(pos.avg_cost)}</td>
+                        <td>${formatCurrency(pos.current_price)}</td>
+                        <td>${formatCurrency(pos.market_value)}</td>
+                        <td class="${isProfit ? 'positive' : 'negative'}">
+                            ${isProfit ? '+' : ''}${formatCurrency(pnl.unrealized_pnl)}
+                        </td>
+                        <td class="${isProfit ? 'positive' : 'negative'}">
+                            ${isProfit ? '+' : ''}${formatNumber(pnl.unrealized_pnl_pct)}%
+                        </td>
+                        <td>${weight}%</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totalWeight = totalValue > 0 ? ((totalPositionsValue / totalValue) * 100).toFixed(2) : '0.00';
+            
+            tfoot.innerHTML = `
+                <tr class="total-row">
+                    <td colspan="4"><strong>Total</strong></td>
+                    <td><strong>${formatCurrency(totalPositionsValue)}</strong></td>
+                    <td class="${totalUnrealizedPnL >= 0 ? 'positive' : 'negative'}">
+                        <strong>${totalUnrealizedPnL >= 0 ? '+' : ''}${formatCurrency(totalUnrealizedPnL)}</strong>
+                    </td>
+                    <td>-</td>
+                    <td>${totalWeight}%</td>
+                </tr>
+            `;
+        }
+
+        // Draw chart
+        function drawChart(history) {
+            if (history.length === 0) {
+                document.getElementById('chartSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('chartSection').style.display = 'block';
+            
+            const svg = document.getElementById('chartSvg');
+            const width = 800;
+            const height = 400;
+            const padding = { top: 20, right: 40, bottom: 40, left: 60 };
+
+            svg.innerHTML = '';
+
+            // Sort by date
+            const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (sorted.length < 2) {
+                svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#6b7280">Not enough data for chart</text>';
+                return;
+            }
+
+            const values = sorted.map(d => d.value);
+            const minValue = Math.min(...values);
+            const maxValue = Math.max(...values);
+            const valueRange = maxValue - minValue || 1;
+
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+
+            // Draw area
+            let pathData = `M ${padding.left} ${padding.top + chartHeight}`;
+            
+            sorted.forEach((point, i) => {
+                const x = padding.left + (i / (sorted.length - 1)) * chartWidth;
+                const y = padding.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+                
+                if (i === 0) {
+                    pathData += ` L ${x} ${y}`;
+                } else {
+                    pathData += ` L ${x} ${y}`;
+                }
+            });
+            
+            pathData += ` L ${padding.left + chartWidth} ${padding.top + chartHeight} Z`;
+
+            // Gradient definition
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+            gradient.setAttribute('id', 'chartGradient');
+            gradient.setAttribute('x1', '0');
+            gradient.setAttribute('y1', '0');
+            gradient.setAttribute('x2', '0');
+            gradient.setAttribute('y2', '1');
+            
+            const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+            stop1.setAttribute('offset', '5%');
+            stop1.setAttribute('stop-color', '#667eea');
+            stop1.setAttribute('stop-opacity', '0.3');
+            
+            const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+            stop2.setAttribute('offset', '95%');
+            stop2.setAttribute('stop-color', '#667eea');
+            stop2.setAttribute('stop-opacity', '0');
+            
+            gradient.appendChild(stop1);
+            gradient.appendChild(stop2);
+            defs.appendChild(gradient);
+            svg.appendChild(defs);
+
+            // Draw area
+            const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            area.setAttribute('d', pathData);
+            area.setAttribute('fill', 'url(#chartGradient)');
+            svg.appendChild(area);
+
+            // Draw line
+            let lineData = '';
+            sorted.forEach((point, i) => {
+                const x = padding.left + (i / (sorted.length - 1)) * chartWidth;
+                const y = padding.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+                
+                if (i === 0) {
+                    lineData = `M ${x} ${y}`;
+                } else {
+                    lineData += ` L ${x} ${y}`;
+                }
+            });
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            line.setAttribute('d', lineData);
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke', '#667eea');
+            line.setAttribute('stroke-width', '2');
+            svg.appendChild(line);
+
+            // Draw axis labels
+            const label1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label1.setAttribute('x', padding.left);
+            label1.setAttribute('y', padding.top + chartHeight + 25);
+            label1.setAttribute('fill', '#6b7280');
+            label1.setAttribute('font-size', '12');
+            label1.textContent = new Date(sorted[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            svg.appendChild(label1);
+
+            const label2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label2.setAttribute('x', padding.left + chartWidth);
+            label2.setAttribute('y', padding.top + chartHeight + 25);
+            label2.setAttribute('fill', '#6b7280');
+            label2.setAttribute('font-size', '12');
+            label2.setAttribute('text-anchor', 'end');
+            label2.textContent = new Date(sorted[sorted.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            svg.appendChild(label2);
+
+            // Value labels
+            const minLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            minLabel.setAttribute('x', padding.left - 10);
+            minLabel.setAttribute('y', padding.top + chartHeight + 5);
+            minLabel.setAttribute('fill', '#6b7280');
+            minLabel.setAttribute('font-size', '12');
+            minLabel.setAttribute('text-anchor', 'end');
+            minLabel.textContent = formatCurrency(minValue);
+            svg.appendChild(minLabel);
+
+            const maxLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            maxLabel.setAttribute('x', padding.left - 10);
+            maxLabel.setAttribute('y', padding.top + 15);
+            maxLabel.setAttribute('fill', '#6b7280');
+            maxLabel.setAttribute('font-size', '12');
+            maxLabel.setAttribute('text-anchor', 'end');
+            maxLabel.textContent = formatCurrency(maxValue);
+            svg.appendChild(maxLabel);
+        }
+
+        // Main refresh function
+        async function refreshData(showLoading = false) {
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const mainContent = document.getElementById('mainContent');
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            if (showLoading) {
+                loadingState.style.display = 'block';
+                errorState.style.display = 'none';
+                mainContent.style.display = 'none';
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = '🔄 Refreshing...';
+            }
+
+            try {
+                // Fetch portfolio and history in parallel
+                const [portfolio, history] = await Promise.all([
+                    fetchPortfolio(),
+                    fetchEquityHistory()
+                ]);
+
+                // Update UI
+                renderSummaryCards(portfolio);
+                renderPositions(portfolio);
+                drawChart(history);
+                
+                // Update timestamp
+                const timestamp = portfolio.timestamp || new Date().toISOString();
+                document.getElementById('dataTimestamp').textContent = 
+                    `Data: ${new Date(timestamp).toLocaleString()}`;
+                document.getElementById('lastUpdate').textContent = 
+                    `Last: ${new Date().toLocaleTimeString()}`;
+
+                // Update connection status
+                updateConnectionStatus(true);
+
+                // Show main content
+                loadingState.style.display = 'none';
+                errorState.style.display = 'none';
+                mainContent.style.display = 'block';
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 Refresh';
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                
+                updateConnectionStatus(false);
+                
+                loadingState.style.display = 'none';
+                mainContent.style.display = 'none';
+                errorState.style.display = 'block';
+                document.getElementById('errorMessage').textContent = error.message;
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 Refresh';
+            }
+        }
+
+        // Setup auto-refresh
+        function setupAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            
+            checkbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+            });
+
+            if (checkbox.checked) {
+                startAutoRefresh();
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            refreshTimer = setInterval(() => {
+                refreshData(false);
+            }, REFRESH_INTERVAL);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupAutoRefresh();
+            refreshData(true);
+        });
+
+        // Manual refresh button
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            refreshData(true);
+        });
+    </script>
+</body>
+</html>
+

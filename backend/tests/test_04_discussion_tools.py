@@ -22,7 +22,7 @@ def main():
 
     convo = run_analyst_discussion(
         market_view,
-        risk_view=None,
+        _unused=None,  # 第二个参数是 _unused（用于向后兼容），不是 risk_view
         rounds=2,
         auto_tools=True,
         tool_budget=2,

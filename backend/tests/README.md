@@ -19,8 +19,9 @@
 | 测试文件 | 说明 |
 |---------|------|
 | `test_05_full_trading_loop.py` | **完整交易循环测试（多股票持仓）** |
-| `test_10_tools_integration.py` | 工具集成测试（Crypto、Fear & Greed、Jin10、Treasury Bonds） |
+| `test_10_tools_integration.py` | 工具集成测试（Crypto、Fear & Greed、Jin10、Treasury Bonds、Market Batch） |
 | `test_vix_fetch.py` | VIX 数据获取测试 |
+| `test_detailed_cycle.py` | 详细交易循环测试（展示每轮详细过程） |
 
 ### 🔍 可选测试
 

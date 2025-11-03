@@ -28,6 +28,17 @@ user: |
   Tool Budget: {tool_budget}
   Preferred Domains: {preferred_domains}
   
+  {#if historical_context}
+  Historical Context (Recent Trading Decisions):
+  {historical_context}
+  
+  Use this historical context to:
+  - Understand previous market stances and their outcomes
+  - Avoid repeating past mistakes
+  - Learn from what worked well in the past
+  - Maintain consistency with recent strategy if it's working
+  {/if}
+  
   If you need more information, use the available tools. Output your analysis in the following JSON format:
   
   {{

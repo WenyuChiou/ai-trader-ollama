@@ -28,7 +28,7 @@ def test_minimal_loop():
     test_universe = ["NVDA", "MSFT", "AAPL"]
     
     print(f"\n[1] Initializing Portfolio and Trade Logger...")
-    portfolio = Portfolio(initial_cash=10000.0)
+    portfolio = Portfolio(cash=10000.0)  # 使用 cash 参数，不是 initial_cash
     trade_logger = TradeLogger()
     print(f"    [OK] Portfolio: cash=${portfolio.cash:.2f}")
     print(f"    [OK] Trade Logger initialized")

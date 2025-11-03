@@ -11,6 +11,9 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 import yfinance as yf
 
+# Import OrderManager for pending order strategy
+from src.data.order_manager import OrderManager
+
 
 def get_current_or_open_price(symbol: str, target_date: str) -> Optional[float]:
     """

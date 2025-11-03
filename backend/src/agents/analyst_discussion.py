@@ -155,6 +155,7 @@ def run_analyst_discussion(
     auto_tools: bool = True,
     tool_budget: int = 3,
     preferred_domains: List[str] | None = None,
+    historical_memories: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """
     多輪討論（包含：提出需要 → 呼叫 ToolBox → 補充資訊 → 下一輪再用）的主流程。
@@ -187,6 +188,29 @@ def run_analyst_discussion(
         "tool_budget": max(tool_budget, 0),
         "preferred_domains": preferred_domains,
     }
+    
+    # 注入歷史記憶（短期記憶：最近5天的決策）
+    if historical_memories:
+        vars_ctx["historical_memories"] = historical_memories
+        # 格式化歷史記憶為文字摘要（用於 prompt）
+        memory_summary = []
+        for mem in historical_memories[:5]:  # 最多5天
+            date_str = mem.get("date", "N/A")
+            stance = mem.get("stance", "neutral")
+            recommended = mem.get("recommended_stocks", [])
+            decisions = mem.get("decisions", {})
+            portfolio_val = mem.get("portfolio_snapshot", {}).get("total_value", 0)
+            
+            summary_line = (
+                f"{date_str}: Stance={stance}, "
+                f"Recommended={recommended[:3]}, "
+                f"Action={decisions.get('action', 'N/A')}, "
+                f"Portfolio=${portfolio_val:.2f}"
+            )
+            memory_summary.append(summary_line)
+        
+        if memory_summary:
+            vars_ctx["historical_context"] = "\n".join(memory_summary)
 
     for r in range(1, rounds + 1):
         # 每一輪把已有的 tool 摘要串到 prompt 的 user 補充文字

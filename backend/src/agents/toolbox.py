@@ -39,8 +39,9 @@ class ToolBox:
         self.register(Tool("get_crypto_price", self._crypto_price_adapter, "Get current price and indicators for a single cryptocurrency"))
         
         # jin10 economic data
-        self.register(Tool("fetch_jin10_news", fetch_jin10_news, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
-        self.register(Tool("fetch_jin10_economic_data", fetch_jin10_economic_data, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
+        # fetch_jin10_news 和 fetch_jin10_economic_data 是 LangChain StructuredTool，需要适配器
+        self.register(Tool("fetch_jin10_news", self._jin10_news_adapter, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
+        self.register(Tool("fetch_jin10_economic_data", self._jin10_economic_data_adapter, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))
@@ -220,6 +221,38 @@ class ToolBox:
             return get_crypto_price.invoke(kwargs)
         # 否则直接调用
         return get_crypto_price(**kwargs)
+    
+    def _jin10_news_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_jin10_news 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 设置默认参数（如果 kwargs 为空）
+        if not kwargs:
+            kwargs = {}
+        kwargs.setdefault("max_items", 20)
+        kwargs.setdefault("category", "all")
+        
+        # 如果 fetch_jin10_news 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_jin10_news, 'invoke'):
+            return fetch_jin10_news.invoke(kwargs)
+        # 否则直接调用
+        return fetch_jin10_news(**kwargs)
+    
+    def _jin10_economic_data_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_jin10_economic_data 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 设置默认参数（如果 kwargs 为空）
+        if not kwargs:
+            kwargs = {}
+        kwargs.setdefault("max_items", 20)
+        kwargs.setdefault("data_type", "all")
+        
+        # 如果 fetch_jin10_economic_data 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_jin10_economic_data, 'invoke'):
+            return fetch_jin10_economic_data.invoke(kwargs)
+        # 否则直接调用
+        return fetch_jin10_economic_data(**kwargs)
 
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """

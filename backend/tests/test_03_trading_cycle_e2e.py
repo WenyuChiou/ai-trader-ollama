@@ -1,4 +1,4 @@
-# tests/test_04_discussion_tools.py
+# tests/test_03_trading_cycle_e2e.py
 from __future__ import annotations
 import sys
 from pathlib import Path
@@ -24,7 +24,7 @@ def main():
 
     convo = run_analyst_discussion(
         market_view,
-        risk_view=None,
+        _unused=None,  # 第二个参数是 _unused（用于向后兼容），不是 risk_view
         rounds=2,
         auto_tools=True,
         tool_budget=2,   # 至少允許觸發一兩個工具

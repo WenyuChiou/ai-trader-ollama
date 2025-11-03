@@ -12,13 +12,14 @@ SCRIPTS = [
     "test_00_config.py",              # Config validation
     "test_01_market_batch_vix.py",    # Market data fetching
     "test_02_discussion_rounds.py",   # Discussion rounds
-    "test_03_trading_cycle_e2e.py",  # End-to-end trading cycle
-    "test_04_discussion_tools.py",   # Discussion tools usage
-    "test_05_full_trading_loop.py",  # Full trading loop with multi-stock portfolio
-    "test_06_trading_loop.py",       # Minimal trading loop
-    "test_07_all_agents.py",         # All agents validation
-    "test_08_trading_cycle_agents.py",  # Trading cycle agents
-    "test_09_tools_consolidated.py", # Consolidated tool tests
+    "test_03_trading_cycle_e2e.py",    # End-to-end trading cycle
+    "test_04_discussion_tools.py",    # Discussion tools usage
+    "test_05_full_trading_loop.py",   # Full trading loop with multi-stock portfolio
+    "test_06_trading_loop.py",        # Minimal trading loop
+    "test_07_all_agents.py",          # All agents validation
+    "test_08_trading_cycle_agents.py", # Trading cycle agents
+    "test_10_tools_integration.py",   # Tools integration (Crypto, Fear & Greed, Jin10, Bonds)
+    "test_vix_fetch.py",              # VIX data fetching
 ]
 
 def run(test_file):

@@ -1,6 +1,39 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+.venv/
+.venv*/
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Logs and runtime data
+backend/data/logs/*.jsonl
+backend/data/logs/*.json
+backend/data/logs/*.log
+backend/data/logs/*backup*/
+backend/data/logs/memory_backup_*/
+backend/data/logs/weekly_simulation*.json
+backend/data/logs/monitoring*.jsonl
+backend/data/logs/pending_orders*.jsonl
+backend/data/logs/real_time_snapshots*.jsonl
+backend/data/logs/trades*.jsonl
+backend/data/logs/filled_orders*.jsonl
+backend/data/logs/equity_history*.jsonl
+
+# Build
+frontend/dist/
+
+# Python
+__pycache__/
+*.py[cod]
 *$py.class
 *.so
 .Python

@@ -188,8 +188,6 @@ python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
 
 **Keep this terminal window open** - the API server is running here.
 
-**Keep this terminal window open** - the API server is running here.
-
 ---
 
 ### 4️⃣ Verify Backend API

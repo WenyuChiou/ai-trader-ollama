@@ -1,6 +1,11 @@
 # Comprehensive Backend API Test Script
 # Usage: cd backend && powershell -ExecutionPolicy Bypass -File test_backend.ps1
 
+# Fix encoding issues for Chinese characters
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 | Out-Null
+
 Write-Host "=== Backend API Testing ===" -ForegroundColor Cyan
 Write-Host ""
 

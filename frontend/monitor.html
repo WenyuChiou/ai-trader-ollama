@@ -430,6 +430,142 @@
             margin: 4px 4px 4px 0;
         }
 
+        /* Modal/Dialog Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #1f2937;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f3f4f6;
+        }
+
+        .conversation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .conversation-item {
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .conversation-date {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .conversation-agent {
+            font-size: 12px;
+            color: #667eea;
+            background: #e0e7ff;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .conversation-content {
+            color: #1f2937;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .conversation-meta {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .empty-conversations {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .view-conversations-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 16px;
+            transition: background 0.2s;
+        }
+
+        .view-conversations-btn:hover {
+            background: #5568d3;
+        }
+
         /* Footer */
         .footer {
             background: white;
@@ -604,6 +740,25 @@
                 </div>
                 <div class="status-grid" id="statusGrid"></div>
                 <div class="endpoints-list" id="endpointsList"></div>
+                <button class="view-conversations-btn" onclick="openConversationsModal()">
+                    💬 View Agent Conversations
+                </button>
+            </div>
+        </div>
+
+        <!-- Conversations Modal -->
+        <div class="modal-overlay" id="conversationsModal" onclick="closeModalOnOverlay(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2>🤖 AI Agent Conversations</h2>
+                    <button class="modal-close" onclick="closeConversationsModal()">×</button>
+                </div>
+                <div id="conversationsContent">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading conversations...</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -793,8 +948,54 @@
             }
         }
 
+        // Fetch system info (LLM model, config)
+        async function fetchSystemInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/system/info`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    signal: AbortSignal.timeout(5000),
+                });
+
+                if (!response.ok) {
+                    return null;
+                }
+
+                const data = await response.json();
+                return data.ok ? data : null;
+            } catch (err) {
+                console.error('Failed to fetch system info:', err);
+                return null;
+            }
+        }
+
+        // Fetch agent conversations
+        async function fetchConversations(limit = 50) {
+            try {
+                const response = await fetch(`${API_BASE}/api/agents/conversations?limit=${limit}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    signal: AbortSignal.timeout(10000),
+                });
+
+                if (!response.ok) {
+                    return [];
+                }
+
+                const data = await response.json();
+                return data.ok ? (data.conversations || []) : [];
+            } catch (err) {
+                console.error('Failed to fetch conversations:', err);
+                return [];
+            }
+        }
+
         // Render backend status
-        function renderBackendStatus(status, agentStatus, toolsList) {
+        function renderBackendStatus(status, agentStatus, toolsList, systemInfo) {
             if (!status) {
                 document.getElementById('statusSection').style.display = 'none';
                 return;
@@ -807,11 +1008,26 @@
             const endpoints = status.endpoints || {};
             const endpointCount = Object.keys(endpoints).length;
 
+            // Get LLM model info
+            let llmModel = 'Unknown';
+            if (systemInfo && systemInfo.llm) {
+                llmModel = systemInfo.llm.default_model || 'Unknown';
+                const agentModels = systemInfo.agent_models || {};
+                const uniqueModels = [...new Set(Object.values(agentModels))];
+                if (uniqueModels.length > 0 && uniqueModels[0] !== llmModel) {
+                    llmModel += ` (${uniqueModels.join(', ')})`;
+                }
+            }
+
             const statusGrid = document.getElementById('statusGrid');
             statusGrid.innerHTML = `
                 <div class="status-item">
                     <div class="status-item-label">API Version</div>
                     <div class="status-item-value success">${status.version}</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-item-label">LLM Model</div>
+                    <div class="status-item-value">${llmModel}</div>
                 </div>
                 <div class="status-item">
                     <div class="status-item-label">Available Endpoints</div>
@@ -851,6 +1067,89 @@
             // Update last update time
             document.getElementById('statusLastUpdate').textContent = 
                 `Last checked: ${new Date().toLocaleTimeString()}`;
+        }
+
+        // Open conversations modal
+        async function openConversationsModal() {
+            const modal = document.getElementById('conversationsModal');
+            const content = document.getElementById('conversationsContent');
+            
+            modal.classList.add('active');
+            content.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading conversations...</p>
+                </div>
+            `;
+
+            try {
+                const conversations = await fetchConversations(50);
+                renderConversations(conversations);
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="error">
+                        <h3>Failed to load conversations</h3>
+                        <p>${error.message}</p>
+                        <button onclick="openConversationsModal()">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Close conversations modal
+        function closeConversationsModal() {
+            document.getElementById('conversationsModal').classList.remove('active');
+        }
+
+        // Close modal when clicking overlay
+        function closeModalOnOverlay(event) {
+            if (event.target.id === 'conversationsModal') {
+                closeConversationsModal();
+            }
+        }
+
+        // Render conversations
+        function renderConversations(conversations) {
+            const content = document.getElementById('conversationsContent');
+            
+            if (conversations.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-conversations">
+                        <p>No conversations found yet.</p>
+                        <p class="hint">Run a trading cycle to generate agent discussions.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            content.innerHTML = `
+                <div class="conversation-list">
+                    ${conversations.map((conv, index) => {
+                        const date = conv.date || conv.timestamp || 'Unknown date';
+                        const agent = conv.agent || conv.agent_name || 'Unknown';
+                        const content = conv.content || conv.message || conv.reasoning || JSON.stringify(conv, null, 2);
+                        const round = conv.round || conv.turn || '';
+                        
+                        return `
+                            <div class="conversation-item">
+                                <div class="conversation-header">
+                                    <span class="conversation-agent">${agent}</span>
+                                    <span class="conversation-date">${new Date(date).toLocaleString()}</span>
+                                </div>
+                                ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
+                                <div class="conversation-content">${escapeHtml(content)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Render summary cards
@@ -1111,12 +1410,13 @@
                 const startTime = performance.now();
 
                 // Fetch all data in parallel
-                const [portfolio, history, backendStatus, agentStatus, toolsList] = await Promise.all([
+                const [portfolio, history, backendStatus, agentStatus, toolsList, systemInfo] = await Promise.all([
                     fetchPortfolio(),
                     fetchEquityHistory(),
                     fetchBackendStatus(),
                     fetchAgentStatus(),
-                    fetchToolsList()
+                    fetchToolsList(),
+                    fetchSystemInfo()
                 ]);
 
                 const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -1125,7 +1425,7 @@
                 renderSummaryCards(portfolio);
                 renderPositions(portfolio);
                 drawChart(history);
-                renderBackendStatus(backendStatus, agentStatus, toolsList);
+                renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 
                 // Update response time
                 const responseTimeEl = document.getElementById('responseTime');
@@ -1159,10 +1459,13 @@
                 
                 // Still try to show backend status even if portfolio fails
                 try {
-                    const backendStatus = await fetchBackendStatus();
-                    const agentStatus = await fetchAgentStatus();
-                    const toolsList = await fetchToolsList();
-                    renderBackendStatus(backendStatus, agentStatus, toolsList);
+                    const [backendStatus, agentStatus, toolsList, systemInfo] = await Promise.all([
+                        fetchBackendStatus(),
+                        fetchAgentStatus(),
+                        fetchToolsList(),
+                        fetchSystemInfo()
+                    ]);
+                    renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 } catch (statusError) {
                     console.error('Failed to fetch backend status:', statusError);
                 }

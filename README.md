@@ -56,12 +56,18 @@ This initializes:
 
 **Option A: Quick Start Script (Windows)**
 
+**Important**: Navigate to `backend/scripts/` directory first!
+
 ```powershell
 cd backend\scripts
 .\start_api_background.ps1
 ```
 
 This opens API in a separate window. Close the window to stop the API.
+
+**If you see "file not found" error:**
+- Make sure you're in `backend/scripts/` directory
+- Or use Option B (manual start) instead
 
 **Option B: Manual Start**
 
@@ -163,16 +169,24 @@ python test_api.py
 ### 3️⃣ Start Backend API
 
 **Option A: Background Script (Windows)**
+
+**Important**: The script is in `backend/scripts/` directory, not `backend/`!
+
 ```powershell
 cd backend\scripts
 .\start_api_background.ps1
 ```
 
+This opens API in a separate window. Keep that window open - close it to stop the API.
+
 **Option B: Manual Start**
+
 ```bash
 cd backend
 python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
 ```
+
+**Keep this terminal window open** - the API server is running here.
 
 **Keep this terminal window open** - the API server is running here.
 

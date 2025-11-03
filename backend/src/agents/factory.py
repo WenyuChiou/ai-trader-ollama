@@ -9,6 +9,21 @@ from src.llm.ollama_client import get_llm
 from langchain_ollama import ChatOllama
 
 
+def _load_llm_config_from_json() -> dict:
+    """Load LLM config from config.json"""
+    try:
+        from pathlib import Path
+        import json
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.json"
+        if config_path.exists():
+            with config_path.open("r", encoding="utf-8") as f:
+                config = json.load(f)
+                return config.get("llm", {})
+    except Exception:
+        pass
+    return {}
+
+
 class AgentFactory:
     def __init__(self, config_path: Optional[str|Path]=None, llm_client=None):
         # 預設讀 config/agents.yaml
@@ -85,7 +100,11 @@ class AgentFactory:
         conf = self._agents[agent_key]
         system, user = self._load_prompts(conf["prompt_file"])
         
-        model = conf.get("model", "llama3.1")
+        # Load LLM config from config.json for defaults
+        llm_config = _load_llm_config_from_json()
+        
+        # Model priority: agents.yaml > config.json llm.default_model > "llama3.1"
+        model = conf.get("model") or llm_config.get("default_model") or "llama3.1"
         temperature = float(conf.get("temperature", 0.2))
         prompt_file = conf.get("prompt_file", "")
 
@@ -100,6 +119,7 @@ class AgentFactory:
         )
         
         # 如果没有提供 llm_client，使用 get_llm 创建
+        # get_llm will automatically use config.json settings for base_url and default_model
         llm = self._llm_client
         if llm is None:
             llm = get_llm(model=model, temperature=temperature)

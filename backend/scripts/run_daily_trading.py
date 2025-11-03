@@ -132,6 +132,7 @@ def run_daily_trading(
     analysis_date: Optional[str] = None,
     skip_weekend: bool = True,
     state_file: Optional[Path] = None,
+    enable_monitoring: bool = True,  # 新增：启用监控
 ) -> dict:
     """
     运行每日交易
@@ -195,15 +196,19 @@ def run_daily_trading(
         raise ValueError("No universe defined in config.json")
     
     # 执行交易循环
+    start_time = datetime.now()
+    execution_status = "SUCCESS"
+    execution_error = None
+    
     try:
         print(f"[INFO] Executing trading cycle for {today}...")
         result = execute_daily_trade(
             universe=universe,
             start=start_date,
             end=end_date,
-            rounds=config.get("discussion_rounds", 3),
+            rounds=int(config.get("discussion_rounds", 3)),
             auto_tools=config.get("discussion_auto_tools", True),
-            tool_budget=config.get("discussion_tool_budget", 2),
+            tool_budget=int(config.get("discussion_tool_budget", 2)),
             preferred_domains=config.get("preferred_domains"),
             portfolio=portfolio,
             trade_logger=trade_logger,
@@ -250,13 +255,39 @@ def run_daily_trading(
         print(f"Total P&L: ${result.get('portfolio', {}).get('total_pnl', 0):.2f} ({result.get('portfolio', {}).get('total_pnl_pct', 0)*100:.2f}%)")
         print(f"{'='*80}\n")
         
+        # 计算执行时间
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        # 记录监控日志
+        if enable_monitoring:
+            try:
+                from scripts.monitoring_system import TradingMonitor
+                monitor = TradingMonitor(root=str(log_dir))
+                monitor.log_execution(
+                    date_str=today.isoformat(),
+                    status="SUCCESS",
+                    execution_time=execution_time,
+                    metadata={
+                        "executed_trades": len(result.get('executed_trades', [])),
+                        "portfolio_value": result.get('portfolio', {}).get('total_value', 0),
+                        "cash": result.get('portfolio', {}).get('cash', 0),
+                    },
+                )
+            except Exception as monitor_error:
+                print(f"[WARN] Failed to log monitoring: {monitor_error}")
+        
         return {
             "status": "success",
             "date": today.isoformat(),
             "result": result,
+            "execution_time": execution_time,
         }
         
     except Exception as e:
+        execution_status = "ERROR"
+        execution_error = str(e)
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
         print(f"[ERROR] Trading cycle failed: {e}")
         import traceback
         traceback.print_exc()
@@ -264,10 +295,25 @@ def run_daily_trading(
         # 即使失败也保存 Portfolio 状态（防止丢失）
         save_portfolio_state(portfolio, state_file)
         
+        # 记录错误监控日志
+        if enable_monitoring:
+            try:
+                from scripts.monitoring_system import TradingMonitor
+                monitor = TradingMonitor(root=str(log_dir))
+                monitor.log_execution(
+                    date_str=today.isoformat(),
+                    status="ERROR",
+                    execution_time=execution_time,
+                    error=execution_error,
+                )
+            except Exception as monitor_error:
+                print(f"[WARN] Failed to log monitoring error: {monitor_error}")
+        
         return {
             "status": "error",
             "date": today.isoformat(),
-            "error": str(e),
+            "error": execution_error,
+            "execution_time": execution_time,
         }
 
 

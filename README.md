@@ -206,11 +206,27 @@ Agents have access to various tools for market analysis:
   "position_limit_per_stock": 0.15,
   "position_limit_total": 0.85,
   "discussion_rounds": 3,
-  "discussion_tool_budget": 2
+  "discussion_tool_budget": 2,
+  "llm": {
+    "default_model": "llama3.1",
+    "ollama_host": "http://localhost:11434",
+    "auto_pull": true,
+    "timeout_seconds": 8.0
+  }
 }
 ```
 
-**Configuration Guide**: See [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md)
+**Key Settings:**
+- `discussion_rounds`: Number of discussion rounds (default: 3, recommended: 3-5)
+- `llm.default_model`: Default LLM model for all agents
+- `llm.ollama_host`: Ollama server address (can be remote)
+- `llm.auto_pull`: Auto-download model if missing
+
+**Per-Agent Models**: See `backend/config/agents.yaml` to set different models per agent.
+
+**Configuration Guides**: 
+- [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) - General configuration
+- [`docs/LLM_CONFIGURATION.md`](docs/LLM_CONFIGURATION.md) - LLM and Ollama settings
 
 ---
 

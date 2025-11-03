@@ -39,6 +39,13 @@
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
   "discussion_tool_budget": 2,
+  
+  "llm": {
+    "default_model": "llama3.1",
+    "ollama_host": "http://localhost:11434",
+    "auto_pull": true,
+    "timeout_seconds": 8.0
+  },
   "preferred_domains": [
     "www.cboe.com",
     "www.wsj.com",

@@ -33,7 +33,8 @@ if (Test-Path "$ScriptDir/start_api_background.ps1") {
 
 # 2) Schedule daily trading
 if (Test-Path "$ScriptDir/schedule_daily_task.ps1") {
-    Write-Host "[2/3] Scheduling daily trading task at $DailyHour:$('{0:d2}' -f $DailyMinute)..." -ForegroundColor Yellow
+    $minuteStr = "{0:D2}" -f $DailyMinute
+    Write-Host "[2/3] Scheduling daily trading task at $DailyHour:$minuteStr..." -ForegroundColor Yellow
     try {
         powershell -ExecutionPolicy Bypass -File "$ScriptDir/schedule_daily_task.ps1" -Hour $DailyHour -Minute $DailyMinute | Out-Null
     } catch {
@@ -66,6 +67,6 @@ try {
     schtasks /Query /FO LIST /V | findstr /I "AI-Trader"
 } catch { }
 
-Write-Host ""; Write-Host "Setup complete. The API runs in background, daily trading at $DailyHour:$('{0:d2}' -f $DailyMinute), hourly updates every $HourlyMinutes minutes." -ForegroundColor Green
+Write-Host ""; Write-Host ("Setup complete. The API runs in background, daily trading at {0}:{1}, hourly updates every {2} minutes." -f $DailyHour, ("{0:D2}" -f $DailyMinute), $HourlyMinutes) -ForegroundColor Green
 
 

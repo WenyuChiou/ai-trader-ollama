@@ -15,11 +15,11 @@ if ($port8000) {
     $port8000 | ForEach-Object {
         $parts = $_ -split '\s+'
         if ($parts.Count -gt 0) {
-            $pid = $parts[-1]
-            if ($pid -match '^\d+$') {
-                $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+            $procId = $parts[-1]
+            if ($procId -match '^\d+$') {
+                $process = Get-Process -Id $procId -ErrorAction SilentlyContinue
                 if ($process) {
-                    Write-Host "   Process: $($process.ProcessName) (PID: $pid)" -ForegroundColor Gray
+                    Write-Host "   Process: $($process.ProcessName) (PID: $procId)" -ForegroundColor Gray
                 }
             }
         }

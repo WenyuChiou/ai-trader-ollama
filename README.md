@@ -146,23 +146,29 @@ ai-trader-ollama/
 1. **Market Data Collection** (9:00 AM)
    - Fetches OHLCV + technical indicators for universe stocks
    - Analyzes yesterday's closing prices
+   - **Output**: Market data dictionary with TA indicators (see [`docs/WORKFLOW.md#market-data-collection`](docs/WORKFLOW.md) for format)
 
 2. **Multi-Agent Analysis**
    - **Market Analyst**: Evaluates trends, generates stock recommendations
+     - **Output**: Recommended stock list with signal scores (see [`docs/AGENTS.md#market-analyst`](docs/AGENTS.md#market-analyst))
    - **Discussion Agent**: Multi-round analysis with automatic tool calling (news, sentiment)
+     - **Output**: Final stance, risk signals, reasoning (see [`docs/AGENTS.md#discussion-agent`](docs/AGENTS.md#discussion-agent))
    - **Risk Analyst**: Assesses portfolio risk and position limits
+     - **Output**: Risk report with position recommendations (see [`docs/AGENTS.md#risk-analyst`](docs/AGENTS.md#risk-analyst))
    - **Trader Agent**: Generates buy/sell orders with position sizing
+     - **Output**: Trading orders with prices and quantities (see [`docs/AGENTS.md#trader-agent`](docs/AGENTS.md#trader-agent))
 
 3. **Order Execution**
    - Places limit orders (pre-market)
    - Checks fills after market close
    - Updates portfolio automatically
+   - **Output**: Executed trades with fill status (see [`docs/TRADING_TIMELINE.md`](docs/TRADING_TIMELINE.md))
 
 4. **Memory & Tracking**
-   - Saves complete daily cycle to memory
-   - Records portfolio equity for performance tracking
+   - Saves complete daily cycle to memory (see [`docs/MEMORY_OPTIMIZATION.md`](docs/MEMORY_OPTIMIZATION.md))
+   - Records portfolio equity for performance tracking (see [`docs/REALTIME_MONITORING.md`](docs/REALTIME_MONITORING.md))
 
-**Detailed Workflow**: See [`docs/WORKFLOW.md`](docs/WORKFLOW.md)
+**Detailed Workflow**: See [`docs/WORKFLOW.md`](docs/WORKFLOW.md) for step-by-step output examples
 
 ---
 
@@ -176,6 +182,8 @@ ai-trader-ollama/
 | **Risk Analyst** | Assess portfolio risk | Risk report & position limits |
 | **Trader Agent** | Generate trading decisions | Buy/sell orders with prices |
 | **Execution** | Execute trades, update portfolio | Executed trades & portfolio status |
+
+**Detailed Agent Outputs**: See [`docs/AGENTS.md`](docs/AGENTS.md) for detailed output format and examples for each agent.
 
 **Agent Details**: See [`docs/AGENTS.md`](docs/AGENTS.md)
 
@@ -262,10 +270,10 @@ python scripts/run_monitoring_and_optimization.py
 ```
 
 This generates:
-- **Execution Summary**: Success rate, average execution time
-- **Trading Statistics**: Order fill rate, position concentration
-- **Equity Statistics**: Total return, volatility, max drawdown
-- **Optimization Recommendations**: Suggestions for improvement
+- **Execution Summary**: Success rate, average execution time (see [`backend/scripts/monitoring_system.py`](backend/scripts/monitoring_system.py))
+- **Trading Statistics**: Order fill rate, position concentration (see [`docs/TRADING_TIMELINE.md`](docs/TRADING_TIMELINE.md))
+- **Equity Statistics**: Total return, volatility, max drawdown (see [`docs/REALTIME_MONITORING.md`](docs/REALTIME_MONITORING.md))
+- **Optimization Recommendations**: Suggestions for improvement (see [`backend/scripts/optimization_system.py`](backend/scripts/optimization_system.py))
 
 ### Real-Time Monitoring Dashboard
 

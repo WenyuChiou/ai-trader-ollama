@@ -1,82 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import './SimpleMonitor.css';
-
-interface PortfolioSnapshot {
-  timestamp: string;
-  total_value: number;
-  cash: number;
-  equity_value: number;
-  total_pnl: number;
-  total_pnl_pct: number;
-  positions: Record<string, {
-    quantity: number;
-    avg_cost: number;
-    current_price: number;
-    market_value: number;
-  }>;
-  positions_pnl: Record<string, {
-    unrealized_pnl: number;
-    unrealized_pnl_pct: number;
-  }>;
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+import { usePortfolio } from '../hooks/usePortfolio';
+import { getApiBase } from '../utils/api';
 
 export default function SimpleMonitor() {
-  const [portfolio, setPortfolio] = useState<PortfolioSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const fetchPortfolio = async (showLoading: boolean = false) => {
-    if (showLoading) {
-      setIsRefreshing(true);
-    }
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
-      
-      const response = await fetch(`${API_BASE}/api/portfolio/real-time`, {
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) throw new Error('Failed to fetch portfolio');
-      const data = await response.json();
-      if (!data.ok || data.error) throw new Error(data.error || 'Failed to load');
-      
-      setPortfolio(data as PortfolioSnapshot);
-      setLastUpdate(new Date());
-      setError(null);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        setError('Request timeout, please check your network connection');
-      } else {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      }
-      console.error('Error fetching portfolio:', err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPortfolio(true);
-    
-    // Auto-refresh every 30 seconds if enabled
-    const interval = setInterval(() => {
-      if (autoRefresh && !isRefreshing) {
-        fetchPortfolio(false);
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
+  const {
+    portfolio,
+    loading,
+    error,
+    lastUpdate,
+    isRefreshing,
+    apiConnected,
+    refresh,
+  } = usePortfolio(autoRefresh, 30000);
 
   if (loading) {
     return (
@@ -97,7 +34,7 @@ export default function SimpleMonitor() {
           <h2>❌ Connection Error</h2>
           <p>{error}</p>
           <p className="hint">Please ensure the backend API is running: <code>uvicorn src.api.server:app</code></p>
-          <button onClick={() => fetchPortfolio(true)}>Retry</button>
+          <button onClick={() => refresh(true)}>Retry</button>
         </div>
       </div>
     );
@@ -119,24 +56,24 @@ export default function SimpleMonitor() {
   return (
     <div className="simple-monitor">
       <header className="monitor-header">
-          <h1>📊 AI Trader - Simple Monitor</h1>
-          <div className="header-controls">
-            <label>
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-              />
-              Auto Refresh (30s)
-            </label>
-            <button onClick={() => fetchPortfolio(true)} disabled={isRefreshing}>
-              {isRefreshing ? 'Refreshing...' : 'Manual Refresh'}
-            </button>
-            {lastUpdate && (
-              <span className="last-update">
-                Last Update: {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
+        <h1>📊 AI Trader - Simple Monitor</h1>
+        <div className="header-controls">
+          <label>
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+            />
+            Auto Refresh (30s)
+          </label>
+          <button onClick={() => refresh(true)} disabled={isRefreshing}>
+            {isRefreshing ? 'Refreshing...' : 'Manual Refresh'}
+          </button>
+          {lastUpdate && (
+            <span className="last-update">
+              Last Update: {lastUpdate.toLocaleTimeString()}
+            </span>
+          )}
         </div>
       </header>
 
@@ -234,10 +171,18 @@ export default function SimpleMonitor() {
       )}
 
       <footer className="monitor-footer">
-        <p>API: {API_BASE}</p>
-        <p>Data Time: {portfolio.timestamp ? new Date(portfolio.timestamp).toLocaleString() : 'N/A'}</p>
+        <div className="footer-info">
+          <div className="api-status">
+            <span className={`status-indicator ${apiConnected === true ? 'connected' : apiConnected === false ? 'disconnected' : 'unknown'}`}>
+              {apiConnected === true ? '●' : apiConnected === false ? '○' : '◐'}
+            </span>
+            <span>API: {getApiBase()}</span>
+          </div>
+          <div className="data-time">
+            Data Time: {portfolio.timestamp ? new Date(portfolio.timestamp).toLocaleString() : 'N/A'}
+          </div>
+        </div>
       </footer>
     </div>
   );
 }
-

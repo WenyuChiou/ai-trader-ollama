@@ -161,7 +161,9 @@ def run_analyst_discussion(
     - 不會因第一輪無工具就提前結束
     - 連續兩輪無新工具才早退（或遇到 finalize）
     """
-    fac = AgentFactory()
+    # 使用 AgentFactory 的自动路径查找功能
+    # AgentFactory 会自动尝试多个可能的路径
+    fac = AgentFactory()  # 使用默认路径查找逻辑
     agent: BaseAgent = fac.create("discussion_agent")
 
     tb = ToolBox()

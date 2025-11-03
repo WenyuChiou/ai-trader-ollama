@@ -12,9 +12,38 @@ from langchain_ollama import ChatOllama
 class AgentFactory:
     def __init__(self, config_path: Optional[str|Path]=None, llm_client=None):
         # 預設讀 config/agents.yaml
-        self.config_path = Path(config_path) if config_path else Path("config/agents.yaml")
+        if config_path:
+            self.config_path = Path(config_path)
+            if not self.config_path.is_absolute():
+                # 如果是相对路径，尝试多个可能的基础路径
+                possible_bases = [
+                    Path.cwd(),  # 当前工作目录
+                    Path(__file__).parent.parent.parent,  # backend/ 目录
+                ]
+                for base in possible_bases:
+                    candidate = (base / self.config_path).resolve()
+                    if candidate.exists():
+                        self.config_path = candidate
+                        break
+        else:
+            # 尝试多个可能的路径
+            possible_paths = [
+                Path(__file__).parent.parent.parent / "config" / "agents.yaml",  # backend/config/agents.yaml（优先）
+                Path.cwd() / "config" / "agents.yaml",  # 相对于当前工作目录
+                Path("config/agents.yaml"),  # 相对于当前工作目录（备用）
+            ]
+            self.config_path = None
+            for path in possible_paths:
+                abs_path = path.resolve() if path.is_absolute() or path.exists() else Path.cwd() / path
+                if abs_path.exists():
+                    self.config_path = abs_path
+                    break
+            if self.config_path is None:
+                # 如果都找不到，使用默认路径（但可能会失败）
+                self.config_path = possible_paths[0]
+        
         if not self.config_path.exists():
-            raise FileNotFoundError(f"agents config not found: {self.config_path}")
+            raise FileNotFoundError(f"agents config not found: {self.config_path}. Tried: {possible_paths}")
 
         with open(self.config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
@@ -25,13 +54,26 @@ class AgentFactory:
 
     def _load_prompts(self, prompt_file: str) -> Tuple[str, str]:
         # 支援 agents.yaml 內寫 ../prompts/xxx.yml 或 prompts/xxx.yml
-        p = (self.config_path.parent / prompt_file).resolve()
+        # 首先尝试相对于 config 文件的路径
+        if prompt_file.startswith("../"):
+            # 处理 ../prompts/xxx.yml
+            p = (self.config_path.parent.parent / prompt_file[3:]).resolve()
+        else:
+            # 处理 prompts/xxx.yml 或相对路径
+            p = (self.config_path.parent / prompt_file).resolve()
+        
         if not p.exists():
             # 也尝试相对于项目根目录的 prompts 目录
             prompts_dir = self.config_path.parent.parent / "prompts"
             p = (prompts_dir / Path(prompt_file).name).resolve()
+        
         if not p.exists():
-            raise FileNotFoundError(f"prompt file not found: {p}")
+            # 最后尝试：相对于当前工作目录
+            p = Path(prompt_file).resolve()
+        
+        if not p.exists():
+            raise FileNotFoundError(f"prompt file not found: {prompt_file}. Tried: {p}")
+        
         with open(p, "r", encoding="utf-8") as f:
             y = yaml.safe_load(f) or {}
         return (y.get("system", "") or "").strip(), (y.get("user", "") or "").strip()

@@ -33,8 +33,10 @@ class ToolBox:
         self.register(Tool("fear_greed", fetch_fear_greed, "Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)"))
         
         # crypto
-        self.register(Tool("fetch_crypto_batch", fetch_crypto_batch, "Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)"))
-        self.register(Tool("get_crypto_price", get_crypto_price, "Get current price and indicators for a single cryptocurrency"))
+        # fetch_crypto_batch 和 get_crypto_price 是 LangChain @tool 装饰的函数，返回 StructuredTool
+        # 需要提取底层函数或使用适配器
+        self.register(Tool("fetch_crypto_batch", self._crypto_batch_adapter, "Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)"))
+        self.register(Tool("get_crypto_price", self._crypto_price_adapter, "Get current price and indicators for a single cryptocurrency"))
         
         # jin10 economic data
         self.register(Tool("fetch_jin10_news", fetch_jin10_news, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
@@ -198,6 +200,26 @@ class ToolBox:
         
         # 如果都没有，返回错误
         raise ValueError("fetch_url requires 'url' parameter (string)")
+    
+    def _crypto_batch_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_crypto_batch 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 如果 fetch_crypto_batch 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_crypto_batch, 'invoke'):
+            return fetch_crypto_batch.invoke(kwargs)
+        # 否则直接调用
+        return fetch_crypto_batch(**kwargs)
+    
+    def _crypto_price_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_crypto_price 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 如果 get_crypto_price 是 StructuredTool，使用 .invoke()
+        if hasattr(get_crypto_price, 'invoke'):
+            return get_crypto_price.invoke(kwargs)
+        # 否则直接调用
+        return get_crypto_price(**kwargs)
 
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """

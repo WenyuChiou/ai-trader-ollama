@@ -322,12 +322,24 @@ def execute_daily_trade(
                 )
     
     # ---- 計算當前持倉 P&L（用於後端展示）----
+    # 交易执行后，重新计算持仓信息（包含新买入的股票）
+    updated_positions_info = {}
     portfolio_pnl = {}
     if portfolio:
+        # 重新计算持仓信息（包含交易后的最新状态）
+        portfolio_value = portfolio.value(last_prices)
+        for symbol, pos in portfolio._positions.items():
+            current_price = last_prices.get(symbol, pos.avg_cost)
+            updated_positions_info[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": current_price,
+                "market_value": pos.quantity * current_price,
+            }
+        
         portfolio_pnl = portfolio.get_all_positions_pnl(last_prices)
         total_pnl = portfolio.total_pnl(last_prices)
         total_pnl_pct = portfolio.total_pnl_pct(last_prices)
-        portfolio_value = portfolio.value(last_prices)
         equity_value = portfolio.equity_value(last_prices)
     else:
         total_pnl = 0.0
@@ -343,13 +355,17 @@ def execute_daily_trade(
         "rounds": convo.get("rounds"),
         "symbols": symbols,
         "top_signals": signal_top,
+        "market_agent": market_view,  # 添加市场数据
+        "market_analysis": market_analysis,  # 添加 Market Analyst 结果
+        "last_prices": last_prices,  # 添加最新价格（用于计算仓位百分比）
         # 执行结果
         "executed_trades": executed_trades,
         "execution_errors": execution_errors,
-        # Portfolio 信息（用于后端展示）
+        # Portfolio 信息（用于后端展示，包含交易后的最新状态）
         "portfolio": {
             "cash": portfolio.cash if portfolio else 0.0,
-            "positions": current_positions_info,
+            "positions": {sym: info["quantity"] for sym, info in updated_positions_info.items()},  # 只返回数量（兼容旧接口）
+            "positions_detail": updated_positions_info,  # 详细持仓信息
             "total_value": portfolio_value,
             "equity_value": equity_value,
             "total_pnl": total_pnl,

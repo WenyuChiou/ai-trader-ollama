@@ -552,6 +552,8 @@ Daily Trading Cycle Starts (09:00)
 
 ### Step 6: Trade Execution ⚙️
 
+**When Called**: Immediately after Trader Agent generates decisions (after market open at 09:30 EST)
+
 **Time Point**: Execute immediately after today's market open (09:30 EST)
 
 **Process**:

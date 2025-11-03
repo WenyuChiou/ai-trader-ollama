@@ -1378,6 +1378,7 @@ Defines LLM model and temperature for each agent:
 - `docs/TRADING_TIMELINE.md` - Detailed trading timeline and execution flow
 - `docs/PRICE_DATA_STRATEGY.md` - Price data strategy (closing prices vs real-time)
 - `docs/ORDER_EXECUTION_AND_FILL_CHECK.md` - Order execution and fill check mechanism
+- `docs/ACTUAL_PRICE_FETCHING_REALITY.md` - Why actual prices may not be available (timing limitations)
 
 ---
 

@@ -229,6 +229,17 @@ cd backend
 python scripts/init_data.py
 ```
 
+**If you see "Port 8000 already in use" error:**
+```powershell
+# Option 1: Check and kill process using port 8000
+cd backend\scripts
+.\check_port.ps1
+
+# Option 2: Use a different port
+cd backend
+python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8001
+```
+
 ---
 
 ### 5️⃣ Start Frontend

@@ -46,8 +46,26 @@ try {
 # Check if port is in use
 $portInUse = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
 if ($portInUse) {
-    Write-Host "WARNING: Port 8000 is already in use" -ForegroundColor Yellow
-    Write-Host "If this is a previous API instance, you can ignore this" -ForegroundColor Yellow
+    $processId = $portInUse.OwningProcess | Select-Object -Unique
+    Write-Host "WARNING: Port 8000 is already in use!" -ForegroundColor Red
+    Write-Host ""
+    foreach ($pid in $processId) {
+        $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        if ($process) {
+            Write-Host "  Process ID: $pid ($($process.ProcessName))" -ForegroundColor Yellow
+        }
+    }
+    Write-Host ""
+    Write-Host "To fix this:" -ForegroundColor Cyan
+    Write-Host "  1. Run: .\check_port.ps1 (in this directory)" -ForegroundColor White
+    Write-Host "  2. Or kill manually: taskkill /PID <PID> /F" -ForegroundColor White
+    Write-Host "  3. Or use different port: --port 8001" -ForegroundColor White
+    Write-Host ""
+    $continue = Read-Host "Continue anyway? (may fail) (Y/N)"
+    if ($continue -ne "Y" -and $continue -ne "y") {
+        Write-Host "Exiting..." -ForegroundColor Yellow
+        exit 1
+    }
     Write-Host ""
 }
 

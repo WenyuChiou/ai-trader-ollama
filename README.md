@@ -26,6 +26,7 @@ AI-Trader Ollama is an autonomous trading system that uses multiple specialized 
 
 ### Step 1: Prerequisites
 
+**Backend Requirements:**
 ```bash
 # Install Python dependencies
 cd backend
@@ -37,6 +38,15 @@ ollama serve
 # Pull LLM model (in another terminal)
 ollama pull llama3.1
 ```
+
+**Frontend Requirements:**
+- **Node.js 18+** (includes npm)
+  - Download: https://nodejs.org/ (LTS version recommended)
+  - After installation, **restart your terminal/PowerShell**
+  - Verify: `node --version` and `npm --version`
+
+> **⚠️ If you see `npm: 無法辨識 'npm'` error**: Node.js is not installed.  
+> See [`frontend/INSTALL_NODE.md`](frontend/INSTALL_NODE.md) for detailed installation instructions, or run `frontend/check_node.ps1` to check your system.
 
 ### Step 2: Initialize Data (First Time Only)
 
@@ -95,13 +105,20 @@ You should see JSON response like:
 
 ### Step 4: Start Frontend (Monitoring Dashboard)
 
+**⚠️ Prerequisite**: Make sure Node.js is installed (see Step 1 above)
+
 **In a new terminal:**
 
 ```bash
 cd frontend
-npm install  # First time only
+npm install  # First time only (installs recharts and other dependencies)
 npm run dev
 ```
+
+**If you see `npm: 無法辨識 'npm'` error:**
+- Node.js is not installed or not in PATH
+- Run `frontend/check_node.ps1` to diagnose
+- See [`frontend/INSTALL_NODE.md`](frontend/INSTALL_NODE.md) for installation guide
 
 **Then open:** `http://localhost:5173` in your browser
 
@@ -244,13 +261,27 @@ python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8001
 
 ### 5️⃣ Start Frontend
 
-**In another new terminal window:**
+**⚠️ Prerequisite**: Node.js 18+ must be installed (see Step 1)
+
+**Check Node.js Installation:**
+```powershell
+# Run diagnostic script
+cd frontend
+powershell -ExecutionPolicy Bypass -File check_node.ps1
+```
+
+**If Node.js is installed:**
 
 ```bash
 cd frontend
 npm install  # First time only (skip if already done)
 npm run dev
 ```
+
+**If you see `npm: 無法辨識 'npm'` error:**
+- Node.js is not installed
+- See [`frontend/INSTALL_NODE.md`](frontend/INSTALL_NODE.md) for installation instructions
+- After installing Node.js, restart PowerShell and try again
 
 **Expected Output:**
 ```

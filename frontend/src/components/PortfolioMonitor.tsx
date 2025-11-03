@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePortfolio } from '../hooks/usePortfolio';
-import { getApiBase } from '../utils/api';
+import { fetchEquityHistory, getApiBase } from '../utils/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import './PortfolioMonitor.css';
+
+interface EquityData {
+  date: string;
+  value: number;
+  pnl: number;
+}
 
 export default function PortfolioMonitor() {
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [equityHistory, setEquityHistory] = useState<EquityData[]>([]);
+  const [chartScale, setChartScale] = useState<'linear' | 'log'>('linear');
   const {
     portfolio,
     loading,
@@ -14,6 +23,24 @@ export default function PortfolioMonitor() {
     apiConnected,
     refresh,
   } = usePortfolio(autoRefresh, 30000);
+
+  // Load equity history for chart
+  useEffect(() => {
+    const loadEquityHistory = async () => {
+      try {
+        const data = await fetchEquityHistory(60);
+        setEquityHistory(data);
+      } catch (err) {
+        console.error('Failed to load equity history:', err);
+      }
+    };
+    
+    loadEquityHistory();
+    if (autoRefresh) {
+      const interval = setInterval(loadEquityHistory, 300000); // Every 5 minutes
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
 
   if (loading) {
     return (
@@ -59,12 +86,19 @@ export default function PortfolioMonitor() {
     return sum + pnl;
   }, 0);
 
+  // Format chart data
+  const chartData = equityHistory.map((item) => ({
+    date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    value: item.value,
+    pnl: item.pnl,
+  }));
+
   return (
     <div className="portfolio-monitor">
       {/* Header */}
       <header className="monitor-header">
         <div className="header-title">
-          <h1>💼 Portfolio Monitor</h1>
+          <h1>📊 AI-Trader Portfolio Monitor</h1>
           <div className="connection-status">
             <span className={`status-dot ${apiConnected ? 'connected' : 'disconnected'}`}></span>
             <span>{apiConnected ? 'Connected' : 'Disconnected'}</span>
@@ -107,7 +141,7 @@ export default function PortfolioMonitor() {
           <div className="card-subtitle">
             Initial: ${portfolio.initial_value?.toLocaleString('en-US', { 
               minimumFractionDigits: 2 
-            }) || '0.00'}
+            }) || '10,000.00'}
           </div>
         </div>
 
@@ -153,11 +187,76 @@ export default function PortfolioMonitor() {
         </div>
       </div>
 
+      {/* Asset Evolution Chart */}
+      {equityHistory.length > 0 && (
+        <div className="chart-section">
+          <div className="chart-header">
+            <h2>Total Asset Value Over Time</h2>
+            <div className="chart-controls">
+              <button
+                className={`scale-btn ${chartScale === 'linear' ? 'active' : ''}`}
+                onClick={() => setChartScale('linear')}
+              >
+                Linear Scale
+              </button>
+              <button
+                className={`scale-btn ${chartScale === 'log' ? 'active' : ''}`}
+                onClick={() => setChartScale('log')}
+              >
+                Log Scale
+              </button>
+            </div>
+          </div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={400}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#667eea" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#667eea" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#6b7280"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <YAxis 
+                  stroke="#6b7280"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  tickFormatter={(value) => `$${value.toLocaleString()}`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '12px',
+                  }}
+                  formatter={(value: number) => `$${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#667eea"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorValue)"
+                  name="Portfolio Value"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* Positions Section */}
       {hasPositions ? (
         <div className="positions-section">
           <div className="section-header">
-            <h2>Current Positions</h2>
+            <h2>Current Holdings</h2>
             <span className="position-count">{positions.length} holdings</span>
           </div>
           
@@ -166,12 +265,13 @@ export default function PortfolioMonitor() {
               <thead>
                 <tr>
                   <th>Symbol</th>
-                  <th>Quantity</th>
+                  <th>Shares</th>
                   <th>Avg Cost</th>
                   <th>Current Price</th>
                   <th>Market Value</th>
                   <th>Unrealized P&L</th>
                   <th>P&L %</th>
+                  <th>Weight</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,6 +281,9 @@ export default function PortfolioMonitor() {
                     unrealized_pnl_pct: 0 
                   };
                   const isProfit = pnl.unrealized_pnl >= 0;
+                  const weight = portfolio.total_value > 0 
+                    ? ((pos.market_value / portfolio.total_value) * 100).toFixed(2)
+                    : '0.00';
                   
                   return (
                     <tr key={symbol} className={isProfit ? 'profit-row' : 'loss-row'}>
@@ -197,6 +300,7 @@ export default function PortfolioMonitor() {
                       <td className={isProfit ? 'positive' : 'negative'}>
                         {isProfit ? '+' : ''}{pnl.unrealized_pnl_pct.toFixed(2)}%
                       </td>
+                      <td>{weight}%</td>
                     </tr>
                   );
                 })}
@@ -209,6 +313,7 @@ export default function PortfolioMonitor() {
                     <strong>{totalUnrealizedPnL >= 0 ? '+' : ''}${totalUnrealizedPnL.toFixed(2)}</strong>
                   </td>
                   <td>-</td>
+                  <td>{portfolio.total_value > 0 ? ((totalPositionsValue / portfolio.total_value) * 100).toFixed(2) : '0.00'}%</td>
                 </tr>
               </tfoot>
             </table>
@@ -264,4 +369,3 @@ export default function PortfolioMonitor() {
     </div>
   );
 }
-

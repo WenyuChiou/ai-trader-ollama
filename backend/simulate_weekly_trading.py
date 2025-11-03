@@ -185,8 +185,9 @@ def simulate_weekly_trading():
         print(f"Analysis Date: {date}")
         
         try:
-            # 执行每日交易循环
+            # 执行每日交易循环（开盘前挂单）
             print(f"\n[Executing daily trading cycle...]")
+            print(f"[NOTE] Orders will be placed (pending), fills checked after market close")
             result = execute_daily_trade(
                 universe=universe,
                 start=start_date,
@@ -197,6 +198,43 @@ def simulate_weekly_trading():
                 portfolio=portfolio,  # 使用同一个 portfolio，保持连续状态
                 trade_logger=trade_logger,
             )
+            
+            # 收盘后检查挂单是否成交
+            print(f"\n[Checking pending orders after market close...]")
+            from src.data.order_manager import OrderManager
+            from scripts.check_pending_orders import check_and_execute_pending_orders
+            
+            order_manager = OrderManager(root="data/logs")
+            pending_orders = order_manager.load_pending_orders(order_date=date)
+            
+            fill_result = None
+            if pending_orders:
+                # 检查当天的挂单是否成交（傳入當前 portfolio 實例）
+                fill_result = check_and_execute_pending_orders(
+                    check_date=date,
+                    portfolio_state_file=Path("data/logs/portfolio_state.json"),
+                    portfolio=portfolio,  # 傳入當前 portfolio，避免重複加載
+                )
+                print(f"  Orders checked: {fill_result['pending_count']}")
+                print(f"  Filled: {fill_result['filled_count']}")
+                print(f"  Rejected: {fill_result['rejected_count']}")
+                print(f"  Executed trades: {len(fill_result.get('executed_trades', []))}")
+                
+                # 更新 Portfolio（check_pending_orders 已經更新了 portfolio）
+                # Portfolio 狀態已保存在文件中，但我們需要更新內存中的實例
+                if fill_result.get('portfolio_snapshot'):
+                    portfolio_snapshot = fill_result['portfolio_snapshot']
+                    portfolio.cash = portfolio_snapshot.get('cash', portfolio.cash)
+                    # 持倉已在 check_pending_orders 中更新
+            else:
+                print(f"  No pending orders to check")
+            
+            # 保存成交明細到每日結果
+            if fill_result:
+                daily_results[-1]["fill_result"] = fill_result
+                daily_results[-1]["executed_trades"] = fill_result.get("executed_trades", [])
+                daily_results[-1]["filled_orders"] = fill_result["filled_count"]
+                daily_results[-1]["rejected_orders"] = fill_result["rejected_count"]
             
             # 打印每日结果
             print_daily_result(result, day_num)

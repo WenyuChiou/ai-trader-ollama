@@ -399,7 +399,8 @@ def execute_daily_trade(
             "positions_pnl": portfolio_pnl,
         }
         
-        # 保存完整的每日记忆
+        # 保存完整的每日记忆（注意：此時 executed_trades 只包含掛單信息，成交明細會在收盤後補充）
+        # 實際成交明細會在 check_pending_orders.py 中補充到每日記憶
         memory_manager.save_daily_memory(
             date=today,
             market_view=market_view,
@@ -408,6 +409,7 @@ def execute_daily_trade(
             risk_report=risk_report,
             decision=decision,
             portfolio_snapshot=portfolio_snapshot,
+            executed_trades=executed_trades,  # 掛單信息（status: PENDING），成交後會更新
         )
         
         # 记录每日净值（用于前端图表）

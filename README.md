@@ -603,11 +603,25 @@ Daily Trading Cycle Starts (09:00)
   - **Sell**: Price range `[100.5% of current price, 102% of current price]`, execution uses **highest price** or **actual price** (high sell)
 
 **Fill Check Mechanism**:
-- 🔍 **Price Fetching**: System attempts to fetch actual opening price, with fallback strategy:
-  - **Primary**: Today's opening price (Open) via yfinance (may not be available if run before market opens)
-  - **Secondary**: Real-time price (`regularMarketPrice`) from yfinance ticker.info
-  - **Fallback**: Yesterday's closing price (used as baseline since no real-time data)
-- ⚠️ **Important Note**: Since the system runs at 09:00 (before market open), actual opening price may not be available yet. In this case, system uses price range bounds as fallback execution price.
+- 🔍 **Price Fetching Strategy** (with limitations):
+  1. **Primary**: Try to get today's opening price (Open) via yfinance history
+     - ⚠️ **Limitation**: May not be available if system runs at 09:00 (before market open at 09:30)
+  2. **Secondary**: Try real-time price (`regularMarketPrice`) from yfinance ticker.info
+     - ⚠️ **Limitation**: May not be available if market hasn't opened yet
+  3. **Tertiary**: Fallback to yesterday's closing price (`previousClose`)
+  4. **Final Fallback**: If all fail, return `None` and use price range bounds
+  
+- ⚠️ **Critical Limitation**: 
+  - System runs at **09:00 EST** (before market open at 09:30)
+  - At this time, **today's opening price doesn't exist yet**
+  - yfinance typically requires market to be open or closed to have that day's data
+  - **Result**: Most likely will use **yesterday's closing price** or **price range bounds** as execution price
+  
+- 🔄 **Fallback Execution Logic**:
+  - If `actual_price` is `None` → Use price range bounds:
+    - **Buy**: Use `buy_price_min` (lowest in range) → Executes as FILLED
+    - **Sell**: Use `sell_price_max` (highest in range) → Executes as FILLED
+  - This ensures orders are executed even without real-time price data
 - ✅ **Can Fill**: If actual price available and within range → Execute fill (use optimal price)
 - ⏳ **Pending Fill**: If sell price below min sell price → Mark as PENDING (wait for higher price)
 - ❌ **Rejected Fill**: If buy price above max buy price → Mark as REJECTED (do not execute)

@@ -36,6 +36,18 @@ ollama serve
 ollama pull llama3.1
 ```
 
+### Initialize Data (First Time)
+
+```bash
+cd backend
+python scripts/init_data.py
+```
+
+This initializes:
+- Portfolio state (initial cash: $10,000)
+- Memory directory structure
+- Trade log files
+
 ### First Run
 
 ```bash
@@ -46,7 +58,8 @@ cd backend
 python scripts/run_daily_trading.py
 ```
 
-**Detailed Setup**: See [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)
+**Detailed Setup**: See [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)  
+**Data Initialization**: See [`docs/DATA_INITIALIZATION.md`](docs/DATA_INITIALIZATION.md)
 
 ---
 
@@ -188,20 +201,31 @@ This generates:
 The system includes an hourly real-time P&L and NAV update system with a web dashboard:
 
 ```bash
-# Backend API
+# Terminal 1: Start Backend API
 cd backend
 uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
 
-# Frontend (in another terminal)
+# Terminal 2: Start Frontend (in another terminal)
 cd frontend
-npm start
+npm install  # if not installed
+npm run dev
 ```
 
-**Dashboard Features**:
-- 📈 Real-time portfolio value tracking (updates every hour)
-- 💹 Asset evolution chart (last 30 days)
+Then open `http://localhost:5173` in your browser.
+
+**Simple Monitor Features**:
+- 📈 Real-time portfolio value tracking (auto-refresh every 30 seconds)
+- 💰 Total P&L with percentage
+- 💵 Cash and equity value
 - 📊 Position details with unrealized P&L
+- 🔄 Auto-refresh toggle
+
+**Full Dashboard** (optional):
+- 📈 Asset evolution chart (last 30 days)
+- 📊 Enhanced position cards
 - 🔄 Recent trading actions
+
+**Quick Start**: See [`docs/QUICK_MONITORING.md`](docs/QUICK_MONITORING.md) for step-by-step guide
 
 **Setup Hourly Updates**:
 ```powershell

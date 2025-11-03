@@ -1,11 +1,11 @@
 import React from 'react';
-import AITraderDashboard from './components/AITraderDashboard';
+import SimpleMonitor from './components/SimpleMonitor';
 import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <AITraderDashboard />
+      <SimpleMonitor />
     </div>
   );
 }

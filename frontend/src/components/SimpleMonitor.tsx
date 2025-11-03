@@ -54,7 +54,7 @@ export default function SimpleMonitor() {
       setError(null);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        setError('请求超时，请检查网络连接');
+        setError('Request timeout, please check your network connection');
       } else {
         setError(err instanceof Error ? err.message : 'Unknown error');
       }
@@ -83,8 +83,8 @@ export default function SimpleMonitor() {
       <div className="simple-monitor">
         <div className="loading">
           <div className="spinner"></div>
-          <p>加载中...</p>
-          <p className="hint">正在连接后端 API...</p>
+          <p>Loading...</p>
+          <p className="hint">Connecting to backend API...</p>
         </div>
       </div>
     );
@@ -94,10 +94,10 @@ export default function SimpleMonitor() {
     return (
       <div className="simple-monitor">
         <div className="error-box">
-          <h2>❌ 连接错误</h2>
+          <h2>❌ Connection Error</h2>
           <p>{error}</p>
-          <p className="hint">请确认后端 API 正在运行: <code>uvicorn src.api.server:app</code></p>
-          <button onClick={fetchPortfolio}>重试</button>
+          <p className="hint">Please ensure the backend API is running: <code>uvicorn src.api.server:app</code></p>
+          <button onClick={() => fetchPortfolio(true)}>Retry</button>
         </div>
       </div>
     );
@@ -107,8 +107,8 @@ export default function SimpleMonitor() {
     return (
       <div className="simple-monitor">
         <div className="no-data">
-          <p>暂无投资组合数据</p>
-          <p className="hint">运行一次交易循环后会有数据</p>
+          <p>No portfolio data available</p>
+          <p className="hint">Run a trading cycle to generate data</p>
         </div>
       </div>
     );
@@ -119,30 +119,30 @@ export default function SimpleMonitor() {
   return (
     <div className="simple-monitor">
       <header className="monitor-header">
-        <h1>📊 AI Trader - 简易监控</h1>
-        <div className="header-controls">
-          <label>
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            自动刷新 (30秒)
-          </label>
-          <button onClick={() => fetchPortfolio(true)} disabled={isRefreshing}>
-            {isRefreshing ? '刷新中...' : '手动刷新'}
-          </button>
-          {lastUpdate && (
-            <span className="last-update">
-              最后更新: {lastUpdate.toLocaleTimeString()}
-            </span>
-          )}
+          <h1>📊 AI Trader - Simple Monitor</h1>
+          <div className="header-controls">
+            <label>
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              Auto Refresh (30s)
+            </label>
+            <button onClick={() => fetchPortfolio(true)} disabled={isRefreshing}>
+              {isRefreshing ? 'Refreshing...' : 'Manual Refresh'}
+            </button>
+            {lastUpdate && (
+              <span className="last-update">
+                Last Update: {lastUpdate.toLocaleTimeString()}
+              </span>
+            )}
         </div>
       </header>
 
       <div className="stats-grid">
         <div className="stat-card total-value">
-          <div className="stat-label">总资产</div>
+          <div className="stat-label">Total Value</div>
           <div className="stat-value">
             ${portfolio.total_value.toLocaleString('en-US', { 
               minimumFractionDigits: 2, 
@@ -152,7 +152,7 @@ export default function SimpleMonitor() {
         </div>
 
         <div className={`stat-card pnl ${portfolio.total_pnl >= 0 ? 'positive' : 'negative'}`}>
-          <div className="stat-label">总盈亏</div>
+          <div className="stat-label">Total P&L</div>
           <div className="stat-value">
             ${portfolio.total_pnl.toLocaleString('en-US', { 
               minimumFractionDigits: 2, 
@@ -166,7 +166,7 @@ export default function SimpleMonitor() {
         </div>
 
         <div className="stat-card cash">
-          <div className="stat-label">现金</div>
+          <div className="stat-label">Cash</div>
           <div className="stat-value">
             ${portfolio.cash.toLocaleString('en-US', { 
               minimumFractionDigits: 2, 
@@ -176,7 +176,7 @@ export default function SimpleMonitor() {
         </div>
 
         <div className="stat-card equity">
-          <div className="stat-label">持仓市值</div>
+          <div className="stat-label">Equity Value</div>
           <div className="stat-value">
             ${portfolio.equity_value.toLocaleString('en-US', { 
               minimumFractionDigits: 2, 
@@ -188,18 +188,18 @@ export default function SimpleMonitor() {
 
       {positions.length > 0 && (
         <div className="positions-section">
-          <h2>当前持仓 ({positions.length})</h2>
+          <h2>Current Positions ({positions.length})</h2>
           <div className="positions-table">
             <table>
               <thead>
                 <tr>
-                  <th>股票</th>
-                  <th>数量</th>
-                  <th>成本价</th>
-                  <th>当前价</th>
-                  <th>市值</th>
-                  <th>盈亏</th>
-                  <th>盈亏%</th>
+                  <th>Symbol</th>
+                  <th>Quantity</th>
+                  <th>Avg Cost</th>
+                  <th>Current Price</th>
+                  <th>Market Value</th>
+                  <th>Unrealized P&L</th>
+                  <th>P&L %</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,13 +229,13 @@ export default function SimpleMonitor() {
 
       {positions.length === 0 && (
         <div className="no-positions">
-          <p>当前无持仓</p>
+          <p>No positions held</p>
         </div>
       )}
 
       <footer className="monitor-footer">
         <p>API: {API_BASE}</p>
-        <p>数据时间: {portfolio.timestamp ? new Date(portfolio.timestamp).toLocaleString('zh-CN') : 'N/A'}</p>
+        <p>Data Time: {portfolio.timestamp ? new Date(portfolio.timestamp).toLocaleString() : 'N/A'}</p>
       </footer>
     </div>
   );

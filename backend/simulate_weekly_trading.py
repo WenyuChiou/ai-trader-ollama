@@ -305,6 +305,15 @@ def simulate_weekly_trading():
             if last_prices:
                 daily_results[-1]["last_prices"] = last_prices
             
+            # 生成每日报告
+            try:
+                from scripts.generate_daily_report import generate_daily_report, print_daily_report
+                daily_report = generate_daily_report(date)
+                if "error" not in daily_report:
+                    print_daily_report(daily_report)
+            except Exception as e:
+                print(f"  [WARN] Failed to generate daily report: {e}")
+            
             print(f"\n[Day {day_num} completed]")
             
         except Exception as e:

@@ -255,8 +255,9 @@ def execute_daily_trade(
         if symbol and buy_price and quantity:
             try:
                 # 檢查現金是否足夠
-                # 使用 buy_price_min 作為限價（低買策略）
-                limit_price = buy_price_min  # 使用價格範圍最低價作為限價
+                # 使用 buy_price_min 作為限價（但更激進，提高成交率）
+                # buy_price_min 現在是 99.5% 當前價格，而不是 98%
+                limit_price = buy_price_min  # 使用價格範圍最低價作為限價（99.5%當前價格）
                 estimated_cost = limit_price * quantity
                 
                 if estimated_cost > portfolio.cash:

@@ -242,12 +242,18 @@ def run_trader(
                         symbol, qty, portfolio_value, last_prices[symbol], rview
                     )
                     if sell_qty > 0:
-                        sell_price = last_prices[symbol]
+                        current_price = last_prices[symbol]
+                        # 卖出价格范围（高卖）：期望比当前价格高 0.5%-2%
+                        sell_price_min = current_price * 1.005  # 至少高0.5%
+                        sell_price_max = current_price * 1.02   # 最高高2%
+                        sell_price = sell_price_min  # 用于计算的基准价格（保守估算）
                         sell_orders.append({
                             "symbol": symbol,
-                            "sell_price": sell_price,
+                            "sell_price": sell_price,  # 用于计算的基准价格
+                            "sell_price_min": sell_price_min,  # 最低卖出价（范围下限）
+                            "sell_price_max": sell_price_max,  # 最高卖出价（范围上限，高卖）
                             "quantity": sell_qty,
-                            "total_proceeds": sell_price * sell_qty,
+                            "total_proceeds": sell_price * sell_qty,  # 基于基准价格估算
                         })
         
         action = "SELL" if sell_orders else "HOLD"
@@ -320,7 +326,11 @@ def run_trader(
                 )
                 
                 if quantity > 0:
-                    buy_price = last_price
+                    # 买入价格范围（更激进的限价策略，提高成交率）
+                    # 使用当前价格的 99%-100% 作为范围，限价设为 99.5%（提高成交率至50%以上）
+                    buy_price_max = last_price  # 最高买入价（不超过当前价格）
+                    buy_price_min = last_price * 0.995  # 最低买入价（仅比当前价格低0.5%，提高成交率）
+                    buy_price = buy_price_max  # 默认使用最高价（保守，确保能买到）
                     total_cost = buy_price * quantity
                     
                     # 检查可用资金（这里检查现金是否足够）
@@ -330,7 +340,9 @@ def run_trader(
                     
                     buy_orders.append({
                         "symbol": symbol,
-                        "buy_price": buy_price,
+                        "buy_price": buy_price,  # 用于计算的基准价格
+                        "buy_price_min": buy_price_min,  # 最低买入价（范围下限，低买）
+                        "buy_price_max": buy_price_max,  # 最高买入价（范围上限，不超过当前价格）
                         "quantity": quantity,
                         "total_cost": total_cost,
                     })
@@ -348,12 +360,18 @@ def run_trader(
                     symbol, qty, portfolio_value, last_prices[symbol], rview
                 )
                 if sell_qty > 0:
-                    sell_price = last_prices[symbol]
+                    current_price = last_prices[symbol]
+                    # 卖出价格范围（高卖）：期望比当前价格高 0.5%-2%
+                    sell_price_min = current_price * 1.005  # 至少高0.5%
+                    sell_price_max = current_price * 1.02   # 最高高2%
+                    sell_price = sell_price_min  # 用于计算的基准价格（保守估算）
                     sell_orders.append({
                         "symbol": symbol,
-                        "sell_price": sell_price,
+                        "sell_price": sell_price,  # 用于计算的基准价格
+                        "sell_price_min": sell_price_min,  # 最低卖出价（范围下限）
+                        "sell_price_max": sell_price_max,  # 最高卖出价（范围上限，高卖）
                         "quantity": sell_qty,
-                        "total_proceeds": sell_price * sell_qty,
+                        "total_proceeds": sell_price * sell_qty,  # 基于基准价格估算
                     })
                     risk_compliance["warnings"].append(
                         f"{symbol} position exceeds limit, recommend selling {sell_qty} shares"

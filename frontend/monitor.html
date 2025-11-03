@@ -18,6 +18,36 @@
             padding: 20px;
         }
 
+        /* Business style (applied in Allocation page) */
+        body.business {
+            background: #f5f7fb;
+        }
+        body.business .header {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: none;
+        }
+        body.business .chart-section,
+        body.business .positions-section,
+        body.business .status-section,
+        body.business .trades-section {
+            border: 1px solid #e5e7eb;
+            box-shadow: none;
+        }
+        body.business .tab-btn.active {
+            background: #1f2937;
+            color: #ffffff;
+            border-color: #1f2937;
+        }
+        body.business .tab-btn {
+            background: #ffffff;
+        }
+        body.business .footer {
+            border: 1px solid #e5e7eb;
+            box-shadow: none;
+            background: #ffffff;
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -818,8 +848,11 @@
             <div id="allocationPage" style="display: none;">
                 <div class="chart-section">
                     <div class="chart-header">
-                        <h2>Asset Allocation</h2>
-                        <div class="position-count" id="allocTotal">—</div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <h2>Asset Allocation</h2>
+                            <div class="position-count" id="allocTotal">—</div>
+                        </div>
+                        <div class="card-subtitle">A clear breakdown of cash and holdings for professional review.</div>
                     </div>
                     <div class="pie-container">
                         <svg id="pieSvg" viewBox="0 0 300 300" width="300" height="300"></svg>
@@ -1601,6 +1634,7 @@
                 if (btnA) btnA.classList.remove('active');
                 // load trades
                 fetchTrades(200).then(renderTrades);
+                document.body.classList.remove('business');
             } else if (tab === 'allocation') {
                 o.style.display = 'none';
                 t.style.display = 'none';
@@ -1610,6 +1644,7 @@
                 btnT.classList.remove('active');
                 // redraw allocation using last known portfolio if available
                 // will be updated on next refresh automatically
+                document.body.classList.add('business');
             } else {
                 o.style.display = 'block';
                 t.style.display = 'none';
@@ -1617,6 +1652,7 @@
                 btnT.classList.remove('active');
                 if (btnA) btnA.classList.remove('active');
                 btnO.classList.add('active');
+                document.body.classList.remove('business');
             }
         }
 

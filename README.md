@@ -64,7 +64,7 @@ This initializes:
 
 ### Step 3: Start Backend API
 
-**Option A: Quick Start Script (Windows)**
+#### Option A: Quick Start Script (Windows - Recommended)
 
 **Important**: Navigate to `backend/scripts/` directory first!
 
@@ -73,27 +73,38 @@ cd backend\scripts
 .\start_api_background.ps1
 ```
 
-This opens API in a separate window. Close the window to stop the API.
+This opens API in a separate window. **Keep that window open** - the API server runs there.
 
 **If you see "file not found" error:**
 - Make sure you're in `backend/scripts/` directory
 - Or use Option B (manual start) instead
 
-**Option B: Manual Start**
+#### Option B: Manual Start
 
 ```bash
 cd backend
 python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Verify API is Running:**
+**Keep this terminal window open** - close it to stop the API.
 
-Open in browser or run:
-```bash
+---
+
+### Step 3.5: Verify & Monitor Backend API
+
+#### Quick Verification
+
+**Test in browser:**
+```
+http://localhost:8000/
+```
+
+**Or use PowerShell:**
+```powershell
 curl http://localhost:8000/
 ```
 
-You should see JSON response like:
+**Expected Response:**
 ```json
 {
   "message": "AI Trader API",
@@ -101,7 +112,102 @@ You should see JSON response like:
 }
 ```
 
-**Keep API Running**: See [`backend/scripts/keep_api_running.md`](backend/scripts/keep_api_running.md) for methods to keep API running in background.
+#### Monitor Backend Status
+
+**Method 1: Automated Test Script (Recommended)**
+```powershell
+cd backend
+powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
+```
+
+This tests all endpoints and shows detailed status.
+
+**Method 2: Check Port Usage**
+```powershell
+# Check if port 8000 is in use
+netstat -ano | findstr ":8000"
+
+# Or use helper script
+cd backend\scripts
+.\check_port.ps1
+```
+
+**Method 3: Browser Test**
+Open these URLs in your browser:
+- Health: `http://localhost:8000/`
+- Portfolio: `http://localhost:8000/api/portfolio/real-time`
+- Tools: `http://localhost:8000/api/tools/list`
+
+**Method 4: Python Quick Test**
+```bash
+cd backend
+python test_api.py
+```
+
+**See**: [`backend/TEST_BACKEND.md`](backend/TEST_BACKEND.md) for comprehensive testing guide
+
+---
+
+### Step 3.6: Stop Backend API
+
+#### If Started with Background Script (Option A)
+
+**Simple Method:**
+- Close the PowerShell window that shows the API logs
+- This will stop the API server
+
+**If window is closed/minimized:**
+```powershell
+# Find and kill the process
+cd backend\scripts
+.\check_port.ps1
+# Follow prompts to kill the process, or manually:
+taskkill /PID <PID> /F
+```
+
+#### If Started Manually (Option B)
+
+**In the terminal where API is running:**
+- Press `Ctrl + C` to stop the server
+- Or simply close the terminal window
+
+#### Verify API is Stopped
+
+```powershell
+# Should show nothing (port not in use)
+netstat -ano | findstr ":8000"
+
+# Or test connection (should fail)
+curl http://localhost:8000/
+```
+
+---
+
+### Step 3.7: Keep API Running in Background (Optional)
+
+For production use, you may want to keep the API running continuously:
+
+**Methods:**
+- **PowerShell Background Job**: See [`backend/scripts/keep_api_running.md`](backend/scripts/keep_api_running.md)
+- **Windows Service (NSSM)**: See [`backend/scripts/keep_api_running.md`](backend/scripts/keep_api_running.md)
+- **Windows Task Scheduler**: See [`backend/scripts/keep_api_running.md`](backend/scripts/keep_api_running.md)
+- **pm2 (if Node.js installed)**: See [`backend/scripts/keep_api_running.md`](backend/scripts/keep_api_running.md)
+
+**Quick Start (PowerShell Background):**
+```powershell
+cd backend
+Start-Job -ScriptBlock { Set-Location "C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\backend"; python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 }
+
+# Check status
+Get-Job
+
+# View output
+Receive-Job <JobId>
+
+# Stop
+Stop-Job <JobId>
+Remove-Job <JobId>
+```
 
 ### Step 4: Start Frontend (Monitoring Dashboard)
 
@@ -185,7 +291,7 @@ python test_api.py
 
 ### 3️⃣ Start Backend API
 
-**Option A: Background Script (Windows)**
+#### Option A: Background Script (Windows)
 
 **Important**: The script is in `backend/scripts/` directory, not `backend/`!
 
@@ -194,20 +300,98 @@ cd backend\scripts
 .\start_api_background.ps1
 ```
 
-This opens API in a separate window. Keep that window open - close it to stop the API.
+This opens API in a separate window. **Keep that window open** - close it to stop the API.
 
-**Option B: Manual Start**
+#### Option B: Manual Start
 
 ```bash
 cd backend
 python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Keep this terminal window open** - the API server is running here.
+**Keep this terminal window open** - close it (or press `Ctrl+C`) to stop the API.
 
 ---
 
-### 4️⃣ Verify Backend API
+### 3.5️⃣ Monitor Backend API Status
+
+#### Quick Status Check
+
+```powershell
+# Automated test script (recommended)
+cd backend
+powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
+```
+
+#### Manual Checks
+
+**Test Health Endpoint:**
+```powershell
+curl http://localhost:8000/
+```
+
+**Check Port Usage:**
+```powershell
+netstat -ano | findstr ":8000"
+```
+
+**Or use helper script:**
+```powershell
+cd backend\scripts
+.\check_api_status.ps1
+```
+
+**Expected Output:**
+- ✅ Port 8000 is in use
+- ✅ API responds with HTTP 200
+- ✅ Version: 1.0.0
+
+#### Browser Verification
+
+Open in browser:
+- `http://localhost:8000/` - Should show API info
+- `http://localhost:8000/api/portfolio/real-time` - Should show portfolio data
+
+**See**: [`backend/TEST_BACKEND.md`](backend/TEST_BACKEND.md) for detailed monitoring guide
+
+---
+
+### 3.6️⃣ Stop Backend API
+
+#### If Started with Background Script (Option A)
+
+**Method 1: Close the Window**
+- Close the PowerShell window showing API logs
+- API will stop automatically
+
+**Method 2: Kill Process**
+```powershell
+# Find the process
+cd backend\scripts
+.\check_port.ps1
+# Follow prompts, or manually:
+taskkill /PID <PID> /F
+```
+
+#### If Started Manually (Option B)
+
+**In the terminal running API:**
+- Press `Ctrl + C` to stop gracefully
+- Or close the terminal window
+
+#### Verify API is Stopped
+
+```powershell
+# Should show nothing
+netstat -ano | findstr ":8000"
+
+# Connection should fail
+curl http://localhost:8000/
+```
+
+---
+
+### 4️⃣ Verify Backend API (Detailed)
 
 **In a new terminal window**, test the API:
 
@@ -620,6 +804,25 @@ curl http://localhost:8000/api/portfolio/real-time
 
 # Should return JSON with portfolio data or error message
 ```
+
+**Monitor Backend Status:**
+```powershell
+# Quick automated test
+cd backend
+powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
+
+# Or check port
+netstat -ano | findstr ":8000"
+
+# Or use status check script
+cd backend\scripts
+.\check_api_status.ps1
+```
+
+**Stop Backend API:**
+- **If started with script**: Close the PowerShell window showing API logs
+- **If started manually**: Press `Ctrl+C` in the terminal, or close the terminal
+- **Force stop**: `taskkill /PID <PID> /F` (find PID with `check_port.ps1`)
 
 **Check Frontend Connection:**
 - Open browser console (F12)

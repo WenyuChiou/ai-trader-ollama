@@ -5,7 +5,8 @@
 param(
     [string]$ApiUrl = "http://127.0.0.1:8000",
     [int]$IntervalSeconds = 30,
-    [int]$VolatilityBps = 15
+    [int]$VolatilityBps = 15,
+    [switch]$WithConversations
 )
 
 Write-Host "Starting demo real-time updater..." -ForegroundColor Cyan
@@ -23,6 +24,18 @@ while ($true) {
             Write-Host "[$ts] Demo tick => TotalValue=$tv  PnL=$pnl ($pct%)" -ForegroundColor Green
         } else {
             Write-Host "Demo tick failed: $($resp | ConvertTo-Json -Depth 4)" -ForegroundColor Yellow
+        }
+
+        if ($WithConversations) {
+            try {
+                $convUrl = "$ApiUrl/api/demo/conversation-tick"
+                $conv = Invoke-RestMethod -Uri $convUrl -Method POST -TimeoutSec 10
+                if ($conv.ok) {
+                    Write-Host "   + conversation: $($conv.entry.agent) - $($conv.entry.content)" -ForegroundColor DarkCyan
+                }
+            } catch {
+                Write-Host "Failed to write demo conversation: $($_.Exception.Message)" -ForegroundColor Yellow
+            }
         }
     } catch {
         Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red

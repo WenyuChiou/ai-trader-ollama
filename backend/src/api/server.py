@@ -447,6 +447,51 @@ async def demo_real_time_portfolio(volatility_bps: int = 15):
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
+
+@app.post("/api/demo/conversation-tick")
+async def demo_conversation_tick():
+    """Append a synthetic agent conversation entry for demo display.
+
+    This helps the frontend Conversations modal show activity in demo mode.
+    """
+    try:
+        import json
+        from datetime import datetime
+
+        logs_dir = Path("data/logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+
+        agents = [
+            "MarketAgent",
+            "MarketAnalyst",
+            "DiscussionAgent",
+            "RiskAnalyst",
+            "TraderAgent",
+        ]
+        messages = [
+            "Scanning market breadth & volatility regime...",
+            "Top signals: momentum up, looking at NVDA/MSFT/AAPL weighting...",
+            "Consensus forming: mild bullish with hedged exposure.",
+            "Risk limits OK. Position size within constraints.",
+            "Placing demo limit orders within price bands.",
+        ]
+
+        entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "agent": random.choice(agents),
+            "round": random.randint(1, 3),
+            "content": random.choice(messages),
+            "type": "demo",
+        }
+
+        with convo_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        return {"ok": True, "written": True, "entry": entry}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+
 @app.get("/api/system/info")
 async def get_system_info():
     """Get system information including LLM model and configuration"""

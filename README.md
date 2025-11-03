@@ -22,6 +22,8 @@ AI-Trader Ollama is an autonomous trading system that uses multiple specialized 
 
 ## 🚀 Quick Start
 
+> **⚠️ First Time Setup**: If this is your first time, follow the [Complete Testing Checklist](#-complete-testing-checklist) below to verify everything works.
+
 ### Step 1: Prerequisites
 
 ```bash
@@ -65,7 +67,7 @@ This opens API in a separate window. Close the window to stop the API.
 
 ```bash
 cd backend
-uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Verify API is Running:**
@@ -111,10 +113,192 @@ cd backend
 python scripts/run_daily_trading.py
 ```
 
+---
+
+## ✅ Complete Testing Checklist
+
+Follow these steps to verify everything works correctly:
+
+### 1️⃣ Initialize Data
+
+```bash
+cd backend
+python scripts/init_data.py
+```
+
+**Expected Output:**
+```
+✅ Portfolio initialized with $10,000.00
+✅ Memory directories created
+✅ Log files initialized
+```
+
+**Verify:**
+```bash
+# Check portfolio state exists
+ls data/logs/portfolio_state.json
+```
+
+---
+
+### 2️⃣ Test Backend (Quick Check)
+
+Before starting the server, run the quick test:
+
+```bash
+cd backend
+python test_api.py
+```
+
+**Expected Output:**
+```
+✅ PASS - Portfolio Initialization
+✅ PASS - Portfolio State File
+✅ PASS - API Server Imports
+✅ All tests passed! Backend is ready.
+```
+
+---
+
+### 3️⃣ Start Backend API
+
+**Option A: Background Script (Windows)**
+```powershell
+cd backend\scripts
+.\start_api_background.ps1
+```
+
+**Option B: Manual Start**
+```bash
+cd backend
+python -m uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Keep this terminal window open** - the API server is running here.
+
+---
+
+### 4️⃣ Verify Backend API
+
+**In a new terminal window**, test the API:
+
+```bash
+# Test health endpoint
+curl http://localhost:8000/
+```
+
+**Expected Response:**
+```json
+{
+  "message": "AI Trader API",
+  "version": "1.0.0"
+}
+```
+
+**Or test portfolio endpoint:**
+```bash
+curl http://localhost:8000/api/portfolio/real-time
+```
+
+**Expected Response:**
+```json
+{
+  "ok": true,
+  "timestamp": "2025-01-28T...",
+  "total_value": 10000.00,
+  "cash": 10000.00,
+  ...
+}
+```
+
+**If you see "Portfolio not initialized" error:**
+```bash
+cd backend
+python scripts/init_data.py
+```
+
+---
+
+### 5️⃣ Start Frontend
+
+**In another new terminal window:**
+
+```bash
+cd frontend
+npm install  # First time only (skip if already done)
+npm run dev
+```
+
+**Expected Output:**
+```
+  VITE v5.x.x  ready in xxx ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+```
+
+---
+
+### 6️⃣ Test Frontend Connection
+
+**Open browser:** `http://localhost:5173`
+
+**Check the following:**
+
+1. **Connection Status**
+   - ✅ Green indicator (●) = Connected
+   - ❌ Red indicator (○) = Not connected
+   - Check API address matches backend (default: `http://localhost:8000`)
+
+2. **Portfolio Data**
+   - ✅ Total Value: $10,000.00 (or your initialized amount)
+   - ✅ Cash: $10,000.00
+   - ✅ Equity Value: $0.00 (if no positions)
+   - ✅ Total P&L: $0.00
+
+3. **Functionality**
+   - ✅ Auto Refresh toggle works
+   - ✅ Manual Refresh button works
+   - ✅ No console errors (F12 → Console tab)
+
+**If you see "Connection Error":**
+1. Check backend API is running: `curl http://localhost:8000/`
+2. Verify backend terminal shows API logs
+3. Check browser console (F12) for detailed error
+4. Ensure API address in frontend matches backend
+
+---
+
+### 7️⃣ Quick Frontend Test (Alternative)
+
+**Or use the browser test page:**
+
+1. Open `frontend/test_connection.html` in browser
+2. Click **"Test All"** button
+3. Check all tests pass
+
+---
+
+## 🎯 Success Criteria
+
+**All steps successful when:**
+- ✅ `python test_api.py` passes all tests
+- ✅ Backend API responds to `curl http://localhost:8000/`
+- ✅ Frontend displays portfolio data without errors
+- ✅ Connection status shows green indicator
+- ✅ No console errors in browser
+
+**If any step fails:**
+- See [`TESTING_GUIDE.md`](TESTING_GUIDE.md) for detailed troubleshooting
+- See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for common issues
+
+---
+
 **See**: 
 - [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) - Detailed setup guide
 - [`docs/DATA_INITIALIZATION.md`](docs/DATA_INITIALIZATION.md) - Data initialization details
 - [`docs/QUICK_MONITORING.md`](docs/QUICK_MONITORING.md) - Monitoring setup guide
+- [`TESTING_GUIDE.md`](TESTING_GUIDE.md) - Complete testing guide
 
 ---
 

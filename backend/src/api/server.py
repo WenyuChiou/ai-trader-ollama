@@ -9,6 +9,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Any
+import random
+from pathlib import Path
 import json
 import asyncio
 from datetime import datetime
@@ -329,6 +331,121 @@ async def list_tools():
     tb = ToolBox()
     return {"tools": tb.list()}
 
+
+@app.get("/api/demo/real-time")
+async def demo_real_time_portfolio(volatility_bps: int = 15):
+    """Generate a simulated real-time portfolio snapshot (demo mode).
+
+    - Updates every call with a small random walk on prices
+    - Persists last demo prices to data/logs/demo_prices.json
+    - Appends snapshot to data/logs/real_time_snapshots.jsonl
+    - Returns the same schema as /api/portfolio/real-time
+
+    volatility_bps: per-tick volatility in basis points (default 15bps = 0.15%)
+    """
+    try:
+        import json
+        from datetime import datetime
+
+        logs_dir = Path("data/logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load portfolio state; create a demo one if not exists
+        state_file = logs_dir / "portfolio_state.json"
+        if state_file.exists():
+            with state_file.open("r", encoding="utf-8") as f:
+                state = json.load(f)
+        else:
+            # Seed a simple demo portfolio
+            state = {
+                "cash": 2500.0,
+                "initial_value": 10000.0,
+                "positions": {
+                    "NVDA": {"quantity": 5, "avg_cost": 900.0, "total_cost": 4500.0},
+                    "MSFT": {"quantity": 7, "avg_cost": 420.0, "total_cost": 2940.0},
+                    "AAPL": {"quantity": 10, "avg_cost": 190.0, "total_cost": 1900.0},
+                },
+            }
+
+        positions: Dict[str, Any] = state.get("positions", {})
+
+        # Load or initialize last demo prices
+        demo_prices_file = logs_dir / "demo_prices.json"
+        if demo_prices_file.exists():
+            with demo_prices_file.open("r", encoding="utf-8") as f:
+                last_prices: Dict[str, float] = json.load(f)
+        else:
+            last_prices = {sym: float(info.get("avg_cost", 0.0)) for sym, info in positions.items()}
+
+        # Simulate price changes with random walk
+        sigma = max(1, int(volatility_bps)) / 10000.0  # convert bps to fraction
+        new_prices: Dict[str, float] = {}
+        for sym, info in positions.items():
+            base = float(last_prices.get(sym, info.get("avg_cost", 0.0)) or info.get("avg_cost", 0.0))
+            # random change in +/- ~3 sigma cap
+            drift = random.uniform(-3*sigma, 3*sigma)
+            price = max(0.01, base * (1.0 + drift))
+            new_prices[sym] = round(price, 4)
+
+        # Build portfolio snapshot
+        cash = float(state.get("cash", 0.0))
+        initial_value = float(state.get("initial_value", 10000.0))
+        positions_detail: Dict[str, Any] = {}
+        positions_pnl: Dict[str, Any] = {}
+        equity_value = 0.0
+        total_unrealized = 0.0
+
+        for sym, info in positions.items():
+            qty = int(info.get("quantity", 0))
+            avg = float(info.get("avg_cost", 0.0))
+            px = float(new_prices.get(sym, avg))
+            mv = qty * px
+            equity_value += mv
+            unreal = (px - avg) * qty
+            total_unrealized += unreal
+            pnl_pct = ((px - avg) / avg * 100.0) if avg > 0 else 0.0
+
+            positions_detail[sym] = {
+                "quantity": qty,
+                "avg_cost": round(avg, 4),
+                "current_price": round(px, 4),
+                "market_value": round(mv, 2),
+            }
+            positions_pnl[sym] = {
+                "unrealized_pnl": round(unreal, 2),
+                "unrealized_pnl_pct": round(pnl_pct, 3),
+            }
+
+        total_value = cash + equity_value
+        total_pnl = total_value - initial_value
+        total_pnl_pct = (total_pnl / initial_value * 100.0) if initial_value > 0 else 0.0
+
+        snapshot = {
+            "ok": True,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "initial_value": round(initial_value, 2),
+            "total_value": round(total_value, 2),
+            "total_pnl": round(total_pnl, 2),
+            "total_pnl_pct": round(total_pnl_pct, 3),
+            "cash": round(cash, 2),
+            "equity_value": round(equity_value, 2),
+            "positions": positions_detail,
+            "positions_pnl": positions_pnl,
+            "source": "demo",
+        }
+
+        # Persist latest prices
+        with demo_prices_file.open("w", encoding="utf-8") as f:
+            json.dump(new_prices, f, ensure_ascii=False, indent=2)
+
+        # Append to real-time snapshots jsonl
+        rts_file = logs_dir / "real_time_snapshots.jsonl"
+        with rts_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
+
+        return snapshot
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
 @app.get("/api/system/info")
 async def get_system_info():

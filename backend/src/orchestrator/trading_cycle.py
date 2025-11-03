@@ -130,7 +130,24 @@ def execute_daily_trade(
         except Exception:
             pass
 
-    # ---- (2) 討論層（自動補工具）----
+    # ---- (1.5) 加載歷史記憶（長短記憶）----
+    historical_memories = []
+    try:
+        from src.data.memory_manager import MemoryManager
+        memory_manager = MemoryManager(root="data/logs")
+        # 加載最近5天的記憶摘要（短期記憶）
+        historical_memories = memory_manager.load_recent_memories(
+            days=5,
+            end_date=end if end else None,
+            summary_only=True,  # 只加載摘要，減少 prompt 長度
+        )
+        if historical_memories:
+            print(f"[MEMORY] Loaded {len(historical_memories)} historical memories for context")
+    except Exception as e:
+        print(f"[MEMORY WARN] Failed to load historical memories: {e}")
+        # 不影響主流程，繼續執行
+
+    # ---- (2) 討論層（自動補工具 + 歷史記憶注入）----
     convo = run_analyst_discussion(
         enriched_market,
         _unused=None,                   # 第二个参数是 _unused（用于向后兼容）
@@ -138,6 +155,7 @@ def execute_daily_trade(
         auto_tools=auto_tools,
         tool_budget=tool_budget,
         preferred_domains=preferred_domains,
+        historical_memories=historical_memories,  # 注入歷史記憶
     )
     final_stance = convo.get("final_stance", "neutral")
     
@@ -207,11 +225,17 @@ def execute_daily_trade(
         position_config=position_config,  # 传入仓位配置
     )
 
-    # ---- (5) 執行交易並更新 Portfolio ----
+    # ---- (5) 掛單策略：開盤前掛限價單，收盤後檢查成交 ----
+    from src.data.order_manager import OrderManager
+    
+    order_manager = OrderManager(root="data/logs")
+    today = end if end else date.today().isoformat()
+    
     executed_trades = []
     execution_errors = []
+    placed_orders = []  # 記錄掛單
     
-    # 执行买入订单（改进：支持同时买入多只股票）
+    # 掛單策略：將所有訂單先掛單，收盤後再檢查成交
     buy_orders = decision.get("buy_orders", [])
     
     # 按优先级排序（可以根据 signal_score 或其他指标排序）
@@ -219,52 +243,52 @@ def execute_daily_trade(
     from math import floor
     buy_orders_sorted = sorted(buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
     
+    # 掛單策略：開盤前掛限價單（使用價格範圍最低價作為限價）
     for order in buy_orders_sorted:
         symbol = order.get("symbol")
-        buy_price = order.get("buy_price")
+        buy_price = order.get("buy_price")  # 基准价格（用于计算）
+        buy_price_min = order.get("buy_price_min", buy_price)  # 价格范围下限（低买）
+        buy_price_max = order.get("buy_price_max", buy_price)  # 价格范围上限
         quantity = order.get("quantity")
         total_cost = order.get("total_cost")
         
         if symbol and buy_price and quantity:
             try:
-                # 检查现金是否足够（在买入前再次检查）
-                if total_cost > portfolio.cash:
-                    # 现金不足，尝试减少数量
-                    max_affordable_qty = floor(portfolio.cash / buy_price)
+                # 檢查現金是否足夠
+                # 使用 buy_price_min 作為限價（低買策略）
+                limit_price = buy_price_min  # 使用價格範圍最低價作為限價
+                estimated_cost = limit_price * quantity
+                
+                if estimated_cost > portfolio.cash:
+                    # 現金不足，減少數量
+                    max_affordable_qty = floor(portfolio.cash / limit_price)
                     if max_affordable_qty > 0:
                         quantity = max_affordable_qty
-                        total_cost = buy_price * quantity
-                        order["quantity"] = quantity
-                        order["total_cost"] = total_cost
+                        total_cost = limit_price * quantity
                     else:
-                        # 现金完全不足，跳过这笔订单
-                        execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${total_cost:.2f}, have ${portfolio.cash:.2f})")
+                        execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${estimated_cost:.2f}, have ${portfolio.cash:.2f})")
                         continue
                 
-                portfolio.buy(symbol, quantity, buy_price)
-                # 记录交易
-                trade_logger.log(
+                # 掛單：創建限價買單（使用 buy_price_min 作為限價）
+                placed_order = order_manager.place_order(
                     symbol=symbol,
                     action="BUY",
-                    price=buy_price,
                     quantity=quantity,
-                    amount=total_cost,
-                    status="SUCCESS",
-                    reason=decision.get("rationale"),
-                    rationale=decision.get("rationale"),
-                    stance=decision.get("stance"),
-                    vix_risk=decision.get("vix_risk"),
+                    limit_price=limit_price,  # 限價：使用價格範圍最低價
+                    price_range={
+                        "min": buy_price_min,
+                        "max": buy_price_max,
+                    },
+                    order_date=today,
                 )
-                executed_trades.append({
-                    "symbol": symbol,
-                    "action": "BUY",
-                    "price": buy_price,
-                    "quantity": quantity,
-                    "amount": total_cost,
-                    "status": "SUCCESS",
-                })
+                placed_orders.append(placed_order)
+                
+                # 注意：訂單已掛單，但尚未執行
+                # 實際執行會在收盤後通過 check_order_fills() 檢查
+                print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
+                
             except Exception as e:
-                execution_errors.append(f"BUY {symbol} failed: {e}")
+                execution_errors.append(f"BUY {symbol} order placement failed: {e}")
                 trade_logger.log(
                     symbol=symbol,
                     action="BUY",
@@ -272,7 +296,7 @@ def execute_daily_trade(
                     quantity=quantity,
                     amount=total_cost,
                     status="FAILED",
-                    reason=f"Execution failed: {e}",
+                    reason=f"Order placement failed: {e}",
                     rationale=decision.get("rationale"),
                 )
     
@@ -280,36 +304,42 @@ def execute_daily_trade(
     sell_orders = decision.get("sell_orders", [])
     for order in sell_orders:
         symbol = order.get("symbol")
-        sell_price = order.get("sell_price")
+        sell_price = order.get("sell_price")  # 基准价格（用于计算）
+        sell_price_min = order.get("sell_price_min", sell_price)  # 价格范围下限
+        sell_price_max = order.get("sell_price_max", sell_price)  # 价格范围上限（高卖）
         quantity = order.get("quantity")
         total_proceeds = order.get("total_proceeds")
         
         if symbol and sell_price and quantity:
             try:
-                portfolio.sell(symbol, quantity, sell_price)
-                # 记录交易
-                trade_logger.log(
+                # 檢查持倉是否足夠
+                pos = portfolio.get_position(symbol)
+                if not pos or pos.quantity < quantity:
+                    execution_errors.append(f"SELL {symbol}: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
+                    continue
+                
+                # 掛單：創建限價賣單（使用 sell_price_max 作為限價，高賣策略）
+                limit_price = sell_price_max  # 使用價格範圍最高價作為限價
+                
+                placed_order = order_manager.place_order(
                     symbol=symbol,
                     action="SELL",
-                    price=sell_price,
                     quantity=quantity,
-                    amount=total_proceeds,
-                    status="SUCCESS",
-                    reason=decision.get("rationale"),
-                    rationale=decision.get("rationale"),
-                    stance=decision.get("stance"),
-                    vix_risk=decision.get("vix_risk"),
+                    limit_price=limit_price,  # 限價：使用價格範圍最高價
+                    price_range={
+                        "min": sell_price_min,
+                        "max": sell_price_max,
+                    },
+                    order_date=today,
                 )
-                executed_trades.append({
-                    "symbol": symbol,
-                    "action": "SELL",
-                    "price": sell_price,
-                    "quantity": quantity,
-                    "amount": total_proceeds,
-                    "status": "SUCCESS",
-                })
+                placed_orders.append(placed_order)
+                
+                # 注意：訂單已掛單，但尚未執行
+                # 實際執行會在收盤後通過 check_order_fills() 檢查
+                print(f"[ORDER PLACED] SELL {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
+                
             except Exception as e:
-                execution_errors.append(f"SELL {symbol} failed: {e}")
+                execution_errors.append(f"SELL {symbol} order placement failed: {e}")
                 trade_logger.log(
                     symbol=symbol,
                     action="SELL",
@@ -347,6 +377,48 @@ def execute_daily_trade(
         portfolio_value = 10000.0
         equity_value = 0.0
 
+    # ---- 保存每日记忆和净值记录（Memory Management + Equity Tracking）----
+    try:
+        from src.data.memory_manager import MemoryManager
+        from src.data.equity_tracker import EquityTracker
+        
+        memory_manager = MemoryManager(root="data/logs")
+        equity_tracker = EquityTracker(root="data/logs")
+        
+        # 使用 end 日期作为今天的日期（如果 end 是 None，使用当前日期）
+        today = end if end else date.today().isoformat()
+        
+        # Portfolio 快照
+        portfolio_snapshot = {
+            "cash": portfolio.cash if portfolio else 0.0,
+            "positions": updated_positions_info,
+            "total_value": portfolio_value,
+            "equity_value": equity_value,
+            "total_pnl": total_pnl,
+            "total_pnl_pct": total_pnl_pct,
+            "positions_pnl": portfolio_pnl,
+        }
+        
+        # 保存完整的每日记忆
+        memory_manager.save_daily_memory(
+            date=today,
+            market_view=market_view,
+            market_analysis=market_analysis,
+            discussion=convo,
+            risk_report=risk_report,
+            decision=decision,
+            portfolio_snapshot=portfolio_snapshot,
+        )
+        
+        # 记录每日净值（用于前端图表）
+        equity_tracker.record_daily_equity(
+            date_str=today,
+            portfolio_snapshot=portfolio_snapshot,
+        )
+    except Exception as e:
+        print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
+        # 不影响主流程，继续执行
+
     return {
         "stance": final_stance,
         "decision": decision,
@@ -359,8 +431,9 @@ def execute_daily_trade(
         "market_analysis": market_analysis,  # 添加 Market Analyst 结果
         "last_prices": last_prices,  # 添加最新价格（用于计算仓位百分比）
         # 执行结果
-        "executed_trades": executed_trades,
+        "executed_trades": executed_trades,  # 包含掛單信息（status: PENDING）
         "execution_errors": execution_errors,
+        "placed_orders": placed_orders,  # 掛單列表
         # Portfolio 信息（用于后端展示，包含交易后的最新状态）
         "portfolio": {
             "cash": portfolio.cash if portfolio else 0.0,

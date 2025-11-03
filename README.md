@@ -174,20 +174,42 @@ bash schedule_daily_task.sh
 
 ```bash
 cd backend
-python scripts/monitoring_system.py --days 7
-```
-
-### View Optimization Suggestions
-
-```bash
-python scripts/optimization_system.py --days 30
-```
-
-### Combined Report
-
-```bash
 python scripts/run_monitoring_and_optimization.py
 ```
+
+This generates:
+- **Execution Summary**: Success rate, average execution time
+- **Trading Statistics**: Order fill rate, position concentration
+- **Equity Statistics**: Total return, volatility, max drawdown
+- **Optimization Recommendations**: Suggestions for improvement
+
+### Real-Time Monitoring Dashboard
+
+The system includes an hourly real-time P&L and NAV update system with a web dashboard:
+
+```bash
+# Backend API
+cd backend
+uvicorn src.api.server:app --reload --host 0.0.0.0 --port 8000
+
+# Frontend (in another terminal)
+cd frontend
+npm start
+```
+
+**Dashboard Features**:
+- 📈 Real-time portfolio value tracking (updates every hour)
+- 💹 Asset evolution chart (last 30 days)
+- 📊 Position details with unrealized P&L
+- 🔄 Recent trading actions
+
+**Setup Hourly Updates**:
+```powershell
+cd backend\scripts
+.\schedule_hourly_update.ps1
+```
+
+**See**: [`docs/REALTIME_MONITORING.md`](docs/REALTIME_MONITORING.md) for detailed setup
 
 ---
 
@@ -226,6 +248,10 @@ python tests/test_05_full_trading_loop.py
 - [`docs/PRICE_DATA_STRATEGY.md`](docs/PRICE_DATA_STRATEGY.md) - Price data strategy explanation
 - [`docs/ORDER_EXECUTION_AND_FILL_CHECK.md`](docs/ORDER_EXECUTION_AND_FILL_CHECK.md) - Order execution mechanism
 
+### Monitoring & Visualization
+- [`docs/REALTIME_MONITORING.md`](docs/REALTIME_MONITORING.md) - Real-time P&L and NAV monitoring (hourly updates)
+- [`backend/scripts/setup_hourly_monitoring.md`](backend/scripts/setup_hourly_monitoring.md) - Hourly update task setup
+
 ### Advanced
 - [`docs/MULTI_AGENT_DISCUSSION.md`](docs/MULTI_AGENT_DISCUSSION.md) - Discussion system details
 - [`docs/HKUDS_COMPARISON_AND_FEEDBACK.md`](docs/HKUDS_COMPARISON_AND_FEEDBACK.md) - Comparison with HKUDS/AI-Trader
@@ -252,6 +278,29 @@ python tests/test_05_full_trading_loop.py
 ## 📄 License
 
 MIT License © 2025 Wenyu Chiou
+
+---
+
+## ✅ Phase 2 Status
+
+**Phase 2 is complete!** ✅
+
+All core features have been implemented and tested:
+- ✅ Complete daily trading cycle (all agents participate)
+- ✅ Memory management system (save/load historical decisions)
+- ✅ Automated execution (daily at 9:00 AM)
+- ✅ Monitoring and optimization system
+- ✅ Real-time monitoring dashboard (hourly updates)
+- ✅ Complete documentation
+
+**Test Results**: 
+- Order fill rate: **55.1%** (38/69 orders)
+- All agents participate in daily decisions
+- Complete data tracking (trades, equity, P&L)
+
+**Status**: System is production-ready and can be used for automated trading.
+
+**See**: [`backend/PHASE2_STATUS.md`](backend/PHASE2_STATUS.md) for detailed status
 
 ---
 

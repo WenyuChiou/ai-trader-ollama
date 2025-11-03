@@ -229,6 +229,13 @@ def simulate_weekly_trading():
             else:
                 print(f"  No pending orders to check")
             
+            # 保存每日结果（先保存，然后再更新）
+            daily_results.append({
+                "day": day_num,
+                "date": date,
+                "result": result,
+            })
+            
             # 保存成交明細到每日結果
             if fill_result:
                 daily_results[-1]["fill_result"] = fill_result
@@ -294,12 +301,9 @@ def simulate_weekly_trading():
             if last_prices:
                 print_portfolio_summary(portfolio, last_prices, day_num)
             
-            # 保存每日结果
-            daily_results.append({
-                "day": day_num,
-                "date": date,
-                "result": result,
-            })
+            # 更新每日結果中的 last_prices（用於後續總結）
+            if last_prices:
+                daily_results[-1]["last_prices"] = last_prices
             
             print(f"\n[Day {day_num} completed]")
             
@@ -315,20 +319,48 @@ def simulate_weekly_trading():
     print(" WEEKLY SUMMARY")
     print("="*80)
     
-    final_portfolio_value = portfolio.value(last_prices) if last_prices else portfolio.cash
-    final_pnl = portfolio.total_pnl(last_prices) if last_prices else 0.0
-    final_pnl_pct = portfolio.total_pnl_pct(last_prices) if last_prices else 0.0
+    # 獲取最終價格（從最後一天的結果或從市場獲取）
+    final_last_prices = {}
+    if daily_results:
+        # 嘗試從最後一天的結果獲取價格
+        final_last_prices = daily_results[-1].get("last_prices", {})
+    
+    # 如果沒有，嘗試從市場獲取當前價格
+    if not final_last_prices and portfolio._positions:
+        try:
+            from src.tools.market_tools import fetch_market_batch
+            held_symbols = list(portfolio._positions.keys())
+            market_data = fetch_market_batch.invoke({
+                "symbols": held_symbols,
+                "start": dates[-1],  # 最後一天的日期
+                "end": dates[-1],
+            })
+            stocks = market_data.get("stocks", {})
+            for symbol in held_symbols:
+                if symbol in stocks:
+                    final_last_prices[symbol] = float(stocks[symbol].get("price", 0))
+        except Exception:
+            pass
+    
+    # 如果還是沒有，使用成本價
+    if not final_last_prices:
+        for symbol, pos in portfolio._positions.items():
+            final_last_prices[symbol] = pos.avg_cost
+    
+    final_portfolio_value = portfolio.value(final_last_prices) if final_last_prices else portfolio.cash
+    final_pnl = portfolio.total_pnl(final_last_prices) if final_last_prices else 0.0
+    final_pnl_pct = portfolio.total_pnl_pct(final_last_prices) if final_last_prices else 0.0
     
     print(f"\nInitial Capital: ${initial_cash:.2f}")
     print(f"Final Portfolio Value: ${final_portfolio_value:.2f}")
     print(f"Total P&L: ${final_pnl:.2f} ({final_pnl_pct:.2f}%)")
     print(f"Cash Remaining: ${portfolio.cash:.2f}")
-    print(f"Equity Value: ${portfolio.equity_value(last_prices) if last_prices else 0.0:.2f}")
+    print(f"Equity Value: ${portfolio.equity_value(final_last_prices) if final_last_prices else 0.0:.2f}")
     
     if portfolio._positions:
         print(f"\nFinal Positions ({len(portfolio._positions)}):")
         for symbol, pos in portfolio._positions.items():
-            current_price = last_prices.get(symbol, pos.avg_cost) if last_prices else pos.avg_cost
+            current_price = final_last_prices.get(symbol, pos.avg_cost) if final_last_prices else pos.avg_cost
             pnl = (current_price - pos.avg_cost) * pos.quantity
             pnl_pct = ((current_price - pos.avg_cost) / pos.avg_cost * 100) if pos.avg_cost > 0 else 0
             print(f"  {symbol}: {pos.quantity} shares @ ${pos.avg_cost:.2f} avg "
@@ -340,16 +372,20 @@ def simulate_weekly_trading():
     total_sells = 0
     
     for daily in daily_results:
-        executed = daily.get("result", {}).get("executed_trades", [])
-        total_trades += len(executed)
-        total_buys += len([t for t in executed if t.get("action") == "BUY"])
-        total_sells += len([t for t in executed if t.get("action") == "SELL"])
+        # 優先使用 fill_result 中的 executed_trades（實際成交的）
+        executed = daily.get("executed_trades", [])
+        if not executed:
+            # 如果沒有，嘗試從 result 中獲取（可能是掛單信息）
+            executed = daily.get("result", {}).get("executed_trades", [])
+        total_trades += len([t for t in executed if t.get("status") == "FILLED"])
+        total_buys += len([t for t in executed if t.get("action") == "BUY" and t.get("status") == "FILLED"])
+        total_sells += len([t for t in executed if t.get("action") == "SELL" and t.get("status") == "FILLED"])
     
     print(f"\nTrading Statistics:")
     print(f"  Total Trades: {total_trades}")
     print(f"  Buy Orders: {total_buys}")
     print(f"  Sell Orders: {total_sells}")
-    print(f"  Days with Trades: {len([d for d in daily_results if d.get('result', {}).get('executed_trades')])}")
+    print(f"  Days with Trades: {len([d for d in daily_results if d.get('executed_trades') or d.get('filled_orders', 0) > 0])}")
     
     print("\n" + "="*80)
     print(" SIMULATION COMPLETE")

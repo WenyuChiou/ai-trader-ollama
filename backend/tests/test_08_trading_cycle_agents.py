@@ -6,7 +6,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+# 添加 backend 目录到路径（从 tests/ 向上到 backend/）
+ROOT = Path(__file__).resolve().parents[1]  # tests/ -> backend/
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -23,7 +24,7 @@ def test_all_required_agents():
     print(" TRADING CYCLE AGENTS VALIDATION")
     print("="*80)
     
-    fac = AgentFactory(config_path=ROOT / "config" / "agents.yaml")
+    fac = AgentFactory(config_path=str(ROOT / "config" / "agents.yaml"))
     
     # 准备测试数据
     test_market_view = {

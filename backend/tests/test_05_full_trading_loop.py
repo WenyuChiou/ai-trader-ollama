@@ -14,9 +14,10 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
     sys.stderr.reconfigure(encoding='utf-8') if hasattr(sys.stderr, 'reconfigure') else None
 
-# 添加 backend 目录到路径
-backend_dir = Path(__file__).parent
-sys.path.insert(0, str(backend_dir))
+# 添加 backend 目录到路径（从 tests/ 向上到 backend/）
+ROOT = Path(__file__).resolve().parents[1]  # tests/ -> backend/
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.orchestrator.trading_cycle import execute_daily_trade
 from src.data.portfolio import Portfolio

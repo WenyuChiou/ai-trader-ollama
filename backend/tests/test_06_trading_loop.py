@@ -7,8 +7,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# 添加 backend 目录到路径
-ROOT = Path(__file__).resolve().parent
+# 添加 backend 目录到路径（从 tests/ 向上到 backend/）
+ROOT = Path(__file__).resolve().parents[1]  # tests/ -> backend/
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 

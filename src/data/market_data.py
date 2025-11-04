@@ -26,21 +26,60 @@ def get_stock_price(symbol: str, start: str, end: str, interval: str = "1d",
     """
     Download OHLCV for a single symbol from yfinance.
     Returns columns: Open, High, Low, Close, Adj Close, Volume
+    
+    如果遇到假期或退市股票（YFPricesMissingError），会抛出 ValueError，由调用者处理。
     """
-    df = yf.download(
-        symbol, start=start, end=end, interval=interval,
-        progress=False, auto_adjust=auto_adjust, group_by="column"
-    )
-    if df is None or df.empty:
-        raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
-    return _normalize_ohlcv(df)
+    try:
+        df = yf.download(
+            symbol, start=start, end=end, interval=interval,
+            progress=False, auto_adjust=auto_adjust, group_by="column"
+        )
+        if df is None or df.empty:
+            # 尝试使用更宽的时间范围
+            from datetime import datetime, timedelta
+            try:
+                start_dt = datetime.fromisoformat(start.split('T')[0])
+                # 扩展时间范围到30天
+                extended_start = (start_dt - timedelta(days=30)).isoformat().split('T')[0]
+                extended_end = (datetime.fromisoformat(end.split('T')[0]) + timedelta(days=1)).isoformat().split('T')[0]
+                df = yf.download(
+                    symbol, start=extended_start, end=extended_end, interval=interval,
+                    progress=False, auto_adjust=auto_adjust, group_by="column"
+                )
+                if df is None or df.empty:
+                    raise ValueError(f"No data for {symbol} in {start}~{end} (possibly holiday or delisted)")
+                # 只返回请求日期范围内的数据
+                if start and end:
+                    df = df.loc[start:end]
+            except Exception as inner_e:
+                # 检查是否是 YFPricesMissingError
+                error_str = str(inner_e)
+                if "YFPricesMissingError" in error_str or "possibly delisted" in error_str or "no price data found" in error_str:
+                    raise ValueError(f"No data for {symbol} in {start}~{end} (possibly holiday or delisted)")
+                raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
+        return _normalize_ohlcv(df)
+    except Exception as e:
+        # 检查是否是 YFPricesMissingError（yfinance 可能直接抛出）
+        error_str = str(e)
+        if "YFPricesMissingError" in error_str or "possibly delisted" in error_str or "no price data found" in error_str:
+            raise ValueError(f"No data for {symbol} in {start}~{end} (possibly holiday or delisted)")
+        raise
 
 def get_multi_prices(symbols: List[str], start: str, end: str, interval: str = "1d",
                      auto_adjust: bool = False) -> Dict[str, pd.DataFrame]:
     """Download multiple symbols; returns {symbol: DataFrame}."""
     out: Dict[str, pd.DataFrame] = {}
     for s in symbols:
-        out[s] = get_stock_price(s, start, end, interval=interval, auto_adjust=auto_adjust)
+        try:
+            out[s] = get_stock_price(s, start, end, interval=interval, auto_adjust=auto_adjust)
+        except Exception as e:
+            # 忽略假期或退市股票的错误（YFPricesMissingError）
+            error_str = str(e)
+            if "YFPricesMissingError" in error_str or "possibly delisted" in error_str or "no price data found" in error_str:
+                # 静默忽略，这是假期或退市股票的正常情况
+                continue
+            # 其他错误也静默忽略，继续处理下一个股票
+            continue
     return out
 
 # ---------------- VIX helpers ----------------

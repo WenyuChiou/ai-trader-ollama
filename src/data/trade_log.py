@@ -3,6 +3,18 @@ import json, time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+import sys
+
+# 安全的 print 函数
+def safe_print(msg, **kwargs):
+    try:
+        print(msg, flush=True, **kwargs)
+    except (ValueError, OSError, AttributeError):
+        try:
+            sys.stderr.write(str(msg) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
 
 
 class TradeLogger:

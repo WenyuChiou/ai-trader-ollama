@@ -1,7 +1,26 @@
 # src/orchestrator/trading_cycle.py
 from __future__ import annotations
 from typing import Dict, Any, List, Tuple, Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
+import json
+import sys
+
+# 保存全局引用，避免在函数内部被局部变量覆盖
+_datetime = datetime
+_json = json
+_timezone = timezone
+
+# 安全的 print 函数，避免 stdout 关闭错误
+def safe_print(msg, **kwargs):
+    """安全打印函数，如果 stdout 关闭则使用 stderr"""
+    try:
+        print(msg, flush=True, **kwargs)
+    except (ValueError, OSError, AttributeError):
+        try:
+            sys.stderr.write(str(msg) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass  # 如果 stderr 也失败，忽略
 
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
@@ -54,7 +73,7 @@ def execute_daily_trade(
     universe: List[str] | None = None,
     rounds: int = 3,
     auto_tools: bool = True,
-    tool_budget: int = 2,
+    tool_budget: int = 20,  # 增加到20，允许LLM使用所有工具
     preferred_domains: List[str] | None = None,
     portfolio: Optional[Portfolio] = None,
     trade_logger: Optional[TradeLogger] = None,
@@ -69,8 +88,32 @@ def execute_daily_trade(
     """
 
     # ---- 參數預設 ----
+    # 自动添加市场指数（用于技术分析）
+    market_indices = ["^GSPC", "^IXIC", "^DJI"]  # S&P 500, NASDAQ, Dow Jones
+    
+    # 从 config.json 读取 universe 和 market_indices（如果存在）
+    try:
+        config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+                # 读取市场指数
+                if "market_indices" in config_data and isinstance(config_data["market_indices"], list):
+                    market_indices = config_data["market_indices"]
+                # 优先从 config.json 读取 universe（如果未提供或使用的是默认值）
+                if universe is None or universe == _default_universe():
+                    if "universe" in config_data and isinstance(config_data["universe"], list):
+                        universe = config_data["universe"]
+                        safe_print(f"[INFO] 从 config.json 读取 universe: {len(universe)} 只股票")
+    except Exception as e:
+        safe_print(f"[WARN] 读取 config.json 失败: {e}，使用默认配置")
+        pass  # 使用默认指数和universe
+    
+    # 如果 universe 仍未设置，使用默认值
     if universe is None:
         universe = _default_universe()
+        safe_print(f"[WARN] 使用默认 universe: {len(universe)} 只股票")
+    
     if start is None or end is None:
         start, end = _default_window()
     if preferred_domains is None:
@@ -78,15 +121,53 @@ def execute_daily_trade(
             "www.cboe.com", "www.wsj.com", "www.reuters.com", "www.ft.com",
             "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov"
         ]
+    
+    # 将指数添加到分析用的股票列表（不添加到交易池）
+    analysis_symbols = list(universe) + market_indices
 
     # ---- (1) 市場層 ----
-    market_view: Dict[str, Any] = fetch_market_batch(
-        symbols=universe,
-        start=start,
-        end=end,
-        interval="1d",
-        auto_adjust=False,
-    )
+    # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 调用
+    # 注意：fetch_market_batch 只接受 symbols, start, end 三个参数
+    # 使用 analysis_symbols（包含指数）用于技术分析，但只使用 universe 进行交易
+    try:
+        market_view: Dict[str, Any] = fetch_market_batch.invoke({
+            "symbols": analysis_symbols,  # 包含指数用于技术分析
+            "start": start,
+            "end": end,
+        })
+    except Exception as e:
+        # 检查是否是假期或退市股票的错误
+        error_str = str(e)
+        if "YFPricesMissingError" in error_str or "possibly delisted" in error_str or "no price data found" in error_str:
+            # 对于假期或退市股票，静默忽略，继续处理其他股票
+            safe_print(f"[WARN] 部分股票数据不可用（假期或退市），继续处理其他股票")
+            # 返回一个基本的 market_view，包含空 stocks 字典
+            market_view = {
+                "stocks": {},
+                "vix": {},
+                "inputs": {"tickers": universe, "start": start, "end": end}
+            }
+        else:
+            safe_print(f"[ERROR] fetch_market_batch 失败: {e}")
+            import traceback
+            try:
+                traceback.print_exc()
+            except (ValueError, OSError):
+                try:
+                    sys.stderr.write(traceback.format_exc())
+                    sys.stderr.flush()
+                except Exception:
+                    pass
+            # 返回一个基本的错误响应
+            return {
+                "placed_orders": [],
+                "buy_orders": [],
+                "sell_orders": [],
+                "executed_trades": [],
+                "execution_errors": [f"Market data fetch failed: {str(e)}"],
+                "market_view": {},
+            "error": str(e),
+        }
     # market_view 典型：
     # {
     #   "stocks": {SYM: {price, change_pct, rsi14, macd, bb_pos, signal_score, ...}, ...},
@@ -95,8 +176,93 @@ def execute_daily_trade(
 
     # ---- (1b) 輕量 enriched 給討論層 ----
     stocks = market_view.get("stocks") or {}
-    symbols = list(stocks.keys())
-    signal_top = _top_by_signal(stocks, k=5)
+    # 过滤掉指数（以^开头），只保留实际股票用于交易
+    stocks_only = {k: v for k, v in stocks.items() if not k.startswith("^")}
+    symbols = list(stocks_only.keys())
+    # 增加 signal_top 的数量，让 Agent 能看到更多股票（但不超过实际股票数量）
+    signal_top_k = min(20, len(stocks_only))  # 最多显示前20只，或所有股票（如果少于20只）
+    signal_top = _top_by_signal(stocks_only, k=signal_top_k)
+    
+    # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
+    from src.tools.market_analyst import run_market_analyst
+    market_analysis = run_market_analyst(market_view)
+    recommended_stocks = market_analysis.get("recommended_stocks", [])
+    
+    # 記錄 Market Analyst 的對話
+    try:
+        from pathlib import Path as PathLib
+        logs_dir = PathLib("data/logs")
+        if not logs_dir.exists():
+            backend_root = PathLib(__file__).parent.parent.parent
+            logs_dir = backend_root / "data" / "logs"
+            if not logs_dir.exists():
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                logs_dir = project_root / "backend" / "data" / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+        
+        trade_date_str = end if end else date.today().isoformat()
+        if isinstance(trade_date_str, str):
+            try:
+                # 使用全局引用，避免局部变量冲突
+                trade_date_obj = _datetime.strptime(trade_date_str, "%Y-%m-%d").date()
+                trade_date_str = trade_date_obj.isoformat()
+            except:
+                trade_date_str = date.today().isoformat()
+        else:
+            trade_date_str = date.today().isoformat()
+        
+        # 构建更详细的 Market Analyst 内容
+        key_obs = market_analysis.get('key_observations', [])
+        concerns = market_analysis.get('concerns', [])
+        total_analyzed = market_analysis.get('total_stocks_analyzed', len(stocks_only))
+        market_content = f"Market Sentiment: {market_analysis.get('market_sentiment', 'neutral')}\n"
+        market_content += f"Total stocks analyzed: {total_analyzed}\n"
+        market_content += f"Recommended stocks ({len(recommended_stocks)}): {', '.join(recommended_stocks[:20]) if recommended_stocks else 'None'}\n"
+        if key_obs:
+            # 显示所有关键观察（如果超过20个，market_analyst.py已经处理了截断）
+            market_content += f"Key observations ({len(key_obs)}): {', '.join(key_obs)}\n"
+        if concerns:
+            market_content += f"Concerns: {', '.join(concerns)}\n"
+        vix_info = market_analysis.get('vix', {})
+        if vix_info:
+            market_content += f"VIX: regime={vix_info.get('regime', 'N/A')}, risk_score={vix_info.get('risk_score', 'N/A')}"
+        entry = {
+            "timestamp": _datetime.now(_timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": trade_date_str,
+            "agent": "MarketAnalyst",
+            "round": 0,
+            "content": market_content,
+            "type": "market_analysis",
+        }
+        try:
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+                f.flush()
+                import os
+                os.fsync(f.fileno())
+        except Exception as e:
+            safe_print(f"[WARN] Failed to write MarketAnalyst conversation: {e}")
+        import traceback
+        try:
+            traceback.print_exc()
+        except (ValueError, OSError):
+            try:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+            except Exception:
+                pass
+    except Exception as e:
+        safe_print(f"[WARN] Failed to write MarketAnalyst conversation (outer): {e}")
+        import traceback
+        try:
+            traceback.print_exc()
+        except (ValueError, OSError):
+            try:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+            except Exception:
+                pass
 
     enriched_market: Dict[str, Any] = {
         "symbols": symbols,
@@ -107,6 +273,8 @@ def execute_daily_trade(
         "signal_score_top": signal_top,
         "stocks": stocks,
         "vix": market_view.get("vix"),
+        "recommended_stocks": recommended_stocks,  # 添加 Market Analyst 的推薦股票列表
+        "market_sentiment": market_analysis.get("market_sentiment", "neutral"),  # 添加市場情緒
     }
 
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
@@ -116,23 +284,176 @@ def execute_daily_trade(
         trade_logger = TradeLogger()
 
     # ---- 最新收盤價（用於多處）----
+    # 只从实际股票获取价格（排除指数）
     last_prices = {}
-    for s, d in stocks.items():
+    for s, d in stocks_only.items():
         try:
             last_prices[s] = float(d.get("price"))
         except Exception:
             pass
 
-    # ---- (2) 討論層（自動補工具）----
+    # ---- (1.5) 加載歷史記憶（長短記憶）----
+    historical_memories = []
+    try:
+        from src.data.memory_manager import MemoryManager
+        memory_manager = MemoryManager(root="data/logs")
+        # 加載最近5天的記憶摘要（短期記憶）
+        historical_memories = memory_manager.load_recent_memories(
+            days=5,
+            end_date=end if end else None,
+            summary_only=True,  # 只加載摘要，減少 prompt 長度
+        )
+        if historical_memories:
+            safe_print(f"[MEMORY] Loaded {len(historical_memories)} historical memories for context")
+    except Exception as e:
+        safe_print(f"[MEMORY WARN] Failed to load historical memories: {e}")
+        # 不影響主流程，繼續執行
+
+    # ---- (2) 討論層（自動補工具 + 歷史記憶注入）----
     convo = run_analyst_discussion(
         enriched_market,
-        risk_view=None,                 # Discussion 阶段暂不需要 risk_view
+        _unused=None,                   # 第二个参数是 _unused（用于向后兼容）
         rounds=rounds,
         auto_tools=auto_tools,
         tool_budget=tool_budget,
         preferred_domains=preferred_domains,
+        historical_memories=historical_memories,  # 注入歷史記憶
     )
     final_stance = convo.get("final_stance", "neutral")
+    
+    # 將對話寫入 discussion_actions.jsonl（供前端顯示）
+    try:
+        # 嘗試多個可能的路徑
+        from pathlib import Path
+        import os
+        
+        # 選項1: 相對於當前工作目錄
+        logs_dir = Path("data/logs")
+        if not logs_dir.exists():
+            # 選項2: 相對於 backend 目錄
+            backend_root = Path(__file__).parent.parent.parent
+            logs_dir = backend_root / "data" / "logs"
+            if not logs_dir.exists():
+                # 選項3: 相對於項目根目錄
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                logs_dir = project_root / "backend" / "data" / "logs"
+        
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+        
+        transcript = convo.get("transcript", [])
+        tool_context = convo.get("tool_context", [])
+        actions = convo.get("actions", [])
+        
+        # 獲取交易日期（使用 end 參數，如果沒有則使用今天）
+        trade_date = end if end else date.today().isoformat()
+        if isinstance(trade_date, str):
+            # 確保是 YYYY-MM-DD 格式
+            try:
+                from datetime import datetime as dt_parse
+                trade_date_obj = dt_parse.strptime(trade_date, "%Y-%m-%d").date()
+                trade_date_str = trade_date_obj.isoformat()
+            except:
+                trade_date_str = date.today().isoformat()
+        else:
+            trade_date_str = date.today().isoformat()
+        
+        # 寫入每一輪對話
+        safe_print(f"[CONVO] 準備寫入對話: transcript={len(transcript)} 輪, tool_context={len(tool_context)} 個工具")
+        
+        if not transcript:
+            safe_print(f"[CONVO] WARNING: transcript 為空！可能 DiscussionAgent 沒有生成對話")
+        
+        for round_num, round_text in enumerate(transcript, 1):
+            # 提取 agent 名稱（從 transcript 文本中或使用默認）
+            agent_name = "DiscussionAgent"  # 默認
+            if "--- Round" in round_text:
+                # 嘗試從文本中提取 agent 信息
+                lines = round_text.split("\n")
+                for line in lines[:5]:  # 檢查前幾行
+                    if "agent" in line.lower() or "analyst" in line.lower():
+                        if "technical" in line.lower():
+                            agent_name = "TechnicalAnalyst"
+                        elif "fundamental" in line.lower():
+                            agent_name = "FundamentalAnalyst"
+                        elif "risk" in line.lower():
+                            agent_name = "RiskAnalyst"
+                        elif "sentiment" in line.lower():
+                            agent_name = "SentimentAnalyst"
+                        break
+            
+            entry = {
+                "timestamp": _datetime.now(_timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,  # 使用交易日期，不是當前日期
+                "agent": agent_name,
+                "round": round_num,
+                "content": round_text,  # 移除长度限制，显示完整内容
+                "type": "discussion",  # 標記為真實討論，非 demo
+            }
+            
+            try:
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+                    f.flush()  # 确保数据写入磁盘
+                    import os
+                    os.fsync(f.fileno())  # 强制同步到磁盘
+                safe_print(f"[CONVO] 已寫入對話: {agent_name} Round {round_num} (內容長度: {len(round_text)})")
+            except Exception as write_err:
+                safe_print(f"[CONVO] 寫入對話失敗: {write_err}")
+                import traceback
+                try:
+                    traceback.print_exc()
+                except (ValueError, OSError):
+                    try:
+                        sys.stderr.write(traceback.format_exc())
+                        sys.stderr.flush()
+                    except Exception:
+                        pass
+                # 不抛出异常，继续写入其他对话
+        
+        # 寫入工具使用記錄
+        for tool_info in tool_context:
+            entry = {
+                "timestamp": _datetime.now(_timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,  # 使用交易日期，不是當前日期
+                "agent": "ToolSystem",
+                "round": 0,
+                "content": f"Tool used: {tool_info}",
+                "type": "tool",
+            }
+            try:
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+                    f.flush()  # 确保数据写入磁盘
+                    import os
+                    os.fsync(f.fileno())  # 强制同步到磁盘
+                safe_print(f"[CONVO] 已寫入工具記錄: {tool_info[:50]}")
+            except Exception as write_err:
+                safe_print(f"[CONVO] 寫入工具記錄失敗: {write_err}")
+                import traceback
+                try:
+                    traceback.print_exc()
+                except (ValueError, OSError):
+                    try:
+                        sys.stderr.write(traceback.format_exc())
+                        sys.stderr.flush()
+                    except Exception:
+                        pass
+                # 不抛出异常，继续写入其他工具记录
+        
+        safe_print(f"[CONVO] 對話寫入完成: 共 {len(transcript)} 輪對話, {len(tool_context)} 個工具")
+        
+    except Exception as e:
+        safe_print(f"[WARN] Failed to write conversations to discussion_actions.jsonl: {e}")
+        import traceback
+        try:
+            traceback.print_exc()
+        except (ValueError, OSError):
+            try:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+            except Exception:
+                pass
     
     # 提取 Discussion 的风险信号（用于 Risk Analyst）
     discussion_risk_signals = {
@@ -163,8 +484,100 @@ def execute_daily_trade(
         portfolio_value=portfolio_value,
         discussion_risk_signals=discussion_risk_signals,
     )
+    
+    # 記錄 Risk Analyst 的對話
+    try:
+        logs_dir = Path("data/logs")
+        if not logs_dir.exists():
+            backend_root = Path(__file__).parent.parent.parent
+            logs_dir = backend_root / "data" / "logs"
+            if not logs_dir.exists():
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                logs_dir = project_root / "backend" / "data" / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+        
+        trade_date_str = end if end else date.today().isoformat()
+        if isinstance(trade_date_str, str):
+            try:
+                # 使用顶部导入的 datetime，避免局部变量冲突
+                trade_date_obj = _datetime.strptime(trade_date_str, "%Y-%m-%d").date()
+                trade_date_str = trade_date_obj.isoformat()
+            except:
+                trade_date_str = date.today().isoformat()
+        else:
+            trade_date_str = date.today().isoformat()
+        
+        # 构建更详细的 Risk Analyst 内容
+        # 直接保存为 JSON 字符串，让前端格式化显示
+        if isinstance(risk_report, dict):
+            # 使用全局引用，避免局部变量冲突
+            risk_content = _json.dumps(risk_report, indent=2, ensure_ascii=False)
+        else:
+            risk_content = str(risk_report)
+        
+        entry = {
+            "timestamp": _datetime.now(_timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": trade_date_str,
+            "agent": "RiskAnalyst",
+            "round": 0,
+            "content": risk_content,  # 移除长度限制
+            "type": "risk_analysis",
+        }
+        try:
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+                f.flush()
+                import os
+                os.fsync(f.fileno())
+        except Exception as e:
+            safe_print(f"[WARN] Failed to write RiskAnalyst conversation: {e}")
+            import traceback
+            try:
+                traceback.print_exc()
+            except (ValueError, OSError):
+                try:
+                    sys.stderr.write(traceback.format_exc())
+                    sys.stderr.flush()
+                except Exception:
+                    pass
+    except Exception as e:
+        safe_print(f"[WARN] Failed to write RiskAnalyst conversation (outer): {e}")
+        import traceback
+        try:
+            traceback.print_exc()
+        except (ValueError, OSError):
+            try:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+            except Exception:
+                pass
 
     # ---- (4) Trader Agent：交易決策 ----
+    # 从配置文件中读取仓位限制参数（如果可用）
+    from pathlib import Path
+    # json 已在文件顶部导入，无需重复导入
+    
+    position_config = {
+        "max_position_per_stock": 0.15,  # 默认单股最大15%
+        "max_total_position": 0.85,  # 默认总仓位85%（保留15%现金）
+        "min_position_per_stock": 0.03,  # 默认单股最小3%（允许更小的仓位分散投资）
+    }
+    
+    # 尝试从 config.json 读取仓位限制
+    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+    try:
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = _json.load(f)
+                position_config["max_position_per_stock"] = float(config_data.get("position_limit_per_stock", 0.15))
+                position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
+                # min_position_per_stock 如果配置中没有，使用默认值
+                position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
+    except Exception:
+        # 如果读取失败，使用默认值
+        pass
+    
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -173,46 +586,188 @@ def execute_daily_trade(
         last_prices=last_prices,
         current_positions=current_positions_info if current_positions_info else None,
         portfolio_value=portfolio_value,
+        position_config=position_config,  # 传入仓位配置
     )
+    
+    # 記錄 Trader Agent 的對話
+    try:
+        logs_dir = Path("data/logs")
+        if not logs_dir.exists():
+            backend_root = Path(__file__).parent.parent.parent
+            logs_dir = backend_root / "data" / "logs"
+            if not logs_dir.exists():
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                logs_dir = project_root / "backend" / "data" / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+        
+        trade_date_str = end if end else date.today().isoformat()
+        if isinstance(trade_date_str, str):
+            try:
+                # 使用顶部导入的 datetime，避免局部变量冲突
+                trade_date_obj = _datetime.strptime(trade_date_str, "%Y-%m-%d").date()
+                trade_date_str = trade_date_obj.isoformat()
+            except:
+                trade_date_str = date.today().isoformat()
+        else:
+            trade_date_str = date.today().isoformat()
+        
+        # 构建更详细的 Trader Agent 内容
+        trader_content = f"Trading Decision:\n"
+        trader_content += f"Rationale: {decision.get('rationale', 'No rationale')}\n"
+        trader_content += f"Stance: {decision.get('stance', 'neutral')}\n"
+        
+        buy_orders = decision.get('buy_orders', [])
+        sell_orders = decision.get('sell_orders', [])
+        trader_content += f"Buy orders: {len(buy_orders)}, Sell orders: {len(sell_orders)}\n"
+        
+        if buy_orders:
+            trader_content += f"Buy details:\n"
+            for order in buy_orders[:5]:  # 只显示前5个
+                symbol = order.get('symbol', 'N/A')
+                qty = order.get('quantity', 0)
+                price = order.get('buy_price', 0)
+                trader_content += f"  - {symbol}: {qty} shares @ ${price:.2f}\n"
+        
+        if sell_orders:
+            trader_content += f"Sell details:\n"
+            for order in sell_orders[:5]:  # 只显示前5个
+                symbol = order.get('symbol', 'N/A')
+                qty = order.get('quantity', 0)
+                price = order.get('sell_price', 0)
+                trader_content += f"  - {symbol}: {qty} shares @ ${price:.2f}\n"
+        
+        entry = {
+            "timestamp": _datetime.now(_timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": trade_date_str,
+            "agent": "TraderAgent",
+            "round": 0,
+            "content": trader_content,  # 移除长度限制
+            "type": "trading_decision",
+        }
+        try:
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(_json.dumps(entry, ensure_ascii=False) + "\n")
+                f.flush()
+                import os
+                os.fsync(f.fileno())
+        except Exception as e:
+            safe_print(f"[WARN] Failed to write TraderAgent conversation: {e}")
+            import traceback
+            try:
+                traceback.print_exc()
+            except (ValueError, OSError):
+                try:
+                    sys.stderr.write(traceback.format_exc())
+                    sys.stderr.flush()
+                except Exception:
+                    pass
+    except Exception as e:
+        safe_print(f"[WARN] Failed to write TraderAgent conversation (outer): {e}")
+        import traceback
+        try:
+            traceback.print_exc()
+        except (ValueError, OSError):
+            try:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+            except Exception:
+                pass
 
-    # ---- (5) 執行交易並更新 Portfolio ----
+    # ---- (5) 掛單策略：開盤前掛限價單，收盤後檢查成交 ----
+    from src.data.order_manager import OrderManager
+    
+    order_manager = OrderManager(root="data/logs")
+    today = end if end else date.today().isoformat()
+    
     executed_trades = []
     execution_errors = []
+    placed_orders = []  # 記錄掛單
     
-    # 执行买入订单
+    # 掛單策略：將所有訂單先掛單，收盤後再檢查成交
     buy_orders = decision.get("buy_orders", [])
-    for order in buy_orders:
+    
+    # 按优先级排序（可以根据 signal_score 或其他指标排序）
+    # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
+    from math import floor
+    buy_orders_sorted = sorted(buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
+    
+    # 掛單策略：開盤前掛限價單（使用價格範圍最低價作為限價）
+    for order in buy_orders_sorted:
         symbol = order.get("symbol")
-        buy_price = order.get("buy_price")
+        buy_price = order.get("buy_price")  # 基准价格（用于计算）
+        buy_price_min = order.get("buy_price_min", buy_price)  # 价格范围下限（低买）
+        buy_price_max = order.get("buy_price_max", buy_price)  # 价格范围上限
         quantity = order.get("quantity")
         total_cost = order.get("total_cost")
         
         if symbol and buy_price and quantity:
             try:
-                portfolio.buy(symbol, quantity, buy_price)
-                # 记录交易
-                trade_logger.log(
+                # 檢查現金是否足夠
+                # 使用 buy_price_min 作為限價（但更激進，提高成交率）
+                # buy_price_min 現在是 99.5% 當前價格，而不是 98%
+                limit_price = buy_price_min  # 使用價格範圍最低價作為限價（99.5%當前價格）
+                estimated_cost = limit_price * quantity
+                
+                if estimated_cost > portfolio.cash:
+                    # 現金不足，減少數量
+                    max_affordable_qty = floor(portfolio.cash / limit_price)
+                    if max_affordable_qty > 0:
+                        quantity = max_affordable_qty
+                        total_cost = limit_price * quantity
+                    else:
+                        execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${estimated_cost:.2f}, have ${portfolio.cash:.2f})")
+                        continue
+                
+                # 掛單：創建限價買單（使用 buy_price_min 作為限價）
+                placed_order = order_manager.place_order(
                     symbol=symbol,
                     action="BUY",
-                    price=buy_price,
                     quantity=quantity,
-                    amount=total_cost,
-                    status="SUCCESS",
-                    reason=decision.get("rationale"),
-                    rationale=decision.get("rationale"),
-                    stance=decision.get("stance"),
-                    vix_risk=decision.get("vix_risk"),
+                    limit_price=limit_price,  # 限價：使用價格範圍最低價
+                    price_range={
+                        "min": buy_price_min,
+                        "max": buy_price_max,
+                    },
+                    order_date=today,
                 )
-                executed_trades.append({
-                    "symbol": symbol,
-                    "action": "BUY",
-                    "price": buy_price,
-                    "quantity": quantity,
-                    "amount": total_cost,
-                    "status": "SUCCESS",
-                })
+                placed_orders.append(placed_order)
+                
+                # 立即结算订单（模拟模式：让前端能立即看到更新）
+                try:
+                    from src.data.order_executor import get_current_or_open_price
+                    
+                    # 获取当前价格（用于结算）
+                    current_price = get_current_or_open_price(symbol, today)
+                    if current_price is None:
+                        # 如果无法获取当前价格，使用限价
+                        current_price = limit_price
+                    
+                    # 创建 fill_result
+                    fill_result = {
+                        "filled": True,
+                        "fill_price": current_price,
+                        "fill_reason": f"Immediate fill at ${current_price:.2f}",
+                        "daily_high": current_price,
+                        "daily_low": current_price,
+                    }
+                    
+                    # 标记订单为已成交（这会写入 filled_orders.jsonl）
+                    order_manager.mark_order_filled(placed_order, fill_result)
+                    
+                    # 立即执行：更新投资组合
+                    portfolio.buy(symbol, quantity, current_price)
+                    
+                    # 注意：不在这里再次记录到 trades.jsonl，因为 mark_order_filled 已经处理了
+                    # 如果 TradeLogger 需要记录，应该在 mark_order_filled 内部处理，避免重复
+                    
+                    safe_print(f"[ORDER FILLED] BUY {symbol} x{quantity} @ ${current_price:.2f} (immediate fill)")
+                except Exception as e:
+                    safe_print(f"[WARN] Failed to immediately fill BUY {symbol} order: {e}")
+                    # 即使立即结算失败，订单仍然挂单，后续可以结算
+                
             except Exception as e:
-                execution_errors.append(f"BUY {symbol} failed: {e}")
+                execution_errors.append(f"BUY {symbol} order placement failed: {e}")
                 trade_logger.log(
                     symbol=symbol,
                     action="BUY",
@@ -220,7 +775,7 @@ def execute_daily_trade(
                     quantity=quantity,
                     amount=total_cost,
                     status="FAILED",
-                    reason=f"Execution failed: {e}",
+                    reason=f"Order placement failed: {e}",
                     rationale=decision.get("rationale"),
                 )
     
@@ -228,36 +783,71 @@ def execute_daily_trade(
     sell_orders = decision.get("sell_orders", [])
     for order in sell_orders:
         symbol = order.get("symbol")
-        sell_price = order.get("sell_price")
+        sell_price = order.get("sell_price")  # 基准价格（用于计算）
+        sell_price_min = order.get("sell_price_min", sell_price)  # 价格范围下限
+        sell_price_max = order.get("sell_price_max", sell_price)  # 价格范围上限（高卖）
         quantity = order.get("quantity")
         total_proceeds = order.get("total_proceeds")
         
         if symbol and sell_price and quantity:
             try:
-                portfolio.sell(symbol, quantity, sell_price)
-                # 记录交易
-                trade_logger.log(
+                # 檢查持倉是否足夠
+                pos = portfolio.get_position(symbol)
+                if not pos or pos.quantity < quantity:
+                    execution_errors.append(f"SELL {symbol}: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
+                    continue
+                
+                # 掛單：創建限價賣單（使用 sell_price_max 作為限價，高賣策略）
+                limit_price = sell_price_max  # 使用價格範圍最高價作為限價
+                
+                placed_order = order_manager.place_order(
                     symbol=symbol,
                     action="SELL",
-                    price=sell_price,
                     quantity=quantity,
-                    amount=total_proceeds,
-                    status="SUCCESS",
-                    reason=decision.get("rationale"),
-                    rationale=decision.get("rationale"),
-                    stance=decision.get("stance"),
-                    vix_risk=decision.get("vix_risk"),
+                    limit_price=limit_price,  # 限價：使用價格範圍最高價
+                    price_range={
+                        "min": sell_price_min,
+                        "max": sell_price_max,
+                    },
+                    order_date=today,
                 )
-                executed_trades.append({
-                    "symbol": symbol,
-                    "action": "SELL",
-                    "price": sell_price,
-                    "quantity": quantity,
-                    "amount": total_proceeds,
-                    "status": "SUCCESS",
-                })
+                placed_orders.append(placed_order)
+                
+                # 立即结算订单（模拟模式：让前端能立即看到更新）
+                try:
+                    from src.data.order_executor import get_current_or_open_price
+                    
+                    # 获取当前价格（用于结算）
+                    current_price = get_current_or_open_price(symbol, today)
+                    if current_price is None:
+                        # 如果无法获取当前价格，使用限价
+                        current_price = limit_price
+                    
+                    # 创建 fill_result
+                    fill_result = {
+                        "filled": True,
+                        "fill_price": current_price,
+                        "fill_reason": f"Immediate fill at ${current_price:.2f}",
+                        "daily_high": current_price,
+                        "daily_low": current_price,
+                    }
+                    
+                    # 标记订单为已成交（这会写入 filled_orders.jsonl）
+                    order_manager.mark_order_filled(placed_order, fill_result)
+                    
+                    # 立即执行：更新投资组合
+                    portfolio.sell(symbol, quantity, current_price)
+                    
+                    # 注意：不在这里再次记录到 trades.jsonl，因为 mark_order_filled 已经处理了
+                    # 如果 TradeLogger 需要记录，应该在 mark_order_filled 内部处理，避免重复
+                    
+                    safe_print(f"[ORDER FILLED] SELL {symbol} x{quantity} @ ${current_price:.2f} (immediate fill)")
+                except Exception as e:
+                    safe_print(f"[WARN] Failed to immediately fill SELL {symbol} order: {e}")
+                    # 即使立即结算失败，订单仍然挂单，后续可以结算
+                
             except Exception as e:
-                execution_errors.append(f"SELL {symbol} failed: {e}")
+                execution_errors.append(f"SELL {symbol} order placement failed: {e}")
                 trade_logger.log(
                     symbol=symbol,
                     action="SELL",
@@ -270,12 +860,24 @@ def execute_daily_trade(
                 )
     
     # ---- 計算當前持倉 P&L（用於後端展示）----
+    # 交易执行后，重新计算持仓信息（包含新买入的股票）
+    updated_positions_info = {}
     portfolio_pnl = {}
     if portfolio:
+        # 重新计算持仓信息（包含交易后的最新状态）
+        portfolio_value = portfolio.value(last_prices)
+        for symbol, pos in portfolio._positions.items():
+            current_price = last_prices.get(symbol, pos.avg_cost)
+            updated_positions_info[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": current_price,
+                "market_value": pos.quantity * current_price,
+            }
+        
         portfolio_pnl = portfolio.get_all_positions_pnl(last_prices)
         total_pnl = portfolio.total_pnl(last_prices)
         total_pnl_pct = portfolio.total_pnl_pct(last_prices)
-        portfolio_value = portfolio.value(last_prices)
         equity_value = portfolio.equity_value(last_prices)
     else:
         total_pnl = 0.0
@@ -283,6 +885,154 @@ def execute_daily_trade(
         portfolio_value = 10000.0
         equity_value = 0.0
 
+    # ---- 保存每日记忆和净值记录（Memory Management + Equity Tracking）----
+    try:
+        from src.data.memory_manager import MemoryManager
+        from src.data.equity_tracker import EquityTracker
+        
+        memory_manager = MemoryManager(root="data/logs")
+        equity_tracker = EquityTracker(root="data/logs")
+        
+        # 使用 end 日期作为今天的日期（如果 end 是 None，使用当前日期）
+        today = end if end else date.today().isoformat()
+        
+        # Portfolio 快照
+        portfolio_snapshot = {
+            "cash": portfolio.cash if portfolio else 0.0,
+            "positions": updated_positions_info,
+            "total_value": portfolio_value,
+            "equity_value": equity_value,
+            "total_pnl": total_pnl,
+            "total_pnl_pct": total_pnl_pct,
+            "positions_pnl": portfolio_pnl,
+        }
+        
+        # 保存完整的每日记忆（注意：此時 executed_trades 只包含掛單信息，成交明細會在收盤後補充）
+        # 實際成交明細會在 check_pending_orders.py 中補充到每日記憶
+        memory_manager.save_daily_memory(
+            date=today,
+            market_view=market_view,
+            market_analysis=market_analysis,
+            discussion=convo,
+            risk_report=risk_report,
+            decision=decision,
+            portfolio_snapshot=portfolio_snapshot,
+            executed_trades=executed_trades,  # 掛單信息（status: PENDING），成交後會更新
+        )
+        
+        # 记录每日净值（用于前端图表）
+        equity_tracker.record_daily_equity(
+            date_str=today,
+            portfolio_snapshot=portfolio_snapshot,
+        )
+    except Exception as e:
+        safe_print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
+        # 不影响主流程，继续执行
+
+    # 保存投资组合状态（让前端能读取最新状态）
+    portfolio_state = None
+    try:
+        from pathlib import Path
+        import json
+        from datetime import datetime, timezone
+        
+        logs_dir = Path("data/logs")
+        if not logs_dir.exists():
+            backend_root = Path(__file__).parent.parent.parent
+            logs_dir = backend_root / "data" / "logs"
+            if not logs_dir.exists():
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                logs_dir = project_root / "backend" / "data" / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 获取当前价格（用于计算净值）
+        current_prices = {}
+        for symbol in portfolio.positions.keys():
+            try:
+                from src.data.order_executor import get_current_or_open_price
+                price = get_current_or_open_price(symbol, today)
+                if price:
+                    current_prices[symbol] = price
+            except Exception:
+                pass
+        
+        # 如果没有当前价格，使用 last_prices
+        if not current_prices:
+            current_prices = last_prices
+        
+        # 计算关键指标
+        total_value = portfolio.value(current_prices)
+        equity_value = portfolio.equity_value(current_prices)
+        total_pnl = portfolio.total_pnl(current_prices)
+        # 计算总盈亏百分比
+        total_pnl_pct = ((total_pnl / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0.0)
+        
+        # 构建投资组合状态（确保所有字段都存在）
+        portfolio_state = {
+            "timestamp": _datetime.now(_timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "cash": float(portfolio.cash),
+            "initial_value": float(portfolio.initial_value),
+            "total_value": float(total_value),
+            "equity_value": float(equity_value),
+            "total_pnl": float(total_pnl),
+            "total_pnl_pct": float(total_pnl_pct),
+            "positions": {
+                symbol: {
+                    "quantity": int(pos.quantity),
+                    "avg_cost": float(pos.avg_cost),
+                    "total_cost": float(pos.total_cost if hasattr(pos, 'total_cost') and pos.total_cost > 0 else pos.avg_cost * pos.quantity),
+                    "current_price": float(current_prices.get(symbol, pos.avg_cost)),
+                }
+                for symbol, pos in portfolio._positions.items()
+            },
+        }
+        
+        # 保存到 portfolio_state.json（使用临时文件避免损坏）
+        portfolio_file = logs_dir / "portfolio_state.json"
+        try:
+            temp_file = portfolio_file.with_suffix('.tmp')
+            with temp_file.open("w", encoding="utf-8") as f:
+                _json.dump(portfolio_state, f, ensure_ascii=False, indent=2)
+                f.flush()  # 确保数据写入磁盘
+                import os
+                os.fsync(f.fileno())  # 强制同步到磁盘
+            
+            # 原子性重命名（Windows 上需要先删除旧文件）
+            if portfolio_file.exists():
+                portfolio_file.unlink()
+            temp_file.rename(portfolio_file)
+            
+            safe_print(f"[PORTFOLIO] Saved state: cash=${portfolio.cash:.2f}, equity=${portfolio_state['equity_value']:.2f}, total=${portfolio_state['total_value']:.2f}")
+        except Exception as e:
+            safe_print(f"[PORTFOLIO ERROR] Failed to save portfolio state: {e}")
+            import traceback
+            try:
+                traceback.print_exc()
+            except (ValueError, OSError):
+                try:
+                    sys.stderr.write(traceback.format_exc())
+                    sys.stderr.flush()
+                except Exception:
+                    pass
+            # 尝试直接写入（如果临时文件方法失败）
+            try:
+                with portfolio_file.open("w", encoding="utf-8") as f:
+                    _json.dump(portfolio_state, f, ensure_ascii=False, indent=2)
+                safe_print(f"[PORTFOLIO] Saved state (fallback method)")
+            except Exception as fallback_err:
+                safe_print(f"[PORTFOLIO ERROR] Fallback save also failed: {fallback_err}")
+    except Exception as e:
+        safe_print(f"[WARN] Failed to save portfolio state: {e}")
+        import traceback
+        try:
+            traceback.print_exc()
+        except (ValueError, OSError):
+            try:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+            except Exception:
+                pass
+    
     return {
         "stance": final_stance,
         "decision": decision,
@@ -291,17 +1041,23 @@ def execute_daily_trade(
         "rounds": convo.get("rounds"),
         "symbols": symbols,
         "top_signals": signal_top,
+        "market_agent": market_view,  # 添加市场数据
+        "market_analysis": market_analysis,  # 添加 Market Analyst 结果
+        "last_prices": last_prices,  # 添加最新价格（用于计算仓位百分比）
         # 执行结果
-        "executed_trades": executed_trades,
+        "executed_trades": executed_trades,  # 包含掛單信息（status: PENDING）
         "execution_errors": execution_errors,
-        # Portfolio 信息（用于后端展示）
+        "placed_orders": placed_orders,  # 掛單列表
+        # Portfolio 信息（用于后端展示，包含交易后的最新状态）
         "portfolio": {
             "cash": portfolio.cash if portfolio else 0.0,
-            "positions": current_positions_info,
+            "positions": {sym: info["quantity"] for sym, info in updated_positions_info.items()},  # 只返回数量（兼容旧接口）
+            "positions_detail": updated_positions_info,  # 详细持仓信息
             "total_value": portfolio_value,
             "equity_value": equity_value,
             "total_pnl": total_pnl,
             "total_pnl_pct": total_pnl_pct,
             "positions_pnl": portfolio_pnl,
         },
+        "portfolio_state": portfolio_state,  # 添加 portfolio_state 供前端使用
     }

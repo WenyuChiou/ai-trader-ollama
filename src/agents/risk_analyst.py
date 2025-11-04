@@ -72,8 +72,8 @@ def run_risk_analyst(
             exposure = (position_value / portfolio_value) if portfolio_value > 0 else 0.0
             current_position_risk["single_stock_exposure"][sym] = exposure
             
-            # 检查仓位限制
-            max_per_stock = 0.15  # 单股最大15%
+            # 检查仓位限制（可以从配置读取，暂时使用默认值）
+            max_per_stock = 0.15  # 单股最大15%（可以从 config.json 读取）
             if exposure > max_per_stock:
                 position_limit_checks.append({
                     "symbol": sym,

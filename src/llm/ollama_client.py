@@ -6,10 +6,23 @@ import time
 import subprocess
 from dataclasses import dataclass
 from typing import Any, Optional, List
+import sys
 
 import requests
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+
+# 安全的 print 函数
+def safe_print(msg, **kwargs):
+    """安全打印函数，如果 stdout 关闭则使用 stderr"""
+    try:
+        print(msg, flush=True, **kwargs)
+    except (ValueError, OSError, AttributeError):
+        try:
+            sys.stderr.write(str(msg) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
 
 DEFAULT_HOST = "http://localhost:11434"
 ENV_HOST = "OLLAMA_HOST"
@@ -143,19 +156,59 @@ def get_llm(
     base_url: Optional[str] = None,
     num_ctx: Optional[int] = None,
     keep_alive: Optional[str] = "10m",   # 預設保溫，降低 unload
-    auto_pull: bool = True,
+    auto_pull: Optional[bool] = None,
     streaming: bool = False,             # ← 新增：預設關閉串流
 ) -> ChatOllama:
     """
     Return a ChatOllama instance with health checks and optional auto-pull.
+    
+    Configuration priority:
+    1. Function parameters (highest)
+    2. Environment variables (OLLAMA_HOST, OLLAMA_MODEL)
+    3. config.json "llm" section
+    4. Default values (lowest)
     """
+    # Load config.json if available
+    llm_config_from_file = {}
+    try:
+        from pathlib import Path
+        import json
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.json"
+        if config_path.exists():
+            with config_path.open("r", encoding="utf-8") as f:
+                config = json.load(f)
+                llm_config_from_file = config.get("llm", {})
+    except Exception:
+        pass  # If config loading fails, use defaults
+    
+    # Priority: parameter > env var > config.json > default
+    final_model = (
+        model or 
+        os.getenv(ENV_MODEL) or 
+        llm_config_from_file.get("default_model") or 
+        "llama3.1"
+    )
+    
+    final_base_url = (
+        base_url or 
+        os.getenv(ENV_HOST) or 
+        llm_config_from_file.get("ollama_host") or 
+        DEFAULT_HOST
+    )
+    
+    final_auto_pull = (
+        auto_pull if auto_pull is not None else
+        llm_config_from_file.get("auto_pull", True)
+    )
+    
     settings = OllamaSettings(
-        model=model or os.getenv(ENV_MODEL, "llama3.1"),
-        base_url=base_url or os.getenv(ENV_HOST, DEFAULT_HOST),
+        model=final_model,
+        base_url=final_base_url,
         temperature=temperature if temperature is not None else 0.2,
         num_ctx=num_ctx,
         keep_alive=keep_alive,
-        auto_pull=auto_pull,
+        auto_pull=final_auto_pull,
+        timeout_s=float(llm_config_from_file.get("timeout_seconds", 8.0)),
     )
 
     ensure_ollama_ready(settings)
@@ -231,7 +284,7 @@ class OllamaClient:
         # 一次性呼叫 + 空回覆/載入狀態的穩健重試
         for attempt in (1, 2):
             try:
-                print(f"[DEBUG] Sending to model: {model} ({len(system)} chars)")
+                safe_print(f"[DEBUG] Sending to model: {model} ({len(system)} chars)")
                 ai = self.chat.invoke(msgs)
                 content = (ai.content if isinstance(ai, AIMessage) else str(ai or "")).strip()
                 if content:

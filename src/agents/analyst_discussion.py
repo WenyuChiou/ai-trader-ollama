@@ -5,11 +5,24 @@ from typing import Any, Dict, List, Tuple
 import json
 import re
 from copy import deepcopy
+import sys
 
 from src.agents.factory import AgentFactory
 from src.agents.base import BaseAgent
 from src.agents.toolbox import ToolBox
 from src.utils.validators import try_parse_json
+
+# 安全的 print 函数
+def safe_print(msg, **kwargs):
+    """安全打印函数，如果 stdout 关闭则使用 stderr"""
+    try:
+        print(msg, flush=True, **kwargs)
+    except (ValueError, OSError, AttributeError):
+        try:
+            sys.stderr.write(str(msg) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass  # 如果 stderr 也失败，忽略
 
 # -----------------------------
 # Helpers
@@ -153,15 +166,18 @@ def run_analyst_discussion(
     *,
     rounds: int = 3,
     auto_tools: bool = True,
-    tool_budget: int = 3,
+    tool_budget: int = 20,  # 增加到20，允许LLM使用所有工具
     preferred_domains: List[str] | None = None,
+    historical_memories: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """
     多輪討論（包含：提出需要 → 呼叫 ToolBox → 補充資訊 → 下一輪再用）的主流程。
     - 不會因第一輪無工具就提前結束
     - 連續兩輪無新工具才早退（或遇到 finalize）
     """
-    fac = AgentFactory()
+    # 使用 AgentFactory 的自动路径查找功能
+    # AgentFactory 会自动尝试多个可能的路径
+    fac = AgentFactory()  # 使用默认路径查找逻辑
     agent: BaseAgent = fac.create("discussion_agent")
 
     tb = ToolBox()
@@ -185,6 +201,29 @@ def run_analyst_discussion(
         "tool_budget": max(tool_budget, 0),
         "preferred_domains": preferred_domains,
     }
+    
+    # 注入歷史記憶（短期記憶：最近5天的決策）
+    if historical_memories:
+        vars_ctx["historical_memories"] = historical_memories
+        # 格式化歷史記憶為文字摘要（用於 prompt）
+        memory_summary = []
+        for mem in historical_memories[:5]:  # 最多5天
+            date_str = mem.get("date", "N/A")
+            stance = mem.get("stance", "neutral")
+            recommended = mem.get("recommended_stocks", [])
+            decisions = mem.get("decisions", {})
+            portfolio_val = mem.get("portfolio_snapshot", {}).get("total_value", 0)
+            
+            summary_line = (
+                f"{date_str}: Stance={stance}, "
+                f"Recommended={recommended[:3]}, "
+                f"Action={decisions.get('action', 'N/A')}, "
+                f"Portfolio=${portfolio_val:.2f}"
+            )
+            memory_summary.append(summary_line)
+        
+        if memory_summary:
+            vars_ctx["historical_context"] = "\n".join(memory_summary)
 
     for r in range(1, rounds + 1):
         # 每一輪把已有的 tool 摘要串到 prompt 的 user 補充文字
@@ -209,7 +248,7 @@ def run_analyst_discussion(
         if isinstance(consensus.get("stance"), str):
             final_stance = consensus["stance"]
 
-        # 是否有 tool_calls
+        # 是否有 tool_calls（让LLM自己决定使用哪些工具）
         tool_calls = consensus.get("tool_calls", [])
         new_tools_executed = 0
 
@@ -246,10 +285,10 @@ def run_analyst_discussion(
                     tool_budget -= 1
                     summary_line = _summarize_tool_result(name, res.get("result"))
                     tool_context_lines.append(summary_line)
-                    print(f"[TOOLS_OK] {summary_line}")
+                    safe_print(f"[TOOLS_OK] {summary_line}")
                 else:
                     err = res.get("error", "unknown error")
-                    print(f"[TOOL_ERR] {name} failed. error={err} called_with={{'name': '{name}', 'kwargs': {kwargs}}}")
+                    safe_print(f"[TOOL_ERR] {name} failed. error={err} called_with={{'name': '{name}', 'kwargs': {kwargs}}}")
 
         # 動作處理（目前只收斂 consider_probe / finalize）
         acts = consensus.get("actions", [])
@@ -279,6 +318,45 @@ def run_analyst_discussion(
         # 更新下一輪上下文（保留新聞 hits 的縮寫也可，但避免 prompt 過大）
         vars_ctx["tool_budget"] = max(tool_budget, 0)
         vars_ctx["tools_context_tail"] = tool_context_lines[-6:]
+
+    # 如果整個討論流程沒有任何工具被使用，執行一次最小保底工具集（不設優先級，只在完全為0時啟動）
+    if auto_tools and len(tool_context_lines) == 0:
+        try:
+            # 盡量從輸入中取關鍵詞
+            mv_inputs = market_view.get("inputs") if isinstance(market_view, dict) else None
+            tickers = []
+            if isinstance(mv_inputs, dict):
+                tickers = mv_inputs.get("tickers") or mv_inputs.get("symbols") or []
+            keywords = list({str(x) for x in tickers[:5]}) if tickers else ["market", "VIX", "earnings"]
+
+            # vix_term
+            res_vix = tb.invoke("vix_term")
+            if res_vix.get("ok"):
+                line = _summarize_tool_result("vix_term", res_vix.get("result"))
+                tool_context_lines.append(line)
+                safe_print(f"[TOOLS_FALLBACK] {line}")
+
+            # fear_greed
+            res_fg = tb.invoke("fear_greed")
+            if res_fg.get("ok"):
+                line = _summarize_tool_result("fear_greed", res_fg.get("result"))
+                tool_context_lines.append(line)
+                safe_print(f"[TOOLS_FALLBACK] {line}")
+
+            # news_scan（給出基本參數）
+            res_news = tb.invoke(
+                "news_scan",
+                keywords=keywords,
+                recency_days=7,
+                max_articles=8,
+                fetch_body_top=0,
+            )
+            if res_news.get("ok"):
+                line = _summarize_tool_result("news_scan", res_news.get("result"))
+                tool_context_lines.append(line)
+                safe_print(f"[TOOLS_FALLBACK] {line}")
+        except Exception as e:
+            safe_print(f"[TOOLS_FALLBACK_ERR] {e}")
 
     return {
         "final_stance": final_stance,

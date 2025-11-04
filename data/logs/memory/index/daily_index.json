@@ -1,0 +1,38 @@
+{
+  "2025-11-05": {
+    "date": "2025-11-05",
+    "stance": "bearish",
+    "stocks_involved": [
+      "GOOG",
+      "NVDA",
+      "AAPL"
+    ],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2025-11-04": {
+    "date": "2025-11-04",
+    "stance": "bullish",
+    "stocks_involved": [
+      "ADI",
+      "AEP",
+      "TSLA"
+    ],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2024-10-02": {
+    "date": "2024-10-02",
+    "stance": "neutral",
+    "stocks_involved": [
+      "VRSK",
+      "SPXU",
+      "ADBE"
+    ],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  }
+}

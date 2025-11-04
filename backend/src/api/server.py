@@ -5,7 +5,7 @@ Provides WebSocket for real-time updates and REST API for historical data.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Any
@@ -13,8 +13,11 @@ import random
 from pathlib import Path
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone, date, timedelta
+from datetime import time as dt_time
 import uuid
+import sys
+import os
 
 from src.core.event_bus import EventBus, AgentEvent
 
@@ -146,6 +149,19 @@ async def execute_trading_cycle():
     """Trigger a new trading cycle"""
     from src.orchestrator.trading_cycle import execute_daily_trade
     
+    # 从 config.json 读取股票清单
+    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+    universe = None  # None 会使用 execute_daily_trade 的默认值
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+                if "universe" in config_data and isinstance(config_data["universe"], list):
+                    universe = config_data["universe"]
+                    print(f"[Trading Cycle] 使用 config.json 中的股票清单: {len(universe)} 只股票")
+        except Exception as e:
+            print(f"[Trading Cycle] 读取 config.json 失败，使用默认清单: {e}")
+    
     session_id = str(uuid.uuid4())
     
     # Emit session start event
@@ -163,7 +179,8 @@ async def execute_trading_cycle():
         result = execute_daily_trade(
             rounds=3,
             auto_tools=True,
-            tool_budget=3
+            tool_budget=3,
+            universe=universe  # 使用从 config.json 读取的股票清单（如果存在）
         )
         
         # Emit session end event
@@ -269,10 +286,10 @@ async def get_real_time_portfolio():
         # Load portfolio state
         state_file = Path("data/logs/portfolio_state.json")
         if not state_file.exists():
-            return JSONResponse(
-                status_code=404,
-                content={"ok": False, "error": "Portfolio state not found"}
-            )
+            # Fallback to demo snapshot so the frontend can render
+            from fastapi import Request
+            demo = await demo_real_time_portfolio()  # type: ignore
+            return demo
         
         with state_file.open("r", encoding="utf-8") as f:
             state = json.load(f)
@@ -294,10 +311,62 @@ async def get_real_time_portfolio():
                     total_cost=float(pos_info.get("total_cost", 0.0)),
                 )
         
-        # Get real-time snapshot
-        from src.data.real_time_tracker import RealTimeTracker
-        tracker = RealTimeTracker(root="data/logs")
-        snapshot = tracker.update_and_record(portfolio)
+        # If there are no positions, avoid external data calls and return simple snapshot
+        if len(portfolio._positions) == 0:
+            total_value = portfolio.cash
+            snapshot = {
+                "ok": True,
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "initial_value": portfolio.initial_value,
+                "total_value": round(total_value, 2),
+                "total_pnl": round(total_value - portfolio.initial_value, 2),
+                "total_pnl_pct": 0.0,
+                "cash": round(portfolio.cash, 2),
+                "equity_value": 0.0,
+                "positions": {},
+                "positions_pnl": {},
+                "source": "simple",
+            }
+        else:
+            # Get real-time snapshot via tracker (with fallback if yfinance missing)
+            try:
+                from src.data.real_time_tracker import RealTimeTracker
+                tracker = RealTimeTracker(root="data/logs")
+                snapshot = tracker.update_and_record(portfolio)
+            except (ImportError, ModuleNotFoundError) as e:
+                # Fallback if yfinance or other deps missing
+                equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
+                total_value = portfolio.cash + equity
+                positions_detail = {}
+                positions_pnl = {}
+                for sym, pos_info in positions.items():
+                    if isinstance(pos_info, dict):
+                        qty = int(pos_info.get("quantity", 0))
+                        avg = float(pos_info.get("avg_cost", 0))
+                        mv = avg * qty
+                        positions_detail[sym] = {
+                            "quantity": qty,
+                            "avg_cost": round(avg, 2),
+                            "current_price": round(avg, 2),
+                            "market_value": round(mv, 2),
+                        }
+                        positions_pnl[sym] = {
+                            "unrealized_pnl": 0.0,
+                            "unrealized_pnl_pct": 0.0,
+                        }
+                snapshot = {
+                    "ok": True,
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "initial_value": portfolio.initial_value,
+                    "total_value": round(total_value, 2),
+                    "total_pnl": round(total_value - portfolio.initial_value, 2),
+                    "total_pnl_pct": round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2),
+                    "cash": round(portfolio.cash, 2),
+                    "equity_value": round(equity, 2),
+                    "positions": positions_detail,
+                    "positions_pnl": positions_pnl,
+                    "source": "simple",
+                }
         
         return {"ok": True, **snapshot}
     except Exception as e:
@@ -326,10 +395,8 @@ async def get_recent_snapshots(hours: int = 24):
 
 @app.get("/api/tools/list")
 async def list_tools():
-    """List all available tools"""
-    from src.agents.toolbox import ToolBox
-    tb = ToolBox()
-    return {"tools": tb.list()}
+    """Return an empty tool list in minimal demo mode to avoid optional deps."""
+    return {"ok": True, "tools": []}
 
 
 @app.get("/api/demo/real-time")
@@ -422,7 +489,7 @@ async def demo_real_time_portfolio(volatility_bps: int = 15):
 
         snapshot = {
             "ok": True,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "initial_value": round(initial_value, 2),
             "total_value": round(total_value, 2),
             "total_pnl": round(total_pnl, 2),
@@ -478,7 +545,7 @@ async def demo_conversation_tick():
         ]
 
         entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "agent": random.choice(agents),
             "round": random.randint(1, 3),
             "content": random.choice(messages),
@@ -610,7 +677,8 @@ async def get_system_info():
 @app.get("/api/agents/conversations")
 async def get_agent_conversations(
     limit: int = 50,
-    date: str | None = None
+    date: str | None = None,
+    include_demo: bool = False,
 ):
     """Get recent agent conversations/discussions"""
     try:
@@ -632,6 +700,9 @@ async def get_agent_conversations(
                             entry_date = entry.get("date", entry.get("timestamp", ""))
                             if entry_date and not entry_date.startswith(date):
                                 continue
+                        # Exclude demo entries unless explicitly requested
+                        if not include_demo and entry.get("type") == "demo":
+                            continue
                         conversations.append(entry)
                     except json.JSONDecodeError:
                         continue
@@ -641,16 +712,19 @@ async def get_agent_conversations(
             from src.data.memory_manager import MemoryManager
             memory_manager = MemoryManager(root="data/logs")
             
-            # Get recent memories
-            recent_memories = memory_manager.load_recent_memories(days=7, limit=limit)
+            # Get recent memories (load more days to ensure we have enough data)
+            recent_memories = memory_manager.load_recent_memories(days=30)  # Load 30 days, then filter
+            memory_count = 0
             for memory in recent_memories:
+                if memory_count >= limit:  # Stop if we've reached the limit
+                    break
                 discussion = memory.get("discussion", {})
                 if discussion:
                     transcript = discussion.get("transcript", [])
                     if transcript:
                         # Extract individual messages from transcript
                         for msg in transcript:
-                            if isinstance(msg, dict):
+                            if isinstance(msg, dict) and memory_count < limit:
                                 conversations.append({
                                     "date": memory.get("date", ""),
                                     "type": "memory",
@@ -658,20 +732,26 @@ async def get_agent_conversations(
                                     "content": msg.get("content", msg.get("message", "")),
                                     "round": msg.get("round"),
                                 })
+                                memory_count += 1
         except Exception as e:
             print(f"[WARN] Failed to load from memory: {e}")
-        
+
         # Sort by date (newest first)
         conversations.sort(
-            key=lambda x: x.get("date", x.get("timestamp", "")), 
+            key=lambda x: x.get("timestamp", x.get("date", "")), 
             reverse=True
         )
         
-        # Limit results
+        # Limit results (避免前端性能問題)
+        limited_conversations = conversations[:limit]
+        total_count = len(conversations)
+        
         return {
             "ok": True,
-            "conversations": conversations[:limit],
-            "count": len(conversations[:limit])
+            "conversations": limited_conversations,
+            "count": len(limited_conversations),
+            "total": total_count,  # 總數（用於前端顯示"還有更多"）
+            "has_more": total_count > limit
         }
     except Exception as e:
         import traceback
@@ -680,6 +760,404 @@ async def get_agent_conversations(
             status_code=500,
             content={"ok": False, "error": str(e)}
         )
+
+
+@app.get("/api/market/is-open")
+async def is_market_open():
+    """Simple market hour check: Mon-Fri, 09:00-16:00 local time."""
+    now = datetime.now()
+    is_weekday = now.weekday() < 5
+    start = dt_time(9, 0)
+    end = dt_time(16, 0)
+    open_now = is_weekday and (start <= now.time() <= end)
+    return {"ok": True, "open": open_now, "now": now.isoformat()}
+
+
+@app.post("/api/system/init")
+async def system_init():
+    """Reset logs and initialize portfolio to defaults, then seed minimal data."""
+    logs_dir = Path("data/logs")
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    # Clear key log files
+    for name in [
+        "equity_history.jsonl", "filled_orders.jsonl", "pending_orders.jsonl",
+        "trades.jsonl", "real_time_snapshots.jsonl", "monitoring.jsonl",
+        "discussion_actions.jsonl"
+    ]:
+        p = logs_dir / name
+        if p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
+    # Initialize empty discussion file
+    (logs_dir / "discussion_actions.jsonl").touch(exist_ok=True)
+
+    # Create a clean portfolio: all cash, no positions
+    state = {
+        "cash": 10000.0,
+        "initial_value": 10000.0,
+        "positions": {},
+    }
+    with (logs_dir / "portfolio_state.json").open("w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    # Seed a couple of conversations so UI is not empty
+    # Do not seed demo conversations here to ensure only real conversations are shown
+    # Build a minimal snapshot matching current state
+    snapshot = {
+        "ok": True,
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        "initial_value": 10000.0,
+        "total_value": 10000.0,
+        "total_pnl": 0.0,
+        "total_pnl_pct": 0.0,
+        "cash": 10000.0,
+        "equity_value": 0.0,
+        "positions": {},
+        "positions_pnl": {},
+        "source": "init",
+    }
+    with (logs_dir / "real_time_snapshots.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
+    # If市場開盤且今日尚未交易，自動執行一次交易循環
+    try:
+        start = dt_time(9, 0)
+        end = dt_time(16, 0)
+        now = datetime.now()
+        is_open = (now.weekday() < 5) and (start <= now.time() <= end)
+        flag = logs_dir / "last_trade_date.txt"
+        today = now.strftime("%Y-%m-%d")
+        traded_today = flag.exists() and flag.read_text(encoding="utf-8").strip() == today
+        result = None
+        if is_open and not traded_today:
+            result = await execute_trading_cycle()
+            try:
+                flag.write_text(today, encoding="utf-8")
+            except Exception:
+                pass
+        return {"ok": True, "snapshot": snapshot, "auto_ran": bool(result is not None), "result": result}
+    except Exception:
+        return {"ok": True, "snapshot": snapshot, "auto_ran": False}
+
+
+@app.post("/api/trading/run-loop")
+async def run_trading_loop():
+    """Kick one trading cycle, but block if already executed today."""
+    logs_dir = Path("data/logs")
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    flag = logs_dir / "last_trade_date.txt"
+    today = datetime.now().strftime("%Y-%m-%d")
+    if flag.exists():
+        last = flag.read_text(encoding="utf-8").strip()
+        if last == today:
+            return {"ok": False, "blocked": True, "reason": "already_executed_today", "date": today}
+    
+    # run once
+    try:
+        res = await execute_trading_cycle()
+        
+        # If execute_trading_cycle returned a JSONResponse (error), extract error
+        if isinstance(res, JSONResponse):
+            error_body = res.body.decode('utf-8') if hasattr(res.body, 'decode') else str(res.body)
+            try:
+                error_data = json.loads(error_body)
+                return JSONResponse(
+                    status_code=500,
+                    content={"ok": False, "error": error_data.get("error", "Unknown error"), "date": today}
+                )
+            except:
+                return JSONResponse(
+                    status_code=500,
+                    content={"ok": False, "error": "Trading cycle failed", "date": today}
+                )
+        
+        # Success - write flag
+        try:
+            flag.write_text(today, encoding="utf-8")
+        except Exception as e:
+            print(f"[WARN] Failed to write last_trade_date.txt: {e}")
+        
+        return {"ok": True, "result": res, "date": today}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e), "traceback": traceback.format_exc(), "date": today}
+        )
+
+
+@app.post("/api/demo/seed-conversations")
+async def seed_conversations(n: int = 10):
+    """Generate N demo conversation entries quickly."""
+    for _ in range(max(1, n)):
+        await demo_conversation_tick()
+    return {"ok": True, "written": n}
+
+
+# 模拟状态跟踪
+_simulation_status = {
+    "running": False,
+    "current_day": 0,
+    "total_days": 22,
+    "started_at": None,
+    "last_update": None,
+    "error": None
+}
+
+def run_october_simulation_background():
+    """后台运行10月模拟（在单独的线程中）"""
+    import sys
+    import io
+    import time
+    from pathlib import Path
+    
+    # Fix encoding
+    if sys.platform == 'win32':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    
+    try:
+        # 确保在backend目录
+        backend_dir = Path(__file__).parent.parent.parent
+        os.chdir(str(backend_dir))
+        sys.path.insert(0, str(backend_dir))
+        
+        from src.orchestrator.trading_cycle import execute_daily_trade
+        from src.data.order_manager import OrderManager
+        from src.data.portfolio import Portfolio
+        from src.data.order_executor import get_current_or_open_price
+        
+        # 从 config.json 读取股票清单
+        config_path = backend_dir / "config" / "config.json"
+        universe = ["NVDA", "MSFT", "AAPL", "AMZN", "GOOGL"]  # 默认值
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+                    if "universe" in config_data and isinstance(config_data["universe"], list):
+                        universe = config_data["universe"]
+                        print(f"[Simulation] 使用 config.json 中的股票清单: {len(universe)} 只股票")
+                    else:
+                        print(f"[Simulation] config.json 中没有 universe，使用默认清单: {len(universe)} 只股票")
+            except Exception as e:
+                print(f"[Simulation] 读取 config.json 失败，使用默认清单: {e}")
+        else:
+            print(f"[Simulation] config.json 不存在，使用默认清单: {len(universe)} 只股票")
+        
+        _simulation_status["running"] = True
+        _simulation_status["started_at"] = datetime.now(timezone.utc).isoformat()
+        _simulation_status["error"] = None
+        
+        # 初始化
+        logs_dir = Path("data/logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 清空对话日誌
+        convo_file = logs_dir / "discussion_actions.jsonl"
+        if convo_file.exists():
+            convo_file.write_text("", encoding="utf-8")
+        
+        # 清空掛單記錄
+        pending_file = logs_dir / "pending_orders.jsonl"
+        if pending_file.exists():
+            pending_file.write_text("", encoding="utf-8")
+        
+        # 重置組合狀態
+        portfolio_file = logs_dir / "portfolio_state.json"
+        initial_state = {
+            "cash": 10000.0,
+            "initial_value": 10000.0,
+            "positions": {},
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        }
+        portfolio_file.write_text(json.dumps(initial_state, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        # 清空單日鎖
+        last_trade_file = logs_dir / "last_trade_date.txt"
+        if last_trade_file.exists():
+            last_trade_file.unlink()
+        
+        # 生成10月份的所有交易日
+        start_date = date(2024, 10, 1)
+        end_date = date(2024, 10, 31)
+        trading_days = []
+        current = start_date
+        while current <= end_date:
+            if current.weekday() < 5:  # 周一到周五
+                trading_days.append(current)
+            current += timedelta(days=1)
+        
+        _simulation_status["total_days"] = len(trading_days)
+        
+        # 結算函數
+        def settle_orders(settle_date, logs_dir):
+            order_manager = OrderManager(root="data/logs")
+            pending_orders = order_manager.load_pending_orders(order_date=settle_date)
+            
+            if not pending_orders:
+                return 0
+            
+            portfolio_file = logs_dir / "portfolio_state.json"
+            if not portfolio_file.exists():
+                return 0
+            
+            with portfolio_file.open("r", encoding="utf-8") as f:
+                state = json.load(f)
+            
+            portfolio = Portfolio(
+                cash=float(state.get("cash", 10000.0)),
+                initial_value=float(state.get("initial_value", 10000.0)),
+            )
+            
+            for symbol, pos_info in state.get("positions", {}).items():
+                if isinstance(pos_info, dict):
+                    qty = int(pos_info.get("quantity", 0))
+                    avg_cost = float(pos_info.get("avg_cost", 0))
+                    if qty > 0:
+                        portfolio.positions[symbol] = {"quantity": qty, "avg_cost": avg_cost}
+            
+            settled_count = 0
+            for order in pending_orders:
+                symbol = order.get("symbol")
+                action = order.get("action", "").upper()
+                quantity = order.get("quantity", 0)
+                limit_price = order.get("limit_price", 0)
+                
+                try:
+                    current_price = get_current_or_open_price(symbol, settle_date)
+                    if current_price is None:
+                        current_price = limit_price
+                    
+                    if action == "BUY":
+                        portfolio.buy(symbol, quantity, current_price)
+                    elif action == "SELL":
+                        portfolio.sell(symbol, quantity, current_price)
+                    
+                    order_manager.mark_order_filled(order.get("order_id"), current_price, settle_date)
+                    settled_count += 1
+                except Exception:
+                    pass
+            
+            portfolio_state = {
+                "cash": portfolio.cash,
+                "initial_value": portfolio.initial_value,
+                "positions": {},
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+            }
+            
+            for symbol, pos in portfolio.positions.items():
+                if isinstance(pos, dict):
+                    portfolio_state["positions"][symbol] = {
+                        "quantity": pos.get("quantity", 0),
+                        "avg_cost": pos.get("avg_cost", 0),
+                    }
+            
+            portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
+            return settled_count
+        
+        # 模拟每一天
+        for day_num, trade_date in enumerate(trading_days, 1):
+            if not _simulation_status["running"]:
+                break
+                
+            trade_date_str = trade_date.isoformat()
+            _simulation_status["current_day"] = day_num
+            _simulation_status["last_update"] = datetime.now(timezone.utc).isoformat()
+            
+            # 結算前一天的訂單
+            if day_num > 1:
+                prev_date = trading_days[day_num - 2].isoformat()
+                settle_orders(prev_date, logs_dir)
+            
+            # 執行當天交易循環
+            try:
+                window_start = (trade_date - timedelta(days=10)).isoformat()
+                window_end = (trade_date + timedelta(days=1)).isoformat()
+                
+                result = execute_daily_trade(
+                    start=window_start,
+                    end=window_end,
+                    universe=universe  # 使用从 config.json 读取的股票清单
+                )
+                
+                _simulation_status["last_update"] = datetime.now(timezone.utc).isoformat()
+                
+            except Exception as e:
+                print(f"[Simulation] Error on {trade_date_str}: {e}")
+                if "No data" not in str(e) and "YFPricesMissingError" not in str(e):
+                    _simulation_status["error"] = str(e)
+                    break
+            
+            # 等待5分钟（如果不是最后一天）
+            if day_num < len(trading_days) and _simulation_status["running"]:
+                # 等待5分钟 = 300秒
+                for _ in range(300):
+                    if not _simulation_status["running"]:
+                        break
+                    time.sleep(1)
+        
+        # 結算最後一天的訂單
+        if trading_days and _simulation_status["running"]:
+            last_date = trading_days[-1].isoformat()
+            settle_orders(last_date, logs_dir)
+        
+        _simulation_status["running"] = False
+        _simulation_status["last_update"] = datetime.now(timezone.utc).isoformat()
+        
+    except Exception as e:
+        _simulation_status["running"] = False
+        _simulation_status["error"] = str(e)
+        _simulation_status["last_update"] = datetime.now(timezone.utc).isoformat()
+        import traceback
+        traceback.print_exc()
+
+
+@app.post("/api/trading/simulate-october")
+async def simulate_october(background_tasks: BackgroundTasks):
+    """启动10月历史数据模拟（后台运行）"""
+    if _simulation_status["running"]:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "error": "模拟已在运行中"}
+        )
+    
+    # 重置状态
+    _simulation_status["running"] = False
+    _simulation_status["current_day"] = 0
+    _simulation_status["total_days"] = 22
+    _simulation_status["started_at"] = None
+    _simulation_status["last_update"] = None
+    _simulation_status["error"] = None
+    
+    # 在后台线程中运行
+    import threading
+    thread = threading.Thread(target=run_october_simulation_background, daemon=True)
+    thread.start()
+    
+    return {
+        "ok": True,
+        "message": "10月模拟已启动（后台运行）",
+        "status": "started"
+    }
+
+
+@app.get("/api/trading/simulate-status")
+async def get_simulation_status():
+    """获取10月模拟的状态"""
+    return {
+        "ok": True,
+        "status": _simulation_status.copy()
+    }
+
+
+@app.post("/api/trading/stop-simulation")
+async def stop_simulation():
+    """停止10月模拟"""
+    _simulation_status["running"] = False
+    return {
+        "ok": True,
+        "message": "模拟已停止"
+    }
 
 
 @app.get("/")
@@ -692,7 +1170,11 @@ async def root():
             "websocket": "/ws",
             "agent_status": "/api/agents/status",
             "history": "/api/history",
-            "execute": "/api/trading/execute"
+            "execute": "/api/trading/execute",
+            "market_open": "/api/market/is-open",
+            "system_init": "/api/system/init",
+            "run_loop": "/api/trading/run-loop",
+            "seed_conversations": "/api/demo/seed-conversations"
         }
     }
 

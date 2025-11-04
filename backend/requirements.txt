@@ -10,9 +10,10 @@ tqdm>=4.66.4
 feedparser>=6.0.11
 beautifulsoup4>=4.12.3
 requests>=2.32.3
-duckduckgo-search==8.1.1
-trafilatura==1.7.0
-lxml>=5.3.0
+# Optional crawling deps removed for lightweight runtime; re-add if needed
+# duckduckgo-search==8.1.1
+# trafilatura==1.7.0
+lxml==6.0.2
 pyyaml>=6.0.1
 
 # Frontend integration (optional)

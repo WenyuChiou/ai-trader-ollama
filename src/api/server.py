@@ -5,14 +5,15 @@ Provides WebSocket for real-time updates and REST API for historical data.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Any
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
+import random
 
 from src.core.event_bus import EventBus, AgentEvent
 
@@ -212,7 +213,138 @@ async def root():
             "websocket": "/ws",
             "agent_status": "/api/agents/status",
             "history": "/api/history",
-            "execute": "/api/trading/execute"
+            "execute": "/api/trading/execute",
+            # Frontend monitor expected endpoints
+            "system_info": "/api/system/info",
+            "portfolio_real_time": "/api/portfolio/real-time",
+            "portfolio_equity_history": "/api/portfolio/equity-history",
+            "agents_conversations": "/api/agents/conversations",
+            "trades_recent": "/api/trades/recent"
         }
     }
+
+
+# =============== Frontend monitor minimal endpoints ===============
+
+@app.get("/api/system/info")
+async def system_info():
+    """Return minimal system/LLM info for the dashboard."""
+    return {
+        "ok": True,
+        "llm": {"default_model": "ollama:llama3.1"},
+        "agent_models": {"Trader": "ollama:llama3.1", "Analyst": "ollama:llama3.1"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _demo_portfolio() -> Dict[str, Any]:
+    initial = 10000.0
+    # Generate a stable pseudo-random based on minute to keep values steady for a minute
+    seed = int(datetime.now(timezone.utc).strftime("%Y%m%d%H%M"))
+    rng = random.Random(seed)
+    cash = round(rng.uniform(2000, 6000), 2)
+    symbols = ["AAPL", "MSFT", "NVDA", "TSLA"]
+    positions: Dict[str, Dict[str, float]] = {}
+    equity_value = 0.0
+    for s in symbols:
+        qty = rng.randint(0, 20)
+        if qty == 0:
+            continue
+        price = round(rng.uniform(50, 600), 2)
+        avg_cost = round(price * rng.uniform(0.9, 1.1), 2)
+        mv = round(qty * price, 2)
+        positions[s] = {
+            "quantity": qty,
+            "current_price": price,
+            "avg_cost": avg_cost,
+            "market_value": mv,
+        }
+        equity_value += mv
+    total_value = round(cash + equity_value, 2)
+    total_pnl = round(total_value - initial, 2)
+    total_pnl_pct = round((total_pnl / initial) * 100, 2)
+
+    positions_pnl: Dict[str, Dict[str, float]] = {}
+    for s, pos in positions.items():
+        mv = pos["market_value"]
+        cost = pos["avg_cost"] * pos["quantity"]
+        upnl = round(mv - cost, 2)
+        pct = round((upnl / cost) * 100, 2) if cost else 0.0
+        positions_pnl[s] = {
+            "unrealized_pnl": upnl,
+            "unrealized_pnl_pct": pct,
+        }
+
+    return {
+        "ok": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "initial_value": initial,
+        "total_value": total_value,
+        "cash": cash,
+        "equity_value": round(equity_value, 2),
+        "total_pnl": total_pnl,
+        "total_pnl_pct": total_pnl_pct,
+        "positions": positions,
+        "positions_pnl": positions_pnl,
+    }
+
+
+@app.get("/api/portfolio/real-time")
+async def get_portfolio_real_time():
+    """Return minimal real-time portfolio snapshot for the dashboard."""
+    return _demo_portfolio()
+
+
+@app.get("/api/portfolio/equity-history")
+async def get_equity_history(limit: int = Query(60, ge=1, le=500)):
+    """Return synthetic equity history for the last N points."""
+    base = 10000.0
+    now = datetime.now(timezone.utc)
+    records = []
+    for i in range(limit, 0, -1):
+        # 1-minute intervals
+        ts = now.replace(second=0, microsecond=0)
+        value = base + (i - limit / 2) * 5  # small drift
+        records.append({
+            "timestamp": ts.isoformat(),
+            "total_value": round(value, 2),
+            "total_pnl": round(value - base, 2),
+        })
+    return {"ok": True, "records": records}
+
+
+@app.get("/api/agents/conversations")
+async def get_conversations(limit: int = Query(20, ge=1, le=200)):
+    """Return demo agent conversations for the modal."""
+    demo = []
+    for i in range(limit):
+        demo.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "agent": "Trader",
+            "round": i + 1,
+            "content": f"Analyzing market conditions for round {i+1}…",
+        })
+    return {"ok": True, "conversations": demo}
+
+
+@app.get("/api/trades/recent")
+async def get_recent_trades(limit: int = Query(50, ge=1, le=500)):
+    """Return recent trades demo list for the Trades tab."""
+    rng = random.Random(42)
+    symbols = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN"]
+    trades = []
+    for _ in range(min(limit, 20)):
+        s = rng.choice(symbols)
+        side = rng.choice(["BUY", "SELL"])
+        qty = rng.randint(1, 10)
+        price = round(rng.uniform(50, 600), 2)
+        trades.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "symbol": s,
+            "side": side,
+            "quantity": qty,
+            "price": price,
+            "status": "filled",
+        })
+    return {"ok": True, "trades": trades}
 

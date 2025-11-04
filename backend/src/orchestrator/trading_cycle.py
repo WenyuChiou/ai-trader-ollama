@@ -1,7 +1,7 @@
 # src/orchestrator/trading_cycle.py
 from __future__ import annotations
 from typing import Dict, Any, List, Tuple, Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
@@ -158,6 +158,92 @@ def execute_daily_trade(
         historical_memories=historical_memories,  # 注入歷史記憶
     )
     final_stance = convo.get("final_stance", "neutral")
+    
+    # 將對話寫入 discussion_actions.jsonl（供前端顯示）
+    try:
+        # 嘗試多個可能的路徑
+        from pathlib import Path
+        import os
+        
+        # 選項1: 相對於當前工作目錄
+        logs_dir = Path("data/logs")
+        if not logs_dir.exists():
+            # 選項2: 相對於 backend 目錄
+            backend_root = Path(__file__).parent.parent.parent
+            logs_dir = backend_root / "data" / "logs"
+            if not logs_dir.exists():
+                # 選項3: 相對於項目根目錄
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                logs_dir = project_root / "backend" / "data" / "logs"
+        
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+        
+        transcript = convo.get("transcript", [])
+        tool_context = convo.get("tool_context", [])
+        actions = convo.get("actions", [])
+        
+        # 獲取交易日期（使用 end 參數，如果沒有則使用今天）
+        trade_date = end if end else date.today().isoformat()
+        if isinstance(trade_date, str):
+            # 確保是 YYYY-MM-DD 格式
+            try:
+                from datetime import datetime as dt
+                trade_date_obj = dt.strptime(trade_date, "%Y-%m-%d").date()
+                trade_date_str = trade_date_obj.isoformat()
+            except:
+                trade_date_str = date.today().isoformat()
+        else:
+            trade_date_str = date.today().isoformat()
+        
+        # 寫入每一輪對話
+        import json
+        
+        for round_num, round_text in enumerate(transcript, 1):
+            # 提取 agent 名稱（從 transcript 文本中或使用默認）
+            agent_name = "DiscussionAgent"  # 默認
+            if "--- Round" in round_text:
+                # 嘗試從文本中提取 agent 信息
+                lines = round_text.split("\n")
+                for line in lines[:5]:  # 檢查前幾行
+                    if "agent" in line.lower() or "analyst" in line.lower():
+                        if "technical" in line.lower():
+                            agent_name = "TechnicalAnalyst"
+                        elif "fundamental" in line.lower():
+                            agent_name = "FundamentalAnalyst"
+                        elif "risk" in line.lower():
+                            agent_name = "RiskAnalyst"
+                        elif "sentiment" in line.lower():
+                            agent_name = "SentimentAnalyst"
+                        break
+            
+            entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,  # 使用交易日期，不是當前日期
+                "agent": agent_name,
+                "round": round_num,
+                "content": round_text[:500] if len(round_text) > 500 else round_text,  # 限制長度
+                "type": "discussion",  # 標記為真實討論，非 demo
+            }
+            
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        # 寫入工具使用記錄
+        for tool_info in tool_context:
+            entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,  # 使用交易日期，不是當前日期
+                "agent": "ToolSystem",
+                "round": 0,
+                "content": f"Tool used: {tool_info}",
+                "type": "tool",
+            }
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+    except Exception as e:
+        print(f"[WARN] Failed to write conversations to discussion_actions.jsonl: {e}")
     
     # 提取 Discussion 的风险信号（用于 Risk Analyst）
     discussion_risk_signals = {

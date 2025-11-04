@@ -32,7 +32,24 @@ def get_stock_price(symbol: str, start: str, end: str, interval: str = "1d",
         progress=False, auto_adjust=auto_adjust, group_by="column"
     )
     if df is None or df.empty:
-        raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
+        # 尝试使用更宽的时间范围
+        from datetime import datetime, timedelta
+        try:
+            start_dt = datetime.fromisoformat(start.split('T')[0])
+            # 扩展时间范围到30天
+            extended_start = (start_dt - timedelta(days=30)).isoformat().split('T')[0]
+            extended_end = (datetime.fromisoformat(end.split('T')[0]) + timedelta(days=1)).isoformat().split('T')[0]
+            df = yf.download(
+                symbol, start=extended_start, end=extended_end, interval=interval,
+                progress=False, auto_adjust=auto_adjust, group_by="column"
+            )
+            if df is None or df.empty:
+                raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
+            # 只返回请求日期范围内的数据
+            if start and end:
+                df = df.loc[start:end]
+        except Exception:
+            raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
     return _normalize_ohlcv(df)
 
 def get_multi_prices(symbols: List[str], start: str, end: str, interval: str = "1d",

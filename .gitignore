@@ -18,6 +18,7 @@ node_modules/
 backend/data/logs/*.jsonl
 backend/data/logs/*.json
 backend/data/logs/*.log
+backend/data/logs/*.backup*
 backend/data/logs/*backup*/
 backend/data/logs/memory_backup_*/
 backend/data/logs/weekly_simulation*.json
@@ -27,6 +28,12 @@ backend/data/logs/real_time_snapshots*.jsonl
 backend/data/logs/trades*.jsonl
 backend/data/logs/filled_orders*.jsonl
 backend/data/logs/equity_history*.jsonl
+backend/data/logs/demo_prices.json
+backend/data/logs/events.jsonl
+backend/data/logs/full_cycle_detailed.json
+backend/data/logs/memory/daily/*.json
+backend/data/logs/memory/weekly/*.jsonl
+backend/data/logs/memory/monthly/*.jsonl
 
 # Build
 frontend/dist/

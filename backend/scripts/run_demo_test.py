@@ -13,7 +13,7 @@ Run this once to populate data, then frontend can display it.
 import sys
 from pathlib import Path
 import json
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 # Add backend to path
 ROOT = Path(__file__).resolve().parents[1]
@@ -189,7 +189,7 @@ def generate_real_time_snapshot():
     
     snapshot = {
         "ok": True,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "initial_value": round(state["initial_value"], 2),
         "total_value": round(total_value, 2),
         "total_pnl": round(total_pnl, 2),

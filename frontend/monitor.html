@@ -128,6 +128,28 @@
             animation: none;
         }
 
+        .agent-status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+            transition: all 0.3s ease;
+        }
+
+        .agent-status-indicator.active {
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .agent-status-indicator.inactive {
+            background: #9ca3af;
+            box-shadow: none;
+            animation: none;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -622,7 +644,10 @@
         .trades-section { background:white; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
         .trade-buy { color:#10b981; font-weight:600; }
         .trade-sell { color:#ef4444; font-weight:600; }
-        .status-pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:#f3f4f6; }
+        .status-pill { display:inline-block; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:500; }
+        .status-pill.status-filled { background:#d1fae5; color:#065f46; }
+        .status-pill.status-pending { background:#fef3c7; color:#92400e; }
+        .status-pill.status-other { background:#f3f4f6; color:#6b7280; }
 
         /* Pie chart */
         .pie-container { width:100%; height:320px; display:flex; align-items:center; justify-content:center; }
@@ -732,9 +757,22 @@
                     <input type="checkbox" id="autoRefresh" checked>
                     <span>Auto Refresh (30s)</span>
                 </label>
+                <label class="auto-refresh-toggle">
+                    <input type="checkbox" id="autoSimulation" checked>
+                    <span>Auto Simulation (5min)</span>
+                </label>
                 <button class="refresh-btn" id="refreshBtn" onclick="refreshData(true)">
                     🔄 Refresh
                 </button>
+                <button class="refresh-btn" onclick="initSystem()">⚙️ Initialize</button>
+                <button class="refresh-btn" onclick="runLoopOnce()">▶️ Run Loop</button>
+                <button class="refresh-btn" onclick="startOctoberSimulation()">📅 Simulate October</button>
+                <button class="refresh-btn" onclick="stopOctoberSimulation()">⏹️ Stop Simulation</button>
+                <button class="refresh-btn" onclick="seedDemoConversations()">💬 Seed</button>
+                <label class="auto-refresh-toggle">
+                    <input type="checkbox" id="autoDemoLoop">
+                    <span>Auto Demo Loop</span>
+                </label>
                 <span class="last-update" id="lastUpdate"></span>
             </div>
         </header>
@@ -743,8 +781,6 @@
         <div class="header" style="padding: 12px 16px; margin-top: -10px;">
             <div class="tabs">
                 <button class="tab-btn active" id="tabOverview" onclick="switchTab('overview')">Overview</button>
-                <button class="tab-btn" id="tabTrades" onclick="switchTab('trades')">Trades</button>
-                <button class="tab-btn" id="tabAllocation" onclick="switchTab('allocation')">Allocation</button>
             </div>
         </div>
 
@@ -779,13 +815,6 @@
                 </div>
             </div>
 
-            <!-- Quick link to Allocation -->
-            <div class="positions-section" style="padding:16px;">
-                <div style="display:flex; justify-content:flex-end;">
-                    <button class="tab-btn" onclick="switchTab('allocation')">View Asset Allocation →</button>
-                </div>
-            </div>
-
             <!-- Positions Section -->
             <div class="positions-section" id="positionsSection" style="display: none;">
                 <div class="section-header">
@@ -812,6 +841,47 @@
                 </div>
             </div>
 
+            <!-- Simulation Status -->
+            <div id="simulationStatus" style="display: none;"></div>
+
+            <!-- Live Chat and Execution Details Side by Side -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <!-- Live Chat (Left) -->
+                <div class="trades-section" id="conversationsOverviewSection">
+                    <div class="section-header">
+                        <h2>
+                            💬 AI Agent Conversations (Live)
+                            <span class="agent-status-indicator inactive" id="agentStatusIndicator" title="Agent对话状态"></span>
+                        </h2>
+                        <span class="position-count" id="convCount">—</span>
+                    </div>
+                    <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Execution Details (Right) -->
+                <div class="trades-section" id="executionDetailsSection">
+                    <div class="section-header">
+                        <h2>📋 Execution Details</h2>
+                        <span class="position-count" id="executionCount">0 trades</span>
+                    </div>
+                    <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="executionDetailsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- No Positions State -->
             <div class="positions-section" id="noPositionsState" style="display: none;">
                 <div class="empty-state">
@@ -829,7 +899,6 @@
                     <span class="last-update" id="statusLastUpdate"></span>
                 </div>
                 <div class="status-grid" id="statusGrid"></div>
-                <div class="endpoints-list" id="endpointsList"></div>
                 <button class="view-conversations-btn" onclick="openConversationsModal()">
                     💬 View Agent Conversations
                 </button>
@@ -848,10 +917,13 @@
                             <thead>
                                 <tr>
                                     <th>Time</th>
+                                    <th>Order Date</th>
                                     <th>Symbol</th>
                                     <th>Side</th>
                                     <th>Qty</th>
-                                    <th>Price</th>
+                                    <th>Limit Price</th>
+                                    <th>Fill Price</th>
+                                    <th>Price Range</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -861,20 +933,16 @@
                 </div>
             </div>
 
-            <!-- Allocation Page -->
+            <!-- Conversations Page (replaces Allocation) -->
             <div id="allocationPage" style="display: none;">
-                <div class="chart-section">
-                    <div class="chart-header">
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <h2>Asset Allocation</h2>
-                            <div class="position-count" id="allocTotal">—</div>
-                        </div>
-                        <div class="card-subtitle">A clear breakdown of cash and holdings for professional review.</div>
+                <div class="trades-section">
+                    <div class="section-header">
+                        <h2>AI Agent Conversations</h2>
+                        <button class="refresh-btn" onclick="loadInlineConversations()">Refresh</button>
                     </div>
-                    <div class="pie-container">
-                        <svg id="pieSvg" viewBox="0 0 300 300" width="300" height="300"></svg>
+                    <div id="conversationsInline">
+                        <div class="loading"><div class="spinner"></div><p>Loading conversations...</p></div>
                     </div>
-                    <div class="legend" id="pieLegend"></div>
                 </div>
             </div>
         </div>
@@ -900,7 +968,7 @@
             <div class="footer-info">
                 <div>
                     <span style="font-weight: 600;">API:</span>
-                    <span class="api-url" id="apiUrl">http://localhost:8000</span>
+                    <span class="api-url" id="apiUrl">http://127.0.0.1:8000</span>
                 </div>
                 <div id="dataTimestamp"></div>
             </div>
@@ -909,10 +977,14 @@
 
     <script>
         // Configuration
-        const API_BASE = 'http://localhost:8000';
-        const REFRESH_INTERVAL = 30000; // 30 seconds
+        const API_BASE = 'http://127.0.0.1:8000';
+        const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh
+        const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
+        const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
         let refreshTimer = null;
         let equityHistory = [];
+        let demoTimer = null;
+        let agentStatusTimer = null;
 
         // Format number to currency
         function formatCurrency(value) {
@@ -1035,6 +1107,164 @@
             }
         }
 
+        async function isMarketOpen() {
+            try {
+                const r = await fetch(`${API_BASE}/api/market/is-open`, { signal: AbortSignal.timeout(4000) });
+                if (!r.ok) return false;
+                const j = await r.json();
+                return !!j.open;
+            } catch { return false; }
+        }
+
+        async function initSystem() {
+            try {
+                const r = await fetch(`${API_BASE}/api/system/init`, { method: 'POST' });
+                await refreshData(true);
+                alert('Initialized');
+            } catch (e) { alert('Init failed'); }
+        }
+
+        async function runLoopOnce() {
+            try {
+                const r = await fetch(`${API_BASE}/api/trading/run-loop`, { method: 'POST' });
+                await refreshData(true);
+                // quick poll conversations for 10s to surface new updates fast
+                let count = 0;
+                const h = setInterval(async () => {
+                    count++;
+                    const convData = await fetchConversations(100);
+                    renderConversationsOverview(convData.conversations || []);
+                    if (count >= 5) clearInterval(h);
+                }, 2000);
+            } catch (e) { console.error(e); }
+        }
+
+        async function seedDemoConversations() {
+            try {
+                await fetch(`${API_BASE}/api/demo/seed-conversations`, { method: 'POST' });
+                alert('Seeded demo conversations');
+            } catch (e) { console.error(e); }
+        }
+
+        // 10月模拟控制
+        let simulationStatusTimer = null;
+
+        async function startOctoberSimulation() {
+            try {
+                const response = await fetch(`${API_BASE}/api/trading/simulate-october`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.ok) {
+                    alert('10月模拟已启动！\n每5分钟模拟一天，共22个交易日\n前端会自动显示更新');
+                    startSimulationStatusCheck();
+                } else {
+                    alert('启动失败: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Failed to start simulation:', e);
+                alert('启动模拟失败: ' + e.message);
+            }
+        }
+
+        async function stopOctoberSimulation() {
+            try {
+                const response = await fetch(`${API_BASE}/api/trading/stop-simulation`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (data.ok) {
+                    alert('模拟已停止');
+                    if (simulationStatusTimer) {
+                        clearInterval(simulationStatusTimer);
+                        simulationStatusTimer = null;
+                    }
+                    updateSimulationStatusDisplay(null);
+                }
+            } catch (e) {
+                console.error('Failed to stop simulation:', e);
+            }
+        }
+
+        async function fetchSimulationStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/trading/simulate-status`, {
+                    signal: AbortSignal.timeout(5000)
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.status;
+                }
+            } catch (e) {
+                console.error('Failed to fetch simulation status:', e);
+            }
+            return null;
+        }
+
+        function updateSimulationStatusDisplay(status) {
+            const statusEl = document.getElementById('simulationStatus');
+            if (!statusEl) return;
+
+            if (!status || !status.running) {
+                statusEl.style.display = 'none';
+                return;
+            }
+
+            statusEl.style.display = 'block';
+            const progress = status.total_days > 0 
+                ? Math.round((status.current_day / status.total_days) * 100) 
+                : 0;
+            
+            const started = status.started_at ? new Date(status.started_at).toLocaleString() : 'N/A';
+            const lastUpdate = status.last_update ? new Date(status.last_update).toLocaleString() : 'N/A';
+            
+            statusEl.innerHTML = `
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 10px 0; border-radius: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #92400e;">📅 10月模拟运行中</strong>
+                        <button onclick="stopOctoberSimulation()" style="padding: 4px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">停止</button>
+                    </div>
+                    <div style="font-size: 13px; color: #78350f;">
+                        <div>进度: ${status.current_day} / ${status.total_days} 天 (${progress}%)</div>
+                        <div style="margin-top: 8px;">
+                            <div style="background: #fde68a; height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="background: #f59e0b; height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 11px; color: #92400e;">
+                            开始时间: ${started}<br/>
+                            最后更新: ${lastUpdate}
+                            ${status.error ? `<br/><span style="color: #dc2626;">错误: ${status.error}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function startSimulationStatusCheck() {
+            if (simulationStatusTimer) clearInterval(simulationStatusTimer);
+            
+            // 立即检查一次
+            fetchSimulationStatus().then(status => {
+                if (status && status.running) {
+                    updateSimulationStatusDisplay(status);
+                }
+            });
+
+            // 每10秒检查一次状态
+            simulationStatusTimer = setInterval(async () => {
+                const status = await fetchSimulationStatus();
+                if (status) {
+                    updateSimulationStatusDisplay(status);
+                    if (!status.running && simulationStatusTimer) {
+                        clearInterval(simulationStatusTimer);
+                        simulationStatusTimer = null;
+                    }
+                }
+            }, 10000);
+        }
+
         // Fetch agent status
         async function fetchAgentStatus() {
             try {
@@ -1105,9 +1335,9 @@
         }
 
         // Fetch agent conversations
-        async function fetchConversations(limit = 50) {
+        async function fetchConversations(limit = 100) {
             try {
-                const response = await fetch(`${API_BASE}/api/agents/conversations?limit=${limit}`, {
+                const response = await fetch(`${API_BASE}/api/agents/conversations?limit=${limit}&include_demo=false`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1116,14 +1346,21 @@
                 });
 
                 if (!response.ok) {
-                    return [];
+                    return { conversations: [], total: 0, has_more: false };
                 }
 
                 const data = await response.json();
-                return data.ok ? (data.conversations || []) : [];
+                if (data.ok) {
+                    return {
+                        conversations: data.conversations || [],
+                        total: data.total || (data.conversations || []).length,
+                        has_more: data.has_more || false
+                    };
+                }
+                return { conversations: [], total: 0, has_more: false };
             } catch (err) {
                 console.error('Failed to fetch conversations:', err);
-                return [];
+                return { conversations: [], total: 0, has_more: false };
             }
         }
 
@@ -1138,8 +1375,6 @@
             
             const agentCount = Object.keys(agentStatus).length;
             const toolsCount = toolsList.length;
-            const endpoints = status.endpoints || {};
-            const endpointCount = Object.keys(endpoints).length;
 
             // Get LLM model info
             let llmModel = 'Unknown';
@@ -1163,10 +1398,6 @@
                     <div class="status-item-value">${llmModel}</div>
                 </div>
                 <div class="status-item">
-                    <div class="status-item-label">Available Endpoints</div>
-                    <div class="status-item-value">${endpointCount}</div>
-                </div>
-                <div class="status-item">
                     <div class="status-item-label">Agents Registered</div>
                     <div class="status-item-value">${agentCount}</div>
                 </div>
@@ -1184,18 +1415,7 @@
                 </div>
             `;
 
-            // Show endpoints
-            const endpointsList = document.getElementById('endpointsList');
-            if (Object.keys(endpoints).length > 0) {
-                endpointsList.innerHTML = `
-                    <h4>Available Endpoints:</h4>
-                    ${Object.entries(endpoints).map(([name, path]) => 
-                        `<span class="endpoint-tag">${name}: ${path}</span>`
-                    ).join('')}
-                `;
-            } else {
-                endpointsList.innerHTML = '';
-            }
+            // Endpoints list removed
 
             // Update last update time
             document.getElementById('statusLastUpdate').textContent = 
@@ -1216,8 +1436,8 @@
             `;
 
             try {
-                const conversations = await fetchConversations(50);
-                renderConversations(conversations);
+                const convData = await fetchConversations(100);
+                renderConversations(convData.conversations || [], convData.total || 0, convData.has_more || false);
             } catch (error) {
                 content.innerHTML = `
                     <div class="error">
@@ -1241,8 +1461,8 @@
             }
         }
 
-        // Render conversations
-        function renderConversations(conversations) {
+        // Render conversations (支持多天、按日期分组、显示"还有更多")
+        function renderConversations(conversations, total = 0, has_more = false) {
             const content = document.getElementById('conversationsContent');
             
             if (conversations.length === 0) {
@@ -1255,19 +1475,108 @@
                 return;
             }
 
-            content.innerHTML = `
+            // 按日期分组
+            const byDate = {};
+            conversations.forEach(conv => {
+                const date = conv.date || conv.timestamp?.split('T')[0] || 'Unknown';
+                if (!byDate[date]) {
+                    byDate[date] = [];
+                }
+                byDate[date].push(conv);
+            });
+
+            // 生成HTML（按日期分组显示）
+            let html = '';
+            const sortedDates = Object.keys(byDate).sort().reverse(); // 最新的日期在前
+            
+            sortedDates.forEach(dateKey => {
+                const dayConvs = byDate[dateKey];
+                const dateDisplay = dateKey === 'Unknown' ? 'Unknown' : new Date(dateKey).toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                
+                html += `<div style="margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px;">
+                    <h3 style="font-size: 14px; color: #6b7280; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📅 ${dateDisplay} (${dayConvs.length} items)
+                    </h3>
+                    <div class="conversation-list">
+                        ${dayConvs.map(conv => {
+                            const date = conv.date || conv.timestamp || 'Unknown date';
+                            const agent = conv.agent || conv.agent_name || 'Unknown';
+                            const content_text = conv.content || conv.message || conv.reasoning || JSON.stringify(conv, null, 2);
+                            const round = conv.round || conv.turn || '';
+                            const entry_type = conv.type || 'discussion';
+                            const timestamp = conv.timestamp || date;
+                            
+                            // Parse tool information if it's a tool entry
+                            let toolHtml = '';
+                            let toolResultHtml = '';
+                            if (entry_type === 'tool') {
+                                const toolInfo = parseToolInfo(content_text);
+                                if (toolInfo) {
+                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: ${escapeHtml(toolInfo.name)}</div>`;
+                                    if (toolInfo.result) {
+                                        toolResultHtml = `<div class="conversation-tool-result" style="background: #fef3c7; padding: 8px 12px; margin: 8px 0; border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 13px; color: #92400e;">
+                                            <strong>Tool Result:</strong><br/>
+                                            ${escapeHtml(toolInfo.result)}
+                                        </div>`;
+                                    }
+                                }
+                            }
+                            
+                            return `
+                                <div class="conversation-item" style="${entry_type === 'tool' ? 'border-left-color: #f59e0b;' : ''}">
+                                    <div class="conversation-header">
+                                        <span class="conversation-agent">${agent}${entry_type === 'tool' ? ' 🔧' : ''}</span>
+                                        <span class="conversation-date">${new Date(timestamp).toLocaleTimeString()}</span>
+                                    </div>
+                                    ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
+                                    ${toolHtml}
+                                    ${toolResultHtml}
+                                    <div class="conversation-content">${entry_type === 'tool' ? '' : escapeHtml(content_text)}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>`;
+            });
+
+            // 添加"还有更多"提示
+            if (has_more && total > conversations.length) {
+                html += `
+                    <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
+                        <p>顯示 ${conversations.length} / ${total} 條對話</p>
+                        <p class="hint">（僅顯示最近的對話，完整記錄請查看後端日誌）</p>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = html;
+        }
+
+        // Render conversations inline (allocationPage)
+        function renderConversationsInline(conversations) {
+            const container = document.getElementById('conversationsInline');
+            if (!container) return;
+            if (conversations.length === 0) {
+                container.innerHTML = `<div class="empty-conversations"><p>No conversations yet.</p></div>`;
+                return;
+            }
+            container.innerHTML = `
                 <div class="conversation-list">
-                    ${conversations.map((conv, index) => {
-                        const date = conv.date || conv.timestamp || 'Unknown date';
+                    ${conversations.map((conv) => {
+                        const date = conv.date || conv.timestamp || '';
                         const agent = conv.agent || conv.agent_name || 'Unknown';
                         const content = conv.content || conv.message || conv.reasoning || JSON.stringify(conv, null, 2);
                         const round = conv.round || conv.turn || '';
-                        
                         return `
                             <div class="conversation-item">
                                 <div class="conversation-header">
                                     <span class="conversation-agent">${agent}</span>
-                                    <span class="conversation-date">${new Date(date).toLocaleString()}</span>
+                                    <span class="conversation-date">${date ? new Date(date).toLocaleString() : ''}</span>
                                 </div>
                                 ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
                                 <div class="conversation-content">${escapeHtml(content)}</div>
@@ -1276,6 +1585,80 @@
                     }).join('')}
                 </div>
             `;
+        }
+
+        async function loadInlineConversations() {
+            const container = document.getElementById('conversationsInline');
+            if (container) container.innerHTML = `<div class="loading"><div class="spinner"></div><p>Loading conversations...</p></div>`;
+            const convData = await fetchConversations(100);
+            renderConversationsInline(convData.conversations || []);
+        }
+
+        // Render conversations on Overview
+        function renderConversationsOverview(conversations) {
+            const container = document.getElementById('conversationsOverview');
+            const count = document.getElementById('convCount');
+            if (!container) return;
+            if (count) count.textContent = `${conversations.length} items`;
+            if (conversations.length === 0) {
+                container.innerHTML = `<div class="empty-conversations"><p>No conversations yet.</p></div>`;
+                return;
+            }
+            container.innerHTML = `
+                <div class="conversation-list">
+                    ${conversations.map((c) => {
+                        const date = c.date || c.timestamp || '';
+                        const agent = c.agent || c.agent_name || 'Unknown';
+                        const content = c.content || c.message || c.reasoning || '';
+                        const round = c.round || c.turn || '';
+                        const entry_type = c.type || 'discussion';
+                        const timestamp = c.timestamp || date;
+                        
+                        // Parse tool information if it's a tool entry
+                        let toolHtml = '';
+                        let toolResultHtml = '';
+                        if (entry_type === 'tool') {
+                            const toolInfo = parseToolInfo(content);
+                            if (toolInfo) {
+                                toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: ${escapeHtml(toolInfo.name)}</div>`;
+                                if (toolInfo.result) {
+                                    toolResultHtml = `<div class="conversation-tool-result" style="background: #fef3c7; padding: 8px 12px; margin: 8px 0; border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 13px; color: #92400e;">
+                                        <strong>Tool Result:</strong><br/>
+                                        ${escapeHtml(toolInfo.result)}
+                                    </div>`;
+                                }
+                            }
+                        }
+                        
+                        return `
+                            <div class="conversation-item" style="${entry_type === 'tool' ? 'border-left-color: #f59e0b;' : ''}">
+                                <div class="conversation-header">
+                                    <span class="conversation-agent">${agent}${entry_type === 'tool' ? ' 🔧' : ''}</span>
+                                    <span class="conversation-date">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
+                                </div>
+                                ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
+                                ${toolHtml}
+                                ${toolResultHtml}
+                                <div class="conversation-content">${entry_type === 'tool' ? '' : escapeHtml(content)}</div>
+                            </div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        // Parse tool information from content string
+        function parseToolInfo(content) {
+            if (!content || typeof content !== 'string') return null;
+            if (!content.startsWith('Tool used: ')) return null;
+            
+            const toolText = content.substring('Tool used: '.length);
+            const colonIndex = toolText.indexOf(':');
+            if (colonIndex === -1) return { name: toolText.trim(), result: '' };
+            
+            const toolName = toolText.substring(0, colonIndex).trim();
+            const toolResult = toolText.substring(colonIndex + 1).trim();
+            
+            return { name: toolName, result: toolResult };
         }
 
         // Escape HTML to prevent XSS
@@ -1617,60 +2000,102 @@
         function renderTrades(trades) {
             const tbody = document.getElementById('tradesBody');
             document.getElementById('tradesCount').textContent = `${trades.length} trades`;
+            
+            if (trades.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">No trades yet. Run a trading cycle to generate orders.</td></tr>`;
+                return;
+            }
+            
             tbody.innerHTML = trades.map(t => {
-                const side = (t.side || '').toUpperCase();
+                const side = (t.side || t.action || '').toUpperCase();
                 const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
-                const ts = t.timestamp ? new Date(t.timestamp).toLocaleString() : '';
-                const price = (t.price != null) ? `$${Number(t.price).toFixed(2)}` : '-';
+                
+                // Get timestamp (prefer filled_at, then placed_at, then timestamp)
+                const ts = t.filled_at || t.placed_at || t.timestamp || '';
+                const timeDisplay = ts ? new Date(ts).toLocaleString() : '-';
+                
+                // Get prices
+                const fillPrice = t.fill_price || t.price || null;
+                const limitPrice = t.limit_price || null;
+                const priceRange = t.price_range || t.details?.price_range || null;
+                
+                const fillPriceDisplay = fillPrice ? `$${Number(fillPrice).toFixed(2)}` : '-';
+                const limitPriceDisplay = limitPrice ? `$${Number(limitPrice).toFixed(2)}` : '-';
+                const priceRangeDisplay = priceRange ? `$${Number(priceRange.min || 0).toFixed(2)} - $${Number(priceRange.max || 0).toFixed(2)}` : '-';
+                
+                const status = t.status || 'UNKNOWN';
+                const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
+                
+                const orderDate = t.order_date || t.date || '';
+                const orderDateDisplay = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+                
                 return `
                     <tr>
-                        <td>${ts}</td>
+                        <td>${timeDisplay}</td>
+                        <td>${orderDateDisplay}</td>
                         <td class="symbol-cell">${t.symbol || '-'}</td>
                         <td class="${sideClass}">${side || '-'}</td>
                         <td>${t.quantity ?? '-'}</td>
-                        <td>${price}</td>
-                        <td><span class="status-pill">${t.status || '-'}</span></td>
+                        <td>${limitPriceDisplay}</td>
+                        <td>${fillPriceDisplay}</td>
+                        <td>${priceRangeDisplay}</td>
+                        <td><span class="status-pill ${statusClass}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Render execution details (simplified version for Overview page)
+        function renderExecutionDetails(trades) {
+            const tbody = document.getElementById('executionDetailsBody');
+            const countEl = document.getElementById('executionCount');
+            if (!tbody) return;
+            
+            const count = trades.length;
+            if (countEl) countEl.textContent = `${count} trades`;
+            
+            if (count === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #6b7280;">No execution records yet.</td></tr>`;
+                return;
+            }
+            
+            // Show only recent 10 trades for overview
+            const recentTrades = trades.slice(0, 10);
+            
+            tbody.innerHTML = recentTrades.map(t => {
+                const side = (t.side || t.action || '').toUpperCase();
+                const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
+                const ts = t.filled_at || t.placed_at || t.timestamp || '';
+                const timeDisplay = ts ? new Date(ts).toLocaleTimeString() : '-';
+                const fillPrice = t.fill_price || t.price || null;
+                const priceDisplay = fillPrice ? `$${Number(fillPrice).toFixed(2)}` : '-';
+                const status = t.status || 'UNKNOWN';
+                const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
+                
+                return `
+                    <tr>
+                        <td>${timeDisplay}</td>
+                        <td class="symbol-cell">${t.symbol || '-'}</td>
+                        <td class="${sideClass}">${side || '-'}</td>
+                        <td>${t.quantity ?? '-'}</td>
+                        <td>${priceDisplay}</td>
+                        <td><span class="status-pill ${statusClass}">${status}</span></td>
                     </tr>
                 `;
             }).join('');
         }
 
         function switchTab(tab) {
+            // Only Overview tab is available now
             const o = document.getElementById('dashboardPage');
+            if (o) o.style.display = 'block';
             const t = document.getElementById('tradesPage');
+            if (t) t.style.display = 'none';
             const a = document.getElementById('allocationPage');
+            if (a) a.style.display = 'none';
             const btnO = document.getElementById('tabOverview');
-            const btnT = document.getElementById('tabTrades');
-            const btnA = document.getElementById('tabAllocation');
-            if (tab === 'trades') {
-                o.style.display = 'none';
-                t.style.display = 'block';
-                if (a) a.style.display = 'none';
-                btnO.classList.remove('active');
-                btnT.classList.add('active');
-                if (btnA) btnA.classList.remove('active');
-                // load trades
-                fetchTrades(200).then(renderTrades);
-                document.body.classList.remove('business');
-            } else if (tab === 'allocation') {
-                o.style.display = 'none';
-                t.style.display = 'none';
-                if (a) a.style.display = 'block';
-                btnO.classList.remove('active');
-                if (btnA) btnA.classList.add('active');
-                btnT.classList.remove('active');
-                // redraw allocation using last known portfolio if available
-                // will be updated on next refresh automatically
-                document.body.classList.add('business');
-            } else {
-                o.style.display = 'block';
-                t.style.display = 'none';
-                if (a) a.style.display = 'none';
-                btnT.classList.remove('active');
-                if (btnA) btnA.classList.remove('active');
-                btnO.classList.add('active');
-                document.body.classList.remove('business');
-            }
+            if (btnO) btnO.classList.add('active');
+            document.body.classList.remove('business');
         }
 
         // Main refresh function
@@ -1693,13 +2118,15 @@
                 const startTime = performance.now();
 
                 // Fetch all data in parallel
-                const [portfolio, history, backendStatus, agentStatus, toolsList, systemInfo] = await Promise.all([
+                const [portfolio, history, backendStatus, agentStatus, toolsList, systemInfo, convData, tradesData] = await Promise.all([
                     fetchPortfolio(),
                     fetchEquityHistory(),
                     fetchBackendStatus(),
                     fetchAgentStatus(),
                     fetchToolsList(),
-                    fetchSystemInfo()
+                    fetchSystemInfo(),
+                    fetchConversations(100),
+                    fetchTrades(50)
                 ]);
 
                 const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -1707,9 +2134,11 @@
                 // Update UI
                 renderSummaryCards(portfolio);
                 renderPositions(portfolio);
-                drawPie(portfolio);
+                // drawPie removed; allocation tab now shows conversations
                 drawChart(history);
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
+                renderConversationsOverview(convData.conversations || []);
+                renderExecutionDetails(tradesData || []);
                 
                 // Update response time
                 const responseTimeEl = document.getElementById('responseTime');
@@ -1787,6 +2216,69 @@
             refreshTimer = setInterval(() => {
                 refreshData(false);
             }, REFRESH_INTERVAL);
+            
+            // Auto simulation loop (5 minutes)
+            const simChk = document.getElementById('autoSimulation');
+            if (simChk && simChk.checked) {
+                if (demoTimer) clearInterval(demoTimer);
+                demoTimer = setInterval(async () => {
+                    try {
+                        if (await isMarketOpen()) {
+                            const response = await fetch(`${API_BASE}/api/trading/run-loop`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                timeout: 60000
+                            });
+                            if (response.ok) {
+                                console.log('[Simulation] Trading loop executed (5min interval)');
+                                refreshData(false);
+                            }
+                        }
+                    } catch (e) {
+                        console.error('[Simulation] Error:', e);
+                    }
+                }, SIMULATION_INTERVAL);
+            }
+            
+            // Agent status check (5 seconds) - always active
+            startAgentStatusCheck();
+        }
+
+        // Check agent conversation status
+        async function checkAgentStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/agents/conversations?limit=1&include_demo=false`, {
+                    signal: AbortSignal.timeout(5000)
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const hasConversations = data.conversations && data.conversations.length > 0;
+                    updateAgentStatusIndicator(hasConversations);
+                } else {
+                    updateAgentStatusIndicator(false);
+                }
+            } catch (e) {
+                updateAgentStatusIndicator(false);
+            }
+        }
+
+        function updateAgentStatusIndicator(active) {
+            const indicator = document.getElementById('agentStatusIndicator');
+            if (indicator) {
+                if (active) {
+                    indicator.classList.remove('inactive');
+                    indicator.classList.add('active');
+                } else {
+                    indicator.classList.remove('active');
+                    indicator.classList.add('inactive');
+                }
+            }
+        }
+
+        function startAgentStatusCheck() {
+            if (agentStatusTimer) clearInterval(agentStatusTimer);
+            checkAgentStatus(); // Check immediately
+            agentStatusTimer = setInterval(checkAgentStatus, AGENT_STATUS_INTERVAL);
         }
 
         function stopAutoRefresh() {
@@ -1794,12 +2286,39 @@
                 clearInterval(refreshTimer);
                 refreshTimer = null;
             }
+            if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
+            if (agentStatusTimer) { clearInterval(agentStatusTimer); agentStatusTimer = null; }
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             setupAutoRefresh();
             refreshData(true);
+            
+            // 启动模拟状态检查（如果模拟正在运行）
+            startSimulationStatusCheck();
+            
+            // Setup auto simulation checkbox
+            const simChk = document.getElementById('autoSimulation');
+            if (simChk) {
+                simChk.addEventListener('change', () => {
+                    // Stop simulation timer if unchecked
+                    if (!simChk.checked && demoTimer) {
+                        clearInterval(demoTimer);
+                        demoTimer = null;
+                    } else if (simChk.checked) {
+                        // Restart to include simulation
+                        startAutoRefresh();
+                    }
+                });
+            }
+            
+            const demoChk = document.getElementById('autoDemoLoop');
+            if (demoChk) {
+                demoChk.addEventListener('change', () => {
+                    if (demoChk.checked) startAutoRefresh(); else stopAutoRefresh();
+                });
+            }
         });
 
         // Manual refresh button

@@ -11,6 +11,19 @@ from datetime import datetime
 import json
 import threading
 from pathlib import Path
+import sys
+
+# 安全的 print 函数
+def safe_print(msg, **kwargs):
+    """安全打印函数，如果 stdout 关闭则使用 stderr"""
+    try:
+        print(msg, flush=True, **kwargs)
+    except (ValueError, OSError, AttributeError):
+        try:
+            sys.stderr.write(str(msg) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
 
 
 @dataclass
@@ -81,7 +94,7 @@ class EventBus:
                 try:
                     callback(event)
                 except Exception as e:
-                    print(f"[EventBus] Error in subscriber: {e}")
+                    safe_print(f"[EventBus] Error in subscriber: {e}")
     
     def _persist_event(self, event: AgentEvent):
         """Write event to JSONL file"""
@@ -89,7 +102,7 @@ class EventBus:
             with open(self.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(event.to_dict(), ensure_ascii=False) + "\n")
         except Exception as e:
-            print(f"[EventBus] Failed to persist event: {e}")
+            safe_print(f"[EventBus] Failed to persist event: {e}")
     
     def get_history(
         self,

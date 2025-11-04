@@ -27,6 +27,11 @@ _CNN_HTML_PAGES = [
     "https://money.cnn.com/data/fear-and-greed/"
 ]
 
+# 替代數據源
+_ALTERNATIVE_SOURCES = [
+    "https://feargreedmeter.com/",  # 替代數據源，顯示值和日期信息
+]
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -96,24 +101,156 @@ def _parse_cnn_json(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 def _scrape_cnn_html(url: str) -> Optional[Dict[str, Any]]:
     """
     從 CNN HTML 頁面抓 FGI 文字/數字。此為最後手段（DOM 可能改版）。
+    改進：使用 BeautifulSoup 和更精確的正則表達式，查找嵌入的 JSON 數據。
     """
     try:
-        resp = requests.get(url, timeout=10)
+        from bs4 import BeautifulSoup
+        
+        resp = requests.get(url, timeout=15, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        })
         if resp.status_code != 200 or not resp.text:
             return None
         html = resp.text
 
-        # 嘗試找 “Fear & Greed Index” 附近的數字（0-100）
-        m = re.search(r'Fear\s*&\s*Greed\s*Index[^0-9]+(\d{1,3})', html, flags=re.IGNORECASE)
-        val = int(m.group(1)) if m else None
+        val = None
+        label = None
+        date_str = None
+        
+        # 策略1: 查找嵌入在 script 標籤中的 JSON 數據
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            script_tags = soup.find_all('script', type='application/json')
+            
+            for script in script_tags:
+                try:
+                    script_data = json.loads(script.string)
+                    # 遞歸查找包含 fear/greed 相關的數據
+                    if isinstance(script_data, dict):
+                        # 查找包含 value/score/index 的結構
+                        for key in ['fear_and_greed', 'fearAndGreed', 'fng', 'data']:
+                            if key in script_data:
+                                node = script_data[key]
+                                if isinstance(node, dict):
+                                    candidate_val = node.get('value') or node.get('score') or node.get('index')
+                                    candidate_label = node.get('label') or node.get('rating')
+                                    candidate_date = node.get('date') or node.get('asof') or node.get('timestamp')
+                                    
+                                    if candidate_val is not None:
+                                        try:
+                                            candidate_int = int(float(candidate_val))
+                                            if 0 <= candidate_int <= 100:
+                                                val = candidate_int
+                                                if candidate_label:
+                                                    label = candidate_label
+                                                if candidate_date:
+                                                    date_str = candidate_date
+                                                break
+                                        except (ValueError, TypeError):
+                                            pass
+                        if val is not None:
+                            break
+                except (json.JSONDecodeError, ValueError):
+                    continue
+        except Exception:
+            pass
+        
+        # 策略2: 在 HTML 中查找特定的 JSON 數據結構（更寬鬆的匹配）
+        if val is None:
+            # 查找可能的 JSON 結構，包含 fear_and_greed 或相關鍵
+            json_patterns = [
+                r'fear[_-]?and[_-]?greed[^}]*value["\']?\s*:\s*(\d{1,3})',
+                r'fear[_-]?and[_-]?greed[^}]*score["\']?\s*:\s*(\d{1,3})',
+                r'fear[_-]?and[_-]?greed[^}]*index["\']?\s*:\s*(\d{1,3})',
+            ]
+            
+            for pattern in json_patterns:
+                matches = re.finditer(pattern, html, re.IGNORECASE)
+                for m in matches:
+                    candidate = int(m.group(1))
+                    if 0 <= candidate <= 100:
+                        val = candidate
+                        # 嘗試在同一匹配附近找到 label
+                        context_start = max(0, m.start() - 500)
+                        context_end = min(len(html), m.end() + 500)
+                        context = html[context_start:context_end]
+                        label_match = re.search(r'label["\']?\s*:\s*"([^"]+)"', context, re.IGNORECASE)
+                        if label_match:
+                            label = label_match.group(1)
+                        break
+                if val is not None:
+                    break
+        
+        # 策略3: 查找頁面文本中顯示的數字（最不精確，但作為最後手段）
+        if val is None:
+            # 查找 "Fear & Greed Index" 後面緊跟的 0-100 範圍的數字
+            pattern = r'Fear\s*&\s*Greed\s*Index[^0-9]*(\d{1,2}|100)(?=\s|"|,|\.|</|$)'
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                candidate = int(match.group(1))
+                if 0 <= candidate <= 100:
+                    val = candidate
+        
+        # 查找標籤（如果還沒有找到）
+        if label is None:
+            label_patterns = [
+                r'"label"\s*:\s*"([^"]+)"',
+                r'"rating"\s*:\s*"([^"]+)"',
+                r'(Extreme\s+Fear|Extreme\s+Greed|Fear|Greed|Neutral)(?=\s|"|,|\.|$)',
+            ]
+            
+            for pattern in label_patterns:
+                ml = re.search(pattern, html, re.IGNORECASE)
+                if ml:
+                    label_candidate = ml.group(1) if ml.groups() else ml.group(0)
+                    # 驗證是否是有效的標籤
+                    if any(x.lower() in label_candidate.lower() for x in ["Fear", "Greed", "Neutral"]):
+                        label = label_candidate.title().replace("  ", " ")
+                        break
 
-        # 嘗試找文字標籤（Extreme Fear / Fear / Neutral / Greed / Extreme Greed）
-        label_pat = r'(Extreme\s+Fear|Fear|Neutral|Greed|Extreme\s+Greed)'
-        ml = re.search(label_pat, html, flags=re.IGNORECASE)
-        label = ml.group(1).title().replace("  ", " ") if ml else None
+        # 提取日期信息（優先查找最近的日期）
+        if date_str is None:
+            # 優先查找最近的日期格式（今天或昨天）
+            today = datetime.now(timezone.utc).date()
+            date_pattern = r'(\d{4}-\d{2}-\d{2})'
+            all_dates = re.findall(date_pattern, html)
+            if all_dates:
+                # 過濾出最近的日期（在過去 7 天內）
+                for d_str in all_dates:
+                    try:
+                        from datetime import datetime as dt
+                        d = dt.strptime(d_str, '%Y-%m-%d').date()
+                        if (today - d).days <= 7 and (today - d).days >= 0:
+                            date_str = d_str
+                            break
+                    except (ValueError, TypeError):
+                        continue
+                # 如果沒找到最近的，使用第一個有效的日期
+                if date_str is None and all_dates:
+                    date_str = all_dates[0]
 
         if val is None and label is None:
             return None
+
+        # 解析日期
+        asof = _now_iso()
+        if date_str:
+            try:
+                # 嘗試使用標準庫解析日期
+                from datetime import datetime as dt
+                parsed_date = dt.strptime(date_str, '%Y-%m-%d')
+                asof = parsed_date.replace(tzinfo=timezone.utc).replace(microsecond=0).isoformat()
+            except (ValueError, TypeError):
+                try:
+                    # 如果標準庫失敗，嘗試 dateutil（如果可用）
+                    try:
+                        from dateutil import parser as date_parser
+                        parsed_date = date_parser.parse(date_str)
+                        asof = parsed_date.replace(tzinfo=timezone.utc).replace(microsecond=0).isoformat()
+                    except ImportError:
+                        pass  # dateutil 不可用
+                except Exception:
+                    pass  # 解析失敗，使用當前時間
 
         return {
             "value": val,
@@ -122,20 +259,154 @@ def _scrape_cnn_html(url: str) -> Optional[Dict[str, Any]]:
             "one_week_ago": None,
             "one_month_ago": None,
             "one_year_ago": None,
-            "asof": _now_iso(),
-            "source": "cnn_html"
+            "asof": asof,
+            "source": "cnn_html",
+            "extracted_date": date_str,
+        }
+    except Exception as e:
+        # 輸出錯誤以便調試
+        import traceback
+        traceback.print_exc()
+        return None
+
+def _scrape_feargreedmeter(url: str) -> Optional[Dict[str, Any]]:
+    """
+    從 feargreedmeter.com 抓取 Fear & Greed Index。
+    根據網站內容，顯示格式：指數值（如 35）和 "X days ago" 日期信息。
+    """
+    try:
+        from bs4 import BeautifulSoup
+        
+        resp = requests.get(url, timeout=15, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        })
+        if resp.status_code != 200 or not resp.text:
+            return None
+        
+        html = resp.text
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        val = None
+        label = None
+        date_str = None
+        days_ago = None
+        
+        # 策略1: 查找頁面上顯示的大數字（通常是指數值）
+        # 網站上顯示 "35" 作為主要數字
+        large_numbers = soup.find_all(['h1', 'h2', 'h3', 'div', 'span'], 
+                                     string=re.compile(r'^\d{1,3}$'))
+        for elem in large_numbers:
+            text = elem.get_text(strip=True)
+            try:
+                candidate = int(text)
+                if 0 <= candidate <= 100:
+                    # 檢查上下文，確認這是指數值而非其他數字
+                    parent_text = elem.parent.get_text() if elem.parent else ""
+                    if 'fear' in parent_text.lower() or 'greed' in parent_text.lower():
+                        val = candidate
+                        break
+            except (ValueError, TypeError):
+                continue
+        
+        # 策略2: 在 HTML 文本中查找包含 "Fear" 和數字的部分
+        if val is None:
+            # 查找 "Fear and Greed Index" 附近的數字
+            pattern = r'Fear\s+(?:and\s+)?Greed\s+(?:Index\s+)?(\d{1,3})'
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                candidate = int(match.group(1))
+                if 0 <= candidate <= 100:
+                    val = candidate
+        
+        # 策略3: 查找頁面上直接顯示的數字 35（根據搜索結果）
+        if val is None:
+            # 查找單獨的大數字（通常是指數值）
+            matches = re.finditer(r'\b(0|[1-9]\d?|100)\b', html)
+            for m in matches:
+                candidate = int(m.group(1))
+                # 檢查這個數字附近是否有 Fear/Greed 相關文本
+                context_start = max(0, m.start() - 200)
+                context_end = min(len(html), m.end() + 200)
+                context = html[context_start:context_end].lower()
+                if 'fear' in context or 'greed' in context:
+                    val = candidate
+                    break
+        
+        # 提取標籤（根據數值範圍推斷）
+        if val is not None:
+            if val <= 25:
+                label = "Extreme Fear"
+            elif val <= 45:
+                label = "Fear"
+            elif val <= 55:
+                label = "Neutral"
+            elif val <= 75:
+                label = "Greed"
+            else:
+                label = "Extreme Greed"
+        
+        # 提取日期信息（"X days ago" 或 "X hours ago"）
+        date_patterns = [
+            r'(\d+)\s+days?\s+ago',
+            r'(\d+)\s+hours?\s+ago',
+            r'(\d{4}-\d{2}-\d{2})',
+            r'(\d{1,2}/\d{1,2}/\d{4})',
+        ]
+        
+        for pattern in date_patterns:
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                date_info = match.group(1) if match.groups() else match.group(0)
+                if 'day' in match.group(0).lower() or 'hour' in match.group(0).lower():
+                    try:
+                        days_ago = int(date_info)
+                        # 計算實際日期
+                        from datetime import datetime, timedelta
+                        actual_date = datetime.now(timezone.utc) - timedelta(days=days_ago)
+                        date_str = actual_date.strftime('%Y-%m-%d')
+                    except (ValueError, TypeError):
+                        pass
+                elif re.match(r'\d{4}-\d{2}-\d{2}', date_info):
+                    date_str = date_info
+                break
+        
+        if val is None:
+            return None
+        
+        # 解析日期
+        asof = _now_iso()
+        if date_str:
+            try:
+                from datetime import datetime as dt
+                parsed_date = dt.strptime(date_str, '%Y-%m-%d')
+                asof = parsed_date.replace(tzinfo=timezone.utc).replace(microsecond=0).isoformat()
+            except (ValueError, TypeError):
+                pass
+        
+        return {
+            "value": val,
+            "label": label,
+            "previous_close": None,
+            "one_week_ago": None,
+            "one_month_ago": None,
+            "one_year_ago": None,
+            "asof": asof,
+            "source": "feargreedmeter",
+            "extracted_date": date_str,
+            "days_ago": days_ago,  # 添加 "X days ago" 信息
         }
     except Exception:
         return None
 
 def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
     """
-    抓 CNN Fear & Greed Index（多來源策略）：
-      1) JSON 端點（1~2 個）
-      2) HTML 頁面 fallback
+    抓 Fear & Greed Index（多來源策略）：
+      1) CNN JSON 端點（1~2 個）
+      2) feargreedmeter.com（替代數據源，推薦）
+      3) CNN HTML 頁面 fallback
       都失敗 → 回 stub 結構（不阻塞主流程）。
     """
-    # A/B: JSON 端點
+    # A/B: CNN JSON 端點
     for ep in _CNN_JSON_ENDPOINTS:
         try:
             r = requests.get(ep, timeout=timeout, headers={"Accept": "application/json"})
@@ -147,10 +418,16 @@ def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # C: HTML fallback
+    # 新增: feargreedmeter.com（替代數據源，更可靠）
+    for url in _ALTERNATIVE_SOURCES:
+        parsed = _scrape_feargreedmeter(url)
+        if parsed and parsed.get("value") is not None:
+            return parsed
+
+    # C: CNN HTML fallback
     for url in _CNN_HTML_PAGES:
         parsed = _scrape_cnn_html(url)
-        if parsed:
+        if parsed and parsed.get("value") is not None:
             return parsed
 
     # 全部失敗 → stub

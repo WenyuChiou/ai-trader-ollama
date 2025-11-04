@@ -8,6 +8,8 @@ from src.data.market_data import get_vix_close
 from src.tools.news_tools import (
     search_web, fetch_url, news_scan, plan_and_scan_news
 )
+from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
+from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data
 
 
 @dataclass
@@ -28,7 +30,20 @@ class ToolBox:
         # market / sentiment
         self.register(Tool("vix_term", self._vix_term_adapter, "Fetch ^VIX & ^VIX3M term structure"))
         self.register(Tool("vix_close", self._vix_close_adapter, "Fetch ^VIX close series (start,end)"))
-        self.register(Tool("fear_greed", fetch_fear_greed, "CNN Fear & Greed Index (stub)"))
+        # Alias for compatibility with model phrasing
+        self.register(Tool("fetch_vix_close", self._vix_close_adapter, "Alias of vix_close (compat: fetch_vix_close)"))
+        self.register(Tool("fear_greed", fetch_fear_greed, "Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)"))
+        
+        # crypto
+        # fetch_crypto_batch 和 get_crypto_price 是 LangChain @tool 装饰的函数，返回 StructuredTool
+        # 需要提取底层函数或使用适配器
+        self.register(Tool("fetch_crypto_batch", self._crypto_batch_adapter, "Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)"))
+        self.register(Tool("get_crypto_price", self._crypto_price_adapter, "Get current price and indicators for a single cryptocurrency"))
+        
+        # jin10 economic data
+        # fetch_jin10_news 和 fetch_jin10_economic_data 是 LangChain StructuredTool，需要适配器
+        self.register(Tool("fetch_jin10_news", self._jin10_news_adapter, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
+        self.register(Tool("fetch_jin10_economic_data", self._jin10_economic_data_adapter, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))
@@ -188,6 +203,58 @@ class ToolBox:
         
         # 如果都没有，返回错误
         raise ValueError("fetch_url requires 'url' parameter (string)")
+    
+    def _crypto_batch_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_crypto_batch 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 如果 fetch_crypto_batch 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_crypto_batch, 'invoke'):
+            return fetch_crypto_batch.invoke(kwargs)
+        # 否则直接调用
+        return fetch_crypto_batch(**kwargs)
+    
+    def _crypto_price_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_crypto_price 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 如果 get_crypto_price 是 StructuredTool，使用 .invoke()
+        if hasattr(get_crypto_price, 'invoke'):
+            return get_crypto_price.invoke(kwargs)
+        # 否则直接调用
+        return get_crypto_price(**kwargs)
+    
+    def _jin10_news_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_jin10_news 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 设置默认参数（如果 kwargs 为空）
+        if not kwargs:
+            kwargs = {}
+        kwargs.setdefault("max_items", 20)
+        kwargs.setdefault("category", "all")
+        
+        # 如果 fetch_jin10_news 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_jin10_news, 'invoke'):
+            return fetch_jin10_news.invoke(kwargs)
+        # 否则直接调用
+        return fetch_jin10_news(**kwargs)
+    
+    def _jin10_economic_data_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_jin10_economic_data 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 设置默认参数（如果 kwargs 为空）
+        if not kwargs:
+            kwargs = {}
+        kwargs.setdefault("max_items", 20)
+        kwargs.setdefault("data_type", "all")
+        
+        # 如果 fetch_jin10_economic_data 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_jin10_economic_data, 'invoke'):
+            return fetch_jin10_economic_data.invoke(kwargs)
+        # 否则直接调用
+        return fetch_jin10_economic_data(**kwargs)
 
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """

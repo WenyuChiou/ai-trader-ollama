@@ -1,0 +1,34 @@
+market_agent:
+  name: Market Data & Quotes
+  model: llama3.1
+  temperature: 0.2
+  prompt_file: ../prompts/market_agent.yml
+
+risk_analyst:
+  name: Risk Analyst
+  model: llama3.1
+  temperature: 0.2
+  prompt_file: ../prompts/risk_analyst.yml
+
+market_analyst:
+  name: Market Analyst (TA / bias)
+  model: llama3.1
+  temperature: 0.3
+  prompt_file: ../prompts/market_analyst.yml
+
+discussion_agent:
+  name: Discussion / Consensus
+  model: llama3.1
+  temperature: 0.3
+  prompt_file: ../prompts/discussion_agent.yml
+
+trader_agent:
+  name: Trader / Order Proposals
+  model: llama3.1
+  temperature: 0.25
+  prompt_file: ../prompts/trader_agent.yml
+
+# NOTE: The following agents are not yet implemented
+# They will be added in future phases:
+# - performance_agent: For analyzing historical trading performance
+# - sandbox_agent: For testing and development

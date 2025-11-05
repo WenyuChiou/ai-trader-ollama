@@ -962,6 +962,8 @@
         <div class="header" style="padding: 12px 16px; margin-top: -10px;">
             <div class="tabs">
                 <button class="tab-btn active" id="tabOverview" onclick="switchTab('overview')">Overview</button>
+                <button class="tab-btn" id="tabTrades" onclick="switchTab('trades')">Trades</button>
+                <button class="tab-btn" id="tabConversations" onclick="switchTab('conversations')">Conversations</button>
             </div>
         </div>
 
@@ -3305,6 +3307,20 @@
             }
         }
 
+        // Load trades page data
+        async function loadTradesPage() {
+            try {
+                const trades = await fetchTrades(200);
+                renderTrades(trades);
+            } catch (e) {
+                console.error('Failed to load trades page:', e);
+                const tbody = document.getElementById('tradesBody');
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #ef4444;">Failed to load trades. Please try again.</td></tr>`;
+                }
+            }
+        }
+
         function renderTrades(trades) {
             const tbody = document.getElementById('tradesBody');
             
@@ -3501,15 +3517,42 @@
         }
 
         function switchTab(tab) {
-            // Only Overview tab is available now
+            // Hide all pages
             const o = document.getElementById('dashboardPage');
-            if (o) o.style.display = 'block';
             const t = document.getElementById('tradesPage');
-            if (t) t.style.display = 'none';
             const a = document.getElementById('allocationPage');
-            if (a) a.style.display = 'none';
+            
+            // Remove active class from all tabs
             const btnO = document.getElementById('tabOverview');
-            if (btnO) btnO.classList.add('active');
+            const btnT = document.getElementById('tabTrades');
+            const btnC = document.getElementById('tabConversations');
+            
+            if (btnO) btnO.classList.remove('active');
+            if (btnT) btnT.classList.remove('active');
+            if (btnC) btnC.classList.remove('active');
+            
+            // Show selected page and activate corresponding tab
+            if (tab === 'overview') {
+                if (o) o.style.display = 'block';
+                if (t) t.style.display = 'none';
+                if (a) a.style.display = 'none';
+                if (btnO) btnO.classList.add('active');
+            } else if (tab === 'trades') {
+                if (o) o.style.display = 'none';
+                if (t) t.style.display = 'block';
+                if (a) a.style.display = 'none';
+                if (btnT) btnT.classList.add('active');
+                // Load trades data when switching to trades page
+                loadTradesPage();
+            } else if (tab === 'conversations') {
+                if (o) o.style.display = 'none';
+                if (t) t.style.display = 'none';
+                if (a) a.style.display = 'block';
+                if (btnC) btnC.classList.add('active');
+                // Load conversations when switching to conversations page
+                loadInlineConversations();
+            }
+            
             document.body.classList.remove('business');
         }
 

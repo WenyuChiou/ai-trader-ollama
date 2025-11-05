@@ -637,6 +637,7 @@ async def get_real_time_portfolio():
             if not existing_records:
                 # 如果今天还没有记录，立即记录
                 should_record = True
+                print(f"[Portfolio API] No records today, recording first snapshot")
             else:
                 # 检查最后一条记录的时间
                 last_record = existing_records[-1]
@@ -644,7 +645,14 @@ async def get_real_time_portfolio():
                 
                 if last_timestamp_str:
                     try:
-                        last_timestamp = datetime.fromisoformat(last_timestamp_str.replace('Z', '+00:00'))
+                        # 尝试解析时间戳（支持多种格式）
+                        last_timestamp_str_clean = last_timestamp_str.replace('Z', '+00:00').replace('+00:00', '')
+                        try:
+                            last_timestamp = datetime.fromisoformat(last_timestamp_str_clean)
+                        except:
+                            # 如果ISO格式失败，尝试其他格式
+                            last_timestamp = datetime.strptime(last_timestamp_str_clean.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+                        
                         # 如果时区信息存在，转换为本地时间
                         if last_timestamp.tzinfo:
                             last_timestamp = last_timestamp.astimezone().replace(tzinfo=None)
@@ -656,10 +664,21 @@ async def get_real_time_portfolio():
                         current_value = snapshot.get("total_value", 0.0)
                         value_change_pct = abs((current_value - last_value) / last_value * 100) if last_value > 0 else 0
                         
-                        if time_diff >= 30 or value_change_pct >= 0.5:
+                        if time_diff >= 30:
                             should_record = True
+                            print(f"[Portfolio API] Time diff: {time_diff:.1f}s, recording snapshot")
+                        elif value_change_pct >= 0.5:
+                            should_record = True
+                            print(f"[Portfolio API] Value changed {value_change_pct:.2f}%, recording snapshot")
                     except Exception as e:
-                        # 如果时间解析失败，检查是否超过1分钟就记录
+                        # 如果时间解析失败，每30秒记录一次（简化逻辑）
+                        print(f"[Portfolio API] Timestamp parse error: {e}, will record anyway")
+                        # 如果无法解析时间，但记录数少于10，也记录（避免无限记录）
+                        if len(existing_records) < 10:
+                            should_record = True
+                else:
+                    # 没有时间戳，每30秒记录一次
+                    if len(existing_records) < 10:
                         should_record = True
             
             if should_record:
@@ -678,9 +697,11 @@ async def get_real_time_portfolio():
                     portfolio_snapshot=portfolio_snapshot_for_record,
                     update_existing=False,  # 追加记录，允许同一天多条记录
                 )
-                print(f"[Portfolio API] Recorded intraday equity snapshot for {today_str}: ${snapshot.get('total_value', 0):.2f}")
+                print(f"[Portfolio API] ✓ Recorded intraday equity snapshot for {today_str}: ${snapshot.get('total_value', 0):.2f}")
         except Exception as e:
+            import traceback
             print(f"[Portfolio API] Failed to record intraday equity: {e}")
+            print(f"[Portfolio API] Traceback: {traceback.format_exc()}")
             # 不影响主流程
         
         return {"ok": True, **snapshot}

@@ -4124,6 +4124,27 @@
         };
         
         console.log('✅ 診斷工具已加載！在控制台運行 window.runDiagnostics() 來檢查對話框');
+        
+        // 快速滾動到對話框的命令
+        window.scrollToConversations = function() {
+            const convSection = document.getElementById('conversationsOverviewSection');
+            if (convSection) {
+                convSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // 高亮顯示
+                const originalBorder = convSection.style.border;
+                convSection.style.border = '3px solid #667eea';
+                setTimeout(() => {
+                    convSection.style.border = originalBorder;
+                }, 3000);
+                console.log('✅ 已滾動到對話框並高亮顯示');
+                return true;
+            } else {
+                console.error('❌ 對話框元素不存在');
+                return false;
+            }
+        };
+        
+        console.log('💡 提示：運行 window.scrollToConversations() 可以快速滾動到對話框');
 
         // Hook Auto Trade checkbox to scheduler
         (function initAutoTradeToggle(){

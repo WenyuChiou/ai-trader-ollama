@@ -2235,32 +2235,12 @@
                 return;
             }
             
-            // 确保对话区块可见 - 強制設置，包括父元素檢查
-            if (section) {
-                section.style.display = 'block';
-                section.style.visibility = 'visible';
-                section.style.opacity = '1';
-                section.style.position = 'relative';
-                section.style.zIndex = '1000';
-                
-                // 檢查父元素是否被隱藏
-                if (section.parentElement) {
-                    const parentStyle = window.getComputedStyle(section.parentElement);
-                    if (parentStyle.display === 'none') {
-                        section.parentElement.style.display = 'grid';
-                        console.warn('[Conversations] Parent element was hidden, forcing display');
-                    }
-                }
-                console.log('[Conversations] Section visibility forced:', {
-                    display: section.style.display,
-                    visibility: section.style.visibility,
-                    opacity: section.style.opacity
-                });
-            }
+            // 🔥 确保区域可见
+            ensureConversationsVisible();
             
             if (count) count.textContent = `${conversations.length} items`;
             
-            console.log(`[Conversations] Rendering ${conversations.length} conversations to container`);
+            console.log(`[Conversations] Rendering ${conversations.length} conversations`);
             
             if (conversations.length === 0) {
                 container.innerHTML = `<div class="empty-conversations"><p>No conversations yet. Run a trading cycle to generate agent discussions.</p></div>`;
@@ -2340,6 +2320,9 @@
                     }).join('')}
                 </div>
             `;
+            
+            // 🔥 渲染后再次确保可见
+            ensureConversationsVisible();
         }
 
         // Parse tool information from content string
@@ -3634,8 +3617,32 @@
 
         // Tabs removed - all content in Overview
 
+        // 🔥 关键修复：强制确保对话框可见的函数
+        function ensureConversationsVisible() {
+            const convSection = document.getElementById('conversationsOverviewSection');
+            if (convSection) {
+                convSection.style.display = 'block';
+                convSection.style.visibility = 'visible';
+                convSection.style.opacity = '1';
+                convSection.style.position = 'relative';
+                convSection.style.zIndex = '1000';
+                convSection.style.minHeight = '200px';
+                
+                // 检查父元素
+                if (convSection.parentElement) {
+                    const parentStyle = window.getComputedStyle(convSection.parentElement);
+                    if (parentStyle.display === 'none') {
+                        convSection.parentElement.style.display = 'grid';
+                    }
+                }
+            }
+        }
+        
         // Main refresh function
         async function refreshData(showLoading = false) {
+            // 🔥 关键修复：强制设置为false，避免隐藏mainContent
+            showLoading = false;
+            
             // 检查市场是否开盘 - 非交易时段仍显示对话内容，但不更新实时数据
             let isMarketOpen = true;
             try {
@@ -3674,28 +3681,20 @@
             const mainContent = document.getElementById('mainContent');
             const refreshBtn = document.getElementById('refreshBtn');
 
+            // 🔥 关键修复：不隐藏mainContent，即使showLoading为true
             if (showLoading) {
                 loadingState.style.display = 'block';
                 errorState.style.display = 'none';
-                // 關鍵修復：完全不要隱藏mainContent，保持對話框始終可見
-                // mainContent.style.display = 'none';  // ← 這是問題根源，已移除！
-                mainContent.style.display = 'block';  // 確保mainContent始終可見
-                mainContent.style.visibility = 'visible';
-                mainContent.style.opacity = '1';  // 保持完全可見，不降低opacity
+                // mainContent.style.display = 'none';  // ← 注释掉这行，不隐藏mainContent
+            }
+            
+            if (refreshBtn) {
                 refreshBtn.disabled = true;
                 refreshBtn.textContent = '🔄 Refreshing...';
-                
-                // 確保對話框即使在loading時也保持可見（使用!important）
-                const convSection = document.getElementById('conversationsOverviewSection');
-                if (convSection) {
-                    convSection.style.setProperty('display', 'block', 'important');
-                    convSection.style.setProperty('visibility', 'visible', 'important');
-                    convSection.style.setProperty('opacity', '1', 'important');
-                    convSection.style.setProperty('position', 'relative', 'important');
-                    convSection.style.setProperty('z-index', '1000', 'important');
-                    console.log('[Refresh] Ensured conversations section visible during loading with !important');
-                }
             }
+            
+            // 🔥 立即确保对话框可见
+            ensureConversationsVisible();
 
             try {
                 // Measure response time
@@ -3811,17 +3810,6 @@
                 console.log(`[Refresh] Rendering ${conversations.length} conversations`);
                 renderConversationsOverview(conversations);
                 
-                // 確保對話區塊可見 - 強制設置，在mainContent顯示之前
-                const convSection = document.getElementById('conversationsOverviewSection');
-                if (convSection) {
-                    // 強制設置，不管當前狀態如何
-                    convSection.style.display = 'block';
-                    convSection.style.visibility = 'visible';
-                    convSection.style.opacity = '1';
-                    convSection.style.position = 'relative';
-                    convSection.style.zIndex = '1000';
-                    console.log('[Refresh] Forced conversations section visibility BEFORE mainContent display');
-                }
                 
                 renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）
                 renderTrades(tradesData || []);  // 更新详细交易历史表格
@@ -3871,36 +3859,8 @@
                 refreshBtn.disabled = false;
                 refreshBtn.textContent = '🔄 Refresh';
                 
-                // 再次確保對話區塊在mainContent顯示後仍然可見（在 isRefreshing = false 之前）
-                if (convSection) {
-                    // 使用 requestAnimationFrame 確保在DOM更新後執行
-                    requestAnimationFrame(() => {
-                        convSection.style.setProperty('display', 'block', 'important');
-                        convSection.style.setProperty('visibility', 'visible', 'important');
-                        convSection.style.setProperty('opacity', '1', 'important');
-                        convSection.style.setProperty('position', 'relative', 'important');
-                        convSection.style.setProperty('z-index', '1000', 'important');
-                        
-                        // 檢查是否在視圖內，如果不在則滾動
-                        const rect = convSection.getBoundingClientRect();
-                        const isVisible = rect.top >= 0 && rect.top < window.innerHeight;
-                        if (!isVisible && conversations.length > 0) {
-                            console.log('[Refresh] Conversations section not in viewport, scrolling...');
-                            convSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }
-                        
-                        console.log('[RefreshData] Ensured conversations section visibility at end of refresh');
-                    });
-                    
-                    // 延遲再次確認（雙重保護）
-                    setTimeout(() => {
-                        convSection.style.setProperty('display', 'block', 'important');
-                        convSection.style.setProperty('visibility', 'visible', 'important');
-                        convSection.style.setProperty('opacity', '1', 'important');
-                        convSection.style.setProperty('z-index', '1000', 'important');
-                        console.log('[Refresh] Final confirmation: conversations section visibility');
-                    }, 200);
-                }
+                // 🔥 最后再次确保对话框可见
+                ensureConversationsVisible();
                 
                 isRefreshing = false;
 
@@ -4068,18 +4028,12 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            // 立即確保對話框區域可見（不需要等待數據）
-            const convSection = document.getElementById('conversationsOverviewSection');
-            if (convSection) {
-                convSection.style.display = 'block';
-                convSection.style.visibility = 'visible';
-                convSection.style.opacity = '1';
-                convSection.style.position = 'relative';
-                convSection.style.zIndex = '10';
-                console.log('[Init] Ensured conversations section is visible on page load');
-            }
+            console.log('[Init] Page loaded, initializing...');
             
-            // 確保所有主要區塊都可見
+            // 🔥 立即确保对话框可见
+            ensureConversationsVisible();
+            
+            // 确保主内容区域可见
             const mainContent = document.getElementById('mainContent');
             if (mainContent) {
                 mainContent.style.display = 'block';
@@ -4087,31 +4041,14 @@
                 mainContent.style.opacity = '1';
             }
             
-            const chartSection = document.getElementById('chartSection');
-            if (chartSection) {
-                chartSection.style.display = 'block';
-            }
-            
-            const positionsSection = document.getElementById('positionsSection');
-            if (positionsSection) {
-                positionsSection.style.display = 'block';
-            }
-            
             setupAutoRefresh();
             
-            // 只刷新数据，不自动执行交易循环
-            console.log('[Init] Page loaded, refreshing data...');
-            
-            // 等待1秒后刷新数据
+            // 🔥 使用延迟加载，避免loading遮挡
+            console.log('[Init] Waiting 500ms before first data refresh...');
             setTimeout(() => {
-                refreshData(true);
-                // 同時手動加載對話數據（確保有內容顯示）
-                setTimeout(() => {
-                    if (typeof loadConversationsNow === 'function') {
-                        loadConversationsNow();
-                    }
-                }, 500);
-            }, 1000);
+                console.log('[Init] Starting first data refresh...');
+                refreshData(false);  // 🔥 使用 false，不显示loading
+            }, 500);
             
             // Simulation status check removed (not needed)
             

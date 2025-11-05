@@ -2176,11 +2176,27 @@
                 return;
             }
             
-            // 确保对话区块可见
+            // 确保对话区块可见 - 強制設置，包括父元素檢查
             if (section) {
                 section.style.display = 'block';
                 section.style.visibility = 'visible';
                 section.style.opacity = '1';
+                section.style.position = 'relative';
+                section.style.zIndex = '10';
+                
+                // 檢查父元素是否被隱藏
+                if (section.parentElement) {
+                    const parentStyle = window.getComputedStyle(section.parentElement);
+                    if (parentStyle.display === 'none') {
+                        section.parentElement.style.display = 'grid';
+                        console.warn('[Conversations] Parent element was hidden, forcing display');
+                    }
+                }
+                console.log('[Conversations] Section visibility forced:', {
+                    display: section.style.display,
+                    visibility: section.style.visibility,
+                    opacity: section.style.opacity
+                });
             }
             
             if (count) count.textContent = `${conversations.length} items`;

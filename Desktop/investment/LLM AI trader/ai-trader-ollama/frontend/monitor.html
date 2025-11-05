@@ -1272,14 +1272,27 @@
 
                     clearTimeout(timeoutId);
 
+                    const data = await response.json();
+                    
+                    // 即使HTTP狀態碼不是200，如果返回了fallback數據，也嘗試使用
                     if (!response.ok) {
+                        // 如果返回了fallback數據（有total_value等字段），使用它
+                        if (data.total_value !== undefined && data.cash !== undefined) {
+                            console.warn('[Frontend] Using fallback portfolio data from error response');
+                            data.ok = true; // 標記為可用
+                            return data;
+                        }
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
-
-                    const data = await response.json();
                     
                     // 验证数据完整性
                     if (!data.ok || data.error) {
+                        // 如果有fallback數據，使用它
+                        if (data.total_value !== undefined && data.cash !== undefined) {
+                            console.warn('[Frontend] Using fallback portfolio data from error response');
+                            data.ok = true; // 標記為可用
+                            return data;
+                        }
                         throw new Error(data.error || 'Failed to load portfolio');
                     }
                     

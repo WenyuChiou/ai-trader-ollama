@@ -128,6 +128,58 @@
             animation: none;
         }
 
+        .market-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            margin-left: 16px;
+        }
+
+        .market-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .market-status-dot.open {
+            background: #10b981;
+            box-shadow: 0 0 4px #10b981;
+        }
+
+        .market-status-dot.closed {
+            background: #ef4444;
+            animation: none;
+        }
+
+        .conversation-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            margin-left: 16px;
+        }
+
+        .conversation-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .conversation-status-dot.generating {
+            background: #f59e0b;
+            box-shadow: 0 0 4px #f59e0b;
+            animation: pulse 1s infinite;
+        }
+
+        .conversation-status-dot.idle {
+            background: #6b7280;
+            animation: none;
+        }
+
         .agent-status-indicator {
             display: inline-flex;
             align-items: center;
@@ -806,6 +858,14 @@
                     <span class="status-dot disconnected" id="statusDot"></span>
                     <span id="statusText">Checking...</span>
                 </div>
+                <div class="market-status">
+                    <span class="market-status-dot closed" id="marketStatusDot"></span>
+                    <span id="marketStatusText">Market: Checking...</span>
+                </div>
+                <div class="conversation-status">
+                    <span class="conversation-status-dot idle" id="conversationStatusDot"></span>
+                    <span id="conversationStatusText">Conversations: Idle</span>
+                </div>
             </div>
             <div class="header-controls">
                 <label class="auto-refresh-toggle">
@@ -1074,6 +1134,34 @@
             }
         }
 
+        function updateMarketStatus(isOpen) {
+            const dot = document.getElementById('marketStatusDot');
+            const text = document.getElementById('marketStatusText');
+            if (dot && text) {
+                if (isOpen) {
+                    dot.className = 'market-status-dot open';
+                    text.textContent = 'Market: OPEN';
+                } else {
+                    dot.className = 'market-status-dot closed';
+                    text.textContent = 'Market: CLOSED';
+                }
+            }
+        }
+
+        function updateConversationStatus(isGenerating) {
+            const dot = document.getElementById('conversationStatusDot');
+            const text = document.getElementById('conversationStatusText');
+            if (dot && text) {
+                if (isGenerating) {
+                    dot.className = 'conversation-status-dot generating';
+                    text.textContent = 'Conversations: Generating...';
+                } else {
+                    dot.className = 'conversation-status-dot idle';
+                    text.textContent = 'Conversations: Idle';
+                }
+            }
+        }
+
         // Fetch portfolio data
         async function fetchPortfolio(options = {}) {
             try {
@@ -1112,6 +1200,7 @@
                     return data;
                 } catch (fetchErr) {
                     clearTimeout(timeoutId);
+                    // AbortError 是预期的，不需要特别处理
                     throw fetchErr;
                 }
             } catch (err) {
@@ -1149,7 +1238,9 @@
                     pnl: item.total_pnl || 0,
                 }));
             } catch (err) {
-                console.error('Failed to fetch equity history:', err);
+                if (err.name !== 'AbortError') {
+                    console.error('Failed to fetch equity history:', err);
+                }
                 return [];
             }
         }
@@ -1177,7 +1268,9 @@
                     timestamp: new Date().toISOString(),
                 };
             } catch (err) {
-                console.error('Failed to fetch backend status:', err);
+                if (err.name !== 'AbortError') {
+                    console.error('Failed to fetch backend status:', err);
+                }
                 return null;
             }
         }
@@ -1292,6 +1385,7 @@
             }
             
             isTradingExecuting = true;
+            updateConversationStatus(true);  // 标记为生成中
             try {
                 console.log('[Trade Cycle] Executing trading cycle...');
                 const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
@@ -1328,6 +1422,7 @@
                 }
             } finally {
                 isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
+                updateConversationStatus(false);  // 标记为空闲
             }
         }
 
@@ -1509,7 +1604,9 @@
                 const data = await response.json();
                 return data.agents || {};
             } catch (err) {
-                console.error('Failed to fetch agent status:', err);
+                if (err.name !== 'AbortError') {
+                    console.error('Failed to fetch agent status:', err);
+                }
                 return {};
             }
         }
@@ -1532,7 +1629,9 @@
                 const data = await response.json();
                 return data.tools || [];
             } catch (err) {
-                console.error('Failed to fetch tools list:', err);
+                if (err.name !== 'AbortError') {
+                    console.error('Failed to fetch tools list:', err);
+                }
                 return [];
             }
         }
@@ -1555,7 +1654,9 @@
                 const data = await response.json();
                 return data.ok ? data : null;
             } catch (err) {
-                console.error('Failed to fetch system info:', err);
+                if (err.name !== 'AbortError') {
+                    console.error('Failed to fetch system info:', err);
+                }
                 return null;
             }
         }
@@ -1585,7 +1686,9 @@
                 }
                 return { conversations: [], total: 0, has_more: false };
             } catch (err) {
-                console.error('Failed to fetch conversations:', err);
+                if (err.name !== 'AbortError') {
+                    console.error('Failed to fetch conversations:', err);
+                }
                 return { conversations: [], total: 0, has_more: false };
             }
         }
@@ -2557,7 +2660,9 @@
                 const data = await resp.json();
                 return data.ok ? (data.trades || []) : [];
             } catch (e) {
-                console.error('fetchTrades error', e);
+                if (e.name !== 'AbortError') {
+                    console.error('fetchTrades error', e);
+                }
                 return [];
             }
         }
@@ -2780,6 +2885,7 @@
                 if (marketData) {
                     isMarketOpen = marketData.open || false;
                     LAST_MARKET_OPEN = isMarketOpen;
+                    updateMarketStatus(isMarketOpen);
                     if (!isMarketOpen) {
                         console.log('[Refresh] Market is closed, will show conversations but skip real-time data');
                         // 显示提示信息
@@ -3111,8 +3217,7 @@
                 refreshData(true);
             }, 1000);
             
-            // 启动模拟状态检查（如果模拟正在运行）
-            startSimulationStatusCheck();
+            // Simulation status check removed (not needed)
             
             // Setup auto trade checkbox
             const autoTradeChk = document.getElementById('autoTrade');

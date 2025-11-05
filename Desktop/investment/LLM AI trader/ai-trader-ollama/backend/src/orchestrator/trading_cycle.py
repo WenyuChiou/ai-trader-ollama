@@ -601,9 +601,106 @@ def execute_daily_trade(
         buy_orders_sorted = sorted(filtered_buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
         
         # 檢查市場是否開盤
-        from src.data.order_manager import OrderManager
-        order_manager_check = OrderManager(root="data/logs")
-        is_market_open_now = order_manager_check._is_market_open()
+        is_market_open_now = order_manager._is_market_open()
+        
+        # 如果市場開盤，先檢查並處理當天的 pending 限價單
+        if is_market_open_now:
+            print(f"[PENDING CHECK] Market is open. Checking pending orders for today ({today})...")
+            pending_orders = order_manager.load_pending_orders(order_date=today)
+            filled_count = 0
+            
+            for pending_order in pending_orders:
+                symbol = pending_order.get("symbol")
+                action = pending_order.get("action", "").upper()
+                limit_price = pending_order.get("limit_price")
+                quantity = pending_order.get("quantity", 0)
+                
+                if not symbol or not limit_price or quantity <= 0:
+                    continue
+                
+                # 獲取當前價格
+                current_price = last_prices.get(symbol)
+                if not current_price or current_price <= 0:
+                    # 如果沒有價格，跳過
+                    continue
+                
+                # 檢查是否應該成交
+                should_fill = False
+                if action == "BUY":
+                    # 買單：當前價 <= 限價時成交
+                    if current_price <= limit_price:
+                        should_fill = True
+                elif action == "SELL":
+                    # 賣單：當前價 >= 限價時成交
+                    if current_price >= limit_price:
+                        should_fill = True
+                
+                if should_fill:
+                    try:
+                        # 執行成交
+                        fill_price = current_price  # 使用當前價成交
+                        
+                        if action == "BUY":
+                            # 檢查現金是否足夠
+                            cost = fill_price * quantity
+                            if cost > portfolio.cash:
+                                print(f"[PENDING FILL] BUY {symbol} skipped: insufficient cash (need ${cost:.2f}, have ${portfolio.cash:.2f})")
+                                continue
+                            
+                            portfolio.buy(symbol, quantity, fill_price)
+                            print(f"[PENDING FILL] BUY {symbol} x{quantity} @ ${fill_price:.2f} (limit ${limit_price:.2f}, current ${current_price:.2f})")
+                            
+                        elif action == "SELL":
+                            # 檢查持倉是否足夠
+                            pos = portfolio.get_position(symbol)
+                            if not pos or pos.quantity < quantity:
+                                print(f"[PENDING FILL] SELL {symbol} skipped: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
+                                continue
+                            
+                            portfolio.sell(symbol, quantity, fill_price)
+                            print(f"[PENDING FILL] SELL {symbol} x{quantity} @ ${fill_price:.2f} (limit ${limit_price:.2f}, current ${current_price:.2f})")
+                        
+                        # 標記為已成交
+                        order_manager.mark_order_filled(pending_order, {
+                            "filled": True,
+                            "fill_price": fill_price,
+                            "fill_reason": f"Limit order filled at market price ${fill_price:.2f}",
+                            "daily_high": current_price,
+                            "daily_low": current_price,
+                        })
+                        
+                        # 記錄交易
+                        trade_logger.log(
+                            symbol=symbol,
+                            action=action,
+                            price=fill_price,
+                            quantity=quantity,
+                            amount=fill_price * quantity,
+                            status="FILLED",
+                            reason=f"Pending limit order filled",
+                            rationale="Pending order execution",
+                        )
+                        
+                        executed_trades.append({
+                            "symbol": symbol,
+                            "action": action,
+                            "quantity": quantity,
+                            "price": fill_price,
+                            "amount": fill_price * quantity,
+                            "status": "FILLED",
+                            "date": today,
+                        })
+                        
+                        filled_count += 1
+                        
+                    except Exception as fill_err:
+                        execution_errors.append(f"Pending order fill failed for {action} {symbol}: {fill_err}")
+                        print(f"[PENDING FILL ERROR] {action} {symbol}: {fill_err}")
+            
+            if filled_count > 0:
+                print(f"[PENDING CHECK] Filled {filled_count} pending orders")
+            else:
+                print(f"[PENDING CHECK] No pending orders to fill (checked {len(pending_orders)} orders)")
         
         # 交易策略：市場開盤時直接市價執行，不開盤時創建限價單
         for order in buy_orders_sorted:

@@ -3623,9 +3623,22 @@
             if (showLoading) {
                 loadingState.style.display = 'block';
                 errorState.style.display = 'none';
-                mainContent.style.display = 'none';
+                // 不要隱藏mainContent，因為對話框在裡面
+                // 改為只降低opacity，保持對話框可見
+                mainContent.style.opacity = '0.5';
                 refreshBtn.disabled = true;
                 refreshBtn.textContent = '🔄 Refreshing...';
+                
+                // 確保對話框即使在loading時也保持可見
+                const convSection = document.getElementById('conversationsOverviewSection');
+                if (convSection) {
+                    convSection.style.display = 'block';
+                    convSection.style.visibility = 'visible';
+                    convSection.style.opacity = '1';
+                    convSection.style.position = 'relative';
+                    convSection.style.zIndex = '20';
+                    console.log('[Refresh] Ensured conversations section visible during loading');
+                }
             }
 
             try {
@@ -3804,18 +3817,19 @@
                 
                 // 再次確保對話區塊在mainContent顯示後仍然可見
                 if (convSection) {
-                    // 立即設置
-                    convSection.style.display = 'block';
-                    convSection.style.visibility = 'visible';
-                    convSection.style.opacity = '1';
-                    convSection.style.position = 'relative';
-                    convSection.style.zIndex = '10';
+                    // 立即強制設置（使用!important級別的設置）
+                    convSection.style.setProperty('display', 'block', 'important');
+                    convSection.style.setProperty('visibility', 'visible', 'important');
+                    convSection.style.setProperty('opacity', '1', 'important');
+                    convSection.style.setProperty('position', 'relative', 'important');
+                    convSection.style.setProperty('z-index', '20', 'important');
+                    console.log('[Refresh] Force-set conversations section with !important flags');
                     
                     // 延遲再次確認（確保其他代碼不會覆蓋）
                     setTimeout(() => {
-                        convSection.style.display = 'block';
-                        convSection.style.visibility = 'visible';
-                        convSection.style.opacity = '1';
+                        convSection.style.setProperty('display', 'block', 'important');
+                        convSection.style.setProperty('visibility', 'visible', 'important');
+                        convSection.style.setProperty('opacity', '1', 'important');
                         
                         // 檢查是否在視圖內，如果不在則滾動
                         const rect = convSection.getBoundingClientRect();

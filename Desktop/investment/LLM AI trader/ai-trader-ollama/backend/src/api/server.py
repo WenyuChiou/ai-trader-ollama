@@ -774,12 +774,20 @@ async def get_recent_trades(limit: int = 100):
             else:
                 final_status = status or ("FILLED" if source == "filled" else x.get("state", "PENDING"))
             
+            # 對於pending訂單，優先使用limit_price作為price
+            limit_price = x.get("limit_price")
+            if source == "pending" and limit_price:
+                display_price = limit_price
+            else:
+                display_price = x.get("price") or x.get("fill_price") or limit_price or x.get("avg_price")
+            
             return {
                 "timestamp": x.get("timestamp") or x.get("time") or x.get("date") or x.get("placed_at") or x.get("filled_at"),
                 "symbol": x.get("symbol") or x.get("ticker"),
                 "side": x.get("side") or x.get("action"),
                 "quantity": x.get("quantity") or x.get("qty"),
-                "price": x.get("price") or x.get("fill_price") or x.get("limit_price") or x.get("avg_price"),
+                "price": display_price,
+                "limit_price": limit_price,  # 明確返回limit_price字段
                 "fill_price": x.get("fill_price"),  # 添加fill_price字段
                 "status": final_status,
                 "order_id": x.get("order_id") or x.get("id"),

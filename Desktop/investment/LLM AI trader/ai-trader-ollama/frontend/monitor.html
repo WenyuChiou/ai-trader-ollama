@@ -950,6 +950,7 @@
                 </button>
                 <button class="refresh-btn" onclick="initSystem()">⚙️ Initialize</button>
                 <button class="refresh-btn" onclick="seedDemoConversations()">💬 Seed</button>
+                <button class="refresh-btn" onclick="window.scrollToConversations()" style="background: #10b981; color: white; font-weight: 600;">💬 View Conversations</button>
                 <label class="auto-refresh-toggle">
                     <input type="checkbox" id="autoDemoLoop">
                     <span>Auto Demo Loop</span>
@@ -975,12 +976,23 @@
 
         <!-- Main Content -->
         <div id="mainContent" style="display: block;">
+            <!-- Quick Navigation Bar -->
+            <div style="background: #f9fafb; border-bottom: 2px solid #e5e7eb; padding: 12px 20px; margin-bottom: 20px; position: sticky; top: 0; z-index: 100; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <span style="font-weight: 600; color: #374151; margin-right: 8px;">Quick Navigation:</span>
+                <a href="#summaryCards" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s;" onclick="document.getElementById('summaryCards').scrollIntoView({behavior: 'smooth'}); return false;">📊 Summary</a>
+                <a href="#chartSection" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s;" onclick="document.getElementById('chartSection').scrollIntoView({behavior: 'smooth'}); return false;">📈 Chart</a>
+                <a href="#positionsSection" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s;" onclick="document.getElementById('positionsSection').scrollIntoView({behavior: 'smooth'}); return false;">💼 Holdings</a>
+                <a href="#conversationsOverviewSection" style="padding: 6px 12px; background: #10b981; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s; font-weight: 600;" onclick="document.getElementById('conversationsOverviewSection').scrollIntoView({behavior: 'smooth'}); return false;">💬 Conversations</a>
+                <a href="#executionDetailsSection" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s;" onclick="document.getElementById('executionDetailsSection').scrollIntoView({behavior: 'smooth'}); return false;">📋 Execution</a>
+                <a href="#tradesSection" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s;" onclick="const el = document.getElementById('tradesSection') || document.querySelector('.trades-section:last-of-type'); if(el) el.scrollIntoView({behavior: 'smooth'}); return false;">📊 Trade History</a>
+            </div>
+            
             <div id="dashboardPage">
             <!-- Summary Cards -->
             <div class="summary-grid" id="summaryCards"></div>
 
             <!-- Chart Section -->
-            <div class="chart-section" id="chartSection" style="display: none;">
+            <div class="chart-section" id="chartSection" style="display: block;">
                 <div class="chart-header">
                     <h2>Total Asset Value Over Time</h2>
                 </div>
@@ -992,7 +1004,7 @@
             </div>
 
             <!-- Positions Section -->
-            <div class="positions-section" id="positionsSection" style="display: none;">
+            <div class="positions-section" id="positionsSection" style="display: block;">
                 <div class="section-header">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <button class="collapse-toggle-btn" id="positionsCollapseBtn" onclick="togglePositionsCollapse()" title="Collapse/Expand">
@@ -1095,7 +1107,7 @@
             </div>
 
             <!-- Detailed Trades Section -->
-            <div class="trades-section" style="margin-top: 20px; display: block;">
+            <div class="trades-section" id="tradesSection" style="margin-top: 20px; display: block;">
                 <div class="section-header">
                     <h2>📊 Detailed Trade History</h2>
                     <span class="position-count" id="tradesCount">0 trades</span>
@@ -3059,10 +3071,16 @@
 
         // Draw chart
         function drawChart(history) {
+            const chartSection = document.getElementById('chartSection');
+            if (!chartSection) return;
+            
             if (history.length === 0) {
-                document.getElementById('chartSection').style.display = 'none';
+                chartSection.style.display = 'none';
                 return;
             }
+            
+            // 確保chart section可見
+            chartSection.style.display = 'block';
 
             document.getElementById('chartSection').style.display = 'block';
             

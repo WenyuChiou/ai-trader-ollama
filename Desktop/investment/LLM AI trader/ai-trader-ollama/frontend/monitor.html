@@ -1444,7 +1444,7 @@
                 
                 if (r.ok && data.ok) {
                     alert('✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.');
-                    await refreshData(true);
+                    await refreshData(false);
                 } else {
                     alert('❌ Initialization failed: ' + (data.error || 'Unknown error'));
                 }
@@ -3967,7 +3967,7 @@
         function startAutoRefresh() {
             stopAutoRefresh();
             refreshTimer = setInterval(() => {
-                if (!isRefreshing && LAST_MARKET_OPEN) {
+                if (!isRefreshing) {  // 🔥 移除 LAST_MARKET_OPEN 检查，市场关闭时也刷新对话
                     refreshData(false);
                 }
             }, REFRESH_INTERVAL);

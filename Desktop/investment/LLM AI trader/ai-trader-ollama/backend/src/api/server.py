@@ -410,10 +410,20 @@ async def get_real_time_portfolio():
         # Load portfolio state
         state_file = Path("data/logs/portfolio_state.json")
         if not state_file.exists():
-            # Fallback to demo snapshot so the frontend can render
-            from fastapi import Request
-            demo = await demo_real_time_portfolio()  # type: ignore
-            return demo
+            # Fallback: return simple default portfolio when no state file exists
+            return {
+                "ok": True,
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "initial_value": 10000.0,
+                "total_value": 10000.0,
+                "total_pnl": 0.0,
+                "total_pnl_pct": 0.0,
+                "cash": 10000.0,
+                "equity_value": 0.0,
+                "positions": {},
+                "positions_pnl": {},
+                "source": "default",
+            }
         
         with state_file.open("r", encoding="utf-8") as f:
             state = json.load(f)
@@ -717,10 +727,31 @@ async def get_real_time_portfolio():
         return {"ok": True, **snapshot}
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        error_trace = traceback.format_exc()
+        error_msg = str(e)
+        print(f"[Portfolio API ERROR] get_real_time_portfolio failed: {error_msg}")
+        print(f"[Portfolio API ERROR] Traceback:\n{error_trace}")
+        # Return a safe fallback response instead of 500 error
         return JSONResponse(
             status_code=500,
-            content={"ok": False, "error": str(e)}
+            content={
+                "ok": False, 
+                "error": error_msg,
+                "error_type": type(e).__name__,
+                "message": "Failed to get portfolio data. Using default values.",
+                # Fallback data so frontend can still render
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "initial_value": 10000.0,
+                "total_value": 10000.0,
+                "total_pnl": 0.0,
+                "total_pnl_pct": 0.0,
+                "cash": 10000.0,
+                "equity_value": 0.0,
+                "positions": {},
+                "positions_pnl": {},
+                "source": "error_fallback",
+            },
+            headers={"Access-Control-Allow-Origin": "*"}
         )
 
 

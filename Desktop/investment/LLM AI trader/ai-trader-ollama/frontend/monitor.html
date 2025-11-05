@@ -945,7 +945,7 @@
                 <button class="refresh-btn" id="startTradeBtn" onclick="startTradingCycle()">
                     ▶️ Start Trading
                 </button>
-                <button class="refresh-btn" id="refreshBtn" onclick="refreshData(true)">
+                <button class="refresh-btn" id="refreshBtn" onclick="refreshData(false)">
                     🔄 Refresh
                 </button>
                 <button class="refresh-btn" onclick="initSystem()">⚙️ Initialize</button>
@@ -971,7 +971,7 @@
         <div class="error" id="errorState" style="display: none;">
             <h2>❌ Connection Error</h2>
             <p id="errorMessage"></p>
-            <button onclick="refreshData(true)">Retry Connection</button>
+            <button onclick="refreshData(false)">Retry Connection</button>
         </div>
 
         <!-- Main Content -->
@@ -4081,43 +4081,10 @@
                 });
             }
             
-            // 🔥 每隔2秒检查一次对话框可见性（额外保护）
+            // 🔥 每隔5秒检查一次对话框可见性（额外保护）
             setInterval(() => {
                 ensureConversationsVisible();
-            }, 2000);
-            
-            // 🔥 使用MutationObserver监听DOM变化
-            const convSection = document.getElementById('conversationsOverviewSection');
-            if (convSection && window.MutationObserver) {
-                const observer = new MutationObserver((mutations) => {
-                    // 检查是否有样式变化导致隐藏
-                    const computed = window.getComputedStyle(convSection);
-                    if (computed.display === 'none' || computed.visibility === 'hidden' || computed.opacity === '0') {
-                        console.warn('[MutationObserver] Conversations section hidden, restoring...');
-                        ensureConversationsVisible();
-                    }
-                });
-                
-                // 监听属性变化（特别是style属性）
-                observer.observe(convSection, {
-                    attributes: true,
-                    attributeFilter: ['style', 'class'],
-                    childList: false,
-                    subtree: false
-                });
-                
-                // 同时监听父元素
-                if (convSection.parentElement) {
-                    observer.observe(convSection.parentElement, {
-                        attributes: true,
-                        attributeFilter: ['style', 'class'],
-                        childList: false,
-                        subtree: false
-                    });
-                }
-                
-                console.log('[Init] MutationObserver activated for conversations section');
-            }
+            }, 5000);
         });
         
         // 页面卸载时清理

@@ -1293,6 +1293,7 @@
                     date: item.date || item.timestamp?.split('T')[0] || '',
                     value: item.total_value || 0,
                     pnl: item.total_pnl || 0,
+                    initial_value: item.initial_value || 10000, // 添加initial_value用于图表
                 }));
             } catch (err) {
                 if (err.name !== 'AbortError') {
@@ -2929,6 +2930,37 @@
 
             // Sort by date
             const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            // 如果只有1条记录，创建一个起始点（使用初始值）
+            if (sorted.length === 1) {
+                const singleValue = sorted[0].value;
+                const singleDate = sorted[0].date;
+                // 尝试从当前portfolio获取initial_value，否则使用默认值
+                const initialValue = sorted[0].initial_value || (currentPortfolio?.initial_value) || 10000;
+                
+                // 创建前一天的点（使用初始值），或者使用当前日期但时间稍早
+                // 尝试解析日期，创建前一天
+                try {
+                    const dateObj = new Date(singleDate);
+                    dateObj.setDate(dateObj.getDate() - 1);
+                    const prevDate = dateObj.toISOString().split('T')[0];
+                    
+                    sorted.unshift({
+                        date: prevDate,
+                        value: initialValue,
+                        pnl: 0,
+                        initial_value: initialValue
+                    });
+                } catch (e) {
+                    // 如果日期解析失败，使用同一天但添加初始值点
+                    sorted.unshift({
+                        date: singleDate,
+                        value: initialValue,
+                        pnl: 0,
+                        initial_value: initialValue
+                    });
+                }
+            }
             
             if (sorted.length < 2) {
                 svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#6b7280">Not enough data for chart</text>';

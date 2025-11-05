@@ -69,6 +69,7 @@ class EquityTracker:
             "total_value": float(portfolio_snapshot.get("total_value", 0.0)),
             "total_pnl": float(portfolio_snapshot.get("total_pnl", 0.0)),
             "total_pnl_pct": float(portfolio_snapshot.get("total_pnl_pct", 0.0)),
+            "initial_value": float(portfolio_snapshot.get("initial_value", 10000.0)),  # 添加initial_value用于图表
             "positions": portfolio_snapshot.get("positions_detail", portfolio_snapshot.get("positions", {})),
         }
         

@@ -405,17 +405,21 @@ def execute_daily_trade(
     }
 
     # ---- (3) Risk Analyst：評估倉位風險 ----
-    # 准备当前持仓信息（用于 Risk Analyst）
+    # 准备当前持仓信息（用于 Risk Analyst，包含完整信息用于P&L分析）
     current_positions_info = {}
     if portfolio:
         portfolio_value = portfolio.value(last_prices)
         for symbol, pos in portfolio._positions.items():
             current_price = last_prices.get(symbol, pos.avg_cost)
+            market_value = pos.quantity * current_price
+            total_cost = getattr(pos, 'total_cost', pos.avg_cost * pos.quantity)
+            
             current_positions_info[symbol] = {
                 "quantity": pos.quantity,
                 "avg_cost": pos.avg_cost,
+                "total_cost": total_cost,  # 添加total_cost用于P&L计算
                 "current_price": current_price,
-                "market_value": pos.quantity * current_price,
+                "market_value": market_value,
             }
     else:
         portfolio_value = 10000.0  # 默认初始净值

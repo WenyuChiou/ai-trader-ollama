@@ -3407,7 +3407,7 @@
                 if (isMarketOpen) {
                     // 交易时段：获取所有数据
                     fetchPromises.push(
-                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })),
+                        fetchPortfolio(fetchOptions),  // 移除catch，让Promise.allSettled自然处理
                         fetchEquityHistory(fetchOptions).catch(() => []),
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),
@@ -3419,7 +3419,7 @@
                 } else {
                     // 非交易时段：也尝试获取portfolio（后端会返回缓存的快照），以及历史数据、对话和订单
                     fetchPromises.push(
-                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })), // 非交易时段也尝试获取（可能返回缓存）
+                        fetchPortfolio(fetchOptions),  // 移除catch，让Promise.allSettled自然处理
                         fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),

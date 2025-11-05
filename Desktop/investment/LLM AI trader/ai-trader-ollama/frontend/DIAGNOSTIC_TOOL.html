@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversations Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .diagnostic-card {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-ok { color: green; }
+        .status-error { color: red; }
+        .status-warning { color: orange; }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5568d3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Conversations Diagnostic Tool</h1>
+    
+    <div class="diagnostic-card">
+        <h2>1. DOM Element Check</h2>
+        <button onclick="checkDOM()">Check DOM Elements</button>
+        <div id="domResult"></div>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>2. CSS Style Check</h2>
+        <button onclick="checkCSS()">Check CSS Styles</button>
+        <div id="cssResult"></div>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>3. API Data Check</h2>
+        <button onclick="checkAPI()">Check API Data</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>4. JavaScript Function Check</h2>
+        <button onclick="checkJS()">Check JavaScript Functions</button>
+        <div id="jsResult"></div>
+    </div>
+    
+    <div class="diagnostic-card">
+        <h2>5. Full Diagnostic</h2>
+        <button onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+        <div id="fullResult"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        
+        function checkDOM() {
+            const result = document.getElementById('domResult');
+            result.innerHTML = '<p>Checking...</p>';
+            
+            const checks = [];
+            
+            // Check if main content is visible
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                const isVisible = window.getComputedStyle(mainContent).display !== 'none';
+                checks.push({
+                    element: 'mainContent',
+                    exists: true,
+                    visible: isVisible,
+                    display: window.getComputedStyle(mainContent).display,
+                    message: isVisible ? '✅ Main content is visible' : '❌ Main content is hidden'
+                });
+            } else {
+                checks.push({
+                    element: 'mainContent',
+                    exists: false,
+                    message: '❌ Main content element not found'
+                });
+            }
+            
+            // Check conversations section
+            const convSection = document.getElementById('conversationsOverviewSection');
+            if (convSection) {
+                const style = window.getComputedStyle(convSection);
+                const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                checks.push({
+                    element: 'conversationsOverviewSection',
+                    exists: true,
+                    visible: isVisible,
+                    display: style.display,
+                    visibility: style.visibility,
+                    opacity: style.opacity,
+                    zIndex: style.zIndex,
+                    position: style.position,
+                    message: isVisible ? '✅ Conversations section is visible' : '❌ Conversations section is hidden'
+                });
+            } else {
+                checks.push({
+                    element: 'conversationsOverviewSection',
+                    exists: false,
+                    message: '❌ Conversations section element not found'
+                });
+            }
+            
+            // Check conversations container
+            const convContainer = document.getElementById('conversationsOverview');
+            if (convContainer) {
+                const style = window.getComputedStyle(convContainer);
+                checks.push({
+                    element: 'conversationsOverview',
+                    exists: true,
+                    innerHTML: convContainer.innerHTML.substring(0, 100) + '...',
+                    height: style.height,
+                    maxHeight: style.maxHeight,
+                    overflow: style.overflow,
+                    message: '✅ Conversations container exists'
+                });
+            } else {
+                checks.push({
+                    element: 'conversationsOverview',
+                    exists: false,
+                    message: '❌ Conversations container not found'
+                });
+            }
+            
+            result.innerHTML = checks.map(c => `
+                <div class="${c.visible !== false ? 'status-ok' : 'status-error'}">
+                    <strong>${c.element}</strong>: ${c.message}
+                    ${c.exists ? `<pre>${JSON.stringify(c, null, 2)}</pre>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function checkCSS() {
+            const result = document.getElementById('cssResult');
+            result.innerHTML = '<p>Checking...</p>';
+            
+            const convSection = document.getElementById('conversationsOverviewSection');
+            if (!convSection) {
+                result.innerHTML = '<p class="status-error">❌ Conversations section not found</p>';
+                return;
+            }
+            
+            const style = window.getComputedStyle(convSection);
+            const parent = convSection.parentElement;
+            const parentStyle = parent ? window.getComputedStyle(parent) : null;
+            
+            const checks = [
+                { name: 'display', value: style.display, expected: 'block', ok: style.display !== 'none' },
+                { name: 'visibility', value: style.visibility, expected: 'visible', ok: style.visibility !== 'hidden' },
+                { name: 'opacity', value: style.opacity, expected: '1', ok: parseFloat(style.opacity) > 0 },
+                { name: 'z-index', value: style.zIndex, expected: 'auto or positive', ok: style.zIndex !== '-1' },
+                { name: 'position', value: style.position, expected: 'static/relative/absolute/fixed', ok: true },
+                { name: 'width', value: style.width, expected: '> 0', ok: parseFloat(style.width) > 0 },
+                { name: 'height', value: style.height, expected: '> 0', ok: parseFloat(style.height) > 0 || style.height === 'auto' },
+            ];
+            
+            if (parentStyle) {
+                checks.push(
+                    { name: 'parent display', value: parentStyle.display, expected: 'block/grid/flex', ok: parentStyle.display !== 'none' },
+                    { name: 'parent visibility', value: parentStyle.visibility, expected: 'visible', ok: parentStyle.visibility !== 'hidden' },
+                    { name: 'parent overflow', value: parentStyle.overflow, expected: 'visible/auto', ok: parentStyle.overflow !== 'hidden' }
+                );
+            }
+            
+            result.innerHTML = checks.map(c => `
+                <div class="${c.ok ? 'status-ok' : 'status-error'}">
+                    <strong>${c.name}</strong>: ${c.value} ${c.ok ? '✅' : '❌'}
+                    <small>(${c.expected})</small>
+                </div>
+            `).join('');
+        }
+        
+        async function checkAPI() {
+            const result = document.getElementById('apiResult');
+            result.innerHTML = '<p>Checking...</p>';
+            
+            const checks = [];
+            
+            // Check API availability
+            try {
+                const healthCheck = await fetch(`${API_BASE}/`);
+                checks.push({
+                    name: 'API Health',
+                    status: healthCheck.ok ? 'ok' : 'error',
+                    message: healthCheck.ok ? '✅ API is responding' : '❌ API returned error',
+                    statusCode: healthCheck.status
+                });
+            } catch (e) {
+                checks.push({
+                    name: 'API Health',
+                    status: 'error',
+                    message: `❌ API connection failed: ${e.message}`
+                });
+            }
+            
+            // Check conversations API
+            try {
+                const convResp = await fetch(`${API_BASE}/api/agents/conversations?limit=10`);
+                const convData = await convResp.json();
+                checks.push({
+                    name: 'Conversations API',
+                    status: convResp.ok ? 'ok' : 'error',
+                    message: convResp.ok ? `✅ Conversations API working (${convData.conversations?.length || 0} items)` : '❌ Conversations API error',
+                    data: convData
+                });
+            } catch (e) {
+                checks.push({
+                    name: 'Conversations API',
+                    status: 'error',
+                    message: `❌ Conversations API failed: ${e.message}`
+                });
+            }
+            
+            // Check portfolio API
+            try {
+                const portfolioResp = await fetch(`${API_BASE}/api/portfolio/real-time`);
+                const portfolioData = await portfolioResp.json();
+                checks.push({
+                    name: 'Portfolio API',
+                    status: portfolioResp.ok || portfolioData.total_value ? 'ok' : 'error',
+                    message: portfolioResp.ok || portfolioData.total_value ? '✅ Portfolio API working' : '❌ Portfolio API error',
+                    data: portfolioData
+                });
+            } catch (e) {
+                checks.push({
+                    name: 'Portfolio API',
+                    status: 'error',
+                    message: `❌ Portfolio API failed: ${e.message}`
+                });
+            }
+            
+            result.innerHTML = checks.map(c => `
+                <div class="status-${c.status}">
+                    <strong>${c.name}</strong>: ${c.message}
+                    ${c.data ? `<pre>${JSON.stringify(c.data, null, 2).substring(0, 500)}...</pre>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function checkJS() {
+            const result = document.getElementById('jsResult');
+            result.innerHTML = '<p>Checking...</p>';
+            
+            const checks = [];
+            
+            // Check if functions exist
+            const functions = [
+                'renderConversationsOverview',
+                'fetchConversations',
+                'refreshData',
+                'formatConversationContent'
+            ];
+            
+            functions.forEach(fnName => {
+                const exists = typeof window[fnName] === 'function';
+                checks.push({
+                    name: fnName,
+                    exists: exists,
+                    message: exists ? `✅ Function ${fnName} exists` : `❌ Function ${fnName} not found`
+                });
+            });
+            
+            // Check if container element can be accessed
+            const container = document.getElementById('conversationsOverview');
+            if (container) {
+                checks.push({
+                    name: 'Container Access',
+                    exists: true,
+                    message: '✅ Container element can be accessed',
+                    canSetInnerHTML: true
+                });
+            } else {
+                checks.push({
+                    name: 'Container Access',
+                    exists: false,
+                    message: '❌ Container element not accessible'
+                });
+            }
+            
+            result.innerHTML = checks.map(c => `
+                <div class="${c.exists !== false ? 'status-ok' : 'status-error'}">
+                    <strong>${c.name}</strong>: ${c.message}
+                </div>
+            `).join('');
+        }
+        
+        async function runFullDiagnostic() {
+            const result = document.getElementById('fullResult');
+            result.innerHTML = '<p>Running full diagnostic...</p>';
+            
+            const report = {
+                timestamp: new Date().toISOString(),
+                dom: {},
+                css: {},
+                api: {},
+                js: {},
+                recommendations: []
+            };
+            
+            // DOM check
+            const mainContent = document.getElementById('mainContent');
+            const convSection = document.getElementById('conversationsOverviewSection');
+            const convContainer = document.getElementById('conversationsOverview');
+            
+            report.dom = {
+                mainContent: {
+                    exists: !!mainContent,
+                    visible: mainContent ? window.getComputedStyle(mainContent).display !== 'none' : false
+                },
+                conversationsSection: {
+                    exists: !!convSection,
+                    visible: convSection ? window.getComputedStyle(convSection).display !== 'none' : false
+                },
+                conversationsContainer: {
+                    exists: !!convContainer,
+                    hasContent: convContainer ? convContainer.innerHTML.length > 0 : false
+                }
+            };
+            
+            // CSS check
+            if (convSection) {
+                const style = window.getComputedStyle(convSection);
+                report.css = {
+                    display: style.display,
+                    visibility: style.visibility,
+                    opacity: style.opacity,
+                    zIndex: style.zIndex,
+                    width: style.width,
+                    height: style.height
+                };
+            }
+            
+            // API check
+            try {
+                const convResp = await fetch(`${API_BASE}/api/agents/conversations?limit=10`);
+                const convData = await convResp.json();
+                report.api.conversations = {
+                    status: convResp.status,
+                    ok: convResp.ok,
+                    count: convData.conversations?.length || 0,
+                    hasData: (convData.conversations?.length || 0) > 0
+                };
+            } catch (e) {
+                report.api.conversations = { error: e.message };
+            }
+            
+            // JS check
+            report.js = {
+                renderConversationsOverview: typeof window.renderConversationsOverview === 'function',
+                fetchConversations: typeof window.fetchConversations === 'function',
+                refreshData: typeof window.refreshData === 'function'
+            };
+            
+            // Generate recommendations
+            if (!report.dom.mainContent.exists) {
+                report.recommendations.push('Main content element not found. Check if page is loaded correctly.');
+            }
+            if (!report.dom.conversationsSection.exists) {
+                report.recommendations.push('Conversations section element not found. Check HTML structure.');
+            }
+            if (report.dom.conversationsSection.exists && !report.dom.conversationsSection.visible) {
+                report.recommendations.push('Conversations section exists but is hidden. Check CSS display property.');
+            }
+            if (report.api.conversations.hasData === false) {
+                report.recommendations.push('No conversation data from API. Run a trading cycle to generate conversations.');
+            }
+            if (!report.js.renderConversationsOverview) {
+                report.recommendations.push('renderConversationsOverview function not found. Check JavaScript loading.');
+            }
+            
+            result.innerHTML = `
+                <h3>Full Diagnostic Report</h3>
+                <pre>${JSON.stringify(report, null, 2)}</pre>
+                <h3>Recommendations</h3>
+                <ul>
+                    ${report.recommendations.map(r => `<li>${r}</li>`).join('')}
+                </ul>
+            `;
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                runFullDiagnostic();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+

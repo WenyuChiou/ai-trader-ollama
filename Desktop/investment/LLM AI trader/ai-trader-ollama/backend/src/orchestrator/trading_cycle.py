@@ -453,9 +453,9 @@ def execute_daily_trade(
                 position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
                 # min_position_per_stock 如果配置中没有，使用默认值
                 position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
-        except Exception:
+    except Exception:
         # 如果读取失败，使用默认值
-            pass
+        pass
 
     decision = run_trader(
         market=market_view,

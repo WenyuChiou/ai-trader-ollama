@@ -1049,18 +1049,22 @@
             <!-- Live Chat and Execution Details Side by Side -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                 <!-- Live Chat (Left) -->
-                <div class="trades-section" id="conversationsOverviewSection">
+                <div class="trades-section" id="conversationsOverviewSection" style="display: block;">
                     <div class="section-header">
                         <h2>
                             💬 AI Agent Conversations (Live)
                         </h2>
                         <span class="position-count" id="convCount">—</span>
                     </div>
-                    <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
+                    <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;">
+                        <div class="empty-conversations">
+                            <p>No conversations yet. Run a trading cycle to generate agent discussions.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Execution Details (Right) -->
-                <div class="trades-section" id="executionDetailsSection">
+                <div class="trades-section" id="executionDetailsSection" style="display: block;">
                     <div class="section-header">
                         <h2>📋 Execution Details</h2>
                         <span class="position-count" id="executionCount">0 trades</span>
@@ -1078,14 +1082,20 @@
                                     <th>Status</th>
                                 </tr>
                             </thead>
-                            <tbody id="executionDetailsBody"></tbody>
+                            <tbody id="executionDetailsBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
+                                        No execution details yet. Run a trading cycle to generate orders.
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
             <!-- Detailed Trades Section -->
-            <div class="trades-section" style="margin-top: 20px;">
+            <div class="trades-section" style="margin-top: 20px; display: block;">
                 <div class="section-header">
                     <h2>📊 Detailed Trade History</h2>
                     <span class="position-count" id="tradesCount">0 trades</span>
@@ -1105,7 +1115,13 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="tradesBody"></tbody>
+                        <tbody id="tradesBody">
+                            <tr>
+                                <td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">
+                                    No trade history yet. Run a trading cycle to generate trades.
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>

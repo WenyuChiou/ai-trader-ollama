@@ -280,15 +280,20 @@ async def execute_trade_direct():
         except Exception as e:
             import traceback
             error_trace = traceback.format_exc()
-            print(f"[API ERROR] execute_trade_direct (planning) failed: {e}")
-            print(f"[API ERROR] Traceback: {error_trace}")
+            error_msg = str(e)
+            error_type = type(e).__name__
+            print(f"[API ERROR] execute_trade_direct (planning) failed: {error_msg}")
+            print(f"[API ERROR] Error type: {error_type}")
+            print(f"[API ERROR] Traceback:\n{error_trace}")
             return JSONResponse(
                 status_code=500,
                 content={
                     "ok": False, 
-                    "error": str(e),
-                    "error_type": type(e).__name__
-                }
+                    "error": error_msg,
+                    "error_type": error_type,
+                    "message": f"Failed to execute trade planning: {error_msg}"
+                },
+                headers={"Access-Control-Allow-Origin": "*"}
             )
     
     # 交易时段：正常执行交易
@@ -307,15 +312,20 @@ async def execute_trade_direct():
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"[API ERROR] execute_trade_direct failed: {e}")
-        print(f"[API ERROR] Traceback: {error_trace}")
+        error_msg = str(e)
+        error_type = type(e).__name__
+        print(f"[API ERROR] execute_trade_direct failed: {error_msg}")
+        print(f"[API ERROR] Error type: {error_type}")
+        print(f"[API ERROR] Traceback:\n{error_trace}")
         return JSONResponse(
             status_code=500,
             content={
                 "ok": False, 
-                "error": str(e),
-                "error_type": type(e).__name__
-            }
+                "error": error_msg,
+                "error_type": error_type,
+                "message": f"Failed to execute trade: {error_msg}"
+            },
+            headers={"Access-Control-Allow-Origin": "*"}
         )
 
 

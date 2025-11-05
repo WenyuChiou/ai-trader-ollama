@@ -456,6 +456,38 @@
             color: white;
         }
 
+        .collapse-toggle-btn {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+
+        .collapse-toggle-btn:hover {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+
+        .collapse-toggle-btn .collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .portfolio-content-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        }
+
+        .portfolio-content-wrapper.collapsed {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
         .portfolio-view {
             margin-top: 0;
         }
@@ -967,7 +999,12 @@
             <!-- Positions Section -->
             <div class="positions-section" id="positionsSection" style="display: none;">
                 <div class="section-header">
-                    <h2>Current Holdings</h2>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="collapse-toggle-btn" id="positionsCollapseBtn" onclick="togglePositionsCollapse()" title="Collapse/Expand">
+                            <span id="positionsCollapseIcon">▼</span>
+                        </button>
+                        <h2 style="margin: 0; flex: 1;">Current Holdings</h2>
+                    </div>
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span class="position-count" id="positionCount">0 holdings</span>
                         <div class="view-toggle">
@@ -977,6 +1014,7 @@
                     </div>
                 </div>
                 <!-- Table View -->
+                <div id="portfolioContentWrapper" class="portfolio-content-wrapper">
                 <div id="portfolioTableView" class="portfolio-view">
                     <div class="table-container">
                         <table id="positionsTable">
@@ -1444,6 +1482,19 @@
             
             isTradingExecuting = true;
             updateConversationStatus(true);  // 标记为生成中
+            
+            // 记录请求前的对话数量，用于检测新对话
+            let previousConvCount = 0;
+            try {
+                const prevConvResp = await fetch(`${API_BASE}/api/agents/conversations?limit=100`, { signal: AbortSignal.timeout(5000) });
+                if (prevConvResp.ok) {
+                    const prevConvData = await prevConvResp.json();
+                    previousConvCount = prevConvData?.conversations?.length || 0;
+                }
+            } catch (e) {
+                // 忽略错误，继续执行
+            }
+            
             try {
                 console.log('[Trade Cycle] Executing trading cycle...');
                 const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
@@ -1459,6 +1510,8 @@
                     data = await response.json();
                 } catch (parseErr) {
                     console.error('[Trade Cycle] Response parse failed:', parseErr);
+                    updateConversationStatus(false);
+                    isTradingExecuting = false;
                     return;
                 }
                 
@@ -1467,10 +1520,56 @@
                     const convCount = data.result?.conversations_count || 0;
                     const message = data.message || '';
                     console.log(`[Trade Cycle] Success: ${orderCount} orders, ${convCount} conversations. ${message}`);
-                    // 刷新数据
+                    
+                    // 等待对话生成完成：定期检查是否有新对话
+                    let checkAttempts = 0;
+                    let noNewConvCount = 0; // 连续没有新对话的次数
+                    const maxChecks = 30; // 最多检查30次（约1.5分钟）
+                    const maxNoNewConvChecks = 5; // 连续5次（15秒）没有新对话就停止
+                    const checkInterval = 3000; // 每3秒检查一次
+                    
+                    const checkForNewConversations = async () => {
+                        try {
+                            const convResp = await fetch(`${API_BASE}/api/agents/conversations?limit=100`, { signal: AbortSignal.timeout(5000) });
+                            if (convResp.ok) {
+                                const convData = await convResp.json();
+                                const currentConvCount = convData?.conversations?.length || 0;
+                                
+                                if (currentConvCount > previousConvCount) {
+                                    // 有新对话生成，继续等待（可能还有更多）
+                                    console.log(`[Trade Cycle] New conversations detected: ${currentConvCount} (was ${previousConvCount})`);
+                                    previousConvCount = currentConvCount;
+                                    noNewConvCount = 0; // 重置"无新对话"计数器
+                                } else {
+                                    noNewConvCount++; // 没有新对话，增加计数
+                                }
+                            }
+                        } catch (e) {
+                            // 忽略检查错误
+                            noNewConvCount++;
+                        }
+                        
+                        checkAttempts++;
+                        // 如果连续一段时间没有新对话，或者达到最大检查次数，则停止
+                        if ((noNewConvCount >= maxNoNewConvChecks || checkAttempts >= maxChecks) && isTradingExecuting) {
+                            // 检查完成，刷新数据并设置为Idle
+                            console.log(`[Trade Cycle] Conversation generation check completed (${checkAttempts} attempts, ${noNewConvCount} no-new-conv checks)`);
+                            await refreshData(false);
+                            updateConversationStatus(false);
+                            isTradingExecuting = false;
+                        } else if (isTradingExecuting) {
+                            setTimeout(checkForNewConversations, checkInterval);
+                        }
+                    };
+                    
+                    // 立即刷新一次数据，然后开始检查新对话
                     await refreshData(false);
+                    setTimeout(checkForNewConversations, checkInterval);
+                    return; // 不要立即设置为false，让检查函数处理
                 } else {
                     console.error('[Trade Cycle] Failed:', data.error || 'Unknown error');
+                    updateConversationStatus(false);
+                    isTradingExecuting = false;
                 }
             } catch (e) {
                 if (e.name === 'AbortError') {
@@ -1478,9 +1577,8 @@
                 } else {
                     console.error('[Trade Cycle] Exception:', e);
                 }
-            } finally {
-                isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
-                updateConversationStatus(false);  // 标记为空闲
+                updateConversationStatus(false);
+                isTradingExecuting = false;
             }
         }
 
@@ -2736,6 +2834,25 @@
                 const portfolio = currentPortfolio || {};
                 const totalValue = portfolio.total_value || (portfolio.cash || 0) + (portfolio.equity_value || 0);
                 drawPortfolioDistribution(portfolio.positions || {}, portfolio.cash || 0, totalValue);
+            }
+        }
+
+        // Toggle positions section collapse/expand
+        function togglePositionsCollapse() {
+            const wrapper = document.getElementById('portfolioContentWrapper');
+            const icon = document.getElementById('positionsCollapseIcon');
+            const btn = document.getElementById('positionsCollapseBtn');
+            
+            if (wrapper && icon) {
+                if (wrapper.classList.contains('collapsed')) {
+                    wrapper.classList.remove('collapsed');
+                    icon.textContent = '▼';
+                    icon.classList.remove('collapsed');
+                } else {
+                    wrapper.classList.add('collapsed');
+                    icon.textContent = '▶';
+                    icon.classList.add('collapsed');
+                }
             }
         }
 

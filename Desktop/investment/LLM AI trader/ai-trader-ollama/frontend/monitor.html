@@ -4084,7 +4084,7 @@
 
         // Manual refresh button
         document.getElementById('refreshBtn').addEventListener('click', () => {
-            refreshData(true);
+            refreshData(false);  // 🔥 使用 false，不显示loading遮挡
         });
         
         // 診斷工具：在控制台運行 window.runDiagnostics() 來檢查對話框

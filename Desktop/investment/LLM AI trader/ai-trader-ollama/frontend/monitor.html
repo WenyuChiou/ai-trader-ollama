@@ -1902,7 +1902,7 @@
                                     ${toolResultHtml}
                                     ${indicatorsHtml}
                                     ${toolCommentHtml}
-                                    <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content_text, entry_type)}</div>
+                                    <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content_text, entry_type, agent)}</div>
                                 </div>
                             `;
                         }).join('')}
@@ -2064,7 +2064,7 @@
                                 ${toolHtml}
                                 ${toolResultHtml}
                                 ${indicatorsHtml}
-                                <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content, entry_type)}</div>
+                                <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content, entry_type, agent)}</div>
                             </div>`;
                     }).join('')}
                 </div>
@@ -2118,18 +2118,195 @@
             return div.innerHTML;
         }
         
+        // Format agent-specific output with optimized display
+        function formatAgentOutput(obj, entryType, agentName) {
+            if (!obj || typeof obj !== 'object') return null;
+            
+            let html = '<div class="agent-output">';
+            
+            // MarketAnalyst / FundamentalAnalyst format
+            if (obj.market_sentiment || obj.recommended_stocks) {
+                html += '<div class="agent-section">';
+                
+                // Market Sentiment with badge
+                if (obj.market_sentiment) {
+                    const sentiment = String(obj.market_sentiment).toLowerCase();
+                    const sentimentColor = sentiment === 'bullish' ? '#10b981' : 
+                                         sentiment === 'bearish' ? '#dc2626' : '#6b7280';
+                    const sentimentIcon = sentiment === 'bullish' ? '📈' : 
+                                         sentiment === 'bearish' ? '📉' : '➡️';
+                    html += `<div class="agent-item" style="margin-bottom: 12px;">
+                        <span class="agent-label">${sentimentIcon} Market Sentiment:</span>
+                        <span class="badge" style="background: ${sentimentColor}; color: white; padding: 4px 10px; border-radius: 12px; font-weight: 500;">${escapeHtml(String(obj.market_sentiment).toUpperCase())}</span>
+                    </div>`;
+                }
+                
+                // Recommended Stocks
+                if (obj.recommended_stocks && Array.isArray(obj.recommended_stocks)) {
+                    html += `<div class="agent-item" style="margin-bottom: 12px;">
+                        <span class="agent-label">🎯 Recommended Stocks:</span>
+                        <div class="stock-badges" style="margin-top: 6px;">
+                            ${obj.recommended_stocks.map(sym => 
+                                `<span class="badge" style="display:inline-block;margin:2px 4px;padding:4px 10px;background:#e0f2fe;color:#0369a1;border-radius:6px;font-size:12px;font-weight:500;">${escapeHtml(String(sym))}</span>`
+                            ).join('')}
+                        </div>
+                    </div>`;
+                }
+                
+                // Key Observations (FundamentalAnalyst)
+                if (obj.key_observations && Array.isArray(obj.key_observations)) {
+                    html += `<div class="agent-item" style="margin-bottom: 12px;">
+                        <span class="agent-label">🔍 Key Observations:</span>
+                        <ul style="margin: 6px 0 0 0; padding-left: 20px; list-style: none;">
+                            ${obj.key_observations.map(obs => {
+                                const parts = String(obs).split(':');
+                                if (parts.length === 2) {
+                                    const sym = parts[0].trim();
+                                    const trend = parts[1].trim().toLowerCase();
+                                    const trendColor = trend === 'uptrend' ? '#10b981' : 
+                                                      trend === 'downtrend' ? '#dc2626' : '#6b7280';
+                                    const trendIcon = trend === 'uptrend' ? '↑' : 
+                                                     trend === 'downtrend' ? '↓' : '→';
+                                    return `<li style="margin: 4px 0;"><strong>${escapeHtml(sym)}:</strong> <span style="color: ${trendColor};">${trendIcon} ${escapeHtml(trend)}</span></li>`;
+                                }
+                                return `<li style="margin: 4px 0;">${escapeHtml(String(obs))}</li>`;
+                            }).join('')}
+                        </ul>
+                    </div>`;
+                }
+                
+                html += '</div>';
+                return html + '</div>';
+            }
+            
+            // TechnicalAnalyst format
+            if (obj.top_signals || obj.indicators) {
+                html += '<div class="agent-section">';
+                
+                // Top Signals
+                if (obj.top_signals && Array.isArray(obj.top_signals)) {
+                    html += `<div class="agent-item" style="margin-bottom: 12px;">
+                        <span class="agent-label">📊 Top Signals:</span>
+                        <div class="signal-badges" style="margin-top: 6px;">
+                            ${obj.top_signals.map(signal => {
+                                const [sym, score] = Array.isArray(signal) ? signal : [signal, ''];
+                                const scoreColor = score >= 3 ? '#10b981' : score >= 2 ? '#f59e0b' : '#6b7280';
+                                return `<span class="badge" style="display:inline-block;margin:2px 4px;padding:4px 10px;background:${scoreColor};color:white;border-radius:6px;font-size:12px;font-weight:500;">${escapeHtml(String(sym))}${score ? ` (${score})` : ''}</span>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                }
+                
+                // Indicators
+                if (obj.indicators && typeof obj.indicators === 'object') {
+                    html += `<div class="agent-item" style="margin-bottom: 12px;">
+                        <span class="agent-label">📈 Technical Indicators:</span>
+                        <div class="indicators-grid" style="margin-top: 6px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+                            ${Object.entries(obj.indicators).map(([sym, ind]) => {
+                                if (!ind || typeof ind !== 'object') return '';
+                                const rsi = ind.rsi14 !== undefined ? Number(ind.rsi14).toFixed(1) : null;
+                                const macd = ind.macd !== undefined ? Number(ind.macd).toFixed(2) : null;
+                                const bbPos = ind.bb_pos !== undefined ? (Number(ind.bb_pos) * 100).toFixed(1) : null;
+                                return `<div style="padding: 8px; background: #f9fafb; border-radius: 6px; border-left: 3px solid #667eea;">
+                                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">${escapeHtml(sym)}</div>
+                                    ${rsi !== null ? `<div style="font-size: 11px; color: #6b7280;">RSI: <span style="color: ${rsi > 70 ? '#dc2626' : rsi < 30 ? '#10b981' : '#6b7280'}">${rsi}</span></div>` : ''}
+                                    ${macd !== null ? `<div style="font-size: 11px; color: #6b7280;">MACD: <span style="color: ${macd > 0 ? '#10b981' : '#dc2626'}">${macd > 0 ? '+' : ''}${macd}</span></div>` : ''}
+                                    ${bbPos !== null ? `<div style="font-size: 11px; color: #6b7280;">BB Position: ${bbPos}%</div>` : ''}
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                }
+                
+                html += '</div>';
+                return html + '</div>';
+            }
+            
+            // SentimentAnalyst format
+            if (obj.fgi || obj.vix_term || obj.vix_risk_score !== undefined) {
+                html += '<div class="agent-section">';
+                
+                // Fear & Greed Index
+                if (obj.fgi && typeof obj.fgi === 'object') {
+                    const fgi = obj.fgi;
+                    const value = fgi.value;
+                    const label = fgi.label || 'Unknown';
+                    let fgiColor = '#6b7280';
+                    let fgiIcon = '😐';
+                    if (value !== null && value !== undefined) {
+                        if (value >= 75) { fgiColor = '#dc2626'; fgiIcon = '😱'; }
+                        else if (value >= 55) { fgiColor = '#f59e0b'; fgiIcon = '😊'; }
+                        else if (value >= 45) { fgiColor = '#6b7280'; fgiIcon = '😐'; }
+                        else if (value >= 25) { fgiColor = '#10b981'; fgiIcon = '😌'; }
+                        else { fgiColor = '#0369a1'; fgiIcon = '😨'; }
+                    }
+                    html += `<div class="agent-item" style="margin-bottom: 12px; padding: 10px; background: #f9fafb; border-radius: 6px; border-left: 3px solid ${fgiColor};">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                            <span class="agent-label">${fgiIcon} Fear & Greed Index:</span>
+                            <span class="badge" style="background: ${fgiColor}; color: white; padding: 4px 10px; border-radius: 12px; font-weight: 600;">${value !== null && value !== undefined ? value : 'N/A'}</span>
+                            <span style="color: ${fgiColor}; font-weight: 500;">${escapeHtml(label)}</span>
+                        </div>
+                        ${fgi.asof ? `<div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">As of: ${escapeHtml(fgi.asof)}</div>` : ''}
+                    </div>`;
+                }
+                
+                // VIX Term Structure
+                if (obj.vix_term && typeof obj.vix_term === 'object') {
+                    const vix = obj.vix_term;
+                    const ratio = vix.ratio ? Number(vix.ratio).toFixed(2) : null;
+                    const vixColor = ratio && ratio > 1.0 ? '#dc2626' : ratio && ratio < 0.9 ? '#10b981' : '#6b7280';
+                    html += `<div class="agent-item" style="margin-bottom: 12px; padding: 10px; background: #f9fafb; border-radius: 6px; border-left: 3px solid ${vixColor};">
+                        <div class="agent-label" style="margin-bottom: 6px;">📊 VIX Term Structure:</div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 12px;">
+                            ${vix.vix !== undefined ? `<div><span style="color: #6b7280;">VIX:</span> <span style="font-weight: 600; color: ${vixColor};">${Number(vix.vix).toFixed(2)}</span></div>` : ''}
+                            ${vix.vix3m !== undefined ? `<div><span style="color: #6b7280;">VIX 3M:</span> <span style="font-weight: 600;">${Number(vix.vix3m).toFixed(2)}</span></div>` : ''}
+                            ${ratio !== null ? `<div><span style="color: #6b7280;">Ratio:</span> <span style="font-weight: 600; color: ${vixColor};">${ratio}</span></div>` : ''}
+                        </div>
+                        ${vix.asof ? `<div style="font-size: 11px; color: #9ca3af; margin-top: 6px;">As of: ${escapeHtml(vix.asof)}</div>` : ''}
+                    </div>`;
+                }
+                
+                // VIX Risk Score
+                if (obj.vix_risk_score !== undefined) {
+                    const score = Number(obj.vix_risk_score);
+                    const scoreColor = score >= 7 ? '#dc2626' : score >= 4 ? '#f59e0b' : '#10b981';
+                    html += `<div class="agent-item" style="margin-bottom: 12px;">
+                        <span class="agent-label">⚠️ VIX Risk Score:</span>
+                        <span class="badge" style="background: ${scoreColor}; color: white; padding: 4px 10px; border-radius: 12px; font-weight: 600;">${score.toFixed(1)}</span>
+                    </div>`;
+                }
+                
+                html += '</div>';
+                return html + '</div>';
+            }
+            
+            return null; // Not recognized as agent-specific output
+        }
+        
         // Format conversation content (no raw JSON; human-readable)
-        function formatConversationContent(content, entryType) {
+        function formatConversationContent(content, entryType, agentName) {
             if (!content) return '';
 
-            // If content is pure JSON (single-line), pretty render as key-values
+            // Try to detect agent-specific content and format accordingly
             if (typeof content === 'string') {
-                const t = content.trim();
-                if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
-                    try {
-                        const obj = JSON.parse(t);
-                        return renderKeyValueObject(obj);
-                    } catch (e) { /* fall through */ }
+                // Try to parse as JSON first
+                let parsed = null;
+                try {
+                    const t = content.trim();
+                    if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+                        parsed = JSON.parse(t);
+                    } else if (content.includes('{') && content.includes('}')) {
+                        // Try to extract JSON from mixed content
+                        const jsonMatch = content.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+                    }
+                } catch (e) { /* ignore */ }
+                
+                if (parsed && typeof parsed === 'object') {
+                    // Check if this looks like agent-specific output
+                    const agentFormatted = formatAgentOutput(parsed, entryType, agentName);
+                    if (agentFormatted) return agentFormatted;
+                    return renderKeyValueObject(parsed);
                 }
             }
 
@@ -2283,7 +2460,12 @@
                 return escapeHtml(content);
             }
             if (typeof content === 'object') {
-                try { return renderKeyValueObject(content); } catch (e) { /* ignore */ }
+                try {
+                    // Try agent-specific formatting first
+                    const agentFormatted = formatAgentOutput(content, entryType, agentName);
+                    if (agentFormatted) return agentFormatted;
+                    return renderKeyValueObject(content);
+                } catch (e) { /* ignore */ }
             }
             return escapeHtml(String(content));
         }

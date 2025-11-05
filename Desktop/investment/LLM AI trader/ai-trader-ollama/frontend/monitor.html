@@ -3737,15 +3737,16 @@
                 console.log(`[Refresh] Rendering ${conversations.length} conversations`);
                 renderConversationsOverview(conversations);
                 
-                // 确保对话区块可见
+                // 確保對話區塊可見 - 強制設置，在mainContent顯示之前
                 const convSection = document.getElementById('conversationsOverviewSection');
                 if (convSection) {
-                    const computedStyle = window.getComputedStyle(convSection);
-                    if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
-                        console.warn('[Refresh] Conversations section was hidden, forcing display');
-                        convSection.style.display = 'block';
-                        convSection.style.visibility = 'visible';
-                    }
+                    // 強制設置，不管當前狀態如何
+                    convSection.style.display = 'block';
+                    convSection.style.visibility = 'visible';
+                    convSection.style.opacity = '1';
+                    convSection.style.position = 'relative';
+                    convSection.style.zIndex = '10';
+                    console.log('[Refresh] Forced conversations section visibility BEFORE mainContent display');
                 }
                 
                 renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）

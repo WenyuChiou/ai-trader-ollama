@@ -1,0 +1,171 @@
+{
+  "2025-11-03": {
+    "date": "2025-11-03",
+    "stance": "neutral",
+    "stocks_involved": [
+      "NVDA"
+    ],
+    "recommended_stocks": [],
+    "action": "BUY",
+    "risk_level": "medium"
+  },
+  "2025-11-01": {
+    "date": "2025-11-01",
+    "stance": "bullish",
+    "stocks_involved": [
+      "NVDA",
+      "AMZN"
+    ],
+    "recommended_stocks": [
+      "AMZN"
+    ],
+    "action": "BUY",
+    "risk_level": "medium"
+  },
+  "2025-11-02": {
+    "date": "2025-11-02",
+    "stance": "bullish",
+    "stocks_involved": [
+      "NVDA",
+      "AMZN"
+    ],
+    "recommended_stocks": [
+      "AMZN"
+    ],
+    "action": "BUY",
+    "risk_level": "medium"
+  },
+  "2024-10-02": {
+    "date": "2024-10-02",
+    "stance": "bullish",
+    "stocks_involved": [],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2024-10-03": {
+    "date": "2024-10-03",
+    "stance": "bullish",
+    "stocks_involved": [],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2024-10-04": {
+    "date": "2024-10-04",
+    "stance": "bullish",
+    "stocks_involved": [],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2024-10-05": {
+    "date": "2024-10-05",
+    "stance": "neutral",
+    "stocks_involved": [],
+    "recommended_stocks": [],
+    "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2025-11-05": {
+    "date": "2025-11-05",
+    "stance": "bullish",
+    "stocks_involved": [
+      "CCEP",
+      "NVDA",
+      "GILD",
+      "CSCO",
+      "FTNT",
+      "BIIB",
+      "WBD",
+      "XEL",
+      "ROST",
+      "AMGN",
+      "AAPL",
+      "EXC",
+      "QCOM",
+      "ZS",
+      "LRCX",
+      "EA",
+      "AEP",
+      "MNST",
+      "AZN",
+      "PDD",
+      "PLTR",
+      "CSX"
+    ],
+    "recommended_stocks": [
+      "AAPL",
+      "AZN",
+      "AMGN",
+      "GILD",
+      "MNST",
+      "CSX",
+      "AEP",
+      "ROST",
+      "EA",
+      "EXC",
+      "XEL",
+      "WBD",
+      "CCEP"
+    ],
+    "action": "BUY",
+    "risk_level": "medium"
+  },
+  "2025-11-04": {
+    "date": "2025-11-04",
+    "stance": "bullish",
+    "stocks_involved": [
+      "NVDA",
+      "ROST",
+      "GFS",
+      "GOOG",
+      "MRVL",
+      "BIIB",
+      "CSCO",
+      "ON",
+      "EXC",
+      "LRCX",
+      "PLTR",
+      "AEP",
+      "XEL",
+      "FTNT",
+      "PANW",
+      "ABNB",
+      "AMD",
+      "GOOGL",
+      "MU",
+      "AMAT",
+      "GILD"
+    ],
+    "recommended_stocks": [
+      "NVDA",
+      "GOOG",
+      "GOOGL",
+      "TSLA",
+      "PLTR",
+      "ASML",
+      "AMD",
+      "CSCO",
+      "MU",
+      "AMAT",
+      "LRCX",
+      "ISRG",
+      "GILD",
+      "KLAC",
+      "CRWD",
+      "CEG",
+      "VRTX",
+      "ABNB",
+      "FTNT",
+      "ROST",
+      "EXC",
+      "XEL",
+      "ZS",
+      "ON",
+      "GFS"
+    ],
+    "action": "BUY",
+    "risk_level": "medium"
+  }
+}

@@ -1,0 +1,38 @@
+======================================================================
+FI DATASET - DIFFUSION MODEL GENERATION REPORT
+FI 資料集 - 擴散模型生成報告
+======================================================================
+
+Dataset Information / 資料集資訊:
+- Original samples / 原始樣本: 148
+- Generated samples / 生成樣本: 500
+- Amplification factor / 放大倍數: 4.4x
+
+Column Information / 欄位資訊:
+- Discrete / 離散: FI (1-5)
+- Continuous / 連續: TP_mean, CP_mean, SP_mean
+
+Model Configuration / 模型設定:
+- Architecture / 架構: Deep MLP [128, 256, 256, 128]
+- Diffusion steps / 擴散步驟: 150
+- Noise schedule / 噪音排程: Cosine
+- Training epochs / 訓練輪數: 2500
+- Batch size / 批次大小: 32
+- Device / 運算裝置: cuda
+
+Quality Metrics / 品質指標:
+- Overall quality score / 整體品質分數: 75.1%
+- Correlation difference / 相關性差異: 0.048
+- Mean difference / 平均值差異: 0.015
+- Distribution similarity / 分布相似性: 25.0%
+
+FI Distribution Comparison / FI 分布比較:
+FI    Original     Synthetic   
+1     14.2        % 12.2        %
+2     29.1        % 25.6        %
+3     26.4        % 30.4        %
+4     23.6        % 25.0        %
+5     6.8         % 6.8         %
+
+======================================================================
+Report generated successfully / 報告生成成功

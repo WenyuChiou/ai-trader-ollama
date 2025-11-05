@@ -1,0 +1,35 @@
+======================================================================
+RL DATASET - DIFFUSION MODEL GENERATION REPORT
+RL 資料集 - 擴散模型生成報告
+======================================================================
+
+Dataset Information / 資料集資訊:
+- Original samples / 原始樣本: 103
+- Generated samples / 生成樣本: 500
+- Amplification factor / 放大倍數: 5.9x
+
+Column Types / 欄位類型:
+- Discrete / 離散: RL (1-5)
+- Continuous / 連續: TP_mean, CP_mean, SP_mean
+
+Model Configuration / 模型設定:
+- Diffusion steps / 擴散步驟: 100
+- Hidden dimension / 隱藏維度: 128
+- Training epochs / 訓練輪數: 2000
+- Batch size / 批次大小: 20
+- Device / 運算裝置: cuda
+
+Quality Metrics / 品質指標:
+- Overall quality score / 整體品質分數: 98.1%
+
+Statistical Comparison / 統計比較:
+--------------------------------------------------
+Variable   Orig Mean    Syn Mean     Orig Std     Syn Std     
+--------------------------------------------------
+RL         3.204        3.242        1.149        1.123       
+TP_mean    2.886        2.791        0.753        0.588       
+CP_mean    3.066        3.033        0.555        0.405       
+SP_mean    2.832        2.994        0.909        0.811       
+
+======================================================================
+Report generated successfully / 報告生成成功

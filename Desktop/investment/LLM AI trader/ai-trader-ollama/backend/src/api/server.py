@@ -521,22 +521,19 @@ async def get_real_time_portfolio():
                     print(f"[Portfolio API] RealTimeTracker failed, using fallback: {e}")
                     pass
                 
-                # Fallback: use current prices from snapshot first, then try to fetch
+                # Fallback: 在交易时段，强制获取实时价格（不依赖snapshot中的旧价格）
+                # 获取所有symbol的实时价格
+                all_symbols = [sym for sym, pos_info in positions.items() if isinstance(pos_info, dict)]
                 last_prices = {}
-                for sym, pos_info in positions.items():
-                    if isinstance(pos_info, dict):
-                        # 优先使用snapshot中的current_price
-                        last_prices[sym] = float(pos_info.get("current_price", pos_info.get("avg_cost", 0)))
                 
-                # 如果snapshot中没有current_price，尝试快速获取（但不要阻塞）
-                symbols_missing_price = [sym for sym, pos_info in positions.items() if isinstance(pos_info, dict) and not pos_info.get("current_price")]
-                if symbols_missing_price:
+                # 在交易时段，总是尝试获取实时价格
+                if all_symbols:
                     try:
                         from src.tools.market_tools import fetch_market_batch
-                        # 只获取缺失价格的股票（减少耗时，分批处理）
+                        # 分批获取实时价格（减少耗时）
                         batch_size = 10
-                        for i in range(0, len(symbols_missing_price), batch_size):
-                            batch = symbols_missing_price[i:i+batch_size]
+                        for i in range(0, len(all_symbols), batch_size):
+                            batch = all_symbols[i:i+batch_size]
                             try:
                                 market_data = fetch_market_batch.invoke({"symbols": batch, "start": date.today().isoformat(), "end": date.today().isoformat()})
                                 stocks = market_data.get("stocks", {})
@@ -544,15 +541,17 @@ async def get_real_time_portfolio():
                                     if sym in stocks and "price" in stocks[sym] and stocks[sym]["price"]:
                                         last_prices[sym] = float(stocks[sym]["price"])
                                     elif sym in positions and isinstance(positions[sym], dict):
+                                        # 如果获取失败，暂时使用avg_cost，但会继续尝试
                                         last_prices[sym] = float(positions[sym].get("avg_cost", 0))
                             except Exception as batch_err:
                                 # If batch fails, use avg_cost as fallback for this batch
                                 for sym in batch:
                                     if sym in positions and isinstance(positions[sym], dict):
                                         last_prices[sym] = float(positions[sym].get("avg_cost", 0))
-                    except Exception:
+                    except Exception as e:
+                        print(f"[Portfolio API] Failed to fetch batch prices: {e}")
                         # If all price fetch fails, use avg_cost as fallback for all
-                        for sym in symbols_missing_price:
+                        for sym in all_symbols:
                             if sym in positions and isinstance(positions[sym], dict):
                                 last_prices[sym] = float(positions[sym].get("avg_cost", 0))
                 

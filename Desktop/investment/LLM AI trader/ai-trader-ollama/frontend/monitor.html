@@ -958,14 +958,7 @@
             </div>
         </header>
 
-        <!-- Tabs -->
-        <div class="header" style="padding: 12px 16px; margin-top: -10px;">
-            <div class="tabs">
-                <button class="tab-btn active" id="tabOverview" onclick="switchTab('overview')">Overview</button>
-                <button class="tab-btn" id="tabTrades" onclick="switchTab('trades')">Trades</button>
-                <button class="tab-btn" id="tabConversations" onclick="switchTab('conversations')">Conversations</button>
-            </div>
-        </div>
+        <!-- Tabs removed - All content now in Overview -->
 
         <!-- Loading State -->
         <div class="loading" id="loadingState" style="display: none;">
@@ -1091,6 +1084,32 @@
                 </div>
             </div>
 
+            <!-- Detailed Trades Section -->
+            <div class="trades-section" style="margin-top: 20px;">
+                <div class="section-header">
+                    <h2>📊 Detailed Trade History</h2>
+                    <span class="position-count" id="tradesCount">0 trades</span>
+                </div>
+                <div class="table-container" style="max-height: 600px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Order Date</th>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>Qty</th>
+                                <th>Limit Price</th>
+                                <th>Fill Price</th>
+                                <th>Price Range</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- No Positions State -->
             <div class="positions-section" id="noPositionsState" style="display: none;">
                 <div class="empty-state">
@@ -1114,46 +1133,6 @@
             </div>
             </div> <!-- end dashboardPage -->
 
-            <!-- Trades Page -->
-            <div id="tradesPage" style="display: none;">
-                <div class="trades-section">
-                    <div class="section-header">
-                        <h2>Trade Details</h2>
-                        <span class="position-count" id="tradesCount">0 trades</span>
-                    </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Order Date</th>
-                                    <th>Symbol</th>
-                                    <th>Side</th>
-                                    <th>Qty</th>
-                                    <th>Limit Price</th>
-                                    <th>Fill Price</th>
-                                    <th>Price Range</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tradesBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Conversations Page (replaces Allocation) -->
-            <div id="allocationPage" style="display: none;">
-                <div class="trades-section">
-                    <div class="section-header">
-                        <h2>AI Agent Conversations</h2>
-                        <button class="refresh-btn" onclick="loadInlineConversations()">Refresh</button>
-                    </div>
-                    <div id="conversationsInline">
-                        <div class="loading"><div class="spinner"></div><p>Loading conversations...</p></div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Conversations Modal -->
@@ -3516,45 +3495,7 @@
             }).join('');
         }
 
-        function switchTab(tab) {
-            // Hide all pages
-            const o = document.getElementById('dashboardPage');
-            const t = document.getElementById('tradesPage');
-            const a = document.getElementById('allocationPage');
-            
-            // Remove active class from all tabs
-            const btnO = document.getElementById('tabOverview');
-            const btnT = document.getElementById('tabTrades');
-            const btnC = document.getElementById('tabConversations');
-            
-            if (btnO) btnO.classList.remove('active');
-            if (btnT) btnT.classList.remove('active');
-            if (btnC) btnC.classList.remove('active');
-            
-            // Show selected page and activate corresponding tab
-            if (tab === 'overview') {
-                if (o) o.style.display = 'block';
-                if (t) t.style.display = 'none';
-                if (a) a.style.display = 'none';
-                if (btnO) btnO.classList.add('active');
-            } else if (tab === 'trades') {
-                if (o) o.style.display = 'none';
-                if (t) t.style.display = 'block';
-                if (a) a.style.display = 'none';
-                if (btnT) btnT.classList.add('active');
-                // Load trades data when switching to trades page
-                loadTradesPage();
-            } else if (tab === 'conversations') {
-                if (o) o.style.display = 'none';
-                if (t) t.style.display = 'none';
-                if (a) a.style.display = 'block';
-                if (btnC) btnC.classList.add('active');
-                // Load conversations when switching to conversations page
-                loadInlineConversations();
-            }
-            
-            document.body.classList.remove('business');
-        }
+        // Tabs removed - all content in Overview
 
         // Main refresh function
         async function refreshData(showLoading = false) {
@@ -3714,6 +3655,7 @@
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
                 renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）
+                renderTrades(tradesData || []);  // 更新详细交易历史表格
                 
                 // Update response time
                 const responseTimeEl = document.getElementById('responseTime');

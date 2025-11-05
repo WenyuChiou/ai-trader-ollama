@@ -3620,19 +3620,29 @@
         // 🔥 关键修复：强制确保对话框可见的函数
         function ensureConversationsVisible() {
             const convSection = document.getElementById('conversationsOverviewSection');
+            const mainContent = document.getElementById('mainContent');
+            
+            // 确保主内容区域可见
+            if (mainContent) {
+                mainContent.style.setProperty('display', 'block', 'important');
+                mainContent.style.setProperty('visibility', 'visible', 'important');
+                mainContent.style.setProperty('opacity', '1', 'important');
+            }
+            
             if (convSection) {
-                convSection.style.display = 'block';
-                convSection.style.visibility = 'visible';
-                convSection.style.opacity = '1';
-                convSection.style.position = 'relative';
-                convSection.style.zIndex = '1000';
-                convSection.style.minHeight = '200px';
+                // 使用setProperty with important确保优先级最高
+                convSection.style.setProperty('display', 'block', 'important');
+                convSection.style.setProperty('visibility', 'visible', 'important');
+                convSection.style.setProperty('opacity', '1', 'important');
+                convSection.style.setProperty('position', 'relative', 'important');
+                convSection.style.setProperty('z-index', '1000', 'important');
+                convSection.style.setProperty('min-height', '200px', 'important');
                 
                 // 检查父元素
                 if (convSection.parentElement) {
                     const parentStyle = window.getComputedStyle(convSection.parentElement);
                     if (parentStyle.display === 'none') {
-                        convSection.parentElement.style.display = 'grid';
+                        convSection.parentElement.style.setProperty('display', 'grid', 'important');
                     }
                 }
             }
@@ -4071,10 +4081,43 @@
                 });
             }
             
-            // 🔥 每隔5秒检查一次对话框可见性（额外保护）
+            // 🔥 每隔2秒检查一次对话框可见性（额外保护）
             setInterval(() => {
                 ensureConversationsVisible();
-            }, 5000);
+            }, 2000);
+            
+            // 🔥 使用MutationObserver监听DOM变化
+            const convSection = document.getElementById('conversationsOverviewSection');
+            if (convSection && window.MutationObserver) {
+                const observer = new MutationObserver((mutations) => {
+                    // 检查是否有样式变化导致隐藏
+                    const computed = window.getComputedStyle(convSection);
+                    if (computed.display === 'none' || computed.visibility === 'hidden' || computed.opacity === '0') {
+                        console.warn('[MutationObserver] Conversations section hidden, restoring...');
+                        ensureConversationsVisible();
+                    }
+                });
+                
+                // 监听属性变化（特别是style属性）
+                observer.observe(convSection, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class'],
+                    childList: false,
+                    subtree: false
+                });
+                
+                // 同时监听父元素
+                if (convSection.parentElement) {
+                    observer.observe(convSection.parentElement, {
+                        attributes: true,
+                        attributeFilter: ['style', 'class'],
+                        childList: false,
+                        subtree: false
+                    });
+                }
+                
+                console.log('[Init] MutationObserver activated for conversations section');
+            }
         });
         
         // 页面卸载时清理

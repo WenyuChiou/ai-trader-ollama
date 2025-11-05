@@ -4070,6 +4070,11 @@
                     if (demoChk.checked) startAutoRefresh(); else stopAutoRefresh();
                 });
             }
+            
+            // 🔥 每隔5秒检查一次对话框可见性（额外保护）
+            setInterval(() => {
+                ensureConversationsVisible();
+            }, 5000);
         });
         
         // 页面卸载时清理

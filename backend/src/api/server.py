@@ -213,6 +213,96 @@ async def execute_trading_cycle():
         )
 
 
+@app.post("/api/trading/execute-trade")
+async def execute_trade_direct():
+    """直接执行交易循环，支持非交易时段规划明日交易"""
+    from src.orchestrator.trading_cycle import execute_daily_trade
+    from src.data.order_manager import OrderManager
+    from datetime import time as dt_time, timedelta
+    
+    # 检查市场是否开盘
+    now = datetime.now()
+    is_weekday = now.weekday() < 5
+    market_open_time = dt_time(9, 30)  # 9:30 AM
+    market_close_time = dt_time(16, 0)  # 4:00 PM
+    is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
+    
+    # 从 config.json 读取股票清单
+    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+    universe = None
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+                if "universe" in config_data and isinstance(config_data["universe"], list):
+                    universe = config_data["universe"]
+        except Exception:
+            pass
+    
+    # 非交易时段：检查是否已有明日订单计划
+    if not is_market_open:
+        # 计算明天的日期（下一个交易日）
+        tomorrow = date.today() + timedelta(days=1)
+        while tomorrow.weekday() >= 5:
+            tomorrow += timedelta(days=1)
+        tomorrow_str = tomorrow.isoformat()
+        
+        order_manager = OrderManager(root="data/logs")
+        existing_orders = order_manager.load_pending_orders(order_date=tomorrow_str)
+        
+        if existing_orders:
+            return {
+                "ok": True,
+                "message": f"Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.",
+                "result": {
+                    "placed_orders": [],
+                    "conversations_count": 0,
+                    "is_planning": True,
+                    "order_date": tomorrow_str
+                }
+            }
+        
+        # 非交易时段：规划明日交易
+        print(f"[TRADING CYCLE] Market closed. Planning trades for tomorrow ({tomorrow_str})")
+        try:
+            result = execute_daily_trade(
+                rounds=3,
+                auto_tools=True,
+                tool_budget=3,
+                universe=universe
+            )
+            
+            return {
+                "ok": True,
+                "message": f"Planning completed for tomorrow ({tomorrow_str})",
+                "result": result
+            }
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={"ok": False, "error": str(e)}
+            )
+    
+    # 交易时段：正常执行交易
+    try:
+        result = execute_daily_trade(
+            rounds=3,
+            auto_tools=True,
+            tool_budget=3,
+            universe=universe
+        )
+        
+        return {
+            "ok": True,
+            "result": result
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )
+
+
 @app.get("/api/portfolio/equity-history")
 async def get_equity_history(
     start_date: str | None = None,
@@ -281,7 +371,15 @@ async def get_real_time_portfolio():
     """Get real-time portfolio with current market prices"""
     try:
         import json
-        from pathlib import Path
+        from datetime import time as dt_time
+        # Path 已经在文件顶部导入，不需要重新导入
+        
+        # 检查市场是否开盘 - 非交易时段不更新数据
+        now = datetime.now()
+        is_weekday = now.weekday() < 5
+        market_open_time = dt_time(9, 30)  # 9:30 AM
+        market_close_time = dt_time(16, 0)  # 4:00 PM
+        is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
         
         # Load portfolio state
         state_file = Path("data/logs/portfolio_state.json")
@@ -304,12 +402,20 @@ async def get_real_time_portfolio():
         positions = state.get("positions", {})
         for symbol, pos_info in positions.items():
             if isinstance(pos_info, dict):
-                portfolio._positions[symbol] = Position(
-                    symbol=symbol,
-                    quantity=int(pos_info.get("quantity", 0)),
-                    avg_cost=float(pos_info.get("avg_cost", 0.0)),
-                    total_cost=float(pos_info.get("total_cost", 0.0)),
-                )
+                quantity = int(pos_info.get("quantity", 0))
+                avg_cost = float(pos_info.get("avg_cost", 0.0))
+                total_cost = float(pos_info.get("total_cost", 0.0))
+                # 如果total_cost没有保存或为0，从avg_cost和quantity计算
+                if total_cost <= 0:
+                    total_cost = avg_cost * quantity
+                
+                if quantity > 0:  # 只恢复有效持仓
+                    portfolio._positions[symbol] = Position(
+                        symbol=symbol,
+                        quantity=quantity,
+                        avg_cost=avg_cost,
+                        total_cost=total_cost,
+                    )
         
         # If there are no positions, avoid external data calls and return simple snapshot
         if len(portfolio._positions) == 0:
@@ -328,13 +434,21 @@ async def get_real_time_portfolio():
                 "source": "simple",
             }
         else:
-            # Get real-time snapshot via tracker (with fallback if yfinance missing)
-            try:
-                from src.data.real_time_tracker import RealTimeTracker
-                tracker = RealTimeTracker(root="data/logs")
-                snapshot = tracker.update_and_record(portfolio)
-            except (ImportError, ModuleNotFoundError) as e:
-                # Fallback if yfinance or other deps missing
+            # 非交易时段：不更新数据，只返回已保存的快照
+            if not is_market_open:
+                # 获取最新快照（不更新）
+                try:
+                    from src.data.real_time_tracker import RealTimeTracker
+                    tracker = RealTimeTracker(root="data/logs")
+                    snapshot = tracker.get_latest_snapshot()
+                    if snapshot:
+                        snapshot["ok"] = True
+                        snapshot["source"] = "cached"
+                        return {"ok": True, **snapshot}
+                except Exception:
+                    pass
+                
+                # 如果没有快照，返回静态数据（不更新价格）
                 equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
                 total_value = portfolio.cash + equity
                 positions_detail = {}
@@ -343,16 +457,74 @@ async def get_real_time_portfolio():
                     if isinstance(pos_info, dict):
                         qty = int(pos_info.get("quantity", 0))
                         avg = float(pos_info.get("avg_cost", 0))
+                        total_cost = float(pos_info.get("total_cost", 0.0))
+                        if total_cost <= 0:
+                            total_cost = avg * qty
                         mv = avg * qty
+                        cost_basis = total_cost
                         positions_detail[sym] = {
                             "quantity": qty,
                             "avg_cost": round(avg, 2),
+                            "total_cost": round(total_cost, 2),
+                            "cost_basis": round(cost_basis, 2),
                             "current_price": round(avg, 2),
                             "market_value": round(mv, 2),
                         }
+                        unrealized_pnl = mv - cost_basis
+                        unrealized_pnl_pct = (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0.0
                         positions_pnl[sym] = {
-                            "unrealized_pnl": 0.0,
-                            "unrealized_pnl_pct": 0.0,
+                            "unrealized_pnl": round(unrealized_pnl, 2),
+                            "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
+                        }
+                snapshot = {
+                    "ok": True,
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "initial_value": portfolio.initial_value,
+                    "total_value": round(total_value, 2),
+                    "total_pnl": round(total_value - portfolio.initial_value, 2),
+                    "total_pnl_pct": round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2),
+                    "cash": round(portfolio.cash, 2),
+                    "equity_value": round(equity, 2),
+                    "positions": positions_detail,
+                    "positions_pnl": positions_pnl,
+                    "source": "static_after_hours",
+                }
+            else:
+                # 交易时段：更新实时数据
+                try:
+                    from src.data.real_time_tracker import RealTimeTracker
+                    tracker = RealTimeTracker(root="data/logs")
+                    snapshot = tracker.update_and_record(portfolio)
+                except (ImportError, ModuleNotFoundError) as e:
+                    # Fallback if yfinance or other deps missing
+                    equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
+                total_value = portfolio.cash + equity
+                positions_detail = {}
+                positions_pnl = {}
+                for sym, pos_info in positions.items():
+                    if isinstance(pos_info, dict):
+                        qty = int(pos_info.get("quantity", 0))
+                        avg = float(pos_info.get("avg_cost", 0))
+                        total_cost = float(pos_info.get("total_cost", 0.0))
+                        # 如果total_cost没有保存或为0，从avg_cost和quantity计算
+                        if total_cost <= 0:
+                            total_cost = avg * qty
+                        mv = avg * qty
+                        cost_basis = total_cost
+                        positions_detail[sym] = {
+                            "quantity": qty,
+                            "avg_cost": round(avg, 2),
+                            "total_cost": round(total_cost, 2),
+                            "cost_basis": round(cost_basis, 2),
+                            "current_price": round(avg, 2),
+                            "market_value": round(mv, 2),
+                        }
+                        # 计算P&L
+                        unrealized_pnl = mv - cost_basis
+                        unrealized_pnl_pct = (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0.0
+                        positions_pnl[sym] = {
+                            "unrealized_pnl": round(unrealized_pnl, 2),
+                            "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
                         }
                 snapshot = {
                     "ok": True,
@@ -562,7 +734,7 @@ async def demo_conversation_tick():
 
 @app.get("/api/trades/recent")
 async def get_recent_trades(limit: int = 100):
-    """Return recent trade records from logs (filled and general)."""
+    """Return recent trade records from logs (filled, pending, and general)."""
     try:
         import json
         from datetime import datetime
@@ -570,6 +742,7 @@ async def get_recent_trades(limit: int = 100):
         logs_dir = Path("data/logs")
         trades_file = logs_dir / "trades.jsonl"
         filled_file = logs_dir / "filled_orders.jsonl"
+        pending_file = logs_dir / "pending_orders.jsonl"
 
         def read_jsonl(path: Path) -> list[dict]:
             if not path.exists():
@@ -587,19 +760,33 @@ async def get_recent_trades(limit: int = 100):
 
         trades = read_jsonl(trades_file)
         filled = read_jsonl(filled_file)
+        pending = read_jsonl(pending_file)
 
         # normalize and merge
         records: list[dict] = []
         def norm(x: dict, source: str) -> dict:
+            # 对于pending订单，确保状态是PENDING而不是FILLED
+            status = x.get("status", "")
+            if source == "pending" or status.upper() == "PENDING":
+                final_status = "PENDING"
+            elif source == "filled" or status.upper() == "FILLED":
+                final_status = "FILLED"
+            else:
+                final_status = status or ("FILLED" if source == "filled" else x.get("state", "PENDING"))
+            
             return {
-                "timestamp": x.get("timestamp") or x.get("time") or x.get("date"),
+                "timestamp": x.get("timestamp") or x.get("time") or x.get("date") or x.get("placed_at") or x.get("filled_at"),
                 "symbol": x.get("symbol") or x.get("ticker"),
                 "side": x.get("side") or x.get("action"),
                 "quantity": x.get("quantity") or x.get("qty"),
-                "price": x.get("price") or x.get("fill_price") or x.get("avg_price"),
-                "status": x.get("status") or ("FILLED" if source == "filled" else x.get("state")),
+                "price": x.get("price") or x.get("fill_price") or x.get("limit_price") or x.get("avg_price"),
+                "fill_price": x.get("fill_price"),  # 添加fill_price字段
+                "status": final_status,
                 "order_id": x.get("order_id") or x.get("id"),
                 "source": source,
+                "placed_at": x.get("placed_at"),  # 添加placed_at字段
+                "filled_at": x.get("filled_at"),  # 添加filled_at字段
+                "order_date": x.get("order_date"),  # 添加order_date字段
                 "details": x,
             }
 
@@ -607,6 +794,8 @@ async def get_recent_trades(limit: int = 100):
             records.append(norm(x, "trades"))
         for x in filled[-limit:]:
             records.append(norm(x, "filled"))
+        for x in pending[-limit:]:
+            records.append(norm(x, "pending"))
 
         # sort by timestamp desc
         def ts_key(r: dict):
@@ -626,7 +815,7 @@ async def get_system_info():
     """Get system information including LLM model and configuration"""
     try:
         import json
-        from pathlib import Path
+        # Path 已经在文件顶部导入，不需要重复导入
         
         # Load config.json
         config_file = Path("config/config.json")
@@ -640,7 +829,7 @@ async def get_system_info():
         # Load agents.yaml to get agent-specific models
         agent_models = {}
         try:
-            from pathlib import Path
+            # Path 已经在文件顶部导入，不需要重复导入
             import yaml
             
             agents_file = Path("config/agents.yaml")
@@ -775,21 +964,53 @@ async def is_market_open():
 
 @app.post("/api/system/init")
 async def system_init():
-    """Reset logs and initialize portfolio to defaults, then seed minimal data."""
+    """Reset logs and initialize portfolio to defaults, then seed minimal data.
+    
+    This will DELETE ALL:
+    - Trading history
+    - Conversation logs
+    - Pending orders
+    - Portfolio records
+    - Memory files
+    """
     logs_dir = Path("data/logs")
     logs_dir.mkdir(parents=True, exist_ok=True)
-    # Clear key log files
-    for name in [
+    
+    # Clear ALL log files including memory files
+    files_to_clear = [
         "equity_history.jsonl", "filled_orders.jsonl", "pending_orders.jsonl",
         "trades.jsonl", "real_time_snapshots.jsonl", "monitoring.jsonl",
-        "discussion_actions.jsonl"
-    ]:
+        "discussion_actions.jsonl", "last_trade_date.txt"
+    ]
+    
+    # Clear memory files (daily and weekly)
+    try:
+        from src.data.memory_manager import MemoryManager
+        memory_manager = MemoryManager(root="data/logs")
+        # Clear all memory files
+        memory_dir = Path("data/logs")
+        for memory_file in memory_dir.glob("memory_*.jsonl"):
+            try:
+                memory_file.unlink()
+            except Exception:
+                pass
+        for memory_file in memory_dir.glob("memory_weekly_*.jsonl"):
+            try:
+                memory_file.unlink()
+            except Exception:
+                pass
+    except Exception:
+        pass
+    
+    # Clear key log files
+    for name in files_to_clear:
         p = logs_dir / name
         if p.exists():
             try:
                 p.unlink()
             except Exception:
                 pass
+    
     # Initialize empty discussion file
     (logs_dir / "discussion_actions.jsonl").touch(exist_ok=True)
 
@@ -842,7 +1063,22 @@ async def system_init():
 
 @app.post("/api/trading/run-loop")
 async def run_trading_loop():
-    """Kick one trading cycle, but block if already executed today."""
+    """Kick one trading cycle, but block if already executed today or market is closed."""
+    # Check if market is open first
+    now = datetime.now()
+    is_weekday = now.weekday() < 5
+    start = dt_time(9, 30)  # Market opens at 9:30 AM
+    end = dt_time(16, 0)     # Market closes at 4:00 PM
+    is_open = is_weekday and (start <= now.time() <= end)
+    
+    if not is_open:
+        return {
+            "ok": False, 
+            "blocked": True, 
+            "reason": "market_closed", 
+            "message": "Market is closed. Trading only available Mon-Fri, 9:30 AM - 4:00 PM EST"
+        }
+    
     logs_dir = Path("data/logs")
     logs_dir.mkdir(parents=True, exist_ok=True)
     flag = logs_dir / "last_trade_date.txt"
@@ -910,7 +1146,7 @@ def run_october_simulation_background():
     import sys
     import io
     import time
-    from pathlib import Path
+    # Path 已经在文件顶部导入，不需要重新导入
     
     # Fix encoding
     if sys.platform == 'win32':
@@ -1021,21 +1257,30 @@ def run_october_simulation_background():
                 symbol = order.get("symbol")
                 action = order.get("action", "").upper()
                 quantity = order.get("quantity", 0)
-                limit_price = order.get("limit_price", 0)
                 
                 try:
-                    current_price = get_current_or_open_price(symbol, settle_date)
-                    if current_price is None:
-                        current_price = limit_price
+                    # 检查订单是否成交（这会检查市场是否开盘）
+                    fill_result = order_manager.check_order_fill(order, settle_date)
+                    
+                    # 如果市场未开盘或订单未成交，跳过
+                    if not fill_result.get("filled", False):
+                        continue
+                    
+                    # 订单已成交，执行交易
+                    fill_price = fill_result.get("fill_price")
+                    if fill_price is None:
+                        continue
                     
                     if action == "BUY":
-                        portfolio.buy(symbol, quantity, current_price)
+                        portfolio.buy(symbol, quantity, fill_price)
                     elif action == "SELL":
-                        portfolio.sell(symbol, quantity, current_price)
+                        portfolio.sell(symbol, quantity, fill_price)
                     
-                    order_manager.mark_order_filled(order.get("order_id"), current_price, settle_date)
+                    # 标记订单为已成交
+                    order_manager.mark_order_filled(order, fill_result)
                     settled_count += 1
-                except Exception:
+                except Exception as e:
+                    print(f"[Settle Orders] Error processing order {order.get('order_id')}: {e}")
                     pass
             
             portfolio_state = {
@@ -1047,9 +1292,16 @@ def run_october_simulation_background():
             
             for symbol, pos in portfolio.positions.items():
                 if isinstance(pos, dict):
+                    quantity = pos.get("quantity", 0)
+                    avg_cost = pos.get("avg_cost", 0)
+                    total_cost = pos.get("total_cost", 0)
+                    # 如果total_cost没有保存或为0，从avg_cost和quantity计算
+                    if total_cost <= 0:
+                        total_cost = avg_cost * quantity
                     portfolio_state["positions"][symbol] = {
-                        "quantity": pos.get("quantity", 0),
-                        "avg_cost": pos.get("avg_cost", 0),
+                        "quantity": quantity,
+                        "avg_cost": avg_cost,
+                        "total_cost": total_cost,
                     }
             
             portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")

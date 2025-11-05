@@ -6,6 +6,7 @@ import time
 import subprocess
 from dataclasses import dataclass
 from typing import Any, Optional, List
+from pathlib import Path  # 统一在文件顶部导入，避免函数内部重复导入导致的作用域问题
 
 import requests
 from langchain_ollama import ChatOllama
@@ -158,7 +159,7 @@ def get_llm(
     # Load config.json if available
     llm_config_from_file = {}
     try:
-        from pathlib import Path
+        # Path 已经在文件顶部导入，不需要重复导入
         import json
         config_path = Path(__file__).resolve().parents[2] / "config" / "config.json"
         if config_path.exists():

@@ -12,7 +12,7 @@ from langchain_ollama import ChatOllama
 def _load_llm_config_from_json() -> dict:
     """Load LLM config from config.json"""
     try:
-        from pathlib import Path
+        # Path 已经在文件顶部导入，不需要重复导入
         import json
         config_path = Path(__file__).resolve().parents[2] / "config" / "config.json"
         if config_path.exists():

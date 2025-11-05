@@ -814,7 +814,7 @@
                 </label>
                 <label class="auto-refresh-toggle">
                     <input type="checkbox" id="autoTrade">
-                    <span>Auto Trade (1 min)</span>
+                    <span>Auto Trade (5 min)</span>
                 </label>
                 <button class="refresh-btn" id="startTradeBtn" onclick="startTradingCycle()">
                     ▶️ Start Trading
@@ -1239,38 +1239,65 @@
             }
         }
 
-        // 直接执行交易循环（每1分钟）
+        // 直接执行交易循环（改进版：防重复执行、调整频率）
         let tradeCheckTimer = null;
+        let isTradingExecuting = false;  // ✅ 添加执行状态标志，防止重复执行
         
         async function executeTradeCycle() {
+            // ✅ 防重复执行：如果上次交易还在执行，跳过本次
+            if (isTradingExecuting) {
+                console.log('[Trade Cycle] Previous trade cycle still executing, skipping...');
+                return;
+            }
+            
+            // ✅ 检查市场是否开盘
             try {
-                console.log('[Trade Cycle] 执行交易循环...');
+                const isOpen = await isMarketOpen();
+                if (!isOpen) {
+                    console.log('[Trade Cycle] Market is closed, skipping trade cycle');
+                    return;
+                }
+            } catch (e) {
+                console.warn('[Trade Cycle] Failed to check market status:', e);
+            }
+            
+            isTradingExecuting = true;
+            try {
+                console.log('[Trade Cycle] Executing trading cycle...');
                 const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    signal: AbortSignal.timeout(120000),  // 2分钟超时
                 });
                 
                 let data;
                 try {
                     data = await response.json();
                 } catch (parseErr) {
-                    console.error('[Trade Cycle] 响应解析失败:', parseErr);
+                    console.error('[Trade Cycle] Response parse failed:', parseErr);
                     return;
                 }
                 
                 if (response.ok && data.ok) {
-                    const orderCount = data.result?.placed_orders || 0;
+                    const orderCount = data.result?.placed_orders?.length || 0;
                     const convCount = data.result?.conversations_count || 0;
-                    console.log(`[Trade Cycle] 执行成功: ${orderCount} 笔订单, ${convCount} 条对话`);
+                    const message = data.message || '';
+                    console.log(`[Trade Cycle] Success: ${orderCount} orders, ${convCount} conversations. ${message}`);
                     // 刷新数据
                     await refreshData(false);
                 } else {
-                    console.error('[Trade Cycle] 执行失败:', data.error || 'Unknown error');
+                    console.error('[Trade Cycle] Failed:', data.error || 'Unknown error');
                 }
             } catch (e) {
-                console.error('[Trade Cycle] 执行异常:', e);
+                if (e.name === 'AbortError') {
+                    console.error('[Trade Cycle] Request timeout');
+                } else {
+                    console.error('[Trade Cycle] Exception:', e);
+                }
+            } finally {
+                isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
             }
         }
         
@@ -1342,9 +1369,10 @@
             if (tradeCheckTimer) {
                 clearInterval(tradeCheckTimer);
             }
-            // 每1分钟执行一次交易循环
-            tradeCheckTimer = setInterval(executeTradeCycle, 60000);
-            console.log('[Auto Trade] 自动交易已启动（每1分钟执行一次）');
+            // ✅ 改进：调整执行频率为5分钟（而不是1分钟），减少过度交易
+            const TRADING_INTERVAL = 5 * 60 * 1000;  // 5分钟
+            tradeCheckTimer = setInterval(executeTradeCycle, TRADING_INTERVAL);
+            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 1000} seconds)`);
             // 立即执行一次
             executeTradeCycle();
         }
@@ -2623,10 +2651,10 @@
                         fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
                     );
                 } else {
-                    // 非交易时段：只获取对话和订单数据（包括明日挂单）
+                    // 非交易时段：获取历史数据（净值图表）和对话订单数据
                     fetchPromises.push(
                         Promise.resolve(null), // portfolio placeholder
-                        Promise.resolve([]), // history placeholder
+                        fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),
                         fetchToolsList(fetchOptions).catch(() => []),
@@ -2668,27 +2696,34 @@
                     });
                 }
                 
-                // 非交易时段：只更新对话和订单，不更新实时数据
+                // 非交易时段：显示历史数据和最后快照，不更新实时数据
                 if (isMarketOpen && portfolio) {
+                    // 交易时段：实时更新所有数据
                     renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
                     renderPositions(portfolio);     // 更新持仓表格
-                    drawChart(history);             // 更新净值图表
+                    drawChart(history);             // 更新净值图表（实时数据）
                 } else {
-                    // 非交易时段：显示提示信息
-                    const summaryCards = document.getElementById('summaryCards');
-                    if (summaryCards) {
-                        const marketStatusCard = document.createElement('div');
-                        marketStatusCard.className = 'summary-card';
-                        marketStatusCard.innerHTML = `
-                            <div class="summary-label">Market Status</div>
-                            <div class="summary-value" style="color: #f59e0b;">Market Closed</div>
-                            <div class="summary-subtext">Showing conversation history and tomorrow's orders</div>
-                        `;
-                        // 只在非交易时段且没有其他卡片时显示
-                        if (summaryCards.children.length === 0) {
+                    // 非交易时段：显示历史数据和最后快照
+                    if (portfolio) {
+                        // 如果有portfolio数据，显示最后快照
+                        renderSummaryCards(portfolio);  // 显示最后的总资产、P&L等
+                        renderPositions(portfolio);     // 显示最后的持仓
+                    } else {
+                        // 如果没有portfolio数据，显示市场状态提示
+                        const summaryCards = document.getElementById('summaryCards');
+                        if (summaryCards && summaryCards.children.length === 0) {
+                            const marketStatusCard = document.createElement('div');
+                            marketStatusCard.className = 'summary-card';
+                            marketStatusCard.innerHTML = `
+                                <div class="summary-label">Market Status</div>
+                                <div class="summary-value" style="color: #f59e0b;">Market Closed</div>
+                                <div class="summary-subtext">Showing conversation history and tomorrow's orders</div>
+                            `;
                             summaryCards.appendChild(marketStatusCard);
                         }
                     }
+                    // ✅ 修复：非交易时段也要显示净值历史图表（显示历史趋势，包括今天的数据）
+                    drawChart(history);  // 显示历史净值趋势
                 }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容

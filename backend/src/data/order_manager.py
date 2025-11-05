@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time as dt_time
 import pandas as pd
 import yfinance as yf
 
@@ -34,6 +34,8 @@ class OrderManager:
     ) -> Dict[str, Any]:
         """
         挂单（创建限价单）
+        注意：如果同一日期已有相同symbol和action的订单，会先删除旧订单再创建新订单
+        确保同一日期、同一symbol和action只保留一份订单
         
         参数:
         - symbol: 股票代码
@@ -46,6 +48,16 @@ class OrderManager:
         返回:
         - 挂单信息
         """
+        # 加载所有订单
+        all_orders = self.load_pending_orders()
+        
+        # 移除同一日期、同一symbol和action的旧订单（确保只保留一份）
+        filtered_orders = [
+            o for o in all_orders
+            if not (o.get("symbol") == symbol and o.get("action") == action and o.get("order_date") == order_date)
+        ]
+        
+        # 创建新订单
         order = {
             "order_id": f"{symbol}_{action}_{order_date}_{datetime.now().timestamp()}",
             "symbol": symbol,
@@ -58,13 +70,42 @@ class OrderManager:
             "status": "PENDING",  # PENDING -> FILLED / REJECTED
         }
         
-        # 保存到待处理订单文件
-        with self.pending_orders_file.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(order, ensure_ascii=False) + "\n")
+        # 添加新订单
+        filtered_orders.append(order)
         
-        print(f"[ORDER PLACED] {action} {symbol} x{quantity} @ ${limit_price:.2f} (range: ${price_range['min']:.2f}-${price_range['max']:.2f})")
+        # 保存到待处理订单文件（重写整个文件）
+        with self.pending_orders_file.open("w", encoding="utf-8") as f:
+            for o in filtered_orders:
+                f.write(json.dumps(o, ensure_ascii=False) + "\n")
+        
+        print(f"[ORDER PLACED] {action} {symbol} x{quantity} @ ${limit_price:.2f} (range: ${price_range['min']:.2f}-${price_range['max']:.2f}) [date: {order_date}]")
         
         return order
+    
+    def _is_market_open(self, check_datetime: Optional[datetime] = None) -> bool:
+        """
+        检查市场是否开盘（美股：周一至周五 9:30 AM - 4:00 PM EST）
+        
+        参数:
+        - check_datetime: 要检查的日期时间（如果为None，使用当前时间）
+        
+        返回:
+        - True if market is open, False otherwise
+        """
+        if check_datetime is None:
+            check_datetime = datetime.now()
+        
+        # 检查是否为工作日（周一=0, 周五=4）
+        is_weekday = check_datetime.weekday() < 5
+        if not is_weekday:
+            return False
+        
+        # 检查时间（使用本地时间，假设服务器在EST时区或用户配置的时区）
+        market_open = dt_time(9, 30)  # 9:30 AM
+        market_close = dt_time(16, 0)  # 4:00 PM
+        current_time = check_datetime.time()
+        
+        return market_open <= current_time <= market_close
     
     def check_order_fill(
         self,
@@ -73,6 +114,8 @@ class OrderManager:
     ) -> Dict[str, Any]:
         """
         收盘后检查订单是否成交（基于当天高低价）
+        
+        **重要**：如果市场未开盘，订单保持为PENDING状态
         
         参数:
         - order: 挂单信息
@@ -91,6 +134,17 @@ class OrderManager:
         action = order["action"]
         limit_price = order["limit_price"]
         price_range = order["price_range"]
+        
+        # 检查市场是否开盘
+        check_datetime = datetime.now()
+        if not self._is_market_open(check_datetime):
+            return {
+                "filled": False,
+                "fill_price": None,
+                "fill_reason": f"Market is closed (current time: {check_datetime.strftime('%Y-%m-%d %H:%M:%S')})",
+                "daily_high": None,
+                "daily_low": None,
+            }
         
         try:
             # 获取当天的 OHLCV 数据（包含 High 和 Low）
@@ -211,7 +265,20 @@ class OrderManager:
         order: Dict[str, Any],
         fill_result: Dict[str, Any],
     ) -> None:
-        """标记订单为已成交，移到已成交文件"""
+        """
+        标记订单为已成交，移到已成交文件
+        
+        **重要**：如果市场未开盘，订单保持为PENDING状态，不会标记为FILLED
+        """
+        # 检查市场是否开盘 - 如果未开盘，不应标记为FILLED
+        if not fill_result.get("filled", False):
+            # 如果订单未成交，检查是否因为市场未开盘
+            fill_reason = fill_result.get("fill_reason", "")
+            if "Market is closed" in fill_reason:
+                # 市场未开盘，保持PENDING状态，不移动到已成交文件
+                return
+        
+        # 只有在市场开盘且订单已成交时，才标记为FILLED
         order["status"] = "FILLED" if fill_result["filled"] else "REJECTED"
         order["fill_price"] = fill_result["fill_price"]
         order["fill_reason"] = fill_result["fill_reason"]

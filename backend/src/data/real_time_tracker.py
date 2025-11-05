@@ -9,7 +9,7 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import Dict, Any, Optional
 import json
 
@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
 import yfinance as yf
+import pandas as pd
 from src.data.portfolio import Portfolio
 from src.data.equity_tracker import EquityTracker
 
@@ -30,9 +31,32 @@ class RealTimeTracker:
         self.real_time_file = self.root / "real_time_snapshots.jsonl"
         self.root.mkdir(parents=True, exist_ok=True)
     
+    def _is_market_open(self) -> bool:
+        """
+        检查市场是否开盘（美股：周一至周五 9:30 AM - 4:00 PM EST）
+        
+        返回:
+        - True if market is open, False otherwise
+        """
+        now = datetime.now()
+        # 检查是否为工作日（周一=0, 周五=4）
+        is_weekday = now.weekday() < 5
+        if not is_weekday:
+            return False
+        
+        # 检查时间（使用本地时间，假设服务器在EST时区或用户配置的时区）
+        # 注意：这里简化处理，实际应该使用EST时区
+        market_open = time(9, 30)  # 9:30 AM
+        market_close = time(16, 0)  # 4:00 PM
+        current_time = now.time()
+        
+        return market_open <= current_time <= market_close
+    
     def get_current_prices(self, symbols: list[str]) -> Dict[str, float]:
         """
         获取当前市场价格
+        
+        **重要**：在盘后时间，使用当天的收盘价而不是盘后价格
         
         参数:
         - symbols: 股票代码列表
@@ -41,6 +65,7 @@ class RealTimeTracker:
         - {symbol: current_price} 字典
         """
         prices = {}
+        is_market_open = self._is_market_open()
         
         # 批量获取（yfinance 支持批量）
         try:
@@ -49,8 +74,28 @@ class RealTimeTracker:
                 try:
                     ticker = tickers.tickers[symbol]
                     info = ticker.info
-                    # 优先使用 regularMarketPrice，否则使用 previousClose
-                    price = info.get("regularMarketPrice") or info.get("previousClose") or info.get("currentPrice")
+                    
+                    if is_market_open:
+                        # 交易时段：优先使用 regularMarketPrice（实时价格）
+                        price = info.get("regularMarketPrice") or info.get("currentPrice") or info.get("previousClose")
+                    else:
+                        # 盘后时段：使用当天的收盘价（regularMarketPreviousClose 或从历史数据获取）
+                        # 优先使用历史数据的 Close 价格（当天的收盘价）
+                        try:
+                            hist = ticker.history(period="1d")
+                            if hist is not None and not hist.empty and "Close" in hist.columns:
+                                close_price = hist["Close"].iloc[-1]
+                                if close_price and not pd.isna(close_price):
+                                    price = float(close_price)
+                                else:
+                                    # 如果历史数据不可用，使用 regularMarketPreviousClose
+                                    price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                            else:
+                                price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                        except:
+                            # 如果获取历史数据失败，使用 previousClose
+                            price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                    
                     if price:
                         prices[symbol] = float(price)
                 except Exception as e:
@@ -59,7 +104,23 @@ class RealTimeTracker:
                     try:
                         ticker = yf.Ticker(symbol)
                         info = ticker.info
-                        price = info.get("regularMarketPrice") or info.get("previousClose") or info.get("currentPrice")
+                        
+                        if is_market_open:
+                            price = info.get("regularMarketPrice") or info.get("currentPrice") or info.get("previousClose")
+                        else:
+                            try:
+                                hist = ticker.history(period="1d")
+                                if hist is not None and not hist.empty and "Close" in hist.columns:
+                                    close_price = hist["Close"].iloc[-1]
+                                    if close_price and not pd.isna(close_price):
+                                        price = float(close_price)
+                                    else:
+                                        price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                                else:
+                                    price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                            except:
+                                price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                        
                         if price:
                             prices[symbol] = float(price)
                     except:
@@ -104,16 +165,22 @@ class RealTimeTracker:
             positions_value += market_value
             
             # 计算持仓盈亏
-            cost_basis = position.total_cost
+            # 确保cost_basis正确计算（如果total_cost为0或缺失，从avg_cost计算）
+            cost_basis = position.total_cost if hasattr(position, 'total_cost') and position.total_cost > 0 else position.avg_cost * position.quantity
+            # 如果cost_basis仍然为0，使用avg_cost * quantity
+            if cost_basis <= 0:
+                cost_basis = position.avg_cost * position.quantity
+            # 计算未实现损益：市场价值 - 成本价格（不是市场价值本身）
             unrealized_pnl = market_value - cost_basis
             unrealized_pnl_pct = (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0
             
             positions_detail[symbol] = {
                 "quantity": position.quantity,
                 "avg_cost": position.avg_cost,
+                "total_cost": cost_basis,  # 添加total_cost字段，便于前端使用
+                "cost_basis": cost_basis,
                 "current_price": current_price,
                 "market_value": market_value,
-                "cost_basis": cost_basis,
             }
             
             positions_pnl[symbol] = {

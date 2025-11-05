@@ -76,3 +76,72 @@
 2025-11-04T15:14:07.895844 [Execute Trade] execute_daily_trade 完成，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
 2025-11-04T15:14:07.904947 [Execute Trade] 对话文件当前有 8 条记录 (路径: data\logs\discussion_actions.jsonl)
 2025-11-04T15:14:07.907326 [Execute Trade] 投资组合状态已保存
+2025-11-04T23:04:45.544710 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:04:45.545967 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:04:45.547027 [Execute Trade] 配置文件存在: True
+2025-11-04T23:04:45.548138 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:04:45.549149 [Execute Trade] 从 portfolio_state.json 加载投资组合
+2025-11-04T23:04:45.550353 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:04:45.551430 [Execute Trade] Portfolio: cash=1724.0363999999977, positions=3
+2025-11-04T23:05:51.025776 [Execute Trade] execute_daily_trade 调用成功，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:05:51.026949 [Execute Trade] execute_daily_trade 完成，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:05:51.035122 [Execute Trade] 对话文件当前有 16 条记录 (路径: data\logs\discussion_actions.jsonl)
+2025-11-04T23:05:51.037255 [Execute Trade] 投资组合状态已保存
+2025-11-04T23:07:42.329416 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:07:42.330833 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:07:42.331986 [Execute Trade] 配置文件存在: True
+2025-11-04T23:07:42.333121 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:07:42.334272 [Execute Trade] 加载投资组合失败，创建新组合: Insufficient cash: need 1079.97, have 558.89
+2025-11-04T23:07:42.335495 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:07:42.336726 [Execute Trade] Portfolio: cash=10000.0, positions=0
+2025-11-04T23:10:21.840400 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:10:21.841452 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:10:21.842515 [Execute Trade] 配置文件存在: True
+2025-11-04T23:10:21.843691 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:10:21.844832 [Execute Trade] 从 portfolio_state.json 加载投资组合
+2025-11-04T23:10:21.845822 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:10:21.846803 [Execute Trade] Portfolio: cash=10000.0, positions=0
+2025-11-04T23:11:27.744988 [Execute Trade] execute_daily_trade 调用成功，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:11:27.746140 [Execute Trade] execute_daily_trade 完成，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:11:27.756321 [Execute Trade] 对话文件当前有 9 条记录 (路径: data\logs\discussion_actions.jsonl)
+2025-11-04T23:11:27.758540 [Execute Trade] 投资组合状态已保存
+2025-11-04T23:11:51.648973 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:11:51.650229 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:11:51.651285 [Execute Trade] 配置文件存在: True
+2025-11-04T23:11:51.652509 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:11:51.653683 [Execute Trade] 从 portfolio_state.json 加载投资组合
+2025-11-04T23:11:51.654634 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:11:51.655719 [Execute Trade] Portfolio: cash=10000.0, positions=0
+2025-11-04T23:12:41.266486 [Execute Trade] execute_daily_trade 调用成功，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:12:41.267532 [Execute Trade] execute_daily_trade 完成，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:12:41.276376 [Execute Trade] 对话文件当前有 6 条记录 (路径: data\logs\discussion_actions.jsonl)
+2025-11-04T23:12:41.278501 [Execute Trade] 投资组合状态已保存
+2025-11-04T23:13:50.396358 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:13:50.397746 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:13:50.399017 [Execute Trade] 配置文件存在: True
+2025-11-04T23:13:50.400505 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:13:50.401714 [Execute Trade] 加载投资组合失败，创建新组合: Insufficient cash: need 1495.92, have 9.70
+2025-11-04T23:13:50.402780 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:13:50.403967 [Execute Trade] Portfolio: cash=10000.0, positions=0
+2025-11-04T23:14:43.682697 [Execute Trade] execute_daily_trade 调用成功，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:14:43.683805 [Execute Trade] execute_daily_trade 完成，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:14:43.693065 [Execute Trade] 对话文件当前有 12 条记录 (路径: data\logs\discussion_actions.jsonl)
+2025-11-04T23:14:43.695072 [Execute Trade] 投资组合状态已保存
+2025-11-04T23:15:24.948053 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:15:24.949507 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:15:24.950669 [Execute Trade] 配置文件存在: True
+2025-11-04T23:15:24.951977 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:15:24.953278 [Execute Trade] 从 portfolio_state.json 加载投资组合
+2025-11-04T23:15:24.954499 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:15:24.955616 [Execute Trade] Portfolio: cash=1737.34, positions=3
+2025-11-04T23:16:22.247321 [Execute Trade] execute_daily_trade 调用成功，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:16:22.248465 [Execute Trade] execute_daily_trade 完成，返回键: ['stance', 'decision', 'risk_report', 'discussion', 'rounds', 'symbols', 'top_signals', 'market_agent', 'market_analysis', 'last_prices', 'executed_trades', 'execution_errors', 'placed_orders', 'portfolio', 'portfolio_state']
+2025-11-04T23:16:22.256923 [Execute Trade] 对话文件当前有 18 条记录 (路径: data\logs\discussion_actions.jsonl)
+2025-11-04T23:16:22.259164 [Execute Trade] 投资组合状态已保存
+2025-11-04T23:26:59.076737 [Execute Trade] 开始执行交易循环...
+2025-11-04T23:26:59.078549 [Execute Trade] 尝试读取配置文件: C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\config\config.json
+2025-11-04T23:26:59.079710 [Execute Trade] 配置文件存在: True
+2025-11-04T23:26:59.080906 [Execute Trade] 使用 config.json 中的股票清单: 118 只股票
+2025-11-04T23:26:59.082109 [Execute Trade] 从 portfolio_state.json 加载投资组合
+2025-11-04T23:26:59.083285 [Execute Trade] 调用 execute_daily_trade: start=2025-10-25, end=2025-11-05, universe=118 只股票
+2025-11-04T23:26:59.084377 [Execute Trade] Portfolio: cash=10000.0, positions=0

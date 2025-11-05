@@ -1,22 +1,10 @@
 {
-  "cash": 5862.018199999999,
+  "timestamp": "2025-11-05T04:23:29.004847Z",
+  "cash": 10000.0,
+  "initial_value": 10000.0,
   "total_value": 10000.0,
-  "equity_value": 4137.9818,
-  "positions": {
-    "NVDA": {
-      "quantity": 7,
-      "avg_cost": 199.6499,
-      "current_value": 1397.5493000000001
-    },
-    "GOOG": {
-      "quantity": 5,
-      "avg_cost": 278.095,
-      "current_value": 1390.4750000000001
-    },
-    "AAPL": {
-      "quantity": 5,
-      "avg_cost": 269.9915,
-      "current_value": 1349.9575
-    }
-  }
+  "equity_value": 0.0,
+  "total_pnl": 0.0,
+  "total_pnl_pct": 0.0,
+  "positions": {}
 }

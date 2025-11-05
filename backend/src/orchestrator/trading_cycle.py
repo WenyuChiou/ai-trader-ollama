@@ -1,7 +1,8 @@
 # src/orchestrator/trading_cycle.py
 from __future__ import annotations
 from typing import Dict, Any, List, Tuple, Optional
-from datetime import date, timedelta, datetime, timezone
+from datetime import date, timedelta, datetime, timezone, time as dt_time
+from pathlib import Path  # 统一在文件顶部导入，避免函数内部重复导入导致的作用域问题
 
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
@@ -161,8 +162,7 @@ def execute_daily_trade(
     
     # 將對話寫入 discussion_actions.jsonl（供前端顯示）
     try:
-        # 嘗試多個可能的路徑
-        from pathlib import Path
+        # Path 已经在文件顶部导入，不需要重复导入
         import os
         
         # 選項1: 相對於當前工作目錄
@@ -277,7 +277,7 @@ def execute_daily_trade(
 
     # ---- (4) Trader Agent：交易決策 ----
     # 从配置文件中读取仓位限制参数（如果可用）
-    from pathlib import Path
+    # Path 已经在文件顶部导入，不需要重复导入
     import json
     
     position_config = {
@@ -315,128 +315,205 @@ def execute_daily_trade(
     from src.data.order_manager import OrderManager
     
     order_manager = OrderManager(root="data/logs")
-    today = end if end else date.today().isoformat()
+    
+    # 检查市场是否开盘，决定订单日期
+    now = datetime.now()
+    is_weekday = now.weekday() < 5
+    market_open_time = dt_time(9, 30)  # 9:30 AM
+    market_close_time = dt_time(16, 0)  # 4:00 PM
+    is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
+    
+    # 如果市场收盘后，订单日期应该是明天的日期
+    existing_pending_orders = []
+    if end:
+        today = end
+        existing_pending_orders = order_manager.load_pending_orders(order_date=today)
+    elif is_market_open:
+        today = date.today().isoformat()
+        existing_pending_orders = order_manager.load_pending_orders(order_date=today)
+    else:
+        # 收盘后：订单日期是明天的日期（规划明天的交易）
+        tomorrow = date.today() + timedelta(days=1)
+        # 如果明天是周末，找到下一个交易日
+        while tomorrow.weekday() >= 5:
+            tomorrow += timedelta(days=1)
+        today = tomorrow.isoformat()
+        
+        # 检查是否已经有明天的订单计划
+        existing_pending_orders = order_manager.load_pending_orders(order_date=today)
+        if existing_pending_orders:
+            print(f"[TRADING CYCLE] Market closed. Already have {len(existing_pending_orders)} pending orders for {today}, skipping new order creation.")
     
     executed_trades = []
     execution_errors = []
     placed_orders = []  # 記錄掛單
     
-    # 掛單策略：將所有訂單先掛單，收盤後再檢查成交
-    buy_orders = decision.get("buy_orders", [])
-    
-    # 按优先级排序（可以根据 signal_score 或其他指标排序）
-    # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
-    from math import floor
-    buy_orders_sorted = sorted(buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
-    
-    # 掛單策略：開盤前掛限價單（使用價格範圍最低價作為限價）
-    for order in buy_orders_sorted:
-        symbol = order.get("symbol")
-        buy_price = order.get("buy_price")  # 基准价格（用于计算）
-        buy_price_min = order.get("buy_price_min", buy_price)  # 价格范围下限（低买）
-        buy_price_max = order.get("buy_price_max", buy_price)  # 价格范围上限
-        quantity = order.get("quantity")
-        total_cost = order.get("total_cost")
+    # 如果已经有待处理订单（收盘后已规划），不创建新订单
+    if existing_pending_orders:
+        print(f"[TRADING CYCLE] Skipping order creation - {len(existing_pending_orders)} pending orders already exist for {today}")
+    else:
+        # === OPTIMIZATION: Position limits and cooldown checks ===
+        from src.data.trade_history_tracker import TradeHistoryTracker
+        from src.utils.config_loader import load_config
         
-        if symbol and buy_price and quantity:
-            try:
-                # 檢查現金是否足夠
-                # 使用 buy_price_min 作為限價（但更激進，提高成交率）
-                # buy_price_min 現在是 99.5% 當前價格，而不是 98%
-                limit_price = buy_price_min  # 使用價格範圍最低價作為限價（99.5%當前價格）
-                estimated_cost = limit_price * quantity
-                
-                if estimated_cost > portfolio.cash:
-                    # 現金不足，減少數量
-                    max_affordable_qty = floor(portfolio.cash / limit_price)
-                    if max_affordable_qty > 0:
-                        quantity = max_affordable_qty
-                        total_cost = limit_price * quantity
-                    else:
-                        execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${estimated_cost:.2f}, have ${portfolio.cash:.2f})")
-                        continue
-                
-                # 掛單：創建限價買單（使用 buy_price_min 作為限價）
-                placed_order = order_manager.place_order(
-                    symbol=symbol,
-                    action="BUY",
-                    quantity=quantity,
-                    limit_price=limit_price,  # 限價：使用價格範圍最低價
-                    price_range={
-                        "min": buy_price_min,
-                        "max": buy_price_max,
-                    },
-                    order_date=today,
-                )
-                placed_orders.append(placed_order)
-                
-                # 注意：訂單已掛單，但尚未執行
-                # 實際執行會在收盤後通過 check_order_fills() 檢查
-                print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
-                
-            except Exception as e:
-                execution_errors.append(f"BUY {symbol} order placement failed: {e}")
-                trade_logger.log(
-                    symbol=symbol,
-                    action="BUY",
-                    price=buy_price,
-                    quantity=quantity,
-                    amount=total_cost,
-                    status="FAILED",
-                    reason=f"Order placement failed: {e}",
-                    rationale=decision.get("rationale"),
-                )
-    
-    # 执行卖出订单
-    sell_orders = decision.get("sell_orders", [])
-    for order in sell_orders:
-        symbol = order.get("symbol")
-        sell_price = order.get("sell_price")  # 基准价格（用于计算）
-        sell_price_min = order.get("sell_price_min", sell_price)  # 价格范围下限
-        sell_price_max = order.get("sell_price_max", sell_price)  # 价格范围上限（高卖）
-        quantity = order.get("quantity")
-        total_proceeds = order.get("total_proceeds")
+        # Load configuration for limits
+        config = load_config()
+        MAX_POSITIONS = config.get("max_positions", 10)  # Maximum number of different stocks
+        TRADE_COOLDOWN_HOURS = config.get("trade_cooldown_hours", 24.0)  # 24-hour cooldown
+        MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)  # Keep 20% cash
         
-        if symbol and sell_price and quantity:
-            try:
-                # 檢查持倉是否足夠
-                pos = portfolio.get_position(symbol)
-                if not pos or pos.quantity < quantity:
-                    execution_errors.append(f"SELL {symbol}: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
+        # Initialize trade history tracker
+        trade_history = TradeHistoryTracker(root="data/logs")
+        
+        # Check current position count
+        current_position_count = len(portfolio._positions)
+        portfolio_value = portfolio.value(last_prices)
+        
+        # Calculate available cash (after reserve)
+        required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
+        available_for_trading = max(0, portfolio.cash - required_cash_reserve)
+        
+        print(f"[OPTIMIZATION] Position limits: {current_position_count}/{MAX_POSITIONS} positions, "
+              f"Available cash: ${available_for_trading:.2f} (reserve: ${required_cash_reserve:.2f})")
+        
+        # 掛單策略：將所有訂單先掛單，收盤後再檢查成交
+        buy_orders = decision.get("buy_orders", [])
+        
+        # Filter buy orders based on optimization rules
+        filtered_buy_orders = []
+        for order in buy_orders:
+            symbol = order.get("symbol")
+            
+            # Check 1: Position limit
+            if current_position_count >= MAX_POSITIONS:
+                # Check if we already have this position
+                if symbol not in portfolio._positions:
+                    execution_errors.append(f"BUY {symbol} skipped: max positions reached ({current_position_count}/{MAX_POSITIONS})")
                     continue
-                
-                # 掛單：創建限價賣單（使用 sell_price_max 作為限價，高賣策略）
-                limit_price = sell_price_max  # 使用價格範圍最高價作為限價
-                
-                placed_order = order_manager.place_order(
-                    symbol=symbol,
-                    action="SELL",
-                    quantity=quantity,
-                    limit_price=limit_price,  # 限價：使用價格範圍最高價
-                    price_range={
-                        "min": sell_price_min,
-                        "max": sell_price_max,
-                    },
-                    order_date=today,
-                )
-                placed_orders.append(placed_order)
-                
-                # 注意：訂單已掛單，但尚未執行
-                # 實際執行會在收盤後通過 check_order_fills() 檢查
-                print(f"[ORDER PLACED] SELL {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
-                
-            except Exception as e:
-                execution_errors.append(f"SELL {symbol} order placement failed: {e}")
-                trade_logger.log(
-                    symbol=symbol,
-                    action="SELL",
-                    price=sell_price,
-                    quantity=quantity,
-                    amount=total_proceeds,
-                    status="FAILED",
-                    reason=f"Execution failed: {e}",
-                    rationale=decision.get("rationale"),
-                )
+            
+            # Check 2: Cooldown period
+            can_trade, hours_remaining = trade_history.can_trade(symbol, TRADE_COOLDOWN_HOURS)
+            if not can_trade:
+                execution_errors.append(f"BUY {symbol} skipped: cooldown period active ({hours_remaining:.1f} hours remaining)")
+                continue
+            
+            filtered_buy_orders.append(order)
+        
+        # 按优先级排序（可以根据 signal_score 或其他指标排序）
+        # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
+        from math import floor
+        buy_orders_sorted = sorted(filtered_buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
+        
+        # 掛單策略：開盤前掛限價單（使用價格範圍最低價作為限價）
+        for order in buy_orders_sorted:
+            symbol = order.get("symbol")
+            buy_price = order.get("buy_price")  # 基准价格（用于计算）
+            buy_price_min = order.get("buy_price_min", buy_price)  # 价格范围下限（低买）
+            buy_price_max = order.get("buy_price_max", buy_price)  # 价格范围上限
+            quantity = order.get("quantity")
+            total_cost = order.get("total_cost")
+            
+            if symbol and buy_price and quantity:
+                try:
+                    # 檢查現金是否足夠
+                    # 使用 buy_price_min 作為限價（但更激進，提高成交率）
+                    # buy_price_min 現在是 99.5% 當前價格，而不是 98%
+                    limit_price = buy_price_min  # 使用價格範圍最低價作為限價（99.5%當前價格）
+                    estimated_cost = limit_price * quantity
+                    
+                    # Check 3: Cash reserve (use available_for_trading instead of full cash)
+                    if estimated_cost > available_for_trading:
+                        # 現金不足（考慮保留比例），減少數量
+                        max_affordable_qty = floor(available_for_trading / limit_price)
+                        if max_affordable_qty > 0:
+                            quantity = max_affordable_qty
+                            total_cost = limit_price * quantity
+                            print(f"[OPTIMIZATION] Reduced {symbol} quantity to {quantity} due to cash reserve limit")
+                        else:
+                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash after reserve (need ${estimated_cost:.2f}, available ${available_for_trading:.2f})")
+                            continue
+                    
+                    # 掛單：創建限價買單（使用 buy_price_min 作為限價）
+                    placed_order = order_manager.place_order(
+                        symbol=symbol,
+                        action="BUY",
+                        quantity=quantity,
+                        limit_price=limit_price,  # 限價：使用價格範圍最低價
+                        price_range={
+                            "min": buy_price_min,
+                            "max": buy_price_max,
+                        },
+                        order_date=today,
+                    )
+                    placed_orders.append(placed_order)
+                    
+                    # 注意：訂單已掛單，但尚未執行
+                    # 實際執行會在收盤後通過 check_order_fills() 檢查
+                    print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
+                    
+                except Exception as e:
+                    execution_errors.append(f"BUY {symbol} order placement failed: {e}")
+                    trade_logger.log(
+                        symbol=symbol,
+                        action="BUY",
+                        price=buy_price,
+                        quantity=quantity,
+                        amount=total_cost,
+                        status="FAILED",
+                        reason=f"Order placement failed: {e}",
+                        rationale=decision.get("rationale"),
+                    )
+        
+        # 执行卖出订单
+        sell_orders = decision.get("sell_orders", [])
+        for order in sell_orders:
+            symbol = order.get("symbol")
+            sell_price = order.get("sell_price")  # 基准价格（用于计算）
+            sell_price_min = order.get("sell_price_min", sell_price)  # 价格范围下限
+            sell_price_max = order.get("sell_price_max", sell_price)  # 价格范围上限（高卖）
+            quantity = order.get("quantity")
+            total_proceeds = order.get("total_proceeds")
+            
+            if symbol and sell_price and quantity:
+                try:
+                    # 檢查持倉是否足夠
+                    pos = portfolio.get_position(symbol)
+                    if not pos or pos.quantity < quantity:
+                        execution_errors.append(f"SELL {symbol}: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
+                        continue
+                    
+                    # 掛單：創建限價賣單（使用 sell_price_max 作為限價，高賣策略）
+                    limit_price = sell_price_max  # 使用價格範圍最高價作為限價
+                    
+                    placed_order = order_manager.place_order(
+                        symbol=symbol,
+                        action="SELL",
+                        quantity=quantity,
+                        limit_price=limit_price,  # 限價：使用價格範圍最高價
+                        price_range={
+                            "min": sell_price_min,
+                            "max": sell_price_max,
+                        },
+                        order_date=today,
+                    )
+                    placed_orders.append(placed_order)
+                    
+                    # 注意：訂單已掛單，但尚未執行
+                    # 實際執行會在收盤後通過 check_order_fills() 檢查
+                    print(f"[ORDER PLACED] SELL {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
+                    
+                except Exception as e:
+                    execution_errors.append(f"SELL {symbol} order placement failed: {e}")
+                    trade_logger.log(
+                        symbol=symbol,
+                        action="SELL",
+                        price=sell_price,
+                        quantity=quantity,
+                        amount=total_proceeds,
+                        status="FAILED",
+                        reason=f"Execution failed: {e}",
+                        rationale=decision.get("rationale"),
+                    )
     
     # ---- 計算當前持倉 P&L（用於後端展示）----
     # 交易执行后，重新计算持仓信息（包含新买入的股票）
@@ -447,9 +524,13 @@ def execute_daily_trade(
         portfolio_value = portfolio.value(last_prices)
         for symbol, pos in portfolio._positions.items():
             current_price = last_prices.get(symbol, pos.avg_cost)
+            # 确保total_cost正确计算（用于P&L计算）
+            total_cost = pos.total_cost if hasattr(pos, 'total_cost') and pos.total_cost > 0 else pos.avg_cost * pos.quantity
             updated_positions_info[symbol] = {
                 "quantity": pos.quantity,
                 "avg_cost": pos.avg_cost,
+                "total_cost": total_cost,
+                "cost_basis": total_cost,  # 添加cost_basis字段，便于前端使用
                 "current_price": current_price,
                 "market_value": pos.quantity * current_price,
             }

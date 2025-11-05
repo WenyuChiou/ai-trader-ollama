@@ -28,14 +28,14 @@ This directory contains all detailed documentation for the AI-Trader Ollama syst
   - Real-time monitoring dashboard guide
 
 ### System Architecture
-- **[Complete System Flow](../COMPLETE_SYSTEM_FLOW.md)** - Complete frontend-backend flow documentation
+- **[Complete System Flow](archive/root_files/COMPLETE_SYSTEM_FLOW.md)** - Complete frontend-backend flow documentation
   - System architecture overview
   - Frontend/backend processes
   - Data flow and trading hours logic
   - API endpoint mapping
   - Key component interactions
 
-- **[User Perspective Review](../USER_PERSPECTIVE_REVIEW.md)** - User-centric flow review and improvements
+- **[User Perspective Review](archive/root_files/USER_PERSPECTIVE_REVIEW.md)** - User-centric flow review and improvements
   - User expectations during trading/non-trading hours
   - Continuous trading logic
   - Net value display improvements
@@ -97,12 +97,17 @@ This directory contains all detailed documentation for the AI-Trader Ollama syst
 
 All historical and detailed documentation has been moved to the [archive](archive/) directory for reference:
 
+- **Backend Documentation**: [archive/backend/](archive/backend/) - Backend-specific guides and fixes
+- **Root Files**: [archive/root_files/](archive/root_files/) - Historical root-level documentation
+- **Scripts**: [archive/scripts/](archive/scripts/) - Test scripts and utilities
+- **Source Code Archive**: [archive/src/](archive/src/) - Legacy source code structure
+
+Includes:
 - Fix guides and troubleshooting documents
 - Verification reports and summaries
 - Performance optimization notes
 - Testing guides and simulation documentation
-
-To browse archived documentation, see: [docs/archive/](archive/)
+- Legacy test scripts and utilities
 
 ---
 

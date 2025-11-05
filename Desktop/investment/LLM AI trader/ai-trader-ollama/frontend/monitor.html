@@ -3973,6 +3973,35 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            // 立即確保對話框區域可見（不需要等待數據）
+            const convSection = document.getElementById('conversationsOverviewSection');
+            if (convSection) {
+                convSection.style.display = 'block';
+                convSection.style.visibility = 'visible';
+                convSection.style.opacity = '1';
+                convSection.style.position = 'relative';
+                convSection.style.zIndex = '10';
+                console.log('[Init] Ensured conversations section is visible on page load');
+            }
+            
+            // 確保所有主要區塊都可見
+            const mainContent = document.getElementById('mainContent');
+            if (mainContent) {
+                mainContent.style.display = 'block';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';
+            }
+            
+            const chartSection = document.getElementById('chartSection');
+            if (chartSection) {
+                chartSection.style.display = 'block';
+            }
+            
+            const positionsSection = document.getElementById('positionsSection');
+            if (positionsSection) {
+                positionsSection.style.display = 'block';
+            }
+            
             setupAutoRefresh();
             
             // 只刷新数据，不自动执行交易循环

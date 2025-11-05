@@ -533,19 +533,33 @@ async def get_real_time_portfolio():
                 if symbols_missing_price:
                     try:
                         from src.tools.market_tools import fetch_market_batch
-                        # 只获取缺失价格的股票（减少耗时）
-                        market_data = fetch_market_batch.invoke({"symbols": symbols_missing_price[:10], "start": date.today().isoformat(), "end": date.today().isoformat()})
-                        stocks = market_data.get("stocks", {})
-                        for sym in symbols_missing_price:
-                            if sym in stocks and "price" in stocks[sym]:
-                                last_prices[sym] = float(stocks[sym]["price"])
-                            elif sym in positions and isinstance(positions[sym], dict):
-                                last_prices[sym] = float(positions[sym].get("avg_cost", 0))
+                        # 只获取缺失价格的股票（减少耗时，分批处理）
+                        batch_size = 10
+                        for i in range(0, len(symbols_missing_price), batch_size):
+                            batch = symbols_missing_price[i:i+batch_size]
+                            try:
+                                market_data = fetch_market_batch.invoke({"symbols": batch, "start": date.today().isoformat(), "end": date.today().isoformat()})
+                                stocks = market_data.get("stocks", {})
+                                for sym in batch:
+                                    if sym in stocks and "price" in stocks[sym] and stocks[sym]["price"]:
+                                        last_prices[sym] = float(stocks[sym]["price"])
+                                    elif sym in positions and isinstance(positions[sym], dict):
+                                        last_prices[sym] = float(positions[sym].get("avg_cost", 0))
+                            except Exception as batch_err:
+                                # If batch fails, use avg_cost as fallback for this batch
+                                for sym in batch:
+                                    if sym in positions and isinstance(positions[sym], dict):
+                                        last_prices[sym] = float(positions[sym].get("avg_cost", 0))
                     except Exception:
-                        # If price fetch fails, use avg_cost as fallback
+                        # If all price fetch fails, use avg_cost as fallback for all
                         for sym in symbols_missing_price:
                             if sym in positions and isinstance(positions[sym], dict):
                                 last_prices[sym] = float(positions[sym].get("avg_cost", 0))
+                
+                # 确保所有symbol都有价格（final fallback）
+                for sym, pos_info in positions.items():
+                    if isinstance(pos_info, dict) and sym not in last_prices:
+                        last_prices[sym] = float(pos_info.get("avg_cost", 0))
                 
                 # Calculate positions detail and P&L with real-time prices
                 total_value = portfolio.cash

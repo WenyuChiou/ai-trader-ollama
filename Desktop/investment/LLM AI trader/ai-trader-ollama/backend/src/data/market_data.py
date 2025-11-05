@@ -54,10 +54,24 @@ def get_stock_price(symbol: str, start: str, end: str, interval: str = "1d",
 
 def get_multi_prices(symbols: List[str], start: str, end: str, interval: str = "1d",
                      auto_adjust: bool = False) -> Dict[str, pd.DataFrame]:
-    """Download multiple symbols; returns {symbol: DataFrame}."""
+    """
+    Download multiple symbols; returns {symbol: DataFrame}.
+    Silently skips symbols that fail to download (no error raised).
+    """
     out: Dict[str, pd.DataFrame] = {}
     for s in symbols:
-        out[s] = get_stock_price(s, start, end, interval=interval, auto_adjust=auto_adjust)
+        try:
+            df = get_stock_price(s, start, end, interval=interval, auto_adjust=auto_adjust)
+            if df is not None and not df.empty:
+                out[s] = df
+            else:
+                # Empty DataFrame - skip silently
+                pass
+        except Exception as e:
+            # Silently skip failed downloads (possibly delisted or data unavailable)
+            # Uncomment below for debugging:
+            # print(f"Failed download: ['{s}']: {type(e).__name__}('{e}')")
+            pass
     return out
 
 # ---------------- VIX helpers ----------------

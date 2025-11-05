@@ -426,6 +426,40 @@
             border-radius: 12px;
         }
 
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: #f3f4f6;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .view-toggle-btn {
+            padding: 6px 14px;
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-toggle-btn:hover {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+
+        .view-toggle-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .portfolio-view {
+            margin-top: 0;
+        }
+
         .table-container {
             overflow-x: auto;
         }
@@ -934,25 +968,47 @@
             <div class="positions-section" id="positionsSection" style="display: none;">
                 <div class="section-header">
                     <h2>Current Holdings</h2>
-                    <span class="position-count" id="positionCount">0 holdings</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="position-count" id="positionCount">0 holdings</span>
+                        <div class="view-toggle">
+                            <button id="viewTableBtn" class="view-toggle-btn active" onclick="switchPortfolioView('table')">📊 Table</button>
+                            <button id="viewDistributionBtn" class="view-toggle-btn" onclick="switchPortfolioView('distribution')">🥧 Distribution</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="table-container">
-                    <table id="positionsTable">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Shares</th>
-                                <th>Avg Cost</th>
-                                <th>Current Price</th>
-                                <th>Market Value</th>
-                                <th>Unrealized P&L</th>
-                                <th>P&L %</th>
-                                <th>Weight</th>
-                            </tr>
-                        </thead>
-                        <tbody id="positionsBody"></tbody>
-                        <tfoot id="positionsFooter"></tfoot>
-                    </table>
+                <!-- Table View -->
+                <div id="portfolioTableView" class="portfolio-view">
+                    <div class="table-container">
+                        <table id="positionsTable">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Shares</th>
+                                    <th>Avg Cost</th>
+                                    <th>Current Price</th>
+                                    <th>Market Value</th>
+                                    <th>Unrealized P&L</th>
+                                    <th>P&L %</th>
+                                    <th>Weight</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positionsBody"></tbody>
+                            <tfoot id="positionsFooter"></tfoot>
+                        </table>
+                    </div>
+                </div>
+                <!-- Distribution View -->
+                <div id="portfolioDistributionView" class="portfolio-view" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+                        <div>
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #1f2937;">Portfolio Allocation</h3>
+                            <svg id="portfolioDistributionChart" width="400" height="400" style="max-width: 100%;"></svg>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #1f2937;">Breakdown</h3>
+                            <div id="portfolioDistributionLegend" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1096,6 +1152,7 @@
         let AUTO_TRADE_INTERVAL_OPEN_MS = 30 * 60 * 1000; // 30 minutes during market hours
         let AUTO_TRADE_INTERVAL_CLOSED_MS = 60 * 60 * 1000; // 60 minutes off-hours to check-and-plan-once
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
+        let currentPortfolio = null; // Store current portfolio data for distribution view
         const CONVERSATIONS_LIMIT = 30; // 限制对话数量（优化：减少DOM操作）
         const TRADES_LIMIT = 30; // 限制交易数量（优化：减少DOM操作）
         let refreshTimer = null;
@@ -2559,6 +2616,9 @@
 
         // Render positions table
         function renderPositions(portfolio) {
+            // Store portfolio data for distribution view
+            currentPortfolio = portfolio;
+            
             const positions = portfolio.positions || {};
             const positionsPnL = portfolio.positions_pnl || {};
             // 确保 total_value 正确计算（如果后端返回错误，使用 cash + equity_value）
@@ -2648,6 +2708,207 @@
                     <td>${totalWeight}%</td>
                 </tr>
             `;
+            
+            // Update distribution chart
+            drawPortfolioDistribution(portfolio.positions || {}, portfolio.cash || 0, totalValue);
+        }
+
+        // Switch portfolio view (table or distribution)
+        function switchPortfolioView(view) {
+            const tableView = document.getElementById('portfolioTableView');
+            const distributionView = document.getElementById('portfolioDistributionView');
+            const tableBtn = document.getElementById('viewTableBtn');
+            const distributionBtn = document.getElementById('viewDistributionBtn');
+            
+            if (view === 'table') {
+                tableView.style.display = 'block';
+                distributionView.style.display = 'none';
+                tableBtn.classList.add('active');
+                distributionBtn.classList.remove('active');
+            } else {
+                tableView.style.display = 'none';
+                distributionView.style.display = 'block';
+                tableBtn.classList.remove('active');
+                distributionBtn.classList.add('active');
+                
+                // Redraw distribution chart when switching to distribution view
+                const portfolio = currentPortfolio || {};
+                const totalValue = portfolio.total_value || (portfolio.cash || 0) + (portfolio.equity_value || 0);
+                drawPortfolioDistribution(portfolio.positions || {}, portfolio.cash || 0, totalValue);
+            }
+        }
+
+        // Draw portfolio distribution chart (pie chart)
+        function drawPortfolioDistribution(positions, cash, totalValue) {
+            const svg = document.getElementById('portfolioDistributionChart');
+            const legend = document.getElementById('portfolioDistributionLegend');
+            
+            if (!svg || !legend) return;
+            
+            svg.innerHTML = '';
+            legend.innerHTML = '';
+            
+            if (totalValue === 0) {
+                svg.innerHTML = '<text x="200" y="200" text-anchor="middle" fill="#6b7280" font-size="14">No portfolio data</text>';
+                return;
+            }
+            
+            const centerX = 200;
+            const centerY = 200;
+            const radius = 150;
+            const innerRadius = 80; // For donut chart
+            
+            // Prepare data: cash + positions
+            const data = [];
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe',
+                '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#a8edea',
+                '#fed6e3', '#a8caba', '#5d4e75', '#ffecd2', '#fcb69f'
+            ];
+            
+            // Cash
+            if (cash > 0) {
+                data.push({
+                    label: 'Cash',
+                    value: cash,
+                    percentage: (cash / totalValue * 100).toFixed(1),
+                    color: '#10b981'
+                });
+            }
+            
+            // Positions (sorted by value, top 10)
+            const positionsArray = Object.entries(positions)
+                .map(([symbol, pos]) => ({
+                    symbol,
+                    value: pos.market_value || 0,
+                    quantity: pos.quantity || 0
+                }))
+                .filter(p => p.value > 0)
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 14); // Top 14 positions + cash = 15 total
+            
+            positionsArray.forEach((pos, idx) => {
+                data.push({
+                    label: pos.symbol,
+                    value: pos.value,
+                    percentage: (pos.value / totalValue * 100).toFixed(1),
+                    color: colors[idx % colors.length]
+                });
+            });
+            
+            // Draw white circle in center for donut effect (draw first, so segments overlay it)
+            const centerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            centerCircle.setAttribute('cx', centerX);
+            centerCircle.setAttribute('cy', centerY);
+            centerCircle.setAttribute('r', innerRadius);
+            centerCircle.setAttribute('fill', '#ffffff');
+            centerCircle.setAttribute('stroke', '#e5e7eb');
+            centerCircle.setAttribute('stroke-width', '1');
+            svg.appendChild(centerCircle);
+            
+            // Calculate angles
+            let currentAngle = -Math.PI / 2; // Start from top
+            const total = data.reduce((sum, d) => sum + d.value, 0);
+            
+            data.forEach((item, idx) => {
+                const angle = (item.value / total) * 2 * Math.PI;
+                const endAngle = currentAngle + angle;
+                
+                // Outer arc
+                const startX = centerX + radius * Math.cos(currentAngle);
+                const startY = centerY + radius * Math.sin(currentAngle);
+                const endX = centerX + radius * Math.cos(endAngle);
+                const endY = centerY + radius * Math.sin(endAngle);
+                
+                const largeArcFlag = angle > Math.PI ? 1 : 0;
+                
+                // Create donut segment (outer arc + inner arc + two lines)
+                const innerStartX = centerX + innerRadius * Math.cos(currentAngle);
+                const innerStartY = centerY + innerRadius * Math.sin(currentAngle);
+                const innerEndX = centerX + innerRadius * Math.cos(endAngle);
+                const innerEndY = centerY + innerRadius * Math.sin(endAngle);
+                
+                const donutPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const donutPathData = [
+                    `M ${startX} ${startY}`, // Start at outer arc start
+                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`, // Outer arc
+                    `L ${innerEndX} ${innerEndY}`, // Line to inner arc end
+                    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${innerStartX} ${innerStartY}`, // Inner arc (reverse)
+                    'Z' // Close path
+                ].join(' ');
+                donutPath.setAttribute('d', donutPathData);
+                donutPath.setAttribute('fill', item.color);
+                donutPath.setAttribute('stroke', '#ffffff');
+                donutPath.setAttribute('stroke-width', '2');
+                donutPath.style.cursor = 'pointer';
+                donutPath.setAttribute('data-index', idx);
+                
+                // Add hover effect
+                donutPath.addEventListener('mouseenter', function() {
+                    this.style.opacity = '0.8';
+                });
+                donutPath.addEventListener('mouseleave', function() {
+                    this.style.opacity = '1';
+                });
+                
+                svg.appendChild(donutPath);
+                
+                // Add label in the middle of the arc
+                const labelAngle = currentAngle + angle / 2;
+                const labelRadius = (radius + innerRadius) / 2;
+                const labelX = centerX + labelRadius * Math.cos(labelAngle);
+                const labelY = centerY + labelRadius * Math.sin(labelAngle);
+                
+                if (item.percentage > 3) { // Only show label if > 3%
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', labelX);
+                    text.setAttribute('y', labelY);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'middle');
+                    text.setAttribute('fill', '#1f2937');
+                    text.setAttribute('font-size', '12');
+                    text.setAttribute('font-weight', '600');
+                    text.textContent = item.label;
+                    svg.appendChild(text);
+                }
+                
+                // Legend item
+                const legendItem = document.createElement('div');
+                legendItem.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; border-left: 3px solid ' + item.color + ';';
+                legendItem.innerHTML = `
+                    <div style="width: 16px; height: 16px; background: ${item.color}; border-radius: 3px;"></div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; color: #1f2937; font-size: 13px;">${escapeHtml(item.label)}</div>
+                        <div style="font-size: 11px; color: #6b7280;">${item.percentage}% • ${formatCurrency(item.value)}</div>
+                    </div>
+                `;
+                legend.appendChild(legendItem);
+                
+                currentAngle = endAngle;
+            });
+            
+            // Center text showing total value
+            const centerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            centerText.setAttribute('x', centerX);
+            centerText.setAttribute('y', centerY - 10);
+            centerText.setAttribute('text-anchor', 'middle');
+            centerText.setAttribute('dominant-baseline', 'middle');
+            centerText.setAttribute('fill', '#1f2937');
+            centerText.setAttribute('font-size', '18');
+            centerText.setAttribute('font-weight', '700');
+            centerText.textContent = 'Total';
+            svg.appendChild(centerText);
+            
+            const centerValue = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            centerValue.setAttribute('x', centerX);
+            centerValue.setAttribute('y', centerY + 15);
+            centerValue.setAttribute('text-anchor', 'middle');
+            centerValue.setAttribute('dominant-baseline', 'middle');
+            centerValue.setAttribute('fill', '#667eea');
+            centerValue.setAttribute('font-size', '16');
+            centerValue.setAttribute('font-weight', '600');
+            centerValue.textContent = formatCurrency(totalValue);
+            svg.appendChild(centerValue);
         }
 
         // Draw chart

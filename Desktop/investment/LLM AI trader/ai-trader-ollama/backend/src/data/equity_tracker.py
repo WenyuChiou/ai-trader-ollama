@@ -51,13 +51,15 @@ class EquityTracker:
         self,
         date_str: str,
         portfolio_snapshot: Dict[str, Any],
+        update_existing: bool = True,
     ) -> None:
         """
-        记录每日净值
+        记录每日净值（改进：同一天只保留一条记录，更新而非追加）
         
         参数:
         - date_str: 日期 (YYYY-MM-DD)
         - portfolio_snapshot: Portfolio 快照（从 trading_cycle 返回的 portfolio 字段）
+        - update_existing: 如果同一天已有记录，是否更新（True）或追加（False）
         """
         record = {
             "date": date_str,
@@ -67,14 +69,42 @@ class EquityTracker:
             "total_value": float(portfolio_snapshot.get("total_value", 0.0)),
             "total_pnl": float(portfolio_snapshot.get("total_pnl", 0.0)),
             "total_pnl_pct": float(portfolio_snapshot.get("total_pnl_pct", 0.0)),
-            "positions": portfolio_snapshot.get("positions_detail", {}),
+            "positions": portfolio_snapshot.get("positions_detail", portfolio_snapshot.get("positions", {})),
         }
         
-        # 追加到 JSONL 文件
-        with self.equity_file.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        
-        print(f"[EQUITY] Recorded daily equity for {date_str}: ${record['total_value']:.2f}")
+        if update_existing and self.equity_file.exists():
+            # 读取所有记录，过滤掉同一天的旧记录
+            existing_records = []
+            try:
+                with self.equity_file.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            existing_record = json.loads(line)
+                            # 如果不是同一天的记录，保留
+                            if existing_record.get("date") != date_str:
+                                existing_records.append(existing_record)
+            except Exception as e:
+                print(f"[EQUITY WARN] Failed to read existing records: {e}")
+                existing_records = []
+            
+            # 添加新记录
+            existing_records.append(record)
+            
+            # 按日期排序
+            existing_records.sort(key=lambda x: x.get("date", ""))
+            
+            # 写回文件
+            with self.equity_file.open("w", encoding="utf-8") as f:
+                for r in existing_records:
+                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            
+            print(f"[EQUITY] Updated daily equity for {date_str}: ${record['total_value']:.2f}")
+        else:
+            # 追加到 JSONL 文件（原有逻辑）
+            with self.equity_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            
+            print(f"[EQUITY] Recorded daily equity for {date_str}: ${record['total_value']:.2f}")
     
     def load_equity_history(
         self,

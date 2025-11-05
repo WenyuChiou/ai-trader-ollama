@@ -901,17 +901,20 @@ def execute_daily_trade(
     try:
         from src.data.memory_manager import MemoryManager
         from src.data.equity_tracker import EquityTracker
+        from src.data.daily_portfolio_logger import DailyPortfolioLogger
         
         memory_manager = MemoryManager(root="data/logs")
         equity_tracker = EquityTracker(root="data/logs")
+        portfolio_logger = DailyPortfolioLogger(root="data/logs")
         
         # 使用 end 日期作为今天的日期（如果 end 是 None，使用当前日期）
         today = end if end else date.today().isoformat()
         
-        # Portfolio 快照
+        # Portfolio 快照（添加positions_detail用于JSON记录）
         portfolio_snapshot = {
             "cash": portfolio.cash if portfolio else 0.0,
             "positions": updated_positions_info,
+            "positions_detail": updated_positions_info,  # 添加详细持仓信息
             "total_value": portfolio_value,
             "equity_value": equity_value,
             "total_pnl": total_pnl,
@@ -936,6 +939,37 @@ def execute_daily_trade(
         equity_tracker.record_daily_equity(
             date_str=today,
             portfolio_snapshot=portfolio_snapshot,
+        )
+        
+        # 记录每日持仓（JSON格式，用于RiskAnalyst输入）
+        # 提取交易动作（如果有）
+        this_action = None
+        if executed_trades and len(executed_trades) > 0:
+            # 使用最新的交易动作
+            latest_trade = executed_trades[-1]
+            this_action = {
+                "action": latest_trade.get("action", "hold").lower(),
+                "symbol": latest_trade.get("symbol"),
+                "amount": latest_trade.get("quantity", 0),
+                "price": latest_trade.get("fill_price") or latest_trade.get("limit_price") or 0.0,
+            }
+        
+        # 提取风险指标（从risk_report）
+        risk_metrics = {}
+        if risk_report:
+            current_pos_risk = risk_report.get("current_position_risk", {})
+            risk_metrics = {
+                "total_unrealized_pnl": current_pos_risk.get("total_unrealized_pnl", 0.0),
+                "total_unrealized_pnl_pct": current_pos_risk.get("total_unrealized_pnl_pct", 0.0),
+                "position_concentration": current_pos_risk.get("position_concentration", 0.0),
+                "overall_exposure": current_pos_risk.get("overall_exposure", 0.0),
+            }
+        
+        portfolio_logger.record_daily_portfolio(
+            date_str=today,
+            portfolio_snapshot=portfolio_snapshot,
+            this_action=this_action,
+            risk_metrics=risk_metrics,
         )
 
         # 额外：写入最新组合状态（方便测试与前端直接读取）

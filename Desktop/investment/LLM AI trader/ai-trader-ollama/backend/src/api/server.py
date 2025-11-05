@@ -607,6 +607,34 @@ async def get_real_time_portfolio():
                     "source": "fallback_realtime",
                 }
         
+        # 检查并记录每日净值（如果当天还没有记录）
+        try:
+            from src.data.equity_tracker import EquityTracker
+            today_str = date.today().isoformat()
+            equity_tracker = EquityTracker(root="data/logs")
+            
+            # 检查今天是否已有记录
+            existing_records = equity_tracker.load_equity_history(start_date=today_str, end_date=today_str)
+            if not existing_records:
+                # 如果今天还没有记录，记录一次
+                portfolio_snapshot_for_record = {
+                    "cash": snapshot.get("cash", 0.0),
+                    "equity_value": snapshot.get("equity_value", 0.0),
+                    "total_value": snapshot.get("total_value", 0.0),
+                    "total_pnl": snapshot.get("total_pnl", 0.0),
+                    "total_pnl_pct": snapshot.get("total_pnl_pct", 0.0),
+                    "positions_detail": snapshot.get("positions", {}),
+                }
+                equity_tracker.record_daily_equity(
+                    date_str=today_str,
+                    portfolio_snapshot=portfolio_snapshot_for_record,
+                    update_existing=True,
+                )
+                print(f"[Portfolio API] Auto-recorded daily equity for {today_str}")
+        except Exception as e:
+            print(f"[Portfolio API] Failed to auto-record daily equity: {e}")
+            # 不影响主流程
+        
         return {"ok": True, **snapshot}
     except Exception as e:
         import traceback

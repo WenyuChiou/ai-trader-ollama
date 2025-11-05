@@ -143,8 +143,11 @@ class EquityTracker:
                         
                         records.append(record)
             
-            # 按日期排序
-            records.sort(key=lambda x: x.get("date", ""))
+            # 按日期和时间戳排序（支持同一天内的多条记录）
+            records.sort(key=lambda x: (
+                x.get("date", ""),
+                x.get("timestamp", x.get("date", ""))
+            ))
             
             # 限制数量
             if limit:

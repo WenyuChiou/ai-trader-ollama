@@ -1329,6 +1329,7 @@
 
                 return (data.records || []).map(item => ({
                     date: item.date || item.timestamp?.split('T')[0] || '',
+                    timestamp: item.timestamp || item.date || '', // 添加timestamp用于同一天内的排序
                     value: item.total_value || 0,
                     pnl: item.total_pnl || 0,
                     initial_value: item.initial_value || 10000, // 添加initial_value用于图表
@@ -3045,8 +3046,25 @@
 
             svg.innerHTML = '';
 
-            // Sort by date
-            const sorted = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+            // Sort by date and timestamp (support multiple records per day)
+            const sorted = [...history].sort((a, b) => {
+                // First try to sort by timestamp if available
+                const aTimestamp = a.timestamp ? new Date(a.timestamp).getTime() : null;
+                const bTimestamp = b.timestamp ? new Date(b.timestamp).getTime() : null;
+                
+                if (aTimestamp && bTimestamp) {
+                    return aTimestamp - bTimestamp;
+                } else if (aTimestamp) {
+                    return -1;
+                } else if (bTimestamp) {
+                    return 1;
+                }
+                
+                // Fallback to date
+                const aDate = new Date(a.date).getTime();
+                const bDate = new Date(b.date).getTime();
+                return aDate - bDate;
+            });
             
             // 如果只有1条记录，创建一个起始点（使用初始值）
             if (sorted.length === 1) {

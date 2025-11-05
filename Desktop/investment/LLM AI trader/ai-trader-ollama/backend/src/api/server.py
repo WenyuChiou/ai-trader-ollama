@@ -278,9 +278,17 @@ async def execute_trade_direct():
                 "result": result
             }
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"[API ERROR] execute_trade_direct (planning) failed: {e}")
+            print(f"[API ERROR] Traceback: {error_trace}")
             return JSONResponse(
                 status_code=500,
-                content={"ok": False, "error": str(e)}
+                content={
+                    "ok": False, 
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
             )
     
     # 交易时段：正常执行交易
@@ -297,9 +305,17 @@ async def execute_trade_direct():
             "result": result
         }
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[API ERROR] execute_trade_direct failed: {e}")
+        print(f"[API ERROR] Traceback: {error_trace}")
         return JSONResponse(
             status_code=500,
-            content={"ok": False, "error": str(e)}
+            content={
+                "ok": False, 
+                "error": str(e),
+                "error_type": type(e).__name__
+            }
         )
 
 
@@ -607,7 +623,7 @@ async def get_real_time_portfolio():
                     "source": "fallback_realtime",
                 }
         
-        # 检查并记录每日净值（如果当天还没有记录）
+        # 定期记录净值（每30秒或净值变化超过0.5%时）
         try:
             from src.data.equity_tracker import EquityTracker
             today_str = date.today().isoformat()
@@ -615,24 +631,56 @@ async def get_real_time_portfolio():
             
             # 检查今天是否已有记录
             existing_records = equity_tracker.load_equity_history(start_date=today_str, end_date=today_str)
+            current_time = datetime.now()
+            should_record = False
+            
             if not existing_records:
-                # 如果今天还没有记录，记录一次
+                # 如果今天还没有记录，立即记录
+                should_record = True
+            else:
+                # 检查最后一条记录的时间
+                last_record = existing_records[-1]
+                last_timestamp_str = last_record.get("timestamp", "")
+                
+                if last_timestamp_str:
+                    try:
+                        last_timestamp = datetime.fromisoformat(last_timestamp_str.replace('Z', '+00:00'))
+                        # 如果时区信息存在，转换为本地时间
+                        if last_timestamp.tzinfo:
+                            last_timestamp = last_timestamp.astimezone().replace(tzinfo=None)
+                        
+                        time_diff = (current_time - last_timestamp).total_seconds()
+                        
+                        # 如果距离上次记录超过30秒，或者净值变化超过0.5%
+                        last_value = last_record.get("total_value", 0.0)
+                        current_value = snapshot.get("total_value", 0.0)
+                        value_change_pct = abs((current_value - last_value) / last_value * 100) if last_value > 0 else 0
+                        
+                        if time_diff >= 30 or value_change_pct >= 0.5:
+                            should_record = True
+                    except Exception as e:
+                        # 如果时间解析失败，检查是否超过1分钟就记录
+                        should_record = True
+            
+            if should_record:
                 portfolio_snapshot_for_record = {
                     "cash": snapshot.get("cash", 0.0),
                     "equity_value": snapshot.get("equity_value", 0.0),
                     "total_value": snapshot.get("total_value", 0.0),
                     "total_pnl": snapshot.get("total_pnl", 0.0),
                     "total_pnl_pct": snapshot.get("total_pnl_pct", 0.0),
+                    "initial_value": snapshot.get("initial_value", 10000.0),
                     "positions_detail": snapshot.get("positions", {}),
                 }
+                # 使用update_existing=False来追加记录，而不是覆盖
                 equity_tracker.record_daily_equity(
                     date_str=today_str,
                     portfolio_snapshot=portfolio_snapshot_for_record,
-                    update_existing=True,
+                    update_existing=False,  # 追加记录，允许同一天多条记录
                 )
-                print(f"[Portfolio API] Auto-recorded daily equity for {today_str}")
+                print(f"[Portfolio API] Recorded intraday equity snapshot for {today_str}: ${snapshot.get('total_value', 0):.2f}")
         except Exception as e:
-            print(f"[Portfolio API] Failed to auto-record daily equity: {e}")
+            print(f"[Portfolio API] Failed to record intraday equity: {e}")
             # 不影响主流程
         
         return {"ok": True, **snapshot}

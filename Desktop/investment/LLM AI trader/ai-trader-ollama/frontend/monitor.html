@@ -2019,6 +2019,17 @@
         function formatConversationContent(content, entryType) {
             if (!content) return '';
 
+            // If content is pure JSON (single-line), pretty render as key-values
+            if (typeof content === 'string') {
+                const t = content.trim();
+                if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+                    try {
+                        const obj = JSON.parse(t);
+                        return renderKeyValueObject(obj);
+                    } catch (e) { /* fall through */ }
+                }
+            }
+
             // Generic: if fenced code appears, try parse JSON then render as list
             if (typeof content === 'string' && content.includes('```')) {
                 try {

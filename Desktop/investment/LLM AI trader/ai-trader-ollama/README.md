@@ -38,7 +38,7 @@ This will:
 - ✅ Skip weekends automatically
 - ✅ Run for 5 consecutive trading days
 
-See [5-Day Test Guide](backend/scripts/README_5DAY_TEST.md) for detailed instructions.
+For scheduling details and scripts, see [Backend Scripts](backend/README.md#-scripts).
 
 ### Prerequisites
 
@@ -135,11 +135,7 @@ curl http://localhost:8000/
 netstat -ano | findstr ":8000"
 ```
 
-**Or use test script:**
-```powershell
-cd backend
-powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
-```
+You can also manually test key endpoints using curl as shown below.
 
 ### Stopping the API
 
@@ -520,14 +516,102 @@ cd frontend
 
 ### Agent Types and Responsibilities
 
-The system includes the following Agents, each responsible for specific tasks:
+The system runs all agents each cycle (trading and off-hours planning) and logs their outputs to `backend/data/logs/discussion_actions.jsonl` so the frontend shows them in the Conversations panel:
 
-| Agent | Responsibility | Main Output | Usage Timing |
-|-------|---------------|-------------|--------------|
-| **Market Analyst** | Analyze market trends, generate stock recommendations | Recommended stock list, market sentiment | At the start of each trading cycle |
-| **Discussion Agent** | Multi-round discussion analysis, comprehensive evaluation | Final stance (bullish/bearish/neutral), reasoning process | After market analysis, 3 rounds of discussion |
-| **Risk Analyst** | Evaluate portfolio risk, position control | Risk report, position recommendations | Before trading decisions |
-| **Trader Agent** | Generate buy/sell orders | Buy/sell order list, prices, quantities | After all analysis is complete |
+- MarketAnalyst: Market sentiment + recommended stocks; key observations
+- FundamentalAnalyst: Fundamental/sentiment summary for recommended stocks
+- TechnicalAnalyst: Technical snapshot (RSI/MACD/BB) and top-signal tickers
+- SentimentAnalyst: VIX term structure, Fear & Greed Index (FGI), vix_risk_score
+- RiskAnalyst: Overall risk, limits, warnings, diversification guidance
+- TraderAgent: Action, buy/sell counts and rationale
+- ToolSystem: Tool usage entries (news_scan, vix_term, fear_greed, etc.)
+- DiscussionAgent: Multi-round discussion with final stance and reasoning
+
+Notes:
+- Off-hours: if a plan for the next trading day already exists, the system reuses it (no duplicate plans). Conversations and pending orders still display.
+- Frontend renders conversations without raw JSON blocks; JSON-like payloads are formatted as bullet lists.
+
+### Sentiment Data Sources
+- Fear & Greed Index (FGI): pulled each cycle; logged as a ToolSystem entry like `fear_greed: value=XX, label=Greed/Fear, asof=YYYY-MM-DD` and summarized by `SentimentAnalyst`.
+- VIX Term Structure: `VIX` vs `VIX3M` and `ratio`; logged as ToolSystem and summarized by `SentimentAnalyst` with a computed `vix_risk_score`.
+- Economic Data (Jin10): key recent items appended as a ToolSystem entry and injected into the discussion context.
+
+---
+
+## 🔄 Updated End‑to‑End Workflow (All Agents + Tools)
+
+1) Market Data (MarketAgent/Tools)
+- fetch_market_batch loads OHLCV and technical indicators for the entire configured universe (not a small subset).
+- Output: per‑symbol signals (RSI/MACD/BB/signal_score), VIX snapshot.
+
+2) MarketAnalyst (Analysis)
+- Uses market_view to derive market_sentiment, recommended_stocks, and key_observations.
+- Conversation: summary line recorded (agent=MarketAnalyst, type=summary).
+
+3) SentimentAnalyst (FGI/VIX)
+- Tools: fear_greed (FGI), vix_term (VIX vs VIX3M), plus derived vix_risk_score.
+- Conversation: summary line + ToolSystem entries for fear_greed and vix_term every cycle.
+
+4) FundamentalAnalyst (Fundamentals/Sentiment synthesis)
+- Uses recommended_stocks + sentiment summary to form a fundamentals/sentiment view.
+- Conversation: summary line recorded.
+
+5) TechnicalAnalyst (Technical focus)
+- Highlights top signals and key indicators for most relevant names.
+- Conversation: summary line recorded with top_signals and indicator snapshot.
+
+6) DiscussionAgent (Multi‑round discussion)
+- Runs 1–3 rounds (configurable), optionally calls tools (e.g., news_scan).
+- Conversation: full transcript per round, tool_context captured.
+
+7) RiskAnalyst (Risk evaluation)
+- Inputs: market_view, positions (if any), portfolio_value, discussion risk signals.
+- Output: overall_risk_level, warnings, limits, diversification notes.
+- Conversation: summary line recorded (agent=RiskAnalyst, type=summary).
+
+8) TraderAgent (Decision & Orders)
+- Inputs: market_view + market_analysis + risk_report + position_config.
+- Output: action, buy_orders/sell_orders with price bands; pending orders placed with order_date per trading calendar.
+- Conversation: summary line recorded (agent=TraderAgent, type=summary).
+
+9) Persistence & Frontend Integration
+- discussion_actions.jsonl: all agent summaries, tools, and discussion transcript.
+- pending_orders.jsonl: pending limit orders (PENDING). Filled orders are never shown during closed hours on the dashboard.
+- portfolio_state.json + equity_history.jsonl + real_time_snapshots.jsonl: portfolio summary and history for charts and summary cards.
+
+---
+
+## 🧰 Tool Catalog (Always Available)
+
+- Market Data
+  - fetch_market_batch: OHLCV + indicators for full universe
+  - ta_indicators helpers (internal)
+
+- Sentiment
+  - fear_greed: CNN Fear & Greed (multi‑source fallback); ToolSystem entry every cycle
+  - vix_term: VIX vs VIX3M ratio (+ vix_risk_score); ToolSystem entry every cycle
+
+- News & Web
+  - news_scan: multi‑query recent news; recorded when called by discussion
+  - web_search/fetch_url (optional in some flows)
+
+- Economic
+  - jin10_economic_data: key recent economic datapoints; ToolSystem entry each cycle
+
+---
+
+## ⏱️ Scheduling & Frontend Behavior
+
+- Trading Hours (open)
+  - Auto trading loop every 30 minutes (configurable on the client) via the dashboard toggle.
+  - Real‑time portfolio snapshot updates continuously; charts and summary cards refresh every 60s.
+
+- Non‑Trading Hours (closed)
+  - No live price updates; dashboard shows historical equity, conversations, and tomorrow’s pending orders.
+  - Planning runs once on demand (Start Trading). Client auto‑check hourly: if tomorrow plan is missing, it plans once; otherwise, no new plans are created.
+  - Dashboard hides FILLED rows when the market is closed to avoid confusion.
+
+All behavior is implemented in the single‑file frontend (`frontend/monitor.html`) and the FastAPI backend (`backend/src/api/server.py`).
 
 ### Detailed Description
 

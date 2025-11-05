@@ -2288,14 +2288,42 @@
             return escapeHtml(String(content));
         }
 
-        // Render shallow key-value object as bullet list
-        function renderKeyValueObject(obj) {
+        // Render shallow key-value object as bullet list (no raw JSON/dict)
+        function renderKeyValueObject(obj, depth = 0) {
             if (!obj || typeof obj !== 'object') return '';
+            if (depth > 2) return escapeHtml('...'); // Prevent infinite recursion
+            
             const entries = Object.entries(obj).slice(0, 20);
             let html = '<ul style="margin:6px 0;padding-left:18px;">';
             for (const [k, v] of entries) {
-                const val = (typeof v === 'object') ? JSON.stringify(v) : String(v);
-                html += `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(val)}</li>`;
+                let valHtml = '';
+                if (v === null || v === undefined) {
+                    valHtml = '<span style="color: #9ca3af;">null</span>';
+                } else if (Array.isArray(v)) {
+                    // Render arrays as badges or comma-separated list
+                    if (v.length === 0) {
+                        valHtml = '<span style="color: #9ca3af;">[]</span>';
+                    } else if (v.every(item => typeof item === 'string' && item.length < 10)) {
+                        // Short strings: render as badges
+                        valHtml = v.map(item => `<span class="badge" style="display:inline-block;margin:2px;padding:2px 6px;background:#e5e7eb;border-radius:4px;font-size:11px;">${escapeHtml(String(item))}</span>`).join(' ');
+                    } else if (v.every(item => Array.isArray(item) && item.length === 2)) {
+                        // Nested arrays like [["NVDA", 3.0], ["PLTR", 3.0]]
+                        valHtml = v.map(item => `<span class="badge" style="display:inline-block;margin:2px;padding:2px 6px;background:#e5e7eb;border-radius:4px;font-size:11px;">${escapeHtml(item[0])}: ${escapeHtml(String(item[1]))}</span>`).join(' ');
+                    } else {
+                        // Other arrays: render as list
+                        valHtml = '<ul style="margin:4px 0;padding-left:20px;">' + 
+                                  v.slice(0, 10).map(item => `<li>${escapeHtml(String(item))}</li>`).join('') + 
+                                  (v.length > 10 ? `<li><em>... +${v.length - 10} more</em></li>` : '') +
+                                  '</ul>';
+                    }
+                } else if (typeof v === 'object') {
+                    // Nested objects: render recursively
+                    valHtml = renderKeyValueObject(v, depth + 1);
+                } else {
+                    // Primitive values
+                    valHtml = escapeHtml(String(v));
+                }
+                html += `<li><strong>${escapeHtml(k)}:</strong> ${valHtml}</li>`;
             }
             html += '</ul>';
             return html;

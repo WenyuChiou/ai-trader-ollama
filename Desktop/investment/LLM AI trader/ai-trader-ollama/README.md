@@ -989,6 +989,7 @@ For complete documentation, see **[Documentation Index](docs/README.md)** which 
 - Archived documentation
 
 ### Quick Links
+- **[Complete System Flow](docs/COMPLETE_SYSTEM_FLOW.md)** - Detailed frontend & backend integration flow
 - **[Backend README](backend/README.md)** - Backend setup and API documentation
 - **[Frontend README](frontend/README.md)** - Frontend setup and usage
 - **[Trading Hours Logic](backend/docs/TRADING_HOURS_LOGIC.md)** - Trading hours behavior

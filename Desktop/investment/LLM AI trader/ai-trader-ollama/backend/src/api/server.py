@@ -392,14 +392,17 @@ async def get_real_time_portfolio():
         with state_file.open("r", encoding="utf-8") as f:
             state = json.load(f)
         
+        # Handle nested snapshot structure: {date, snapshot: {...}}
+        snapshot = state.get("snapshot", state)  # Support both formats
+        
         from src.data.portfolio import Portfolio, Position
         portfolio = Portfolio(
-            cash=float(state.get("cash", 10000.0)),
-            initial_value=float(state.get("initial_value", 10000.0)),
+            cash=float(snapshot.get("cash", 10000.0)),
+            initial_value=float(snapshot.get("initial_value", state.get("initial_value", 10000.0))),
         )
         
         # Restore positions
-        positions = state.get("positions", {})
+        positions = snapshot.get("positions", {})
         for symbol, pos_info in positions.items():
             if isinstance(pos_info, dict):
                 quantity = int(pos_info.get("quantity", 0))
@@ -436,20 +439,25 @@ async def get_real_time_portfolio():
         else:
             # 非交易时段：不更新数据，只返回已保存的快照
             if not is_market_open:
+                # 优先使用snapshot中的positions_pnl（如果有）
+                snapshot_positions_pnl = snapshot.get("positions_pnl", {})
+                
                 # 获取最新快照（不更新）
                 try:
                     from src.data.real_time_tracker import RealTimeTracker
                     tracker = RealTimeTracker(root="data/logs")
-                    snapshot = tracker.get_latest_snapshot()
-                    if snapshot:
-                        snapshot["ok"] = True
-                        snapshot["source"] = "cached"
-                        return {"ok": True, **snapshot}
+                    cached_snapshot = tracker.get_latest_snapshot()
+                    if cached_snapshot:
+                        cached_snapshot["ok"] = True
+                        cached_snapshot["source"] = "cached"
+                        return {"ok": True, **cached_snapshot}
                 except Exception:
                     pass
                 
-                # 如果没有快照，返回静态数据（不更新价格）
-                equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
+                # 如果没有快照，使用snapshot中的positions_pnl（如果存在）
+                # 使用snapshot中保存的positions_pnl（如果有），否则计算
+                positions_pnl_from_snapshot = snapshot.get("positions_pnl", {})
+                equity = sum((pos_info.get("market_value", pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0))) for pos_info in positions.values() if isinstance(pos_info, dict))
                 total_value = portfolio.cash + equity
                 positions_detail = {}
                 positions_pnl = {}
@@ -460,22 +468,31 @@ async def get_real_time_portfolio():
                         total_cost = float(pos_info.get("total_cost", 0.0))
                         if total_cost <= 0:
                             total_cost = avg * qty
-                        mv = avg * qty
+                        
+                        # 使用snapshot中的current_price（如果有），否则使用avg_cost
+                        current_price = float(pos_info.get("current_price", avg))
+                        mv = current_price * qty
                         cost_basis = total_cost
+                        
                         positions_detail[sym] = {
                             "quantity": qty,
                             "avg_cost": round(avg, 2),
                             "total_cost": round(total_cost, 2),
                             "cost_basis": round(cost_basis, 2),
-                            "current_price": round(avg, 2),
+                            "current_price": round(current_price, 2),
                             "market_value": round(mv, 2),
                         }
-                        unrealized_pnl = mv - cost_basis
-                        unrealized_pnl_pct = (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0.0
-                        positions_pnl[sym] = {
-                            "unrealized_pnl": round(unrealized_pnl, 2),
-                            "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
-                        }
+                        
+                        # 优先使用snapshot中的positions_pnl，否则计算
+                        if sym in positions_pnl_from_snapshot:
+                            positions_pnl[sym] = positions_pnl_from_snapshot[sym]
+                        else:
+                            unrealized_pnl = mv - cost_basis
+                            unrealized_pnl_pct = (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0.0
+                            positions_pnl[sym] = {
+                                "unrealized_pnl": round(unrealized_pnl, 2),
+                                "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
+                            }
                 snapshot = {
                     "ok": True,
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
@@ -491,14 +508,35 @@ async def get_real_time_portfolio():
                 }
             else:
                 # 交易时段：更新实时数据
+                snapshot = None
                 try:
                     from src.data.real_time_tracker import RealTimeTracker
                     tracker = RealTimeTracker(root="data/logs")
                     snapshot = tracker.update_and_record(portfolio)
-                except (ImportError, ModuleNotFoundError) as e:
-                    # Fallback if yfinance or other deps missing
-                    equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
-                total_value = portfolio.cash + equity
+                    if snapshot and snapshot.get("ok"):
+                        # Use snapshot from tracker (includes real-time prices and P&L)
+                        return {"ok": True, **snapshot}
+                except Exception as e:
+                    # Fallback: fetch current prices manually
+                    print(f"[Portfolio API] RealTimeTracker failed, using fallback: {e}")
+                    pass
+                
+                # Fallback: fetch current prices and calculate P&L
+                try:
+                    from src.tools.market_tools import fetch_market_batch
+                    symbols = list(positions.keys())
+                    if symbols:
+                        market_data = fetch_market_batch.invoke({"symbols": symbols, "start": date.today().isoformat(), "end": date.today().isoformat()})
+                        stocks = market_data.get("stocks", {})
+                        last_prices = {sym: stocks.get(sym, {}).get("price", pos_info.get("avg_cost", 0)) for sym, pos_info in positions.items() if isinstance(pos_info, dict)}
+                    else:
+                        last_prices = {}
+                except Exception:
+                    # If price fetch fails, use avg_cost as fallback
+                    last_prices = {sym: pos_info.get("avg_cost", 0) for sym, pos_info in positions.items() if isinstance(pos_info, dict)}
+                
+                # Calculate positions detail and P&L with real-time prices
+                total_value = portfolio.cash
                 positions_detail = {}
                 positions_pnl = {}
                 for sym, pos_info in positions.items():
@@ -506,26 +544,30 @@ async def get_real_time_portfolio():
                         qty = int(pos_info.get("quantity", 0))
                         avg = float(pos_info.get("avg_cost", 0))
                         total_cost = float(pos_info.get("total_cost", 0.0))
-                        # 如果total_cost没有保存或为0，从avg_cost和quantity计算
                         if total_cost <= 0:
                             total_cost = avg * qty
-                        mv = avg * qty
+                        
+                        current_price = float(last_prices.get(sym, avg))
+                        mv = current_price * qty
                         cost_basis = total_cost
+                        total_value += mv
+                        
                         positions_detail[sym] = {
                             "quantity": qty,
                             "avg_cost": round(avg, 2),
                             "total_cost": round(total_cost, 2),
                             "cost_basis": round(cost_basis, 2),
-                            "current_price": round(avg, 2),
+                            "current_price": round(current_price, 2),
                             "market_value": round(mv, 2),
                         }
-                        # 计算P&L
+                        # 计算P&L (使用实时价格)
                         unrealized_pnl = mv - cost_basis
                         unrealized_pnl_pct = (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0.0
                         positions_pnl[sym] = {
                             "unrealized_pnl": round(unrealized_pnl, 2),
                             "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
                         }
+                
                 snapshot = {
                     "ok": True,
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
@@ -534,10 +576,10 @@ async def get_real_time_portfolio():
                     "total_pnl": round(total_value - portfolio.initial_value, 2),
                     "total_pnl_pct": round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2),
                     "cash": round(portfolio.cash, 2),
-                    "equity_value": round(equity, 2),
+                    "equity_value": round(total_value - portfolio.cash, 2),
                     "positions": positions_detail,
                     "positions_pnl": positions_pnl,
-                    "source": "simple",
+                    "source": "fallback_realtime",
                 }
         
         return {"ok": True, **snapshot}

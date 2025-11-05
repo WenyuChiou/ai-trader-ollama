@@ -17,10 +17,28 @@
 - [Available Tools](#-available-tools)
 - [Project Structure](#-project-structure)
 - [Troubleshooting](#-troubleshooting)
+- [Documentation](#-documentation)
 
 ---
 
 ## 🚀 Quick Start
+
+### 5-Day Live Trading Test
+
+For running a 5-day live trading test with automatic market hours management:
+
+```powershell
+cd backend\scripts
+.\start_api_market_hours.ps1
+```
+
+This will:
+- ✅ Automatically start API at market open (9:30 AM EST)
+- ✅ Automatically stop API at market close (4:00 PM EST)
+- ✅ Skip weekends automatically
+- ✅ Run for 5 consecutive trading days
+
+See [5-Day Test Guide](backend/scripts/README_5DAY_TEST.md) for detailed instructions.
 
 ### Prerequisites
 
@@ -55,29 +73,29 @@ This will create:
 
 ---
 
-## 🔧 API 启动与终止
+## 🔧 API Startup & Shutdown
 
-### 启动 API
+### Starting the API
 
-#### 方法 1: PowerShell 脚本（Windows - 推荐）
+#### Method 1: PowerShell Script (Windows - Recommended)
 
 ```powershell
 cd backend\scripts
 .\start_api_background.ps1
 ```
 
-这会打开一个新的 PowerShell 窗口运行 API。**保持该窗口打开** - 关闭它就会停止 API。
+This opens a new PowerShell window running the API. **Keep this window open** - closing it will stop the API.
 
-#### 方法 2: 手动启动
+#### Method 2: Manual Start
 
 ```bash
 cd backend
 python -m uvicorn src.api.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
-**保持此终端窗口打开** - 关闭它（或按 `Ctrl+C`）会停止 API。
+**Keep this terminal window open** - closing it (or pressing `Ctrl+C`) will stop the API.
 
-#### 方法 3: 后台运行（PowerShell，可选）
+#### Method 3: Background Run (PowerShell, Optional)
 
 ```powershell
 cd backend
@@ -86,25 +104,25 @@ Start-Job -ScriptBlock {
     python -m uvicorn src.api.server:app --host 127.0.0.1 --port 8000 
 }
 
-# 查看状态
+# Check status
 Get-Job
 
-# 查看输出
+# View output
 Receive-Job <JobId>
 
-# 停止
+# Stop
 Stop-Job <JobId>
 Remove-Job <JobId>
 ```
 
-### 验证 API 运行
+### Verifying API is Running
 
-**测试健康检查端点:**
+**Test health check endpoint:**
 ```powershell
 curl http://localhost:8000/
 ```
 
-**预期响应:**
+**Expected response:**
 ```json
 {
   "message": "AI Trader API",
@@ -112,79 +130,79 @@ curl http://localhost:8000/
 }
 ```
 
-**检查端口使用:**
+**Check port usage:**
 ```powershell
 netstat -ano | findstr ":8000"
 ```
 
-**或使用测试脚本:**
+**Or use test script:**
 ```powershell
 cd backend
 powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
 ```
 
-### 终止 API
+### Stopping the API
 
-#### 如果使用脚本启动（方法 1）
+#### If using script start (Method 1)
 
-**简单方法:**
-- 关闭显示 API 日志的 PowerShell 窗口
-- API 会自动停止
+**Simple method:**
+- Close the PowerShell window showing API logs
+- API will automatically stop
 
-**如果窗口已关闭/最小化:**
+**If window is closed/minimized:**
 ```powershell
-# 查找并终止进程
+# Find and terminate process
 cd backend\scripts
 .\check_port.ps1
-# 按提示操作，或手动：
+# Follow prompts, or manually:
 taskkill /PID <PID> /F
 ```
 
-#### 如果手动启动（方法 2）
+#### If manually started (Method 2)
 
-**在运行 API 的终端中:**
-- 按 `Ctrl + C` 优雅停止
-- 或直接关闭终端窗口
+**In the terminal running API:**
+- Press `Ctrl + C` to gracefully stop
+- Or directly close the terminal window
 
-#### 验证 API 已停止
+#### Verify API has stopped
 
 ```powershell
-# 应该显示空（端口未使用）
+# Should show empty (port not in use)
 netstat -ano | findstr ":8000"
 
-# 或测试连接（应该失败）
+# Or test connection (should fail)
 curl http://localhost:8000/
 ```
 
-### 重启 API
+### Restarting the API
 
-如果遇到问题，可以使用重启脚本：
+If you encounter issues, you can use the restart script:
 
 ```powershell
 cd backend\scripts
 .\restart_api_bypass.ps1
 ```
 
-或手动：
+Or manually:
 ```powershell
 cd backend\scripts
 powershell -ExecutionPolicy Bypass -File .\restart_api.ps1
 ```
 
-**注意**: 如果遇到 PowerShell 执行策略错误，使用 `restart_api_bypass.ps1`。
+**Note**: If you encounter PowerShell execution policy errors, use `restart_api_bypass.ps1`.
 
 ---
 
-## 🧪 后端测试
+## 🧪 Backend Testing
 
-### 快速测试
+### Quick Test
 
 ```bash
 cd backend
 python test_api.py
 ```
 
-**预期输出:**
+**Expected output:**
 ```
 ✅ PASS - Portfolio Initialization
 ✅ PASS - Portfolio State File
@@ -192,74 +210,75 @@ python test_api.py
 ✅ All tests passed! Backend is ready.
 ```
 
-### 完整测试套件
+### Full Test Suite
 
 ```bash
 cd backend
 
-# 运行所有测试
+# Run all tests
 python tests/run_all.py
 
-# 运行特定测试
-python tests/test_05_full_trading_loop.py
+# Run specific tests
+python test_full_workflow.py
+python test_october_simulation_full.py
 ```
 
-### API 端点测试
+### API Endpoint Testing
 
-**测试所有端点:**
+**Test all endpoints:**
 ```powershell
 cd backend
 powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
 ```
 
-**手动测试关键端点:**
+**Manual test key endpoints:**
 ```powershell
-# 健康检查
+# Health check
 curl http://localhost:8000/
 
-# 实时投资组合
+# Real-time portfolio
 curl http://localhost:8000/api/portfolio/real-time
 
-# 工具列表
+# Tools list
 curl http://localhost:8000/api/tools/list
 
-# Agent 对话
+# Agent conversations
 curl http://localhost:8000/api/agents/conversations?limit=10
 
-# 交易记录
+# Trade records
 curl http://localhost:8000/api/trades/recent?limit=10
 ```
 
-### 测试交易循环
+### Test Trading Cycle
 
 ```bash
 cd backend
 python test_full_workflow.py
 ```
 
-这将测试：
-- 市场数据获取
-- Agent 分析
-- 工具调用
-- 交易决策
-- 对话记录
+This will test:
+- Market data fetching
+- Agent analysis
+- Tool calls
+- Trading decisions
+- Conversation logging
 
-### 测试十月模拟
+### Test October Simulation
 
 ```bash
 cd backend
 python test_october_simulation_full.py
 ```
 
-这将测试完整的十月历史模拟流程。
+This will test the complete October historical simulation flow.
 
 ---
 
-## ⚙️ 配置文件设置
+## ⚙️ Configuration Settings
 
-### 主配置文件: `backend/config/config.json`
+### Main Configuration File: `backend/config/config.json`
 
-#### 基本配置
+#### Basic Configuration
 
 ```json
 {
@@ -278,17 +297,17 @@ python test_october_simulation_full.py
 }
 ```
 
-**关键参数说明:**
+**Key Parameters:**
 
-| 参数 | 说明 | 默认值 | 建议值 |
-|------|------|--------|--------|
-| `universe` | 股票池列表 | - | 72只股票（已配置） |
-| `initial_cash` | 初始现金 | 10000 | 根据需求调整 |
-| `position_limit_per_stock` | 单股最大仓位 | 0.15 (15%) | 0.10-0.20 |
-| `position_limit_total` | 总仓位上限 | 0.85 (85%) | 0.80-0.90 |
-| `position_limit_min_per_stock` | 单股最小仓位 | 0.03 (3%) | 0.02-0.05 |
+| Parameter | Description | Default | Recommended |
+|-----------|-------------|---------|-------------|
+| `universe` | Stock pool list | - | 72 stocks (configured) |
+| `initial_cash` | Initial cash | 10000 | Adjust as needed |
+| `position_limit_per_stock` | Max position per stock | 0.15 (15%) | 0.10-0.20 |
+| `position_limit_total` | Total position limit | 0.85 (85%) | 0.80-0.90 |
+| `position_limit_min_per_stock` | Min position per stock | 0.03 (3%) | 0.02-0.05 |
 
-#### 反向ETF配置（对冲）
+#### Inverse ETF Configuration (Hedging)
 
 ```json
 {
@@ -304,12 +323,12 @@ python test_october_simulation_full.py
 }
 ```
 
-**使用场景:**
-- VIX > 20（高波动率）
-- 市场情绪看跌但想保护多头持仓
-- 技术指标显示市场可能反转
+**Use Cases:**
+- VIX > 20 (high volatility)
+- Bearish market sentiment but want to protect long positions
+- Technical indicators suggest market reversal
 
-#### 杠杆ETF配置（适度使用）
+#### Leveraged ETF Configuration (Use Moderately)
 
 ```json
 {
@@ -328,16 +347,16 @@ python test_october_simulation_full.py
 }
 ```
 
-**使用场景:**
-- 强烈看涨趋势（明确上涨）
-- VIX < 15（低波动率）
-- 技术指标强劲（RSI < 70, MACD看涨）
+**Use Cases:**
+- Strong bullish trend (clear uptrend)
+- VIX < 15 (low volatility)
+- Strong technical indicators (RSI < 70, bullish MACD)
 
-**仓位限制:**
-- 单只杠杆ETF: 最大 5-10% 组合价值
-- 总杠杆ETF仓位: 最大 20-30% 组合价值
+**Position Limits:**
+- Single leveraged ETF: Max 5-10% of portfolio value
+- Total leveraged ETF positions: Max 20-30% of portfolio value
 
-#### 市场指数配置（技术分析参考）
+#### Market Index Configuration (Technical Analysis Reference)
 
 ```json
 {
@@ -349,9 +368,9 @@ python test_october_simulation_full.py
 }
 ```
 
-这些指数用于 Agent 技术分析，但不参与交易。
+These indices are used for Agent technical analysis but do not participate in trading.
 
-#### LLM 配置
+#### LLM Configuration
 
 ```json
 {
@@ -364,16 +383,16 @@ python test_october_simulation_full.py
 }
 ```
 
-**参数说明:**
+**Parameters:**
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `default_model` | 默认 LLM 模型 | "llama3.1" |
-| `ollama_host` | Ollama 服务器地址 | "http://localhost:11434" |
-| `auto_pull` | 自动下载缺失模型 | true |
-| `timeout_seconds` | 请求超时时间 | 8.0 |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `default_model` | Default LLM model | "llama3.1" |
+| `ollama_host` | Ollama server address | "http://localhost:11434" |
+| `auto_pull` | Auto-download missing models | true |
+| `timeout_seconds` | Request timeout | 8.0 |
 
-#### 讨论配置
+#### Discussion Configuration
 
 ```json
 {
@@ -383,15 +402,15 @@ python test_october_simulation_full.py
 }
 ```
 
-**参数说明:**
+**Parameters:**
 
-| 参数 | 说明 | 默认值 | 建议值 |
-|------|------|--------|--------|
-| `discussion_rounds` | 讨论轮数 | 3 | 3-5 |
-| `discussion_auto_tools` | 自动工具调用 | true | true |
-| `discussion_tool_budget` | 工具调用预算 | 20 | 15-25 |
+| Parameter | Description | Default | Recommended |
+|-----------|-------------|---------|-------------|
+| `discussion_rounds` | Number of discussion rounds | 3 | 3-5 |
+| `discussion_auto_tools` | Auto tool calls | true | true |
+| `discussion_tool_budget` | Tool call budget | 20 | 15-25 |
 
-#### 偏好域名配置
+#### Preferred Domains Configuration
 
 ```json
 {
@@ -407,9 +426,9 @@ python test_october_simulation_full.py
 }
 ```
 
-这些域名用于新闻搜索，确保信息来源可靠。
+These domains are used for news searches to ensure reliable information sources.
 
-#### 加密货币配置（可选）
+#### Cryptocurrency Configuration (Optional)
 
 ```json
 {
@@ -422,123 +441,105 @@ python test_october_simulation_full.py
 }
 ```
 
-**注意**: 加密货币目前仅用于分析，不参与交易。
+**Note**: Cryptocurrencies are currently only used for analysis and do not participate in trading.
 
 ---
 
-## 🌐 前端测试
+## 🌐 Frontend Testing
 
-### 启动前端服务器
+### Starting Frontend Server
 
-**方法 1: Python HTTP 服务器（推荐）**
+**Method 1: Python HTTP Server (Recommended)**
 
 ```bash
 cd frontend
 python -m http.server 8080
 ```
 
-**然后打开浏览器:** `http://127.0.0.1:8080/monitor.html`
+**Then open browser:** `http://127.0.0.1:8080/monitor.html`
 
-**方法 2: PowerShell 脚本（Windows）**
+**Method 2: PowerShell Script (Windows)**
 
 ```powershell
 cd frontend
 .\start_frontend_server.ps1
 ```
 
-### 验证前端连接
+### Verifying Frontend Connection
 
-**检查连接状态:**
-- ✅ 绿色圆点 + "Connected": API 正在运行
-- ❌ 红色圆点 + "Disconnected": API 未运行或连接错误
+**Check connection status:**
+- ✅ Green dot + "Connected": API is running
+- ❌ Red dot + "Disconnected": API is not running or connection error
 
-**检查功能:**
+**Check functionality:**
 
-1. **投资组合数据**
-   - ✅ Total Value: $10,000.00（或你的初始金额）
+1. **Portfolio Data**
+   - ✅ Total Value: $10,000.00 (or your initial amount)
    - ✅ Cash: $10,000.00
-   - ✅ Equity Value: $0.00（如果没有持仓）
+   - ✅ Equity Value: $0.00 (if no positions)
    - ✅ Total P&L: $0.00
 
-2. **自动刷新**
-   - ✅ Auto Refresh 开关工作
-   - ✅ 手动 Refresh 按钮工作
-   - ✅ 每60秒自动刷新（如果开启）
+2. **Auto Refresh**
+   - ✅ Auto Refresh toggle works
+   - ✅ Manual Refresh button works
+   - ✅ Auto refreshes every 60 seconds (if enabled)
 
-3. **Agent 对话**
-   - ✅ 对话列表显示
-   - ✅ 每个 Agent 有专用图标
-   - ✅ 对话内容完整显示（不截断）
+3. **Agent Conversations**
+   - ✅ Conversation list displays
+   - ✅ Each Agent has dedicated icon
+   - ✅ Conversation content displays completely (not truncated)
 
-4. **交易记录**
-   - ✅ Execution Details 显示交易
-   - ✅ 没有重复记录
-   - ✅ 显示正确的买卖方向和价格
+4. **Trade Records**
+   - ✅ Execution Details shows trades
+   - ✅ No duplicate records
+   - ✅ Shows correct buy/sell direction and prices
 
-5. **控制按钮**
-   - ✅ "▶️ Start Trading" 按钮工作
-   - ✅ "Auto Trade (1分钟)" 复选框工作
-   - ✅ "Simulate October" 按钮工作（如果可用）
+5. **Control Buttons**
+   - ✅ "▶️ Start Trading" button works
+   - ✅ "Auto Trade (5 min)" checkbox works
+   - ✅ "Refresh" button works
 
-### 前端功能测试
+### Frontend Feature Testing
 
-**测试交易执行:**
-1. 点击 "▶️ Start Trading" 按钮
-2. 等待 Agent 分析完成
-3. 检查对话是否出现
-4. 检查是否有交易订单生成
-5. 检查投资组合是否更新
+**Test trade execution:**
+1. Click "▶️ Start Trading" button
+2. Wait for Agent analysis to complete
+3. Check if conversations appear
+4. Check if trade orders are generated
+5. Check if portfolio is updated
 
-**测试自动交易:**
-1. 勾选 "Auto Trade (1分钟)" 复选框
-2. 等待 1 分钟
-3. 检查是否自动执行交易循环
-4. 检查对话和交易是否更新
-
-**测试十月模拟:**
-1. 点击 "Simulate October" 按钮
-2. 检查进度条是否显示
-3. 检查投资组合是否随时间更新
-4. 检查图表是否显示历史数据
-
-### 前端故障排除
-
-**如果看到 "Connection Error":**
-1. 检查后端 API 是否运行: `curl http://localhost:8000/`
-2. 检查浏览器控制台（F12）是否有错误
-3. 确保 API 地址正确（默认: `http://127.0.0.1:8000`）
-
-**如果数据不更新:**
-1. 检查自动刷新是否开启
-2. 手动点击 Refresh 按钮
-3. 检查浏览器控制台是否有错误
+**Test auto trading:**
+1. Check "Auto Trade (5 min)" checkbox
+2. Wait 5 minutes
+3. Check if trading cycle executes automatically
+4. Check if conversations and trades are updated
 
 ---
 
-## 🤖 Agent 系统
+## 🤖 Agent System
 
-### Agent 类型与职责
+### Agent Types and Responsibilities
 
-系统包含以下 Agent，每个 Agent 负责特定任务：
+The system includes the following Agents, each responsible for specific tasks:
 
-| Agent | 职责 | 主要输出 | 使用时机 |
-|-------|------|----------|----------|
-| **Market Analyst** | 分析市场趋势，生成股票推荐 | 推荐股票列表、市场情绪 | 每次交易循环开始时 |
-| **Discussion Agent** | 多轮讨论分析，综合评估 | 最终立场（bullish/bearish/neutral）、推理过程 | 市场分析后，3轮讨论 |
-| **Risk Analyst** | 评估投资组合风险，仓位控制 | 风险报告、仓位建议 | 在交易决策前 |
-| **Trader Agent** | 生成买卖订单 | 买入/卖出订单列表、价格、数量 | 所有分析完成后 |
+| Agent | Responsibility | Main Output | Usage Timing |
+|-------|---------------|-------------|--------------|
+| **Market Analyst** | Analyze market trends, generate stock recommendations | Recommended stock list, market sentiment | At the start of each trading cycle |
+| **Discussion Agent** | Multi-round discussion analysis, comprehensive evaluation | Final stance (bullish/bearish/neutral), reasoning process | After market analysis, 3 rounds of discussion |
+| **Risk Analyst** | Evaluate portfolio risk, position control | Risk report, position recommendations | Before trading decisions |
+| **Trader Agent** | Generate buy/sell orders | Buy/sell order list, prices, quantities | After all analysis is complete |
 
-### 详细说明
+### Detailed Description
 
-#### 1. Market Analyst（市场分析师）
+#### 1. Market Analyst
 
-**职责:**
-- 分析所有股票的技术指标
-- 评估市场趋势（uptrend/downtrend/sideways）
-- 生成推荐股票列表
-- 评估市场情绪（bullish/bearish/neutral）
+**Responsibilities:**
+- Analyze technical indicators for all stocks
+- Evaluate market trends (uptrend/downtrend/sideways)
+- Generate recommended stock list
+- Assess market sentiment (bullish/bearish/neutral)
 
-**输出:**
+**Output:**
 ```json
 {
   "market_sentiment": "bullish",
@@ -548,17 +549,17 @@ cd frontend
 }
 ```
 
-**位置:** `backend/src/tools/market_analyst.py`
+**Location:** `backend/src/tools/market_analyst.py`
 
-#### 2. Discussion Agent（讨论Agent）
+#### 2. Discussion Agent
 
-**职责:**
-- 进行多轮讨论（默认3轮）
-- 自动调用工具获取额外信息（新闻、VIX、恐惧贪婪指数等）
-- 综合所有信息形成最终立场
-- 提供详细的推理过程
+**Responsibilities:**
+- Conduct multi-round discussions (default 3 rounds)
+- Automatically call tools to get additional information (news, VIX, fear-greed index, etc.)
+- Synthesize all information to form final stance
+- Provide detailed reasoning process
 
-**输出:**
+**Output:**
 ```json
 {
   "stance": "bullish",
@@ -573,17 +574,17 @@ cd frontend
 }
 ```
 
-**位置:** `backend/src/agents/analyst_discussion.py`
+**Location:** `backend/src/agents/analyst_discussion.py`
 
-#### 3. Risk Analyst（风险分析师）
+#### 3. Risk Analyst
 
-**职责:**
-- 评估当前持仓风险
-- 检查仓位限制合规性
-- 生成仓位控制建议
-- 识别过度集中风险
+**Responsibilities:**
+- Evaluate current position risk
+- Check position limit compliance
+- Generate position control recommendations
+- Identify over-concentration risks
 
-**输出:**
+**Output:**
 ```json
 {
   "overall_risk": "medium",
@@ -595,17 +596,17 @@ cd frontend
 }
 ```
 
-**位置:** `backend/src/agents/risk_analyst.py`
+**Location:** `backend/src/agents/risk_analyst.py`
 
-#### 4. Trader Agent（交易Agent）
+#### 4. Trader Agent
 
-**职责:**
-- 根据所有分析生成买卖订单
-- 计算仓位大小
-- 设置买入/卖出价格范围
-- 考虑风险报告和仓位限制
+**Responsibilities:**
+- Generate buy/sell orders based on all analysis
+- Calculate position sizes
+- Set buy/sell price ranges
+- Consider risk reports and position limits
 
-**输出:**
+**Output:**
 ```json
 {
   "action": "BUY",
@@ -624,87 +625,87 @@ cd frontend
 }
 ```
 
-**位置:** `backend/src/agents/trader_agent.py`
+**Location:** `backend/src/agents/trader_agent.py`
 
-### Agent 工作流程
+### Agent Workflow
 
 ```
 1. Market Data Collection
    ↓
-2. Market Analyst → 推荐股票 + 市场情绪
+2. Market Analyst → Recommended stocks + Market sentiment
    ↓
-3. Discussion Agent (3轮) → 最终立场 + 推理
+3. Discussion Agent (3 rounds) → Final stance + Reasoning
    ↓
-4. Risk Analyst → 风险报告 + 仓位建议
+4. Risk Analyst → Risk report + Position recommendations
    ↓
-5. Trader Agent → 买卖订单
+5. Trader Agent → Buy/sell orders
    ↓
-6. Order Execution → 更新投资组合
+6. Order Execution → Update portfolio
 ```
 
 ---
 
-## 🛠️ 可用工具
+## 🛠️ Available Tools
 
-Agent 可以使用的工具，按类别分类：
+Tools available to Agents, categorized by type:
 
-### 📊 市场数据工具
+### 📊 Market Data Tools
 
 #### `fetch_market_batch`
-**用途**: 批量获取股票 OHLCV 数据和技术指标  
-**输入**: 股票代码列表、开始日期、结束日期  
-**输出**: 每只股票的价格、RSI、MACD、布林带、信号分数、VIX 数据等  
-**使用场景**: 
-- Market Analyst 分析所有股票的技术指标（默认会分析整个 universe，72只股票）
-- Discussion Agent 评估市场趋势
-- Trader Agent 选择交易标的
+**Purpose**: Batch fetch stock OHLCV data and technical indicators  
+**Input**: Stock symbol list, start date, end date  
+**Output**: Price, RSI, MACD, Bollinger Bands, signal score, VIX data for each stock, etc.  
+**Use Cases**: 
+- Market Analyst analyzes technical indicators for all stocks (default analyzes entire universe, 72 stocks)
+- Discussion Agent evaluates market trends
+- Trader Agent selects trading targets
 
-**示例**:
+**Example:**
 ```python
 {
-  "symbols": ["NVDA", "MSFT", "AAPL", ...],  # 通常包含整个 universe (72只)
+  "symbols": ["NVDA", "MSFT", "AAPL", ...],  # Usually includes entire universe (72 stocks)
   "start": "2024-01-01",
   "end": "2025-01-27"
 }
 ```
 
 #### `vix_term`
-**用途**: 获取 VIX 期限结构（VIX vs VIX3M 比率）  
-**输出**: VIX 值、VIX3M 值、比率（>1 = contango，<1 = backwardation）  
-**使用场景**: 
-- 评估市场恐慌程度
-- 判断市场是否处于 contango 或 backwardation
-- Risk Analyst 评估市场风险
+**Purpose**: Get VIX term structure (VIX vs VIX3M ratio)  
+**Output**: VIX value, VIX3M value, ratio (>1 = contango, <1 = backwardation)  
+**Use Cases**: 
+- Assess market panic level
+- Determine if market is in contango or backwardation
+- Risk Analyst evaluates market risk
 
 #### `vix_close` / `fetch_vix_close`
-**用途**: 获取 VIX 历史收盘价序列  
-**输入**: 开始日期、结束日期  
-**输出**: VIX 历史价格数组和日期数组  
-**使用场景**: 
-- 分析 VIX 趋势变化
-- 计算 VIX 的 z-score
-- 评估市场波动性历史水平
+**Purpose**: Get VIX historical closing price series  
+**Input**: Start date, end date  
+**Output**: VIX historical price array and date array  
+**Use Cases**: 
+- Analyze VIX trend changes
+- Calculate VIX z-score
+- Assess historical market volatility levels
 
 #### `fear_greed`
-**用途**: 获取恐惧贪婪指数  
-**输出**: 指数值（0-100）、标签（Extreme Fear/Fear/Neutral/Greed/Extreme Greed）  
-**使用场景**: 
-- 评估市场情绪
-- 判断市场是否过度恐慌或贪婪
-- Discussion Agent 综合市场情绪分析
+**Purpose**: Get Fear & Greed Index  
+**Output**: Index value (0-100), label (Extreme Fear/Fear/Neutral/Greed/Extreme Greed)  
+**Use Cases**: 
+- Assess market sentiment
+- Determine if market is overly fearful or greedy
+- Discussion Agent synthesizes market sentiment analysis
 
-### 📰 新闻与经济数据工具
+### 📰 News & Economic Data Tools
 
 #### `news_scan`
-**用途**: 扫描新闻文章，搜索与股票/关键词相关的新闻  
-**输入**: 关键词列表（股票代码、查询词）、最近天数、最大文章数、偏好域名  
-**输出**: 新闻标题、URL、来源、日期、摘要  
-**使用场景**: 
-- Discussion Agent 获取最新市场新闻（最重要的工具之一）
-- 评估股票相关的市场情绪
-- 分析公司财报、公告等重大事件
+**Purpose**: Scan news articles, search for news related to stocks/keywords  
+**Input**: Keyword list (stock symbols, query terms), recent days, max articles, preferred domains  
+**Output**: News titles, URLs, sources, dates, summaries  
+**Use Cases**: 
+- Discussion Agent gets latest market news (one of the most important tools)
+- Assess market sentiment related to stocks
+- Analyze company earnings, announcements, and other major events
 
-**示例**:
+**Example:**
 ```python
 {
   "keywords": ["NVDA", "earnings"],
@@ -715,90 +716,90 @@ Agent 可以使用的工具，按类别分类：
 ```
 
 #### `fetch_jin10_news`
-**用途**: 获取金十财经新闻（中文财经新闻平台）  
-**输入**: 最大条目数、类别  
-**输出**: 新闻标题、时间、内容、类别、URL  
-**使用场景**: 
-- 获取中文财经新闻
-- 分析中国市场情绪
-- 获取实时财经快讯
+**Purpose**: Get Jin10 financial news (Chinese financial news platform)  
+**Input**: Max entries, category  
+**Output**: News titles, times, content, categories, URLs  
+**Use Cases**: 
+- Get Chinese financial news
+- Analyze Chinese market sentiment
+- Get real-time financial news flashes
 
 #### `fetch_jin10_economic_data`
-**用途**: 获取经济数据（GDP、CPI、PMI 等）  
-**输入**: 最大条目数  
-**输出**: 经济数据指标、数值、时间、影响  
-**使用场景**: 
-- 评估宏观经济环境
-- 分析经济指标对市场的影响
-- Risk Analyst 评估系统性风险
+**Purpose**: Get economic data (GDP, CPI, PMI, etc.)  
+**Input**: Max entries  
+**Output**: Economic data indicators, values, times, impacts  
+**Use Cases**: 
+- Assess macroeconomic environment
+- Analyze impact of economic indicators on markets
+- Risk Analyst evaluates systemic risk
 
 #### `web_search`
-**用途**: DuckDuckGo 网络搜索（白名单域名）  
-**输入**: 搜索查询词、最大结果数、偏好域名  
-**输出**: 搜索结果标题、URL、摘要  
-**使用场景**: 
-- 搜索特定股票或市场信息
-- 获取实时市场动态
-- 补充新闻扫描未覆盖的信息
+**Purpose**: DuckDuckGo web search (whitelisted domains)  
+**Input**: Search query, max results, preferred domains  
+**Output**: Search result titles, URLs, summaries  
+**Use Cases**: 
+- Search for specific stock or market information
+- Get real-time market dynamics
+- Supplement information not covered by news scanning
 
 #### `fetch_url`
-**用途**: 获取指定 URL 的主要内容  
-**输入**: URL 地址  
-**输出**: 网页标题、正文内容、提取日期  
-**使用场景**: 
-- 获取新闻文章完整内容
-- 分析特定网页信息
-- 提取详细的市场分析
+**Purpose**: Get main content of specified URL  
+**Input**: URL address  
+**Output**: Web page title, body content, extraction date  
+**Use Cases**: 
+- Get full content of news articles
+- Analyze specific web page information
+- Extract detailed market analysis
 
 #### `plan_and_scan_news`
-**用途**: 智能新闻规划和扫描（LLM 生成查询后搜索）  
-**输入**: 市场视图（可选）、主题列表（可选）、最大文章数  
-**输出**: 新闻文章列表（可能包含已获取的 URL 内容）  
-**使用场景**: 
-- Discussion Agent 自动规划新闻搜索策略
-- 根据市场情况生成相关查询
+**Purpose**: Intelligent news planning and scanning (LLM generates queries then searches)  
+**Input**: Market view (optional), topic list (optional), max articles  
+**Output**: News article list (may include fetched URL content)  
+**Use Cases**: 
+- Discussion Agent automatically plans news search strategy
+- Generate relevant queries based on market conditions
 
-### 💰 加密货币工具
+### 💰 Cryptocurrency Tools
 
 #### `fetch_crypto_batch`
-**用途**: 批量获取加密货币 OHLCV 数据和技术指标  
-**输入**: 加密货币代码列表（如 BTC-USD, ETH-USD）、开始日期、结束日期  
-**输出**: 与 `fetch_market_batch` 相同结构，但包含加密货币数据  
-**使用场景**: 
-- 分析加密货币市场趋势
-- 评估加密货币与股票市场的相关性
-- 获取加密货币作为市场情绪指标
+**Purpose**: Batch fetch cryptocurrency OHLCV data and technical indicators  
+**Input**: Cryptocurrency code list (e.g., BTC-USD, ETH-USD), start date, end date  
+**Output**: Same structure as `fetch_market_batch`, but includes cryptocurrency data  
+**Use Cases**: 
+- Analyze cryptocurrency market trends
+- Assess correlation between cryptocurrencies and stock markets
+- Get cryptocurrencies as market sentiment indicators
 
-**注意**: 加密货币目前仅用于分析，不参与实际交易。
+**Note**: Cryptocurrencies are currently only used for analysis and do not participate in actual trading.
 
 #### `get_crypto_price`
-**用途**: 获取单个加密货币的当前价格  
-**输入**: 加密货币代码（如 BTC-USD）、开始日期、结束日期（可选）  
-**输出**: 加密货币价格和技术指标  
-**使用场景**: 
-- 快速获取单个加密货币价格
-- 评估加密货币市场情绪
+**Purpose**: Get current price of single cryptocurrency  
+**Input**: Cryptocurrency code (e.g., BTC-USD), start date, end date (optional)  
+**Output**: Cryptocurrency price and technical indicators  
+**Use Cases**: 
+- Quickly get single cryptocurrency price
+- Assess cryptocurrency market sentiment
 
-### 🔍 工具使用策略
+### 🔍 Tool Usage Strategy
 
-**工具调用优先级**:
-1. **市场数据优先**: `fetch_market_batch` 通常最先调用，获取所有股票的技术指标（整个 universe，72只股票）
-2. **情绪指标**: `vix_term`、`fear_greed` 用于评估市场情绪
-3. **新闻补充**: `news_scan` 获取最新新闻，补充市场分析（最重要的工具之一）
-4. **经济数据**: `fetch_jin10_economic_data` 评估宏观经济环境
+**Tool call priority:**
+1. **Market data first**: `fetch_market_batch` is usually called first to get technical indicators for all stocks (entire universe, 72 stocks)
+2. **Sentiment indicators**: `vix_term`, `fear_greed` for market sentiment assessment
+3. **News supplement**: `news_scan` gets latest news to supplement market analysis (one of the most important tools)
+4. **Economic data**: `fetch_jin10_economic_data` assesses macroeconomic environment
 
-**工具预算**: 默认每个交易循环有 **20 次工具调用预算**，允许 Agent 充分使用工具进行分析。
+**Tool budget**: Default each trading cycle has **20 tool call budget**, allowing Agents to fully use tools for analysis.
 
-**重要提示**: 
-- `news_scan` 是 Discussion Agent 最重要的工具之一，用于获取实时市场新闻
-- `fetch_market_batch` 会分析整个 universe（从 `config.json` 读取，默认72只股票），而不仅仅是前几只
-- 所有工具由 LLM 自主决定使用，没有硬编码的优先级限制
+**Important Notes**: 
+- `news_scan` is one of the most important tools for Discussion Agent to get real-time market news
+- `fetch_market_batch` analyzes the entire universe (read from `config.json`, default 72 stocks), not just the first few
+- All tools are used autonomously by LLM, with no hardcoded priority restrictions
 
-### 工具使用示例
+### Tool Usage Example
 
-**Agent 自动调用工具:**
+**Agent automatically calls tools:**
 ```python
-# Discussion Agent 会自动调用工具
+# Discussion Agent automatically calls tools
 tool_calls = [
     {
         "name": "news_scan",
@@ -818,112 +819,122 @@ tool_calls = [
 ]
 ```
 
-**工具调用预算:**
-- 默认预算: 20次工具调用
-- 每个讨论轮次可以使用多个工具
-- Agent 会自动选择最相关的工具
+**Tool call budget:**
+- Default budget: 20 tool calls
+- Each discussion round can use multiple tools
+- Agents automatically select most relevant tools
 
 ---
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 ai-trader-ollama/
-├── backend/                 # Python 后端（主要代码）
+├── backend/                 # Python backend (main code)
 │   ├── src/
-│   │   ├── agents/         # 所有交易 Agent
-│   │   │   ├── market_analyst.py      # 市场分析师
-│   │   │   ├── analyst_discussion.py  # 讨论 Agent
-│   │   │   ├── risk_analyst.py        # 风险分析师
-│   │   │   ├── trader_agent.py       # 交易 Agent
-│   │   │   └── toolbox.py            # 工具接口
-│   │   ├── data/           # 投资组合、交易日志、内存管理
-│   │   ├── tools/           # 所有可用工具
-│   │   ├── orchestrator/    # 主交易循环
-│   │   └── api/             # FastAPI 服务器
-│   ├── config/             # 配置文件
-│   │   └── config.json      # 主配置文件
-│   ├── prompts/            # Agent 提示模板
+│   │   ├── agents/         # All trading Agents
+│   │   │   ├── market_analyst.py      # Market Analyst
+│   │   │   ├── analyst_discussion.py  # Discussion Agent
+│   │   │   ├── risk_analyst.py        # Risk Analyst
+│   │   │   ├── trader_agent.py       # Trader Agent
+│   │   │   └── toolbox.py            # Tool interface
+│   │   ├── data/           # Portfolio, trade logs, memory management
+│   │   ├── tools/           # All available tools
+│   │   ├── orchestrator/    # Main trading cycle
+│   │   └── api/             # FastAPI server
+│   ├── config/             # Configuration files
+│   │   └── config.json      # Main configuration file
+│   ├── prompts/            # Agent prompt templates
 │   │   ├── discussion_agent.yml
 │   │   ├── trader_agent.yml
 │   │   └── ...
-│   ├── scripts/            # 工具脚本
+│   ├── scripts/            # Utility scripts
 │   │   ├── init_data.py
 │   │   ├── start_api_background.ps1
 │   │   └── ...
-│   └── tests/              # 测试套件
-├── frontend/               # 前端监控面板
-│   └── monitor.html        # 主监控页面（纯HTML）
-└── docs/                   # 文档
+│   └── tests/              # Test suite
+├── frontend/               # Frontend monitoring panel
+│   └── monitor.html        # Main monitoring page (pure HTML)
+├── docs/                   # Documentation
+│   ├── archive/            # Archived documentation
+│   └── ...
+└── README.md               # This file
 ```
 
 ---
 
-## 🔧 故障排除
+## 🔧 Troubleshooting
 
-### 常见问题
+### Common Issues
 
-| 问题 | 解决方案 |
-|------|----------|
-| `ModuleNotFoundError: src` | 从 `backend/` 目录运行 |
-| Ollama 连接错误 | 运行 `ollama serve` |
-| 端口 8000 被占用 | 使用 `backend\scripts\check_port.ps1` 查找并终止进程 |
-| 前端 "Connection Error" | 检查后端 API 是否在端口 8000 运行 |
-| 没有投资组合数据 | 运行 `python scripts/init_data.py` |
-| PowerShell 执行策略错误 | 使用 `restart_api_bypass.ps1` 或 `powershell -ExecutionPolicy Bypass` |
+| Issue | Solution |
+|-------|----------|
+| `ModuleNotFoundError: src` | Run from `backend/` directory |
+| Ollama connection error | Run `ollama serve` |
+| Port 8000 is in use | Use `backend\scripts\check_port.ps1` to find and terminate process |
+| Frontend "Connection Error" | Check if backend API is running on port 8000 |
+| No portfolio data | Run `python scripts/init_data.py` |
+| PowerShell execution policy error | Use `restart_api_bypass.ps1` or `powershell -ExecutionPolicy Bypass` |
 
-### 验证系统状态
+### Verifying System Status
 
-**检查后端 API:**
+**Check backend API:**
 ```powershell
 curl http://localhost:8000/api/portfolio/real-time
 ```
 
-**检查端口使用:**
+**Check port usage:**
 ```powershell
 netstat -ano | findstr ":8000"
 ```
 
-**检查数据初始化:**
+**Check data initialization:**
 ```bash
 ls backend/data/logs/portfolio_state.json
 ```
 
 ---
 
-## 📚 详细文档
+## 📚 Documentation
 
-### 核心文档
-- **[后端 README](backend/README.md)** - 后端完整文档（API、Agent、工具、脚本、测试）
-- **[前端 README](frontend/README.md)** - 前端完整文档（功能、使用、配置、故障排除）
+### Core Documentation
+- **[Backend README](backend/README.md)** - Complete backend documentation (API, Agents, Tools, Scripts, Testing)
+- **[Frontend README](frontend/README.md)** - Complete frontend documentation (Features, Usage, Configuration, Troubleshooting)
+- **[Complete System Flow](COMPLETE_SYSTEM_FLOW.md)** - Complete frontend-backend flow documentation
+- **[User Perspective Review](USER_PERSPECTIVE_REVIEW.md)** - User-centric flow review and improvements
 
-### 交易相关文档
-- **[对冲策略指南](backend/HEDGING_STRATEGY.md)** - 反向ETF对冲策略说明
-- **[杠杆ETF使用指南](backend/LEVERAGED_ETF_GUIDE.md)** - 杠杆ETF使用说明和风险提示
-- **[市场指数集成](backend/MARKET_INDICES_INTEGRATION.md)** - 美股三大指数技术分析集成
+### Trading-Related Documentation
+- **[Hedging Strategy Guide](docs/archive/HEDGING_STRATEGY.md)** - Inverse ETF hedging strategy explanation
+- **[Leveraged ETF Usage Guide](docs/archive/LEVERAGED_ETF_GUIDE.md)** - Leveraged ETF usage and risk warnings
+- **[Market Indices Integration](docs/archive/MARKET_INDICES_INTEGRATION.md)** - US market three major indices technical analysis integration
 
-### API 文档
-- **[API端点文档](backend/API_ENDPOINTS.md)** - 完整API端点列表和说明
-- **[前后端集成说明](backend/FRONTEND_BACKEND_INTEGRATION.md)** - 前后端数据流和集成指南
-- **[投资组合更新流程](backend/PORTFOLIO_UPDATE_FLOW.md)** - 投资组合状态更新机制
+### API Documentation
+- **[API Endpoints Documentation](docs/archive/API_ENDPOINTS.md)** - Complete API endpoint list and descriptions
+- **[Frontend-Backend Integration](docs/archive/FRONTEND_BACKEND_INTEGRATION.md)** - Frontend-backend data flow and integration guide
+- **[Portfolio Update Flow](docs/archive/PORTFOLIO_UPDATE_FLOW.md)** - Portfolio state update mechanism
+
+### Trading Hours Logic
+- **[Trading Hours Logic](backend/docs/TRADING_HOURS_LOGIC.md)** - Pre-market, market hours, and after-hours logic
 
 ---
 
-## ✅ 系统状态
+## ✅ System Status
 
-**当前状态**: 生产就绪 ✅
+**Current Status**: Production Ready ✅
 
-所有核心功能已实现并测试：
-- ✅ 完整的交易循环（所有 Agent 参与）
-- ✅ 内存管理系统（保存/加载历史决策）
-- ✅ 自动化执行
-- ✅ 实时监控面板（每60秒自动刷新）
-- ✅ 对冲策略支持（反向ETF）
-- ✅ 杠杆ETF支持（适度使用）
-- ✅ 市场指数技术分析
-- ✅ 完整的API文档
-- ✅ Market Analyst 完整分析 universe 所有股票（72只）
-- ✅ 详细的技术指标显示（RSI、MACD、信号评分等）
+All core features implemented and tested:
+- ✅ Complete trading cycle (all Agents participate)
+- ✅ Memory management system (save/load historical decisions)
+- ✅ Automated execution
+- ✅ Real-time monitoring panel (auto-refresh every 60 seconds)
+- ✅ Hedging strategy support (inverse ETFs)
+- ✅ Leveraged ETF support (moderate use)
+- ✅ Market index technical analysis
+- ✅ Complete API documentation
+- ✅ Market Analyst complete analysis of universe all stocks (72 stocks)
+- ✅ Detailed technical indicators display (RSI, MACD, signal scores, etc.)
+- ✅ Trading hours logic (pre-market, market hours, after-hours)
+- ✅ Non-trading hours display improvements (historical charts, tomorrow's orders)
 
 ---
 

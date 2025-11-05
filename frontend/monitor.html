@@ -921,6 +921,7 @@
                             <thead>
                                 <tr>
                                     <th>Time</th>
+                                    <th>Order Date</th>
                                     <th>Symbol</th>
                                     <th>Side</th>
                                     <th>Qty</th>
@@ -1189,11 +1190,53 @@
         }
 
         async function initSystem() {
+            // 确认对话框
+            const confirmMsg = `⚠️ WARNING: This will DELETE ALL trading history, conversations, and reset portfolio to initial state.\n\n` +
+                              `This action CANNOT be undone!\n\n` +
+                              `Are you sure you want to continue?`;
+            
+            if (!confirm(confirmMsg)) {
+                return; // 用户取消
+            }
+            
+            // 二次确认
+            const secondConfirm = confirm(`⚠️ FINAL CONFIRMATION\n\n` +
+                                         `This will permanently delete:\n` +
+                                         `- All trading history\n` +
+                                         `- All conversation logs\n` +
+                                         `- All pending orders\n` +
+                                         `- All portfolio records\n\n` +
+                                         `Are you absolutely sure?`);
+            
+            if (!secondConfirm) {
+                return; // 用户取消
+            }
+            
             try {
+                const btn = document.getElementById('initBtn') || document.querySelector('button[onclick="initSystem()"]');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Initializing...';
+                }
+                
                 const r = await fetch(`${API_BASE}/api/system/init`, { method: 'POST' });
-                await refreshData(true);
-                alert('Initialized');
-            } catch (e) { alert('Init failed'); }
+                const data = await r.json();
+                
+                if (r.ok && data.ok) {
+                    alert('✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.');
+                    await refreshData(true);
+                } else {
+                    alert('❌ Initialization failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('❌ Initialization failed: ' + e.message);
+            } finally {
+                const btn = document.getElementById('initBtn') || document.querySelector('button[onclick="initSystem()"]');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '⚙️ Initialize';
+                }
+            }
         }
 
         // 直接执行交易循环（每1分钟）
@@ -1475,7 +1518,13 @@
 
             // Update last update time
             document.getElementById('statusLastUpdate').textContent = 
-                `Last checked: ${new Date().toLocaleTimeString()}`;
+                (() => {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    return `Last checked: ${hours}:${minutes}:${seconds}`;
+                })();
         }
 
         // Open conversations modal
@@ -2013,7 +2062,8 @@
                 let pnl = positionsPnL[symbol];
                 if (!pnl || typeof pnl.unrealized_pnl !== 'number') {
                     // 如果后端没有提供P&L数据，从前端计算
-                    const costBasis = (pos.avg_cost || 0) * (pos.quantity || 0);
+                    // 优先使用total_cost（如果存在），否则使用cost_basis，最后使用avg_cost * quantity
+                    const costBasis = pos.total_cost || pos.cost_basis || ((pos.avg_cost || 0) * (pos.quantity || 0));
                     const marketValue = pos.market_value || 0;
                     const unrealizedPnl = marketValue - costBasis;
                     const unrealizedPnlPct = costBasis > 0 ? (unrealizedPnl / costBasis * 100) : 0;
@@ -2021,7 +2071,7 @@
                         unrealized_pnl: unrealizedPnl,
                         unrealized_pnl_pct: unrealizedPnlPct
                     };
-                    console.warn(`[Frontend] Calculating P&L for ${symbol}: cost_basis=${costBasis}, market_value=${marketValue}, unrealized_pnl=${unrealizedPnl}`);
+                    console.warn(`[Frontend] Calculating P&L for ${symbol}: cost_basis=${costBasis} (total_cost=${pos.total_cost}, cost_basis=${pos.cost_basis}), market_value=${marketValue}, unrealized_pnl=${unrealizedPnl}`);
                 }
                 
                 // 确保P&L值有效（不能是NaN或Infinity）
@@ -2386,7 +2436,7 @@
                 }
             }
             
-            // 按状态分组：FILLED 和 PENDING
+            // 按状态分组：FILLED 和 PENDING（包括明日挂单）
             const filledTrades = uniqueTrades.filter(t => {
                 const status = (t.status || '').toUpperCase();
                 return status === 'FILLED' || status === 'SUCCESS';
@@ -2394,6 +2444,14 @@
             const pendingTrades = uniqueTrades.filter(t => {
                 const status = (t.status || '').toUpperCase();
                 return status === 'PENDING' || status === 'ASK';
+            });
+            
+            // 检查是否有明日挂单（order_date是明天的日期）
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const tomorrowOrders = pendingTrades.filter(t => {
+                const orderDate = t.order_date || t.date || '';
+                return orderDate && orderDate >= tomorrow;
             });
             
             // 按时间排序（最新的在前）
@@ -2414,9 +2472,11 @@
             const filledCount = filledTrades.length;
             const pendingCount = pendingTrades.length;
             
-            // 更新计数显示（如果有PENDING订单，显示详细信息）
+            // 更新计数显示（如果有PENDING订单，显示详细信息，包括明日挂单）
             if (countEl) {
-                if (pendingCount > 0) {
+                if (tomorrowOrders.length > 0) {
+                    countEl.textContent = `${totalCount} trades (${filledCount} filled, ${pendingCount - tomorrowOrders.length} pending, ${tomorrowOrders.length} tomorrow)`;
+                } else if (pendingCount > 0) {
                     countEl.textContent = `${totalCount} trades (${filledCount} filled, ${pendingCount} pending)`;
                 } else {
                     countEl.textContent = `${totalCount} trades`;
@@ -2424,26 +2484,53 @@
             }
             
             if (totalCount === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #6b7280;">No execution records yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">No execution records yet.</td></tr>`;
                 return;
             }
             
-            // Show only recent 10 trades for overview
-            const recentTrades = sortedTrades.slice(0, 10);
+            // Show only recent trades for overview (优先显示明日挂单)
+            // 先显示明日挂单，再显示其他订单
+            const tomorrowFirst = [...tomorrowOrders, ...sortedTrades.filter(t => !tomorrowOrders.includes(t))];
+            const recentTrades = tomorrowFirst.slice(0, 15); // 显示更多，包括明日挂单
             
             tbody.innerHTML = recentTrades.map(t => {
                 const side = (t.side || t.action || '').toUpperCase();
                 const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
+                // 优先使用filled_at（成交时间），其次使用placed_at（挂单时间），最后使用timestamp
                 const ts = t.filled_at || t.placed_at || t.timestamp || '';
-                const timeDisplay = ts ? new Date(ts).toLocaleTimeString() : '-';
+                let timeDisplay = '-';
+                if (ts) {
+                    try {
+                        const dateObj = new Date(ts);
+                        // 显示日期和时间：MM/DD HH:MM:SS
+                        timeDisplay = dateObj.toLocaleString('en-US', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                        });
+                    } catch (e) {
+                        timeDisplay = ts; // 如果解析失败，直接显示原始字符串
+                    }
+                }
                 const fillPrice = t.fill_price || t.price || null;
                 const priceDisplay = fillPrice ? `$${Number(fillPrice).toFixed(2)}` : '-';
                 const status = (t.status || 'UNKNOWN').toUpperCase();
                 const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
                 
+                // 检查是否是明日挂单
+                const orderDate = t.order_date || t.date || '';
+                const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const isTomorrowOrder = orderDate && orderDate >= tomorrow;
+                const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">TOMORROW</span>' : '';
+                const orderDateDisplay = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+                
                 return `
-                    <tr>
+                    <tr ${isTomorrowOrder ? 'style="background-color: #fff7ed;"' : ''}>
                         <td>${timeDisplay}</td>
+                        <td>${orderDateDisplay}${tomorrowBadge}</td>
                         <td class="symbol-cell">${t.symbol || '-'}</td>
                         <td class="${sideClass}">${side || '-'}</td>
                         <td>${t.quantity ?? '-'}</td>
@@ -2469,6 +2556,27 @@
 
         // Main refresh function
         async function refreshData(showLoading = false) {
+            // 检查市场是否开盘 - 非交易时段仍显示对话内容，但不更新实时数据
+            let isMarketOpen = true;
+            try {
+                const marketCheck = await fetch(`${API_BASE}/api/market/is-open`);
+                const marketData = await marketCheck.json();
+                if (marketData) {
+                    isMarketOpen = marketData.open || false;
+                    if (!isMarketOpen) {
+                        console.log('[Refresh] Market is closed, will show conversations but skip real-time data');
+                        // 显示提示信息
+                        const refreshBtn = document.getElementById('refreshBtn');
+                        if (refreshBtn) {
+                            refreshBtn.disabled = false;
+                            refreshBtn.textContent = '🔄 Refresh (Market Closed)';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[Refresh] Failed to check market status, continuing with refresh:', e);
+            }
+            
             // 请求去重：如果正在刷新，取消之前的请求
             if (isRefreshing) {
                 if (refreshAbortController) {
@@ -2499,20 +2607,40 @@
                 // Fetch all data in parallel (使用Promise.allSettled，避免单个失败导致整体失败)
                 const fetchOptions = { signal: refreshAbortController.signal };
                 
+                // 非交易时段：只获取对话和订单数据，不更新实时数据
+                // 交易时段：获取所有数据
+                const fetchPromises = [];
+                if (isMarketOpen) {
+                    // 交易时段：获取所有数据
+                    fetchPromises.push(
+                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })),
+                        fetchEquityHistory(fetchOptions).catch(() => []),
+                        fetchBackendStatus(fetchOptions).catch(() => null),
+                        fetchAgentStatus(fetchOptions).catch(() => ({})),
+                        fetchToolsList(fetchOptions).catch(() => []),
+                        fetchSystemInfo(fetchOptions).catch(() => null),
+                        fetchConversations(CONVERSATIONS_LIMIT, fetchOptions).catch(() => ({ conversations: [], total: 0, has_more: false })),
+                        fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
+                    );
+                } else {
+                    // 非交易时段：只获取对话和订单数据（包括明日挂单）
+                    fetchPromises.push(
+                        Promise.resolve(null), // portfolio placeholder
+                        Promise.resolve([]), // history placeholder
+                        fetchBackendStatus(fetchOptions).catch(() => null),
+                        fetchAgentStatus(fetchOptions).catch(() => ({})),
+                        fetchToolsList(fetchOptions).catch(() => []),
+                        fetchSystemInfo(fetchOptions).catch(() => null),
+                        fetchConversations(CONVERSATIONS_LIMIT, fetchOptions).catch(() => ({ conversations: [], total: 0, has_more: false })),
+                        fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => []) // 包括明日挂单
+                    );
+                }
+                
                 // 使用Promise.allSettled，即使某些请求失败也能继续显示其他数据
-                const results = await Promise.allSettled([
-                    fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })),
-                    fetchEquityHistory(fetchOptions).catch(() => []),
-                    fetchBackendStatus(fetchOptions).catch(() => null),
-                    fetchAgentStatus(fetchOptions).catch(() => ({})),
-                    fetchToolsList(fetchOptions).catch(() => []),
-                    fetchSystemInfo(fetchOptions).catch(() => null),
-                    fetchConversations(CONVERSATIONS_LIMIT, fetchOptions).catch(() => ({ conversations: [], total: 0, has_more: false })),
-                    fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
-                ]);
+                const results = await Promise.allSettled(fetchPromises);
                 
                 // 提取结果，处理错误
-                const portfolio = results[0].status === 'fulfilled' && !results[0].value.error ? results[0].value : null;
+                const portfolio = results[0].status === 'fulfilled' && !results[0].value?.error ? results[0].value : null;
                 const history = results[1].status === 'fulfilled' ? results[1].value : [];
                 const backendStatus = results[2].status === 'fulfilled' ? results[2].value : null;
                 const agentStatus = results[3].status === 'fulfilled' ? results[3].value : {};
@@ -2521,27 +2649,50 @@
                 const convData = results[6].status === 'fulfilled' ? results[6].value : { conversations: [], total: 0, has_more: false };
                 const tradesData = results[7].status === 'fulfilled' ? results[7].value : [];
                 
-                // 如果portfolio获取失败，抛出错误
-                if (!portfolio || (portfolio.error)) {
+                // 非交易时段：如果有portfolio数据就用，没有也不报错
+                if (!isMarketOpen && (!portfolio || portfolio.error)) {
+                    console.log('[Refresh] Market closed, using cached portfolio data if available');
+                } else if (isMarketOpen && (!portfolio || portfolio.error)) {
                     throw new Error(portfolio?.error || 'Failed to fetch portfolio data');
                 }
 
                 const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
 
                 // Update UI（确保按顺序更新，持仓变化会反映到所有组件）
-                console.log('[Refresh] Portfolio data:', {
-                    total_value: portfolio.total_value,
-                    cash: portfolio.cash,
-                    equity_value: portfolio.equity_value,
-                    positions_count: Object.keys(portfolio.positions || {}).length
-                });
+                if (portfolio) {
+                    console.log('[Refresh] Portfolio data:', {
+                        total_value: portfolio.total_value,
+                        cash: portfolio.cash,
+                        equity_value: portfolio.equity_value,
+                        positions_count: Object.keys(portfolio.positions || {}).length
+                    });
+                }
                 
-                renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
-                renderPositions(portfolio);     // 更新持仓表格
-                drawChart(history);             // 更新净值图表
+                // 非交易时段：只更新对话和订单，不更新实时数据
+                if (isMarketOpen && portfolio) {
+                    renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
+                    renderPositions(portfolio);     // 更新持仓表格
+                    drawChart(history);             // 更新净值图表
+                } else {
+                    // 非交易时段：显示提示信息
+                    const summaryCards = document.getElementById('summaryCards');
+                    if (summaryCards) {
+                        const marketStatusCard = document.createElement('div');
+                        marketStatusCard.className = 'summary-card';
+                        marketStatusCard.innerHTML = `
+                            <div class="summary-label">Market Status</div>
+                            <div class="summary-value" style="color: #f59e0b;">Market Closed</div>
+                            <div class="summary-subtext">Showing conversation history and tomorrow's orders</div>
+                        `;
+                        // 只在非交易时段且没有其他卡片时显示
+                        if (summaryCards.children.length === 0) {
+                            summaryCards.appendChild(marketStatusCard);
+                        }
+                    }
+                }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
-                renderConversationsOverview(convData.conversations || []);
-                renderExecutionDetails(tradesData || []);  // 更新执行详情（订单）
+                renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
+                renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）
                 
                 // Update response time
                 const responseTimeEl = document.getElementById('responseTime');
@@ -2553,12 +2704,28 @@
                 
                 // Update timestamp
                 const timestamp = portfolio.timestamp || new Date().toISOString();
-                const tsText = `Data: ${new Date(timestamp).toLocaleString()}`;
+                // Format timestamp in English (YYYY-MM-DD HH:MM:SS)
+                const formatTimestamp = (ts) => {
+                    const d = new Date(ts);
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const hours = String(d.getHours()).padStart(2, '0');
+                    const minutes = String(d.getMinutes()).padStart(2, '0');
+                    const seconds = String(d.getSeconds()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                };
+                const tsText = `Data: ${formatTimestamp(timestamp)}`;
                 document.getElementById('dataTimestamp').textContent = tsText;
                 const tsTop = document.getElementById('dataTimestampTop');
                 if (tsTop) tsTop.textContent = tsText;
+                // Format time in English (24-hour format)
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
                 document.getElementById('lastUpdate').textContent = 
-                    `Last: ${new Date().toLocaleTimeString()}`;
+                    `Last: ${hours}:${minutes}:${seconds}`;
 
                 // Update connection status
                 updateConnectionStatus(true);
@@ -2568,7 +2735,7 @@
                 errorState.style.display = 'none';
                 mainContent.style.display = 'block';
                 refreshBtn.disabled = false;
-                refreshBtn.textContent = '🔄 刷新';
+                refreshBtn.textContent = '🔄 Refresh';
                 
                 isRefreshing = false;
 
@@ -2709,7 +2876,7 @@
             setupAutoRefresh();
             
             // 只刷新数据，不自动执行交易循环
-            console.log('[Init] 页面加载完成，刷新数据...');
+            console.log('[Init] Page loaded, refreshing data...');
             
             // 等待1秒后刷新数据
             setTimeout(() => {

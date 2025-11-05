@@ -260,6 +260,38 @@ class OrderManager:
         
         return orders
     
+    def load_filled_orders(self, order_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        """加载已成交订单"""
+        if not self.filled_orders_file.exists():
+            return []
+        
+        orders = []
+        try:
+            with self.filled_orders_file.open("r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        order = json.loads(line)
+                        if order_date is None or order.get("order_date") == order_date:
+                            orders.append(order)
+        except Exception:
+            pass
+        
+        return orders
+    
+    def get_all_orders(self, order_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        获取所有订单（pending + filled）
+        
+        参数:
+        - order_date: 可选，过滤特定日期的订单
+        
+        返回:
+        - 所有订单列表（pending在前，filled在后）
+        """
+        pending = self.load_pending_orders(order_date=order_date)
+        filled = self.load_filled_orders(order_date=order_date)
+        return pending + filled
+    
     def mark_order_filled(
         self,
         order: Dict[str, Any],

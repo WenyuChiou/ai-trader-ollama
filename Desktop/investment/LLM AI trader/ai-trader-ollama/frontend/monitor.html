@@ -3434,7 +3434,18 @@
                 const results = await Promise.allSettled(fetchPromises);
                 
                 // 提取结果，处理错误
-                const portfolio = results[0].status === 'fulfilled' && !results[0].value?.error ? results[0].value : null;
+                // Portfolio: 检查是否是错误对象（有error字段），否则使用返回的数据
+                let portfolio = null;
+                if (results[0].status === 'fulfilled') {
+                    const portfolioData = results[0].value;
+                    if (portfolioData && !portfolioData.error && portfolioData.ok !== false) {
+                        portfolio = portfolioData;
+                    } else if (portfolioData && portfolioData.error) {
+                        console.warn('[Refresh] Portfolio fetch returned error:', portfolioData.error);
+                    }
+                } else if (results[0].status === 'rejected') {
+                    console.warn('[Refresh] Portfolio fetch rejected:', results[0].reason);
+                }
                 const history = results[1].status === 'fulfilled' ? results[1].value : [];
                 const backendStatus = results[2].status === 'fulfilled' ? results[2].value : null;
                 const agentStatus = results[3].status === 'fulfilled' ? results[3].value : {};

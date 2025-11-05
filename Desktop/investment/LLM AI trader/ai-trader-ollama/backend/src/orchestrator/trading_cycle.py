@@ -183,7 +183,7 @@ def execute_daily_trade(
         historical_memories=historical_memories,  # 注入歷史記憶
     )
     final_stance = convo.get("final_stance", "neutral")
-    
+
     # 將對話寫入 discussion_actions.jsonl（供前端顯示）
     try:
         # Path 已经在文件顶部导入，不需要重复导入
@@ -449,10 +449,10 @@ def execute_daily_trade(
                 position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
                 # min_position_per_stock 如果配置中没有，使用默认值
                 position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
-    except Exception:
+        except Exception:
         # 如果读取失败，使用默认值
-        pass
-    
+            pass
+
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -902,6 +902,7 @@ def execute_daily_trade(
         from src.data.memory_manager import MemoryManager
         from src.data.equity_tracker import EquityTracker
         from src.data.daily_portfolio_logger import DailyPortfolioLogger
+        from src.data.order_manager import OrderManager
         
         memory_manager = MemoryManager(root="data/logs")
         equity_tracker = EquityTracker(root="data/logs")
@@ -910,17 +911,54 @@ def execute_daily_trade(
         # 使用 end 日期作为今天的日期（如果 end 是 None，使用当前日期）
         today = end if end else date.today().isoformat()
         
-        # Portfolio 快照（添加positions_detail用于JSON记录）
+        # Portfolio 快照
         portfolio_snapshot = {
             "cash": portfolio.cash if portfolio else 0.0,
+            "initial_value": portfolio.initial_value if portfolio else 10000.0,
             "positions": updated_positions_info,
-            "positions_detail": updated_positions_info,  # 添加详细持仓信息
+            "positions_detail": updated_positions_info,  # 确保有positions_detail字段
             "total_value": portfolio_value,
             "equity_value": equity_value,
             "total_pnl": total_pnl,
             "total_pnl_pct": total_pnl_pct,
             "positions_pnl": portfolio_pnl,
         }
+        
+        # 获取当日交易记录（buy/sell/filled/pending）
+        trades_today = {
+            "buy": [],
+            "sell": [],
+            "filled": [],
+            "pending": [],
+        }
+        try:
+            order_manager = OrderManager(root="data/logs")
+            # 获取所有订单
+            all_orders = order_manager.get_all_orders()
+            for order in all_orders:
+                order_date = order.get("order_date", "")
+                if order_date == today or order_date == today.isoformat() if isinstance(today, date) else today:
+                    action = order.get("action", "").upper()
+                    status = order.get("status", "").upper()
+                    
+                    if action == "BUY":
+                        trades_today["buy"].append(order)
+                    elif action == "SELL":
+                        trades_today["sell"].append(order)
+                    
+                    if status == "FILLED":
+                        trades_today["filled"].append(order)
+                    elif status == "PENDING":
+                        trades_today["pending"].append(order)
+        except Exception as e:
+            print(f"[PORTFOLIO LOG WARN] Failed to load trades for today: {e}")
+        
+        # 保存每日组合数据（JSON格式，用于RiskAnalyst输入）
+        portfolio_logger.record_daily_portfolio(
+            date_str=today,
+            portfolio_snapshot=portfolio_snapshot,
+            trades_today=trades_today,
+        )
         
         # 保存完整的每日记忆（注意：此時 executed_trades 只包含掛單信息，成交明細會在收盤後補充）
         # 實際成交明細會在 check_pending_orders.py 中補充到每日記憶
@@ -939,37 +977,6 @@ def execute_daily_trade(
         equity_tracker.record_daily_equity(
             date_str=today,
             portfolio_snapshot=portfolio_snapshot,
-        )
-        
-        # 记录每日持仓（JSON格式，用于RiskAnalyst输入）
-        # 提取交易动作（如果有）
-        this_action = None
-        if executed_trades and len(executed_trades) > 0:
-            # 使用最新的交易动作
-            latest_trade = executed_trades[-1]
-            this_action = {
-                "action": latest_trade.get("action", "hold").lower(),
-                "symbol": latest_trade.get("symbol"),
-                "amount": latest_trade.get("quantity", 0),
-                "price": latest_trade.get("fill_price") or latest_trade.get("limit_price") or 0.0,
-            }
-        
-        # 提取风险指标（从risk_report）
-        risk_metrics = {}
-        if risk_report:
-            current_pos_risk = risk_report.get("current_position_risk", {})
-            risk_metrics = {
-                "total_unrealized_pnl": current_pos_risk.get("total_unrealized_pnl", 0.0),
-                "total_unrealized_pnl_pct": current_pos_risk.get("total_unrealized_pnl_pct", 0.0),
-                "position_concentration": current_pos_risk.get("position_concentration", 0.0),
-                "overall_exposure": current_pos_risk.get("overall_exposure", 0.0),
-            }
-        
-        portfolio_logger.record_daily_portfolio(
-            date_str=today,
-            portfolio_snapshot=portfolio_snapshot,
-            this_action=this_action,
-            risk_metrics=risk_metrics,
         )
 
         # 额外：写入最新组合状态（方便测试与前端直接读取）

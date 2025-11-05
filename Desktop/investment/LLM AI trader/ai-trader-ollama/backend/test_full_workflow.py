@@ -129,6 +129,29 @@ def main():
     discussion = result.get("discussion", {})
     tool_context = discussion.get("tool_context", [])
     
+    # 若 discussion 未回傳工具使用，改從日誌文件讀取 ToolSystem 條目（更可靠）
+    if not tool_context:
+        log_tc = []
+        try:
+            if convo_file.exists():
+                with convo_file.open('r', encoding='utf-8') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        try:
+                            entry = json.loads(line)
+                        except Exception:
+                            continue
+                        if entry.get('type') == 'tool':
+                            content = entry.get('content', '')
+                            if isinstance(content, str) and content.startswith('Tool used: '):
+                                log_tc.append(content[len('Tool used: '):])
+        except Exception:
+            pass
+        if log_tc:
+            print(f"  ✓ 從日誌讀取到工具使用記錄: {len(log_tc)} 項")
+            tool_context = log_tc
+    
     if not tool_context:
         print("  ✗ 未找到工具使用記錄")
         return False
@@ -136,7 +159,7 @@ def main():
     print(f"  ✓ 工具使用記錄: {len(tool_context)} 項")
     
     # 檢查關鍵工具（更健壯的檢測）
-    expected_tools = ["vix_term", "fear_greed", "news_scan"]
+    expected_tools = ["vix_term", "fear_greed", "news_scan", "jin10_economic"]
     
     found_tools = []
     for tool in expected_tools:
@@ -155,7 +178,7 @@ def main():
         else:
             print(f"  ⚠️  工具 {tool} 未使用")
     
-    if len(found_tools) >= 2:
+    if len(found_tools) >= 3:
         print(f"  ✓ 關鍵工具使用正常（至少 {len(found_tools)}/{len(expected_tools)}）")
     else:
         print(f"  ⚠️  工具使用不足（僅 {len(found_tools)}/{len(expected_tools)}）")

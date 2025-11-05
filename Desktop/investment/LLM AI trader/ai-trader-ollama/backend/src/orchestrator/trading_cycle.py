@@ -104,17 +104,41 @@ def execute_daily_trade(
     market_analysis = run_market_analyst(market_view)
     recommended_stocks = market_analysis.get("recommended_stocks", [])
 
+    # ---- (1d) Sentiment Analyst：VIX/Fear&Greed 等情緒指標 ----
+    try:
+        from src.tools.sentiment_tools import fetch_fear_greed, vix_term_structure, vix_risk_score
+        fgi = fetch_fear_greed()
+        vix_term = vix_term_structure()
+        sentiment_summary = {
+            "fgi": fgi,
+            "vix_term": vix_term,
+            "vix_risk_score": vix_risk_score(vix_term)
+        }
+    except Exception:
+        sentiment_summary = {"fgi": {}, "vix_term": {}, "vix_risk_score": 5.0}
+
+    # ---- (1e) Economic Data (Jin10) ----
+    econ_summary = {}
+    try:
+        from src.tools.jin10_tools import fetch_jin10_economic_data
+        econ = fetch_jin10_economic_data(max_items=10)
+        econ_summary = {"items": econ[:5]} if isinstance(econ, list) else (econ or {})
+    except Exception:
+        econ_summary = {}
+
     enriched_market: Dict[str, Any] = {
         "symbols": symbols,
         # 交給 discussion 自動補：vix_term / fear_greed / news
-        "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
-        "fear_greed": market_view.get("fear_greed"),
+        "vix_term": sentiment_summary.get("vix_term") or market_view.get("vix_term"),
+        "fear_greed": sentiment_summary.get("fgi") or market_view.get("fear_greed"),
         "news": None,
         "signal_score_top": signal_top,
         "stocks": stocks,
         "vix": market_view.get("vix"),
         "recommended_stocks": recommended_stocks,  # 添加 Market Analyst 的推薦股票列表
         "market_sentiment": market_analysis.get("market_sentiment", "neutral"),  # 添加市場情緒
+        "sentiment_summary": sentiment_summary,
+        "economic_data": econ_summary,
     }
 
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
@@ -241,6 +265,135 @@ def execute_daily_trade(
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        # 額外：將情緒工具（FGI / VIX term）也以 ToolSystem 形式各寫一條，方便前端顯示
+        try:
+            if sentiment_summary:
+                fgi = sentiment_summary.get("fgi") or {}
+                if fgi:
+                    fgi_value = fgi.get("value")
+                    fgi_label = fgi.get("label")
+                    fgi_asof = fgi.get("asof")
+                    fgi_text = (
+                        f"fear_greed: value={fgi_value}, label={fgi_label}, asof={fgi_asof}"
+                        if (fgi_value is not None or fgi_label)
+                        else "fear_greed: unavailable"
+                    )
+                    with convo_file.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps({
+                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                            "date": trade_date_str,
+                            "agent": "ToolSystem",
+                            "round": 0,
+                            "content": f"Tool used: {fgi_text}",
+                            "type": "tool",
+                        }, ensure_ascii=False) + "\n")
+
+                vt = sentiment_summary.get("vix_term") or {}
+                if vt:
+                    vt_v = vt.get("vix")
+                    vt_v3 = vt.get("vix3m")
+                    vt_ratio = vt.get("ratio")
+                    vt_text = (
+                        f"vix_term: VIX={vt_v}, VIX3M={vt_v3}, ratio={vt_ratio} (contango if >1)"
+                    )
+                    with convo_file.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps({
+                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                            "date": trade_date_str,
+                            "agent": "ToolSystem",
+                            "round": 0,
+                            "content": f"Tool used: {vt_text}",
+                            "type": "tool",
+                        }, ensure_ascii=False) + "\n")
+            # Economic data as ToolSystem
+            if econ_summary:
+                econ_text = "jin10_economic: " + (json.dumps(econ_summary.get("items", econ_summary), ensure_ascii=False)[:180])
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps({
+                        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        "date": trade_date_str,
+                        "agent": "ToolSystem",
+                        "round": 0,
+                        "content": f"Tool used: {econ_text}",
+                        "type": "tool",
+                    }, ensure_ascii=False) + "\n")
+        except Exception as _e:
+            print(f"[WARN] Failed to append sentiment tools as ToolSystem: {_e}")
+
+        # 追加各 Agent 的關鍵輸出，讓前端能看到所有 Agent（不只 DiscussionAgent）
+        try:
+            # SentimentAnalyst 摘要
+            sa_summary = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,
+                "agent": "SentimentAnalyst",
+                "round": 0,
+                "type": "summary",
+                "content": json.dumps({
+                    "fgi": sentiment_summary.get("fgi"),
+                    "vix_term": sentiment_summary.get("vix_term"),
+                    "vix_risk_score": sentiment_summary.get("vix_risk_score")
+                }, ensure_ascii=False)
+            }
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(sa_summary, ensure_ascii=False) + "\n")
+
+            # TechnicalAnalyst 摘要（從技術指標與 top signals 組裝）
+            tech_payload = {
+                "top_signals": signal_top,
+                "indicators": {sym: {
+                    "rsi14": (stocks.get(sym, {}) or {}).get("rsi14"),
+                    "macd": (stocks.get(sym, {}) or {}).get("macd"),
+                    "bb_pos": (stocks.get(sym, {}) or {}).get("bb_pos"),
+                } for sym, _ in signal_top[:5]}
+            }
+            ta_tech = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,
+                "agent": "TechnicalAnalyst",
+                "round": 0,
+                "type": "summary",
+                "content": json.dumps(tech_payload, ensure_ascii=False)
+            }
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(ta_tech, ensure_ascii=False) + "\n")
+
+            # FundamentalAnalyst 摘要（以推薦清單與市場情緒為主）
+            fa_payload = {
+                "market_sentiment": market_analysis.get("market_sentiment"),
+                "recommended_stocks": recommended_stocks[:10],
+                "key_observations": (market_analysis.get("key_observations") or [])[:10],
+            }
+            fa_summary = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,
+                "agent": "FundamentalAnalyst",
+                "round": 0,
+                "type": "summary",
+                "content": json.dumps(fa_payload, ensure_ascii=False)
+            }
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(fa_summary, ensure_ascii=False) + "\n")
+
+            # MarketAnalyst 摘要
+            ma_summary = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "date": trade_date_str,
+                "agent": "MarketAnalyst",
+                "round": 0,
+                "type": "summary",
+                "content": json.dumps({
+                    "market_sentiment": market_analysis.get("market_sentiment"),
+                    "recommended_stocks": market_analysis.get("recommended_stocks", [])[:10]
+                }, ensure_ascii=False)
+            }
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(ma_summary, ensure_ascii=False) + "\n")
+
+            # RiskAnalyst / TraderAgent 摘要放在稍後（風險分析與決策完成之後）
+        except Exception as _e:
+            print(f"[WARN] Failed to append agent summaries: {_e}")
         
     except Exception as e:
         print(f"[WARN] Failed to write conversations to discussion_actions.jsonl: {e}")
@@ -310,6 +463,49 @@ def execute_daily_trade(
         portfolio_value=portfolio_value,
         position_config=position_config,  # 传入仓位配置
     )
+
+    # ---- 在風險分析與決策完成後，補寫 RiskAnalyst / TraderAgent 摘要 ----
+    try:
+        logs_dir = Path("data/logs") if 'logs_dir' not in locals() else logs_dir
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        convo_file = logs_dir / "discussion_actions.jsonl"
+
+        # Normalize risk level field from risk_report
+        _risk_level = (
+            risk_report.get("overall_risk_level")
+            or risk_report.get("overall_risk")
+            or risk_report.get("risk_level")
+        )
+        ra_summary = {
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": (end if end else date.today().isoformat()),
+            "agent": "RiskAnalyst",
+            "round": 0,
+            "type": "summary",
+            "content": json.dumps({
+                "overall_risk": _risk_level,
+                "warnings": (risk_report.get("warnings") or [])[:5]
+            }, ensure_ascii=False)
+        }
+        with convo_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(ra_summary, ensure_ascii=False) + "\n")
+
+        ta_summary = {
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": (end if end else date.today().isoformat()),
+            "agent": "TraderAgent",
+            "round": 0,
+            "type": "summary",
+            "content": json.dumps({
+                "action": decision.get("action"),
+                "buy_count": len(decision.get("buy_orders", [])),
+                "sell_count": len(decision.get("sell_orders", []))
+            }, ensure_ascii=False)
+        }
+        with convo_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(ta_summary, ensure_ascii=False) + "\n")
+    except Exception as _e:
+        print(f"[WARN] Failed to append post-decision summaries: {_e}")
 
     # ---- (5) 掛單策略：開盤前掛限價單，收盤後檢查成交 ----
     from src.data.order_manager import OrderManager
@@ -415,10 +611,8 @@ def execute_daily_trade(
             
             if symbol and buy_price and quantity:
                 try:
-                    # 檢查現金是否足夠
-                    # 使用 buy_price_min 作為限價（但更激進，提高成交率）
-                    # buy_price_min 現在是 99.5% 當前價格，而不是 98%
-                    limit_price = buy_price_min  # 使用價格範圍最低價作為限價（99.5%當前價格）
+                    # 使用當前基準價的 -0.2% 作為買入限價，提高盤中成交率
+                    limit_price = round(buy_price * 0.998, 2)
                     estimated_cost = limit_price * quantity
                     
                     # Check 3: Cash reserve (use available_for_trading instead of full cash)
@@ -482,8 +676,8 @@ def execute_daily_trade(
                         execution_errors.append(f"SELL {symbol}: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
                         continue
                     
-                    # 掛單：創建限價賣單（使用 sell_price_max 作為限價，高賣策略）
-                    limit_price = sell_price_max  # 使用價格範圍最高價作為限價
+                    # 使用當前基準價的 +0.2% 作為賣出限價，提高盤中成交率
+                    limit_price = round(sell_price * 1.002, 2)
                     
                     placed_order = order_manager.place_order(
                         symbol=symbol,
@@ -585,6 +779,31 @@ def execute_daily_trade(
             date_str=today,
             portfolio_snapshot=portfolio_snapshot,
         )
+
+        # 额外：写入最新组合状态（方便测试与前端直接读取）
+        try:
+            portfolio_state_fp = logs_dir / "portfolio_state.json"
+            import json as _json
+            with portfolio_state_fp.open("w", encoding="utf-8") as f:
+                f.write(_json.dumps({
+                    "date": today,
+                    "snapshot": portfolio_snapshot,
+                }, ensure_ascii=False))
+        except Exception as _e:
+            print(f"[MEMORY WARN] Failed to write portfolio_state.json: {_e}")
+
+        # 额外：写入一条簡單的實時快照（若真正的實時模組未產生時，提供占位）
+        try:
+            rt_snapshots_fp = logs_dir / "real_time_snapshots.jsonl"
+            import json as _json
+            with rt_snapshots_fp.open("a", encoding="utf-8") as f:
+                f.write(_json.dumps({
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "date": today,
+                    "portfolio": portfolio_snapshot,
+                }, ensure_ascii=False) + "\n")
+        except Exception as _e:
+            print(f"[MEMORY WARN] Failed to append real_time_snapshots.jsonl: {_e}")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
         # 不影响主流程，继续执行

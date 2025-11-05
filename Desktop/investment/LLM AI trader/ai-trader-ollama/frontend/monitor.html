@@ -1031,8 +1031,10 @@
     <script>
         // Configuration
         const API_BASE = 'http://127.0.0.1:8000';
-        const REFRESH_INTERVAL = 60000; // 60 seconds for data refresh (优化：减少请求频率)
-        const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
+        let LAST_MARKET_OPEN = true;
+        const REFRESH_INTERVAL = 60000; // data refresh (always on)
+        let AUTO_TRADE_INTERVAL_OPEN_MS = 30 * 60 * 1000; // 30 minutes during market hours
+        let AUTO_TRADE_INTERVAL_CLOSED_MS = 60 * 60 * 1000; // 60 minutes off-hours to check-and-plan-once
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
         const CONVERSATIONS_LIMIT = 30; // 限制对话数量（优化：减少DOM操作）
         const TRADES_LIMIT = 30; // 限制交易数量（优化：减少DOM操作）
@@ -1241,7 +1243,9 @@
 
         // 直接执行交易循环（改进版：防重复执行、调整频率）
         let tradeCheckTimer = null;
+        let autoTradeTimer = null;
         let isTradingExecuting = false;  // ✅ 添加执行状态标志，防止重复执行
+        let fillCheckTimer = null;       // 每分鐘檢查成交
         
         async function executeTradeCycle() {
             // ✅ 防重复执行：如果上次交易还在执行，跳过本次
@@ -1250,12 +1254,38 @@
                 return;
             }
             
-            // ✅ 检查市场是否开盘
+            // ✅ 檢查市場是否開盤；若關盤，僅在「尚無明日掛單」時才觸發一次規劃
             try {
                 const isOpen = await isMarketOpen();
                 if (!isOpen) {
-                    console.log('[Trade Cycle] Market is closed, skipping trade cycle');
-                    return;
+                    // 計算下一個交易日（跳過週末）
+                    const dt = new Date();
+                    let tmr = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + 1);
+                    while (tmr.getDay() === 0 || tmr.getDay() === 6) {
+                        tmr = new Date(tmr.getFullYear(), tmr.getMonth(), tmr.getDate() + 1);
+                    }
+                    const tmrStr = tmr.toISOString().split('T')[0];
+
+                    // 讀取最新掛單，若已經有明日掛單，則不再觸發規劃
+                    try {
+                        const tradesResp = await fetch(`${API_BASE}/api/trades/recent?limit=200`, { signal: AbortSignal.timeout(8000) });
+                        const tradesJson = await tradesResp.json();
+                        const trades = tradesJson?.trades || [];
+                        const hasTomorrowPending = trades.some(r => {
+                            const status = (r.status || '').toUpperCase();
+                            const od = r.order_date || '';
+                            return status === 'PENDING' && od && od >= tmrStr;
+                        });
+                        if (hasTomorrowPending) {
+                            console.log(`[Trade Cycle] Market closed; pending orders already exist for ${tmrStr}. No new plan.`);
+                            // 僅刷新畫面以顯示既有掛單
+                            await refreshData(false);
+                            return;
+                        }
+                        console.log(`[Trade Cycle] Market closed; no pending orders for ${tmrStr}. Will plan once.`);
+                    } catch (e) {
+                        console.warn('[Trade Cycle] Failed to load recent trades; will fall back to backend guard.', e);
+                    }
                 }
             } catch (e) {
                 console.warn('[Trade Cycle] Failed to check market status:', e);
@@ -1298,6 +1328,71 @@
                 }
             } finally {
                 isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
+            }
+        }
+
+        // 每1分鐘檢查是否有 PENDING 訂單；若有且市場開盤，觸發一次後端檢查（不更改規劃頻率）
+        async function startMinuteFillCheck() {
+            if (fillCheckTimer) clearInterval(fillCheckTimer);
+            const ONE_MIN = 60 * 1000;
+            fillCheckTimer = setInterval(async () => {
+                if (!LAST_MARKET_OPEN) return;
+                try {
+                    const r = await fetch(`${API_BASE}/api/trades/recent?limit=100`, { signal: AbortSignal.timeout(5000) });
+                    if (!r.ok) return;
+                    const j = await r.json();
+                    const today = new Date().toISOString().split('T')[0];
+                    const hasPending = (j.trades || []).some(t => (t.status||'').toUpperCase()==='PENDING' && (t.order_date||'')<=today);
+                    if (hasPending) {
+                        // 觸發一次交易執行以檢查並標記成交（後端有市場開盤保護）
+                        await fetch(`${API_BASE}/api/trading/execute-trade`, { method: 'POST' });
+                        // 刷新畫面
+                        refreshData(false);
+                    }
+                } catch {}
+            }, ONE_MIN);
+        }
+
+        // Auto-trade scheduler
+        async function scheduleAutoTradeLoop(enabled) {
+            if (autoTradeTimer) {
+                clearInterval(autoTradeTimer);
+                autoTradeTimer = null;
+            }
+            if (!enabled) return;
+
+            let isOpen = false;
+            try { isOpen = await isMarketOpen(); } catch {}
+
+            if (isOpen) {
+                // Market hours: run trading loop every 30 minutes
+                autoTradeTimer = setInterval(() => {
+                    if (!isTradingExecuting) executeTradeCycle();
+                }, AUTO_TRADE_INTERVAL_OPEN_MS);
+                console.log('[AutoTrade] Market open: scheduled every 30 minutes');
+            } else {
+                // Off-hours: only plan if tomorrow plan missing (check hourly)
+                autoTradeTimer = setInterval(async () => {
+                    try {
+                        const dt = new Date();
+                        let tmr = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + 1);
+                        while (tmr.getDay() === 0 || tmr.getDay() === 6) {
+                            tmr = new Date(tmr.getFullYear(), tmr.getMonth(), tmr.getDate() + 1);
+                        }
+                        const tmrStr = tmr.toISOString().split('T')[0];
+                        const tradesResp = await fetch(`${API_BASE}/api/trades/recent?limit=200`, { signal: AbortSignal.timeout(8000) });
+                        const tradesJson = await tradesResp.json();
+                        const trades = tradesJson?.trades || [];
+                        const hasTomorrowPending = trades.some(r => (r.status || '').toUpperCase() === 'PENDING' && (r.order_date || '') >= tmrStr);
+                        if (!hasTomorrowPending) {
+                            console.log('[AutoTrade] Off-hours: no plan for tomorrow, planning once...');
+                            await executeTradeCycle();
+                        }
+                    } catch (e) {
+                        console.warn('[AutoTrade] Off-hours check failed', e);
+                    }
+                }, AUTO_TRADE_INTERVAL_CLOSED_MS);
+                console.log('[AutoTrade] Market closed: scheduled hourly plan-if-missing');
             }
         }
         
@@ -1365,16 +1460,20 @@
             }
         }
         
-        function startAutoTrade() {
+        async function startAutoTrade() {
             if (tradeCheckTimer) {
                 clearInterval(tradeCheckTimer);
             }
-            // ✅ 改进：调整执行频率为5分钟（而不是1分钟），减少过度交易
-            const TRADING_INTERVAL = 5 * 60 * 1000;  // 5分钟
-            tradeCheckTimer = setInterval(executeTradeCycle, TRADING_INTERVAL);
+            // 市场开盘才启动；关闭则不跑
+            try {
+                const open = await isMarketOpen();
+                if (!open) { console.log('[Auto Trade] Market closed; not starting.'); return; }
+            } catch {}
+            const TRADING_INTERVAL = 30 * 60 * 1000;  // 30分钟
+            tradeCheckTimer = setInterval(() => { if (LAST_MARKET_OPEN) executeTradeCycle(); }, TRADING_INTERVAL);
             console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 1000} seconds)`);
             // 立即执行一次
-            executeTradeCycle();
+            if (LAST_MARKET_OPEN) executeTradeCycle();
         }
         
         function stopAutoTrade() {
@@ -1672,6 +1771,8 @@
                             // Parse tool information if it's a tool entry
                             let toolHtml = '';
                             let toolResultHtml = '';
+                            let indicatorsHtml = '';
+                            let toolCommentHtml = '';
                             if (entry_type === 'tool') {
                                 const toolInfo = parseToolInfo(content_text);
                                 if (toolInfo) {
@@ -1681,6 +1782,8 @@
                                             <strong>Tool Result:</strong><br/>
                                             ${escapeHtml(toolInfo.result)}
                                         </div>`;
+                                        const short = (toolInfo.result || '').slice(0, 160);
+                                        toolCommentHtml = `<div class="conversation-notes"><strong>Comment:</strong> ${escapeHtml(short)}</div>`;
                                     }
                                 }
                             }
@@ -1695,6 +1798,7 @@
                                     ${toolHtml}
                                     ${toolResultHtml}
                                     ${indicatorsHtml}
+                                    ${toolCommentHtml}
                                     <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content_text, entry_type)}</div>
                                 </div>
                             `;
@@ -1911,10 +2015,53 @@
             return div.innerHTML;
         }
         
-        // Format conversation content (especially for JSON risk reports)
+        // Format conversation content (no raw JSON; human-readable)
         function formatConversationContent(content, entryType) {
             if (!content) return '';
-            
+
+            // Generic: if fenced code appears, try parse JSON then render as list
+            if (typeof content === 'string' && content.includes('```')) {
+                try {
+                    const m = content.match(/```[a-zA-Z]*[\r\n]+([\s\S]*?)```/);
+                    if (m && m[1]) {
+                        const obj = JSON.parse(m[1].trim());
+                        return renderKeyValueObject(obj);
+                    }
+                } catch (e) { /* ignore and fall through */ }
+                return escapeHtml(content.replace(/```[a-zA-Z]*[\r\n]?/g, '').replace(/```/g, ''));
+            }
+
+            // Pretty print common "key: value" blocks (analyst summaries) and keep free-text as comment
+            if (typeof content === 'string' && /:\s/.test(content)) {
+                const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                let items = [];
+                let comments = [];
+                for (const line of lines) {
+                    const m = line.match(/^([A-Za-z0-9_\- ]+)\s*:\s*(.+)$/);
+                    if (!m) { comments.push(line); continue; }
+                    const key = m[1].trim();
+                    let val = m[2].trim();
+                    // Render JSON-ish arrays as badges
+                    let badgeHtml = '';
+                    if (/^\[.*\]$/.test(val)) {
+                        try {
+                            const arr = JSON.parse(val);
+                            if (Array.isArray(arr)) {
+                                badgeHtml = arr.map(sym => `<span class="badge">${escapeHtml(String(sym))}</span>`).join(' ');
+                                val = '';
+                            }
+                        } catch {}
+                    }
+                    items.push(`<li><strong>${escapeHtml(key)}:</strong> ${badgeHtml || escapeHtml(val)}</li>`);
+                }
+                if (items.length > 0 || comments.length > 0) {
+                    let html = '';
+                    if (items.length > 0) html += `<ul class="kv-list">${items.join('')}</ul>`;
+                    if (comments.length > 0) html += `<div class="conversation-notes"><strong>Comment:</strong> ${escapeHtml(comments.join(' '))}</div>`;
+                    return html;
+                }
+            }
+
             // 如果是 risk_analysis 类型，尝试解析 JSON 并美化显示
             if (entryType === 'risk_analysis') {
                 try {
@@ -1946,7 +2093,7 @@
                     
                     // Risk Score
                     if (riskData.risk_score !== undefined) {
-                        html += `<div style="margin-bottom: 12px;"><strong>📊 Risk Score:</strong> <span style="color: #6b7280;">${Number(riskData.risk_score).toFixed(2)}</span></div>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>📊 Risk Score:</strong> <span style="color: #6b7280;">${Number(riskData.risk_score).toFixed(1)}</span></div>`;
                     }
                     
                     // Max Position Size
@@ -2011,20 +2158,50 @@
                 }
             }
             
-            // 其他类型直接显示
+            // Other types: try parse trailing JSON, else plain text
+            if (typeof content === 'string') {
+                try {
+                    const jm = content.match(/\{[\s\S]*\}$/);
+                    if (jm) {
+                        return renderKeyValueObject(JSON.parse(jm[0]));
+                    }
+                } catch (e) { /* ignore */ }
+                return escapeHtml(content);
+            }
+            if (typeof content === 'object') {
+                try { return renderKeyValueObject(content); } catch (e) { /* ignore */ }
+            }
             return escapeHtml(String(content));
+        }
+
+        // Render shallow key-value object as bullet list
+        function renderKeyValueObject(obj) {
+            if (!obj || typeof obj !== 'object') return '';
+            const entries = Object.entries(obj).slice(0, 20);
+            let html = '<ul style="margin:6px 0;padding-left:18px;">';
+            for (const [k, v] of entries) {
+                const val = (typeof v === 'object') ? JSON.stringify(v) : String(v);
+                html += `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(val)}</li>`;
+            }
+            html += '</ul>';
+            return html;
         }
 
         // Render summary cards
         function renderSummaryCards(portfolio) {
             const container = document.getElementById('summaryCards');
             const initialValue = portfolio.initial_value || 10000;
-            const totalValue = portfolio.total_value || 0;
+            let totalValue = portfolio.total_value || 0;
             const cash = portfolio.cash || 0;
             const equityValue = portfolio.equity_value || 0;
             const totalPnL = portfolio.total_pnl || 0;
             const totalPnLPct = portfolio.total_pnl_pct || 0;
             const positions = Object.keys(portfolio.positions || {}).length;
+
+            // 如果後端 total_value 為 0，但有現金或持倉價值，前端以 cash + equityValue 顯示總資產
+            if (totalValue === 0 && (cash > 0 || equityValue > 0)) {
+                totalValue = cash + equityValue;
+            }
 
             const cashPercent = totalValue > 0 ? ((cash / totalValue) * 100).toFixed(1) : 0;
 
@@ -2035,13 +2212,13 @@
                 <div class="card">
                     <div class="card-label">Total Portfolio Value</div>
                     <div class="card-value ${valueUp ? 'value-positive' : 'value-negative'}">${formatCurrency(totalValue)}</div>
-                    <div class="value-subpercent ${valueUp ? 'value-positive' : 'value-negative'}">${valueUp ? '+' : ''}${formatNumber(valuePct)}%</div>
+                    <div class="value-subpercent ${valueUp ? 'value-positive' : 'value-negative'}">${valueUp ? '+' : ''}${formatNumber(valuePct, 1)}%</div>
                     <div class="card-subtitle">Initial: ${formatCurrency(initialValue)}</div>
                 </div>
                 <div class="card pnl ${totalPnL >= 0 ? 'positive' : 'negative'}">
                     <div class="card-label">Total P&L</div>
                     <div class="card-value">${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}</div>
-                    <div class="card-percent">${totalPnLPct >= 0 ? '+' : ''}${formatNumber(totalPnLPct)}%</div>
+                    <div class="card-percent">${totalPnLPct >= 0 ? '+' : ''}${formatNumber(totalPnLPct, 1)}%</div>
                 </div>
                 <div class="card">
                     <div class="card-label">Available Cash</div>
@@ -2591,6 +2768,7 @@
                 const marketData = await marketCheck.json();
                 if (marketData) {
                     isMarketOpen = marketData.open || false;
+                    LAST_MARKET_OPEN = isMarketOpen;
                     if (!isMarketOpen) {
                         console.log('[Refresh] Market is closed, will show conversations but skip real-time data');
                         // 显示提示信息
@@ -2738,7 +2916,7 @@
                 }
                 
                 // Update timestamp
-                const timestamp = portfolio.timestamp || new Date().toISOString();
+                const timestamp = (portfolio && portfolio.timestamp) || new Date().toISOString();
                 // Format timestamp in English (YYYY-MM-DD HH:MM:SS)
                 const formatTimestamp = (ts) => {
                     const d = new Date(ts);
@@ -2841,7 +3019,7 @@
         function startAutoRefresh() {
             stopAutoRefresh();
             refreshTimer = setInterval(() => {
-                if (!isRefreshing) {
+                if (!isRefreshing && LAST_MARKET_OPEN) {
                     refreshData(false);
                 }
             }, REFRESH_INTERVAL);
@@ -2856,6 +3034,9 @@
             
             // Agent status check (5 seconds) - always active
             startAgentStatusCheck();
+
+            // Start minute-level fill check while market open
+            startMinuteFillCheck();
         }
 
         // 状态检查功能已暂时禁用，专注于对话显示
@@ -2879,6 +3060,7 @@
             }
             if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
             if (agentStatusTimer) { clearInterval(agentStatusTimer); agentStatusTimer = null; }
+            if (fillCheckTimer) { clearInterval(fillCheckTimer); fillCheckTimer = null; }
         }
 
         // 手动启动交易循环（用户点击按钮时）
@@ -2950,6 +3132,18 @@
         document.getElementById('refreshBtn').addEventListener('click', () => {
             refreshData(true);
         });
+
+        // Hook Auto Trade checkbox to scheduler
+        (function initAutoTradeToggle(){
+            const autoTradeToggle = document.querySelector('#banner input[type="checkbox"]:nth-of-type(2)') || document.querySelector('input#autoTradeToggle');
+            if (autoTradeToggle) {
+                autoTradeToggle.addEventListener('change', async (e) => {
+                    await scheduleAutoTradeLoop(e.target.checked);
+                });
+                // Initial state
+                scheduleAutoTradeLoop(autoTradeToggle.checked);
+            }
+        })();
     </script>
 </body>
 </html>

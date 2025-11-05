@@ -885,6 +885,14 @@ async def get_agent_conversations(
                 for line in lines[-limit * 2:]:  # Get more lines, then filter
                     try:
                         entry = json.loads(line.strip())
+                        # Ensure timestamp field exists for frontend rendering
+                        if not entry.get("timestamp"):
+                            # fallback to date or now
+                            ts_fallback = entry.get("date")
+                            if ts_fallback:
+                                entry["timestamp"] = f"{ts_fallback}T00:00:00Z"
+                            else:
+                                entry["timestamp"] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
                         if date:
                             entry_date = entry.get("date", entry.get("timestamp", ""))
                             if entry_date and not entry_date.startswith(date):
@@ -914,12 +922,16 @@ async def get_agent_conversations(
                         # Extract individual messages from transcript
                         for msg in transcript:
                             if isinstance(msg, dict) and memory_count < limit:
+                                # Ensure timestamp is present; if only date available, synthesize a timestamp at midnight UTC
+                                memory_date = memory.get("date", "")
+                                ts = msg.get("timestamp") or (f"{memory_date}T00:00:00Z" if memory_date else datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
                                 conversations.append({
                                     "date": memory.get("date", ""),
                                     "type": "memory",
                                     "agent": msg.get("agent", "Unknown"),
                                     "content": msg.get("content", msg.get("message", "")),
                                     "round": msg.get("round"),
+                                    "timestamp": ts,
                                 })
                                 memory_count += 1
         except Exception as e:

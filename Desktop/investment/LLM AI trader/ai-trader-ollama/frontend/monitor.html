@@ -3623,21 +3623,23 @@
             if (showLoading) {
                 loadingState.style.display = 'block';
                 errorState.style.display = 'none';
-                // 不要隱藏mainContent，因為對話框在裡面
-                // 改為只降低opacity，保持對話框可見
-                mainContent.style.opacity = '0.5';
+                // 關鍵修復：完全不要隱藏mainContent，保持對話框始終可見
+                // mainContent.style.display = 'none';  // ← 這是問題根源，已移除！
+                mainContent.style.display = 'block';  // 確保mainContent始終可見
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';  // 保持完全可見，不降低opacity
                 refreshBtn.disabled = true;
                 refreshBtn.textContent = '🔄 Refreshing...';
                 
-                // 確保對話框即使在loading時也保持可見
+                // 確保對話框即使在loading時也保持可見（使用!important）
                 const convSection = document.getElementById('conversationsOverviewSection');
                 if (convSection) {
-                    convSection.style.display = 'block';
-                    convSection.style.visibility = 'visible';
-                    convSection.style.opacity = '1';
-                    convSection.style.position = 'relative';
-                    convSection.style.zIndex = '20';
-                    console.log('[Refresh] Ensured conversations section visible during loading');
+                    convSection.style.setProperty('display', 'block', 'important');
+                    convSection.style.setProperty('visibility', 'visible', 'important');
+                    convSection.style.setProperty('opacity', '1', 'important');
+                    convSection.style.setProperty('position', 'relative', 'important');
+                    convSection.style.setProperty('z-index', '20', 'important');
+                    console.log('[Refresh] Ensured conversations section visible during loading with !important');
                 }
             }
 

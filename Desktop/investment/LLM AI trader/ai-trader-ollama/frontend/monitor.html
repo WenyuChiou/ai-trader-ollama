@@ -3775,8 +3775,20 @@
                 loadingState.style.display = 'none';
                 errorState.style.display = 'none';
                 mainContent.style.display = 'block';
+                mainContent.style.visibility = 'visible';
+                mainContent.style.opacity = '1';
                 refreshBtn.disabled = false;
                 refreshBtn.textContent = '🔄 Refresh';
+                
+                // 再次確保對話區塊在mainContent顯示後仍然可見
+                if (convSection) {
+                    setTimeout(() => {
+                        convSection.style.display = 'block';
+                        convSection.style.visibility = 'visible';
+                        convSection.style.opacity = '1';
+                        console.log('[Refresh] Re-confirmed conversations section visibility AFTER mainContent display');
+                    }, 50);
+                }
                 
                 isRefreshing = false;
 

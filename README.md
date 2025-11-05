@@ -897,24 +897,17 @@ ls backend/data/logs/portfolio_state.json
 
 ## 📚 Documentation
 
-### Core Documentation
-- **[Backend README](backend/README.md)** - Complete backend documentation (API, Agents, Tools, Scripts, Testing)
-- **[Frontend README](frontend/README.md)** - Complete frontend documentation (Features, Usage, Configuration, Troubleshooting)
-- **[Complete System Flow](COMPLETE_SYSTEM_FLOW.md)** - Complete frontend-backend flow documentation
-- **[User Perspective Review](USER_PERSPECTIVE_REVIEW.md)** - User-centric flow review and improvements
+For complete documentation, see **[Documentation Index](docs/README.md)** which includes:
+- Core documentation (Backend, Frontend, System Flow)
+- Trading-related guides (Hedging, Leveraged ETFs, Market Indices)
+- API documentation (Endpoints, Integration, Portfolio Flow)
+- Trading hours logic
+- Archived documentation
 
-### Trading-Related Documentation
-- **[Hedging Strategy Guide](docs/archive/HEDGING_STRATEGY.md)** - Inverse ETF hedging strategy explanation
-- **[Leveraged ETF Usage Guide](docs/archive/LEVERAGED_ETF_GUIDE.md)** - Leveraged ETF usage and risk warnings
-- **[Market Indices Integration](docs/archive/MARKET_INDICES_INTEGRATION.md)** - US market three major indices technical analysis integration
-
-### API Documentation
-- **[API Endpoints Documentation](docs/archive/API_ENDPOINTS.md)** - Complete API endpoint list and descriptions
-- **[Frontend-Backend Integration](docs/archive/FRONTEND_BACKEND_INTEGRATION.md)** - Frontend-backend data flow and integration guide
-- **[Portfolio Update Flow](docs/archive/PORTFOLIO_UPDATE_FLOW.md)** - Portfolio state update mechanism
-
-### Trading Hours Logic
-- **[Trading Hours Logic](backend/docs/TRADING_HOURS_LOGIC.md)** - Pre-market, market hours, and after-hours logic
+### Quick Links
+- **[Backend README](backend/README.md)** - Backend setup and API documentation
+- **[Frontend README](frontend/README.md)** - Frontend setup and usage
+- **[Trading Hours Logic](backend/docs/TRADING_HOURS_LOGIC.md)** - Trading hours behavior
 
 ---
 

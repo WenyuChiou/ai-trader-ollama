@@ -1,134 +1,139 @@
 # 📚 Documentation Index
 
-Complete documentation for AI-Trader Ollama.
+> **Complete documentation index for AI-Trader Ollama system**
+
+This directory contains all detailed documentation for the AI-Trader Ollama system. The main [README.md](../README.md) provides a quick start guide, while this index provides links to all detailed documentation.
 
 ---
 
-## 🚀 Getting Started
+## 📋 Table of Contents
 
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Complete setup and first run guide
-  - Prerequisites and installation
-  - Initial configuration
-  - First run instructions
-  - Daily automation setup
-
----
-
-## 🏗️ Core Concepts
-
-### Workflow & Architecture
-
-- **[WORKFLOW.md](WORKFLOW.md)** - Complete daily workflow explanation
-  - Step-by-step trading cycle
-  - Time flow and execution timeline
-  - Detailed process flow
-
-- **[AGENTS.md](AGENTS.md)** - Agent architecture and responsibilities
-  - Agent types and purposes
-  - Execution sequence
-  - Input/output examples
-
-- **[TOOLS.md](TOOLS.md)** - Complete tool reference
-  - All available tools
-  - Input/output examples
-  - Tool calling flow
-
-### Configuration
-
-- **[CONFIGURATION.md](CONFIGURATION.md)** - Configuration guide
-  - Main config file settings
-  - Agent configuration
-  - Position sizing
-  - Advanced settings
+- [Core Documentation](#-core-documentation)
+- [Trading-Related Documentation](#-trading-related-documentation)
+- [API Documentation](#-api-documentation)
+- [Trading Hours Logic](#-trading-hours-logic)
+- [Archived Documentation](#-archived-documentation)
 
 ---
 
-## 💾 Memory & Data
+## 📖 Core Documentation
 
-- **[MEMORY_OPTIMIZATION.md](MEMORY_OPTIMIZATION.md)** - Memory management system
-  - When memory is loaded/saved
-  - Storage structure
-  - Historical context usage
+### Getting Started
+- **[Backend README](../backend/README.md)** - Complete backend documentation
+  - API endpoints, Agents, Tools, Scripts, Testing
+  - Installation and configuration guide
+  
+- **[Frontend README](../frontend/README.md)** - Complete frontend documentation
+  - Features, Usage, Configuration, Troubleshooting
+  - Real-time monitoring dashboard guide
 
----
+### System Architecture
+- **[Complete System Flow](../COMPLETE_SYSTEM_FLOW.md)** - Complete frontend-backend flow documentation
+  - System architecture overview
+  - Frontend/backend processes
+  - Data flow and trading hours logic
+  - API endpoint mapping
+  - Key component interactions
 
-## 📈 Trading Logic
-
-- **[TRADING_TIMELINE.md](TRADING_TIMELINE.md)** - Trading timeline and execution flow
-- **[PRICE_DATA_STRATEGY.md](PRICE_DATA_STRATEGY.md)** - Price data strategy explanation
-- **[ORDER_EXECUTION_AND_FILL_CHECK.md](ORDER_EXECUTION_AND_FILL_CHECK.md)** - Order execution mechanism
-- **[PENDING_ORDER_STRATEGY.md](PENDING_ORDER_STRATEGY.md)** - Pending order strategy
-- **[ACTUAL_PRICE_FETCHING_REALITY.md](ACTUAL_PRICE_FETCHING_REALITY.md)** - Price fetching limitations
-
----
-
-## 🔧 Troubleshooting
-
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
-  - Error messages and fixes
-  - Debugging tips
-  - Verification checklist
+- **[User Perspective Review](../USER_PERSPECTIVE_REVIEW.md)** - User-centric flow review and improvements
+  - User expectations during trading/non-trading hours
+  - Continuous trading logic
+  - Net value display improvements
 
 ---
 
-## 🧪 Testing
+## 💼 Trading-Related Documentation
 
-See [`../backend/tests/README.md`](../backend/tests/README.md) for complete testing guide.
+### Strategy Guides
+- **[Hedging Strategy Guide](archive/HEDGING_STRATEGY.md)** - Inverse ETF hedging strategy explanation
+  - Inverse ETF list and configuration
+  - Use cases and risk management
+  - Position sizing recommendations
 
----
+- **[Leveraged ETF Usage Guide](archive/LEVERAGED_ETF_GUIDE.md)** - Leveraged ETF usage and risk warnings
+  - Leveraged ETF list and configuration
+  - Use cases and position limits
+  - Risk warnings and best practices
 
-## 📚 Advanced Topics
-
-- **[MULTI_AGENT_DISCUSSION.md](MULTI_AGENT_DISCUSSION.md)** - Discussion system details
-- **[HKUDS_COMPARISON_AND_FEEDBACK.md](HKUDS_COMPARISON_AND_FEEDBACK.md)** - Comparison with HKUDS/AI-Trader
-- **[INFORMATION_FLOW_COMPLETE.md](INFORMATION_FLOW_COMPLETE.md)** - Complete information flow
-
----
-
-## 🔄 Automation
-
-See [`../backend/scripts/setup_daily_scheduler.md`](../backend/scripts/setup_daily_scheduler.md) for daily automation setup.
-
----
-
-## 📋 Quick Navigation
-
-### For New Users
-1. Read [GETTING_STARTED.md](GETTING_STARTED.md)
-2. Review [WORKFLOW.md](WORKFLOW.md) to understand the system
-3. Configure system using [CONFIGURATION.md](CONFIGURATION.md)
-
-### For Understanding System
-1. [AGENTS.md](AGENTS.md) - Understand agent roles
-2. [TOOLS.md](TOOLS.md) - See available tools
-3. [WORKFLOW.md](WORKFLOW.md) - Understand complete flow
-
-### For Configuration
-1. [CONFIGURATION.md](CONFIGURATION.md) - Main configuration
-2. [AGENTS.md](AGENTS.md) - Agent settings
-
-### For Troubleshooting
-1. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Common issues
-2. Check logs in `backend/data/logs/`
-3. Run tests: `python backend/tests/run_all.py`
+- **[Market Indices Integration](archive/MARKET_INDICES_INTEGRATION.md)** - US market three major indices technical analysis integration
+  - S&P 500, NASDAQ, Dow Jones integration
+  - Technical analysis implementation
+  - Market sentiment indicators
 
 ---
 
-## 📝 Documentation Standards
+## 🔌 API Documentation
 
-All documentation follows these principles:
+### API Endpoints
+- **[API Endpoints Documentation](archive/API_ENDPOINTS.md)** - Complete API endpoint list and descriptions
+  - All available endpoints
+  - Request/response formats
+  - Authentication and usage examples
 
-- **Clear Structure**: Easy navigation with clear sections
-- **Examples**: Code examples and output samples
-- **Cross-References**: Links to related documentation
-- **Completeness**: Covers all aspects of the system
+### Integration Guides
+- **[Frontend-Backend Integration](archive/FRONTEND_BACKEND_INTEGRATION.md)** - Frontend-backend data flow and integration guide
+  - Data flow verification
+  - Integration checklist
+  - Common issues and solutions
+
+- **[Portfolio Update Flow](archive/PORTFOLIO_UPDATE_FLOW.md)** - Portfolio state update mechanism
+  - Order execution flow
+  - Portfolio update process
+  - State persistence
 
 ---
 
-## 🆘 Need Help?
+## ⏰ Trading Hours Logic
 
-1. Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-2. Review relevant documentation section
-3. Check test examples in `backend/tests/`
-4. Review logs in `backend/data/logs/`
+- **[Trading Hours Logic](../backend/docs/TRADING_HOURS_LOGIC.md)** - Pre-market, market hours, and after-hours logic
+  - Pre-market behavior (00:00 - 9:30 AM)
+  - Market hours behavior (9:30 AM - 4:00 PM)
+  - After-hours behavior (4:00 PM - 00:00)
+  - Data updates and order execution timing
 
+---
+
+## 📦 Archived Documentation
+
+All historical and detailed documentation has been moved to the [archive](archive/) directory for reference:
+
+- Fix guides and troubleshooting documents
+- Verification reports and summaries
+- Performance optimization notes
+- Testing guides and simulation documentation
+
+To browse archived documentation, see: [docs/archive/](archive/)
+
+---
+
+## 🔍 Quick Links
+
+### Most Frequently Used
+1. [Backend README](../backend/README.md) - Backend setup and API documentation
+2. [Frontend README](../frontend/README.md) - Frontend setup and usage
+3. [Trading Hours Logic](../backend/docs/TRADING_HOURS_LOGIC.md) - Understanding trading hours behavior
+4. [Complete System Flow](../COMPLETE_SYSTEM_FLOW.md) - Complete system architecture
+
+### For Developers
+- [API Endpoints](archive/API_ENDPOINTS.md) - Complete API reference
+- [Frontend-Backend Integration](archive/FRONTEND_BACKEND_INTEGRATION.md) - Integration guide
+- [Portfolio Update Flow](archive/PORTFOLIO_UPDATE_FLOW.md) - Data flow documentation
+
+### For Traders
+- [Hedging Strategy Guide](archive/HEDGING_STRATEGY.md) - Inverse ETF strategies
+- [Leveraged ETF Guide](archive/LEVERAGED_ETF_GUIDE.md) - Leveraged ETF usage
+- [Market Indices Integration](archive/MARKET_INDICES_INTEGRATION.md) - Market analysis
+
+---
+
+## 📝 License
+
+MIT License © 2025 Wenyu Chiou
+
+---
+
+## 👤 Author
+
+**Wenyu Chiou**  
+Lehigh University  
+📧 wec324@lehigh.edu

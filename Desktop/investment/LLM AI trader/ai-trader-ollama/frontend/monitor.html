@@ -2946,9 +2946,9 @@
                         fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
                     );
                 } else {
-                    // 非交易时段：获取历史数据（净值图表）和对话订单数据
+                    // 非交易时段：也尝试获取portfolio（后端会返回缓存的快照），以及历史数据、对话和订单
                     fetchPromises.push(
-                        Promise.resolve(null), // portfolio placeholder
+                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })), // 非交易时段也尝试获取（可能返回缓存）
                         fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),
@@ -2972,11 +2972,10 @@
                 const convData = results[6].status === 'fulfilled' ? results[6].value : { conversations: [], total: 0, has_more: false };
                 const tradesData = results[7].status === 'fulfilled' ? results[7].value : [];
                 
-                // 非交易时段：如果有portfolio数据就用，没有也不报错
-                if (!isMarketOpen && (!portfolio || portfolio.error)) {
-                    console.log('[Refresh] Market closed, using cached portfolio data if available');
-                } else if (isMarketOpen && (!portfolio || portfolio.error)) {
-                    throw new Error(portfolio?.error || 'Failed to fetch portfolio data');
+                // Portfolio 处理：如果有就用，没有也不报错（继续显示其他数据）
+                if (!portfolio || portfolio.error) {
+                    console.warn('[Refresh] Portfolio data unavailable:', portfolio?.error || 'No data');
+                    // 不抛出错误，继续显示其他数据（对话、订单等）
                 }
 
                 const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -3078,9 +3077,19 @@
                 }
                 console.error('Error fetching data:', error);
                 
-                updateConnectionStatus(false);
+                // 检查是否是真正的连接错误（而不是单个请求失败）
+                const isConnectionError = error.message && (
+                    error.message.includes('Failed to fetch') || 
+                    error.message.includes('NetworkError') ||
+                    error.message.includes('timeout')
+                );
                 
-                // 即使portfolio失败，也尝试显示后端状态
+                if (isConnectionError) {
+                    updateConnectionStatus(false);
+                }
+                
+                // 即使有错误，也尝试显示已获取的数据（如果有的话）
+                // 尝试显示后端状态和对话（这些可能已经获取成功）
                 try {
                     const [backendStatus, agentStatus, toolsList, systemInfo] = await Promise.allSettled([
                         fetchBackendStatus(),
@@ -3093,19 +3102,35 @@
                     const tl = toolsList.status === 'fulfilled' ? toolsList.value : [];
                     const si = systemInfo.status === 'fulfilled' ? systemInfo.value : null;
                     renderBackendStatus(bs, as, tl, si);
+                    
+                    // 如果后端状态正常，只显示警告而不是错误
+                    if (bs) {
+                        loadingState.style.display = 'none';
+                        mainContent.style.display = 'block';
+                        errorState.style.display = 'none'; // 不显示错误，因为后端可用
+                        isRefreshing = false;
+                        return;
+                    }
                 } catch (statusError) {
-                    console.error('Failed to fetch backend status:', statusError);
+                    // 忽略状态获取错误
                 }
                 
-                loadingState.style.display = 'none';
-                mainContent.style.display = 'block'; // 即使出错也显示状态部分
-                errorState.style.display = 'block';
-                // Error message handling
-                const errorMsg = error.message || 'Unknown error';
-                const displayError = errorMsg.includes('timeout') || errorMsg.includes('超时') 
-                    ? 'Request timeout, please check your network connection or ensure the backend API is running' 
-                    : errorMsg;
-                document.getElementById('errorMessage').textContent = displayError;
+                // 只有真正的连接错误才显示错误状态
+                if (isConnectionError) {
+                    loadingState.style.display = 'none';
+                    mainContent.style.display = 'block';
+                    errorState.style.display = 'block';
+                    const errorMsg = error.message || 'Unknown error';
+                    const displayError = errorMsg.includes('timeout') || errorMsg.includes('超时') 
+                        ? 'Request timeout, please check your network connection or ensure the backend API is running' 
+                        : 'Connection error. Please check if the API is running at ' + API_BASE;
+                    document.getElementById('errorMessage').textContent = displayError;
+                } else {
+                    // 非连接错误，继续显示主内容（可能部分数据可用）
+                    loadingState.style.display = 'none';
+                    mainContent.style.display = 'block';
+                    errorState.style.display = 'none';
+                }
                 refreshBtn.disabled = false;
                 refreshBtn.textContent = '🔄 Refresh';
                 isRefreshing = false;

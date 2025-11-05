@@ -600,7 +600,12 @@ def execute_daily_trade(
         from math import floor
         buy_orders_sorted = sorted(filtered_buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
         
-        # 掛單策略：開盤前掛限價單（使用價格範圍最低價作為限價）
+        # 檢查市場是否開盤
+        from src.data.order_manager import OrderManager
+        order_manager_check = OrderManager(root="data/logs")
+        is_market_open_now = order_manager_check._is_market_open()
+        
+        # 交易策略：市場開盤時直接市價執行，不開盤時創建限價單
         for order in buy_orders_sorted:
             symbol = order.get("symbol")
             buy_price = order.get("buy_price")  # 基准价格（用于计算）
@@ -611,39 +616,95 @@ def execute_daily_trade(
             
             if symbol and buy_price and quantity:
                 try:
-                    # 使用當前基準價的 -0.2% 作為買入限價，提高盤中成交率
-                    limit_price = round(buy_price * 0.998, 2)
-                    estimated_cost = limit_price * quantity
+                    # 使用當前基準價計算成本
+                    estimated_cost = buy_price * quantity
                     
                     # Check 3: Cash reserve (use available_for_trading instead of full cash)
                     if estimated_cost > available_for_trading:
                         # 現金不足（考慮保留比例），減少數量
-                        max_affordable_qty = floor(available_for_trading / limit_price)
+                        max_affordable_qty = floor(available_for_trading / buy_price)
                         if max_affordable_qty > 0:
                             quantity = max_affordable_qty
-                            total_cost = limit_price * quantity
+                            total_cost = buy_price * quantity
                             print(f"[OPTIMIZATION] Reduced {symbol} quantity to {quantity} due to cash reserve limit")
                         else:
                             execution_errors.append(f"BUY {symbol} skipped: insufficient cash after reserve (need ${estimated_cost:.2f}, available ${available_for_trading:.2f})")
                             continue
                     
-                    # 掛單：創建限價買單（使用 buy_price_min 作為限價）
-                    placed_order = order_manager.place_order(
-                        symbol=symbol,
-                        action="BUY",
-                        quantity=quantity,
-                        limit_price=limit_price,  # 限價：使用價格範圍最低價
-                        price_range={
-                            "min": buy_price_min,
-                            "max": buy_price_max,
-                        },
-                        order_date=today,
-                    )
-                    placed_orders.append(placed_order)
-                    
-                    # 注意：訂單已掛單，但尚未執行
-                    # 實際執行會在收盤後通過 check_order_fills() 檢查
-                    print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
+                    if is_market_open_now:
+                        # 市場開盤：直接市價執行
+                        try:
+                            # 獲取當前價格
+                            current_price = last_prices.get(symbol, buy_price)
+                            if current_price <= 0:
+                                current_price = buy_price
+                            
+                            # 直接執行買入
+                            portfolio.buy(symbol, quantity, current_price)
+                            
+                            # 記錄交易
+                            trade_logger.log(
+                                symbol=symbol,
+                                action="BUY",
+                                price=current_price,
+                                quantity=quantity,
+                                amount=current_price * quantity,
+                                status="FILLED",
+                                reason="Market order executed immediately",
+                                rationale=decision.get("rationale"),
+                            )
+                            
+                            # 創建已成交訂單記錄（用於前端顯示）
+                            filled_order = {
+                                "order_id": f"{symbol}_BUY_{today}_{datetime.now().timestamp()}",
+                                "symbol": symbol,
+                                "action": "BUY",
+                                "quantity": quantity,
+                                "limit_price": current_price,
+                                "fill_price": current_price,
+                                "order_date": today,
+                                "filled_at": datetime.now().isoformat(),
+                                "status": "FILLED",
+                                "fill_reason": "Market order executed",
+                            }
+                            order_manager.mark_order_filled(filled_order, {
+                                "filled": True,
+                                "fill_price": current_price,
+                                "fill_reason": "Market order executed",
+                                "daily_high": current_price,
+                                "daily_low": current_price,
+                            })
+                            
+                            executed_trades.append({
+                                "symbol": symbol,
+                                "action": "BUY",
+                                "quantity": quantity,
+                                "price": current_price,
+                                "amount": current_price * quantity,
+                                "status": "FILLED",
+                                "date": today,
+                            })
+                            
+                            print(f"[MARKET ORDER EXECUTED] BUY {symbol} x{quantity} @ ${current_price:.2f} (market price)")
+                            
+                        except Exception as exec_err:
+                            execution_errors.append(f"BUY {symbol} market execution failed: {exec_err}")
+                    else:
+                        # 市場未開盤：創建限價單
+                        limit_price = round(buy_price * 0.998, 2)
+                        placed_order = order_manager.place_order(
+                            symbol=symbol,
+                            action="BUY",
+                            quantity=quantity,
+                            limit_price=limit_price,
+                            price_range={
+                                "min": buy_price_min,
+                                "max": buy_price_max,
+                            },
+                            order_date=today,
+                        )
+                        placed_orders.append(placed_order)
+                        print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (market closed, will execute when market opens)")
                     
                 except Exception as e:
                     execution_errors.append(f"BUY {symbol} order placement failed: {e}")

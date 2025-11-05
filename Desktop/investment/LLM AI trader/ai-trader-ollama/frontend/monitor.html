@@ -1061,7 +1061,7 @@
             <!-- Live Chat and Execution Details Side by Side -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                 <!-- Live Chat (Left) -->
-                <div class="trades-section" id="conversationsOverviewSection" style="display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 10 !important;">
+                <div class="trades-section" id="conversationsOverviewSection" style="display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 1000 !important; min-height: 200px !important;">
                     <div class="section-header">
                         <h2>
                             💬 AI Agent Conversations (Live)
@@ -3638,7 +3638,7 @@
                     convSection.style.setProperty('visibility', 'visible', 'important');
                     convSection.style.setProperty('opacity', '1', 'important');
                     convSection.style.setProperty('position', 'relative', 'important');
-                    convSection.style.setProperty('z-index', '20', 'important');
+                    convSection.style.setProperty('z-index', '1000', 'important');
                     console.log('[Refresh] Ensured conversations section visible during loading with !important');
                 }
             }
@@ -3817,21 +3817,15 @@
                 refreshBtn.disabled = false;
                 refreshBtn.textContent = '🔄 Refresh';
                 
-                // 再次確保對話區塊在mainContent顯示後仍然可見
+                // 再次確保對話區塊在mainContent顯示後仍然可見（在 isRefreshing = false 之前）
                 if (convSection) {
-                    // 立即強制設置（使用!important級別的設置）
-                    convSection.style.setProperty('display', 'block', 'important');
-                    convSection.style.setProperty('visibility', 'visible', 'important');
-                    convSection.style.setProperty('opacity', '1', 'important');
-                    convSection.style.setProperty('position', 'relative', 'important');
-                    convSection.style.setProperty('z-index', '20', 'important');
-                    console.log('[Refresh] Force-set conversations section with !important flags');
-                    
-                    // 延遲再次確認（確保其他代碼不會覆蓋）
-                    setTimeout(() => {
+                    // 使用 requestAnimationFrame 確保在DOM更新後執行
+                    requestAnimationFrame(() => {
                         convSection.style.setProperty('display', 'block', 'important');
                         convSection.style.setProperty('visibility', 'visible', 'important');
                         convSection.style.setProperty('opacity', '1', 'important');
+                        convSection.style.setProperty('position', 'relative', 'important');
+                        convSection.style.setProperty('z-index', '1000', 'important');
                         
                         // 檢查是否在視圖內，如果不在則滾動
                         const rect = convSection.getBoundingClientRect();
@@ -3841,8 +3835,17 @@
                             convSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                         }
                         
-                        console.log('[Refresh] Re-confirmed conversations section visibility AFTER mainContent display');
-                    }, 100);
+                        console.log('[RefreshData] Ensured conversations section visibility at end of refresh');
+                    });
+                    
+                    // 延遲再次確認（雙重保護）
+                    setTimeout(() => {
+                        convSection.style.setProperty('display', 'block', 'important');
+                        convSection.style.setProperty('visibility', 'visible', 'important');
+                        convSection.style.setProperty('opacity', '1', 'important');
+                        convSection.style.setProperty('z-index', '1000', 'important');
+                        console.log('[Refresh] Final confirmation: conversations section visibility');
+                    }, 200);
                 }
                 
                 isRefreshing = false;

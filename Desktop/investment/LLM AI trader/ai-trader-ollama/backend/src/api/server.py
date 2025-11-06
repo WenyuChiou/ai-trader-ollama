@@ -733,7 +733,7 @@ async def get_real_time_portfolio():
                     portfolio_snapshot=portfolio_snapshot_for_record,
                     update_existing=False,  # 追加记录，允许同一天多条记录
                 )
-                print(f"[Portfolio API] ✓ Recorded intraday equity snapshot for {today_str}: ${snapshot.get('total_value', 0):.2f}")
+                print(f"[Portfolio API] [OK] Recorded intraday equity snapshot for {today_str}: ${snapshot.get('total_value', 0):.2f}")
         except Exception as e:
             import traceback
             print(f"[Portfolio API] Failed to record intraday equity: {e}")

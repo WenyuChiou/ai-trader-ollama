@@ -10,8 +10,8 @@ from src.tools.market_tools import fetch_market_batch
 # --- Discussion: 帶經驗調整機制（auto-tools）---
 from src.agents.analyst_discussion import run_analyst_discussion
 
-# --- Risk Analyst: 評估倉位風險 ---
-from src.agents.risk_analyst import run_risk_analyst
+# --- Risk Analyst: 評估倉位風險 (LLM-powered) ---
+from src.agents.risk_analyst_llm import run_risk_analyst_llm
 
 # --- Trader Agent: 交易決策 ---
 from src.agents.trader_agent import run_trader
@@ -267,12 +267,17 @@ def execute_daily_trade(
     else:
         portfolio_value = 10000.0  # 默认初始净值
     
-    # 调用 Risk Analyst
-    risk_report = run_risk_analyst(
+    # 调用 Risk Analyst (LLM版本)
+    # 传递discussion内容让Risk Analyst理解讨论中的风险信号
+    previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]  # 限制长度
+    
+    risk_report = run_risk_analyst_llm(
         market_json=market_view,
         current_positions=current_positions_info if current_positions_info else None,
         portfolio_value=portfolio_value,
         discussion_risk_signals=discussion_risk_signals,
+        previous_discussion=previous_discussion_text,
+        use_tools=auto_tools,  # 与discussion使用相同的tool设置
     )
 
     # ---- (4) Trader Agent：交易決策 ----
@@ -296,9 +301,9 @@ def execute_daily_trade(
                 position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
                 # min_position_per_stock 如果配置中没有，使用默认值
                 position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
-        except Exception:
+    except Exception:
         # 如果读取失败，使用默认值
-            pass
+        pass
 
     decision = run_trader(
         market=market_view,

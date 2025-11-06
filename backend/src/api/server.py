@@ -495,9 +495,18 @@ async def get_real_time_portfolio():
                     from src.data.real_time_tracker import RealTimeTracker
                     tracker = RealTimeTracker(root="data/logs")
                     snapshot = tracker.update_and_record(portfolio)
+                    if snapshot:
+                        snapshot["ok"] = True
+                        return {"ok": True, **snapshot}
                 except (ImportError, ModuleNotFoundError) as e:
                     # Fallback if yfinance or other deps missing
-                    equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
+                    pass
+                except Exception:
+                    # Any other error, fallback to static data
+                    pass
+                
+                # Fallback: 使用静态数据
+                equity = sum((pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)) for pos_info in positions.values() if isinstance(pos_info, dict))
                 total_value = portfolio.cash + equity
                 positions_detail = {}
                 positions_pnl = {}

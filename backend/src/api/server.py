@@ -569,10 +569,25 @@ async def get_recent_snapshots(hours: int = 24):
 async def get_vix_term():
     """Get VIX term structure data"""
     try:
-        from src.tools.sentiment_tools import vix_term_structure
+        from src.tools.sentiment_tools import vix_term_structure, vix_risk_score
         vix_data = vix_term_structure()
-        if vix_data and vix_data.get("ok"):
-            return vix_data.get("result", {})
+        
+        # Check if we got valid data
+        if vix_data and vix_data.get("vix") is not None:
+            # Add risk score
+            vix_data["vix_risk_score"] = vix_risk_score(vix_data)
+            
+            # Add term structure interpretation
+            ratio = vix_data.get("ratio")
+            if ratio is not None:
+                if ratio > 1.0:
+                    vix_data["term_structure"] = "Contango"
+                elif ratio < 1.0:
+                    vix_data["term_structure"] = "Backwardation"
+                else:
+                    vix_data["term_structure"] = "Flat"
+            
+            return vix_data
         else:
             return JSONResponse(
                 status_code=404,

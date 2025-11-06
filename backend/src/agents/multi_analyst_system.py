@@ -92,7 +92,7 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
-            market_score = market_result.get('market_score', market_result.get('score', 'N/A'))
+            market_score = _extract_score(market_result, 'market_score')
             print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
             print(f"   📊 Market Score: {market_score}/10")
         except Exception as e:
@@ -138,7 +138,7 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
-            technical_score = technical_result.get('technical_score', technical_result.get('score', 'N/A'))
+            technical_score = _extract_score(technical_result, 'technical_score')
             print(f"   ✅ Technical Stance: {technical_result.get('stance', 'N/A')}")
             print(f"   📊 Technical Score: {technical_score}/10")
         except Exception as e:
@@ -187,7 +187,7 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
-            fundamental_score = fundamental_result.get('fundamental_score', fundamental_result.get('score', 'N/A'))
+            fundamental_score = _extract_score(fundamental_result, 'fundamental_score')
             print(f"   ✅ Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
             print(f"   📊 Fundamental Score: {fundamental_score}/10")
         except Exception as e:
@@ -233,7 +233,7 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
-            sentiment_score = sentiment_result.get('sentiment_score', sentiment_result.get('score', 'N/A'))
+            sentiment_score = _extract_score(sentiment_result, 'sentiment_score')
             print(f"   ✅ Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
             print(f"   📊 Sentiment Score: {sentiment_score}/10")
         except Exception as e:
@@ -258,6 +258,45 @@ def run_multi_analyst_discussion(
         "transcript": _generate_transcript(analyst_reports),
         "tool_context": [f"{tc['analyst']}: {tc['tool']}" for tc in all_tool_calls],
     }
+
+
+def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
+    """
+    从analyst结果中提取score，处理各种格式：
+    - 数字: 直接返回
+    - 字典: 计算平均值
+    - 列表: 计算平均值
+    - 不存在: 返回'N/A'
+    """
+    score = result.get(score_key, result.get('score', None))
+    
+    if score is None:
+        return 'N/A'
+    
+    if isinstance(score, (int, float)):
+        return float(score)
+    
+    if isinstance(score, dict):
+        # 字典格式：{'NVDA': 8, 'MSFT': 7, ...}
+        values = [v for v in score.values() if isinstance(v, (int, float))]
+        if values:
+            avg = sum(values) / len(values)
+            return round(avg, 1)
+        return 'N/A'
+    
+    if isinstance(score, list):
+        # 列表格式：[8, 7, 9, ...]
+        values = [v for v in score if isinstance(v, (int, float))]
+        if values:
+            avg = sum(values) / len(values)
+            return round(avg, 1)
+        return 'N/A'
+    
+    # 其他格式，尝试转换为数字
+    try:
+        return float(score)
+    except:
+        return 'N/A'
 
 
 def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:

@@ -66,7 +66,7 @@ def run_risk_analyst_llm(
     
     try:
         # 调用LLM
-        response = agent.chat(prompt_vars)
+        response = agent.run(prompt_vars, expect_json=True)
         
         # 尝试解析JSON响应
         try:

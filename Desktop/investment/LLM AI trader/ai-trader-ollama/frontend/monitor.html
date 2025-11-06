@@ -2840,14 +2840,16 @@
             
             const positionsArray = Object.entries(positions);
             
-            if (positionsArray.length === 0) {
-                document.getElementById('positionsSection').style.display = 'none';
-                document.getElementById('noPositionsState').style.display = 'block';
-                return;
-            }
-
+            // 🔥 始终显示 Positions Section，即使没有数据
             document.getElementById('positionsSection').style.display = 'block';
             document.getElementById('noPositionsState').style.display = 'none';
+            
+            if (positionsArray.length === 0) {
+                // 显示空状态消息
+                positionsBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">No positions yet. Run a trading cycle to generate positions.</td></tr>`;
+                positionsFooter.innerHTML = '';
+                return;
+            }
             document.getElementById('positionCount').textContent = `${positionsArray.length} holdings`;
 
             const tbody = document.getElementById('positionsBody');

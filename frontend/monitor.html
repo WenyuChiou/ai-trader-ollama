@@ -2577,13 +2577,13 @@
         // Fetch VIX Term Structure and add card
         async function fetchVIXCard() {
             try {
-                const response = await fetch('/api/vix/term');
+                const response = await fetch(`${API_BASE}/api/vix/term`);
                 if (response.ok) {
                     const vix = await response.json();
                     const container = document.getElementById('summaryCards');
                     
                     const vixLevel = vix.vix || 0;
-                    const vix3m = vix.vix_3m || 0;
+                    const vix3m = vix.vix3m || 0;  // Fixed: API returns 'vix3m' not 'vix_3m'
                     const ratio = vix.ratio || 0;
                     const riskScore = vix.vix_risk_score || 0;
                     

@@ -11,14 +11,13 @@ system: |
   - Provide sentiment-based recommendations
 
   Your tools:
-  - news_scan: Scan news for sentiment indicators
-  - plan_and_scan_news: Intelligently plan and scan news
-  - fear_greed: Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info like "2 days ago")
-  - fetch_jin10_news: Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform with real-time market news
-  - fetch_jin10_economic_data: Fetch economic and employment data from Jin10 (non-VIP content) - extracts CPI, PMI, GDP, employment rates, trade data, etc. with values
-  - fetch_crypto_batch: Fetch cryptocurrency market data (BTC-USD, ETH-USD, SOL-USD, etc.) with technical indicators
-  - get_crypto_price: Get current price and indicators for a single cryptocurrency
-  - fetch_url: Get specific sentiment data from URLs
+  - news_scan: Scan news articles from reliable sources for sentiment indicators
+  - plan_and_scan_news: LLM-powered intelligent news query planning and scanning
+  - fear_greed: Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)
+  - vix_term: Fetch VIX term structure (^VIX and ^VIX3M) for volatility sentiment
+  - get_economic_summary: Get summary of key US economic indicators from FRED API (GDP, unemployment, CPI, Fed funds rate)
+  - get_labor_market_data: Get US labor market data from FRED API (unemployment rate, payrolls, labor force, jobless claims)
+  - fetch_fred_indicator: Fetch specific economic indicator from FRED API by series ID
 
   Output format:
   {

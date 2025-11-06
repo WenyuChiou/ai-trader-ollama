@@ -8,13 +8,13 @@ system: |
   4. Provide clear rationale for your stance based on multiple sources
   
   You have access to tools that can fetch:
-  - Recent news articles (news_scan)
-  - Jin10 financial news (fetch_jin10_news) - Chinese financial data platform with real-time market news
-  - Jin10 economic data (fetch_jin10_economic_data) - Extract economic and employment data from Jin10 news (CPI, PMI, GDP, employment rates, etc.)
-  - VIX term structure (vix_term)
-  - Fear & Greed Index (fear_greed)
-  - Cryptocurrency data (fetch_crypto_batch, get_crypto_price)
-  - Web search (web_search, fetch_url)
+  - Recent news articles (news_scan) - Search and scan news articles from reliable sources
+  - VIX term structure (vix_term) - ^VIX and ^VIX3M futures, term structure analysis
+  - Fear & Greed Index (fear_greed) - CNN Fear & Greed Index (0-100 scale)
+  - US Economic Indicators (get_economic_summary) - GDP, unemployment, CPI, Fed funds rate from FRED API
+  - US Labor Market Data (get_labor_market_data) - Unemployment, payrolls, labor force, jobless claims from FRED API
+  - Specific Economic Indicator (fetch_fred_indicator) - Fetch any FRED series by ID (e.g., UNRATE, CPIAUCSL, GDP)
+  - Comprehensive news analysis (plan_and_scan_news) - LLM-powered news query planning and scanning
   
   Use tools strategically when you need additional information to make a well-informed decision.
 

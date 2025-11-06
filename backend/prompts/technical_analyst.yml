@@ -11,10 +11,10 @@ system: |
   - Provide clear buy/sell signals based on technical patterns
 
   Your tools:
-  - vix_term: Get VIX term structure
-  - vix_close: Get VIX close series
-  - news_scan: Scan news for technical patterns or market sentiment
-  - fetch_url: Get specific market data or analysis
+  - vix_term: Get VIX term structure (^VIX and ^VIX3M) for volatility analysis
+  - fear_greed: Get Fear & Greed Index (0-100) for sentiment-based technical signals
+  - news_scan: Scan news articles for technical patterns or market sentiment
+  - plan_and_scan_news: LLM-powered intelligent news query planning and scanning
 
   Output format:
   {

@@ -224,6 +224,21 @@ def run_analyst_discussion(
                 + "⚠️ IMPORTANT: The tools listed above have already been executed. "
                 + "DO NOT call these tools again in tool_calls. Use the results shown above directly in your rationale."
             )
+        
+        # 如果还没有达到min_tools要求，强制提示Agent必须使用更多工具
+        if len(tool_context_lines) < min_tools:
+            tools_needed = min_tools - len(tool_context_lines)
+            available_tools = tb.list()[:12]  # 前12个工具
+            tools_str = ', '.join(available_tools)
+            extra_user += (
+                f"\n\n========== [MINIMUM TOOL REQUIREMENT] ==========\n"
+                f"You have used {len(tool_context_lines)} tools so far.\n"
+                f"You MUST call at least {tools_needed} more tool(s) to reach the minimum requirement of {min_tools} tools.\n"
+                f"Available tools: {tools_str}\n"
+                f"Choose tools that will help gather comprehensive market intelligence.\n"
+                f"IMPORTANT: Include tool_calls in your JSON output.\n"
+                f"=========================================\n"
+            )
 
         out_text = agent.run(vars_ctx, expect_json=False, user_append=extra_user)
         transcript.append(f"--- Round {r} ---\n{out_text}")

@@ -75,29 +75,30 @@ def run_multi_analyst_discussion(
             market_result = _parse_analyst_response(market_response)
             analyst_reports["market"] = market_result
             
-            # 执行工具调用（在添加到对话历史之前）
+            # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = market_result.get("tool_calls", [])
-            # 如果没有tool_calls，根据analyst类型自动调用相关工具
-            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
-                # Market Analyst默认工具
-                default_tools = [
-                    {"name": "get_market_indices", "args": {}, "why": "Get current market indices for context"},
-                    {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Analyze sector performance"}
-                ]
-                tool_calls_list = default_tools[:2]
             
             if use_tools and tool_calls_list:
+                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
+                    tool_name = tool_call.get("name", "unknown")
+                    print(f"   🔧 Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "MarketAnalyst",
-                            "tool": tool_call.get("name"),
+                            "tool": tool_name,
                             "result": tool_result
                         })
                         tool_calls_count += 1
+                        print(f"   ✅ Tool {tool_name} executed successfully")
+                    else:
+                        print(f"   ⚠️  Tool {tool_name} returned no result")
+            else:
+                if not tool_calls_list:
+                    print(f"   ℹ️  No tools requested by agent")
             
             # 添加到对话历史（工具调用完成后）
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst"]
@@ -110,8 +111,14 @@ def run_multi_analyst_discussion(
             })
             
             print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
-            analysis_preview = market_result.get('analysis', '')[:100] if market_result.get('analysis') else 'No analysis'
-            print(f"   💬 Analysis: {analysis_preview}...")
+            analysis_text = market_result.get('analysis', '')
+            if analysis_text:
+                analysis_preview = analysis_text[:100]
+                print(f"   💬 Analysis: {analysis_preview}...")
+            else:
+                print(f"   ⚠️  Analysis: No analysis provided (check LLM response)")
+                if "error" in market_result:
+                    print(f"   ⚠️  Error: {market_result.get('error', 'Unknown error')}")
         except Exception as e:
             print(f"   ❌ Market Analyst error: {e}")
             analyst_reports["market"] = {"error": str(e), "stance": "neutral"}
@@ -134,16 +141,8 @@ def run_multi_analyst_discussion(
             technical_result = _parse_analyst_response(technical_response)
             analyst_reports["technical"] = technical_result
             
-            # 执行工具调用
+            # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = technical_result.get("tool_calls", [])
-            # 如果没有tool_calls，根据analyst类型自动调用相关工具
-            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
-                # Technical Analyst默认工具 - 使用sample stocks
-                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
-                default_tools = []
-                for sym in sample_symbols:
-                    default_tools.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Get technical indicators for {sym}"})
-                tool_calls_list = default_tools
             
             if use_tools and tool_calls_list:
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
@@ -193,16 +192,8 @@ def run_multi_analyst_discussion(
             fundamental_result = _parse_analyst_response(fundamental_response)
             analyst_reports["fundamental"] = fundamental_result
             
-            # 执行工具调用
+            # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = fundamental_result.get("tool_calls", [])
-            # 如果没有tool_calls，根据analyst类型自动调用相关工具
-            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
-                # Fundamental Analyst默认工具
-                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
-                default_tools = []
-                for sym in sample_symbols:
-                    default_tools.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Get fundamental data for {sym}"})
-                tool_calls_list = default_tools
             
             if use_tools and tool_calls_list:
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
@@ -252,16 +243,8 @@ def run_multi_analyst_discussion(
             sentiment_result = _parse_analyst_response(sentiment_response)
             analyst_reports["sentiment"] = sentiment_result
             
-            # 执行工具调用
+            # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = sentiment_result.get("tool_calls", [])
-            # 如果没有tool_calls，根据analyst类型自动调用相关工具
-            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
-                # Sentiment Analyst默认工具
-                default_tools = [
-                    {"name": "fear_greed", "args": {}, "why": "Get Fear & Greed Index for market sentiment"},
-                    {"name": "vix_term", "args": {}, "why": "Get VIX term structure for volatility analysis"}
-                ]
-                tool_calls_list = default_tools[:2]
             
             if use_tools and tool_calls_list:
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
@@ -519,18 +502,33 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """执行工具调用"""
+    """执行工具调用，确保工具能正常工作"""
     tool_name = tool_call.get("name", "")
     tool_args = tool_call.get("args", {})
     
     if not tool_name:
+        print(f"   ⚠️  Tool call missing name")
         return None
+    
+    # 检查工具是否存在
+    if tool_name not in toolbox.list():
+        print(f"   ⚠️  Tool {tool_name} not found in toolbox")
+        return {"error": f"Tool {tool_name} not available"}
     
     try:
         result = toolbox.invoke(tool_name, **tool_args)
+        # 检查结果是否有效
+        if result is None:
+            print(f"   ⚠️  Tool {tool_name} returned None")
+            return {"error": "Tool returned None"}
+        # 检查是否有错误字段
+        if isinstance(result, dict) and "error" in result:
+            print(f"   ⚠️  Tool {tool_name} returned error: {result.get('error')}")
         return result
     except Exception as e:
-        print(f"   ⚠️  Tool {tool_name} failed: {e}")
+        print(f"   ❌ Tool {tool_name} failed: {e}")
+        import traceback
+        print(f"   📋 Traceback: {traceback.format_exc()[:200]}")
         return {"error": str(e)}
 
 

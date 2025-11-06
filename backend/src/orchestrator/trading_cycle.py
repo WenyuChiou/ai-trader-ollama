@@ -95,7 +95,8 @@ def execute_daily_trade(
     # ---- (1b) 輕量 enriched 給討論層 ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
-    signal_top = _top_by_signal(stocks, k=5)
+    # 传递所有股票的信号分数（按降序排列），不限制数量
+    signal_top = _top_by_signal(stocks, k=len(stocks))  # 使用全部股票
     
     # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
     from src.tools.market_analyst import run_market_analyst

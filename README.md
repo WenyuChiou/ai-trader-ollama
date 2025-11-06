@@ -224,6 +224,120 @@ These are constructed in `trading_cycle.py` for frontend display:
 6. Order Execution: Create/fill orders based on market status
 ```
 
+### 🔄 Multi-Round Discussion Flow (Detailed)
+
+```
+START
+ │
+ ├─→ [INPUT] Market View (118 stocks with technical indicators)
+ │    • NVDA: RSI=65, MACD=+2.3, signal_score=4.5
+ │    • AAPL: RSI=58, MACD=+1.1, signal_score=3.8
+ │    • ... (all 118 stocks)
+ │
+ ├─→ [ROUND 1] Initial Assessment (Exploration Phase)
+ │    │
+ │    ├─ Agent Reasoning:
+ │    │   "I see strong signals for NVDA, but need to verify:
+ │    │    1. What is the VIX risk level?
+ │    │    2. Any recent news on NVDA?
+ │    │    3. What's the Fear & Greed Index?"
+ │    │
+ │    ├─ Output JSON:
+ │    │   {
+ │    │     "stance": "need_more_info",
+ │    │     "tool_calls": [
+ │    │       {"name": "vix_term", "args": {}},
+ │    │       {"name": "news_scan", "args": {"keywords": ["NVDA", "nvidia"]}},
+ │    │       {"name": "fear_greed", "args": {}}
+ │    │     ]
+ │    │   }
+ │    │
+ │    └─→ System Executes Tools:
+ │         ✅ vix_term → VIX=18.0, VIX3M=20.6, ratio=1.1 (Contango)
+ │         ✅ news_scan → Found 15 news articles
+ │         ✅ fear_greed → Index=55 (Greed)
+ │         
+ │         Virtual Agents Log:
+ │         → MarketAnalyst: "Technical signals strong"
+ │         → FundamentalAnalyst: "News mostly positive"
+ │         → SentimentAnalyst: "Market greed level moderate"
+ │
+ ├─→ [ROUND 2] Deep Analysis (Validation Phase)
+ │    │
+ │    ├─ Agent Reasoning (with new information):
+ │    │   "Good, now I know:
+ │    │    - VIX=18 is moderate, not high risk
+ │    │    - NVDA news is positive (AI demand strong)
+ │    │    - Market sentiment at 55, optimistic but not overheated
+ │    │    Still want to check economic fundamentals..."
+ │    │
+ │    ├─ Output JSON:
+ │    │   {
+ │    │     "stance": "leaning_bullish",
+ │    │     "tool_calls": [
+ │    │       {"name": "get_unemployment", "args": {}},
+ │    │       {"name": "get_treasury_yields", "args": {}}
+ │    │     ]
+ │    │   }
+ │    │
+ │    └─→ System Executes Tools:
+ │         ✅ get_unemployment → 3.8% (Low, strong economy)
+ │         ✅ get_treasury_yields → 4.25% (Moderate)
+ │         
+ │         Virtual Agents Log:
+ │         → FundamentalAnalyst: "Economic data supports growth"
+ │         → RiskAnalyst: "Risk metrics within acceptable range"
+ │
+ └─→ [ROUND 3] Final Decision (Consensus Phase)
+      │
+      ├─ Agent Reasoning (comprehensive analysis):
+      │   "Comprehensive Analysis:
+      │    ✅ Technical: NVDA, AAPL, MSFT showing strong signals
+      │    ✅ Fundamental: Economic data is solid
+      │    ✅ Sentiment: Market optimistic but not euphoric
+      │    ✅ Risk: VIX moderate, manageable
+      │    → DECISION: BULLISH"
+      │
+      ├─ Output JSON (Final Consensus):
+      │   {
+      │     "stance": "bullish",
+      │     "recommended_stocks": ["NVDA", "AAPL", "MSFT", "GOOGL"],
+      │     "rationale": [
+      │       "Strong technical indicators, signal scores > 4.0",
+      │       "Positive market sentiment, Fear & Greed at 55",
+      │       "Solid economic data, unemployment at 3.8%",
+      │       "VIX=18 moderate, acceptable risk level"
+      │     ],
+      │     "confidence": 0.85,
+      │     "tool_budget_used": 5,
+      │     "actions": [{"type": "finalize"}]
+      │   }
+      │
+      └─→ Discussion Complete → Proceed to RiskAnalyst
+```
+
+### Key Mechanisms
+
+**Tool Budget System:**
+- Total budget: 8 tool calls per discussion
+- Round 1 typically uses: 3 calls
+- Round 2 typically uses: 2 calls  
+- Round 3 typically uses: 1 call
+- Prevents infinite loops, ensures efficiency
+
+**Early Termination:**
+- If `finalize` action detected + minimum tools used (3)
+- Agent can end discussion before Round 3 if confident
+- Saves time while ensuring information adequacy
+
+**Virtual Agents:**
+Virtual agents are data aggregators (not LLM-based) constructed for frontend display:
+- **MarketAnalyst**: Aggregates technical indicator data
+- **FundamentalAnalyst**: Compiles news and economic data
+- **TechnicalAnalyst**: Calculates signal scores
+- **SentimentAnalyst**: Synthesizes market sentiment
+- **ToolSystem**: Logs all tool executions
+
 ---
 
 ## 🛠️ Available Tools

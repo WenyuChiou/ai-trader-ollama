@@ -266,12 +266,24 @@ def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
     - 数字: 直接返回
     - 字典: 计算平均值
     - 列表: 计算平均值
-    - 不存在: 返回'N/A'
+    - 不存在: 尝试通用score字段，最后返回默认值5.0
     """
-    score = result.get(score_key, result.get('score', None))
+    # 先查找特定score字段
+    score = result.get(score_key)
     
+    # 如果找不到，尝试通用score字段
     if score is None:
-        return 'N/A'
+        score = result.get('score')
+    
+    # 如果还是找不到，使用默认值5.0（而不是N/A）
+    if score is None:
+        # 检查是否有error字段（说明解析失败）
+        if 'error' in result:
+            return 5.0  # 解析失败时使用默认值
+        # 检查是否有analysis（说明有响应，只是没有score）
+        if result.get('analysis') or result.get('stance'):
+            return 5.0  # 有响应但没有score，使用默认值
+        return 'N/A'  # 完全没有响应时才返回N/A
     
     if isinstance(score, (int, float)):
         return float(score)

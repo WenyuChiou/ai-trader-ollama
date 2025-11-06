@@ -70,24 +70,29 @@ def run_risk_analyst_llm(
         
         # 尝试解析JSON响应
         try:
-            # 提取JSON部分（如果有markdown代码块）
-            if "```json" in response:
-                json_start = response.find("```json") + 7
-                json_end = response.find("```", json_start)
-                json_str = response[json_start:json_end].strip()
-            elif "```" in response:
-                json_start = response.find("```") + 3
-                json_end = response.find("```", json_start)
-                json_str = response[json_start:json_end].strip()
-            elif "{" in response and "}" in response:
-                # 找到第一个{和最后一个}
-                json_start = response.find("{")
-                json_end = response.rfind("}") + 1
-                json_str = response[json_start:json_end]
+            # 如果已经是dict，直接使用
+            if isinstance(response, dict):
+                risk_report = response
             else:
-                json_str = response
-            
-            risk_report = json.loads(json_str)
+                # 否则是string，需要解析
+                # 提取JSON部分（如果有markdown代码块）
+                if "```json" in response:
+                    json_start = response.find("```json") + 7
+                    json_end = response.find("```", json_start)
+                    json_str = response[json_start:json_end].strip()
+                elif "```" in response:
+                    json_start = response.find("```") + 3
+                    json_end = response.find("```", json_start)
+                    json_str = response[json_start:json_end].strip()
+                elif "{" in response and "}" in response:
+                    # 找到第一个{和最后一个}
+                    json_start = response.find("{")
+                    json_end = response.rfind("}") + 1
+                    json_str = response[json_start:json_end]
+                else:
+                    json_str = response
+                
+                risk_report = json.loads(json_str)
             
             # 确保必要字段存在
             if "overall_risk_level" not in risk_report:

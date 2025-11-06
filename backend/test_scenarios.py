@@ -181,12 +181,15 @@ class ScenarioTester:
         
         # Create portfolio with holdings
         from src.data.portfolio import Portfolio
-        portfolio = Portfolio(cash=5000.0, initial_value=10000.0)
+        # Calculate required cash: NVDA(10*120) + MSFT(15*380) + AAPL(20*185) = 1200 + 5700 + 3700 = 10600
+        # Start with 15000 cash to have some remaining
+        portfolio = Portfolio(cash=15000.0, initial_value=25000.0)
         
         # Add sample positions
-        portfolio.buy("NVDA", 10, 120.0)
-        portfolio.buy("MSFT", 15, 380.0)
-        portfolio.buy("AAPL", 20, 185.0)
+        portfolio.buy("NVDA", 10, 120.0)  # 1200
+        portfolio.buy("MSFT", 15, 380.0)  # 5700
+        portfolio.buy("AAPL", 20, 185.0)  # 3700
+        # Total: 10600, Remaining cash: 4400
         
         # Save portfolio state
         self.save_portfolio(
@@ -274,13 +277,17 @@ class ScenarioTester:
         
         # Create portfolio with more holdings
         from src.data.portfolio import Portfolio
-        portfolio = Portfolio(cash=3000.0, initial_value=10000.0)
+        # Calculate required cash: NVDA(15*120) + MSFT(20*380) + AAPL(25*185) + GOOGL(10*140)
+        # = 1800 + 7600 + 4625 + 1400 = 15425
+        # Start with 20000 cash to have some remaining
+        portfolio = Portfolio(cash=20000.0, initial_value=30000.0)
         
         # Add sample positions
-        portfolio.buy("NVDA", 15, 120.0)
-        portfolio.buy("MSFT", 20, 380.0)
-        portfolio.buy("AAPL", 25, 185.0)
-        portfolio.buy("GOOGL", 10, 140.0)
+        portfolio.buy("NVDA", 15, 120.0)   # 1800
+        portfolio.buy("MSFT", 20, 380.0)   # 7600
+        portfolio.buy("AAPL", 25, 185.0)   # 4625
+        portfolio.buy("GOOGL", 10, 140.0)  # 1400
+        # Total: 15425, Remaining cash: 4575
         
         # Save portfolio state
         self.save_portfolio(

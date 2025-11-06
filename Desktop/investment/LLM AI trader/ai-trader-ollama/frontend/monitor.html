@@ -2241,7 +2241,6 @@
             console.log(`[Conversations] Rendering ${conversations.length} conversations`);
             
             // 🔥 额外强制：检查section是否真的可见
-            const section = document.getElementById('conversationsOverviewSection');
             if (section) {
                 const computedStyle = window.getComputedStyle(section);
                 console.log('[Conversations] Computed styles:', {

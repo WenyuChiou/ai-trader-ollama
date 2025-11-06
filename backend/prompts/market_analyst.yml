@@ -37,6 +37,8 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Note**: You are the first analyst in the discussion. If there is previous discussion, review it and build upon it. Otherwise, provide the initial market assessment.
+  
   Your task as Market Analyst:
   1. **Check major indices** (S&P, Dow, NASDAQ, Russell) for market trend
   2. **Analyze sector rotation** to identify leadership

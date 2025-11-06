@@ -35,6 +35,12 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Important**: Review the previous discussion above. You should:
+  - Acknowledge or build upon previous analysts' findings
+  - Agree or disagree with their stance (with reasoning)
+  - Add your technical perspective to the discussion
+  - Reference specific points from previous analysis when relevant
+  
   Your task as Technical Analyst:
   1. **Analyze technical indicators** for the given stocks
   2. **Identify support/resistance levels** using get_support_resistance

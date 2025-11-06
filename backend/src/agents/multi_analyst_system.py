@@ -49,6 +49,9 @@ def run_multi_analyst_discussion(
     # 存储所有analyst的分析结果
     analyst_reports = {}
     
+    # 对话历史记录（用于agents互相影响）
+    discussion_history = []
+    
     print("\n" + "="*80)
     print("🤖 多Analyst分析系统启动")
     print("="*80)
@@ -64,11 +67,15 @@ def run_multi_analyst_discussion(
                 "tools_context": tools_str,
             }
             
+            # 格式化之前的对话历史
+            previous_discussion_text = _format_discussion_history(discussion_history)
+            market_prompt_vars["previous_discussion"] = previous_discussion_text
+            
             market_response = market_analyst.run(market_prompt_vars, expect_json=True)
             market_result = _parse_analyst_response(market_response)
             analyst_reports["market"] = market_result
             
-            # 执行工具调用
+            # 执行工具调用（在添加到对话历史之前）
             tool_calls_list = market_result.get("tool_calls", [])
             # 如果没有tool_calls，根据analyst类型自动调用相关工具
             if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
@@ -92,6 +99,16 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            # 添加到对话历史（工具调用完成后）
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst"]
+            discussion_history.append({
+                "analyst": "Market Analyst",
+                "stance": market_result.get("stance", "neutral"),
+                "analysis": market_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": market_result.get("recommendations", [])[:3] if market_result.get("recommendations") else [],
+            })
+            
             market_score = _extract_score(market_result, 'market_score')
             print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
             print(f"   📊 Market Score: {market_score}/10")
@@ -104,9 +121,12 @@ def run_multi_analyst_discussion(
     if use_tools and tool_calls_count < tool_budget:
         try:
             technical_analyst: BaseAgent = fac.create("technical_analyst")
+            
+            # 格式化之前的对话历史（包含Market Analyst的讨论）
+            previous_discussion_text = _format_discussion_history(discussion_history)
             technical_prompt_vars = {
                 "market_view": json.dumps(market_summary, indent=2),
-                "previous_discussion": json.dumps(analyst_reports.get("market", {}), indent=2)[:500],
+                "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
             }
             
@@ -138,6 +158,16 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            # 添加到对话历史
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst"]
+            discussion_history.append({
+                "analyst": "Technical Analyst",
+                "stance": technical_result.get("stance", "neutral"),
+                "analysis": technical_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": technical_result.get("recommendations", [])[:3] if technical_result.get("recommendations") else [],
+            })
+            
             technical_score = _extract_score(technical_result, 'technical_score')
             print(f"   ✅ Technical Stance: {technical_result.get('stance', 'N/A')}")
             print(f"   📊 Technical Score: {technical_score}/10")
@@ -150,12 +180,12 @@ def run_multi_analyst_discussion(
     if use_tools and tool_calls_count < tool_budget:
         try:
             fundamental_analyst: BaseAgent = fac.create("fundamental_analyst")
+            
+            # 格式化之前的对话历史（包含Market和Technical的讨论）
+            previous_discussion_text = _format_discussion_history(discussion_history)
             fundamental_prompt_vars = {
                 "market_view": json.dumps(market_summary, indent=2),
-                "previous_discussion": json.dumps({
-                    "market": analyst_reports.get("market", {}),
-                    "technical": analyst_reports.get("technical", {})
-                }, indent=2)[:500],
+                "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
             }
             
@@ -187,6 +217,16 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            # 添加到对话历史
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst"]
+            discussion_history.append({
+                "analyst": "Fundamental Analyst",
+                "stance": fundamental_result.get("stance", "neutral"),
+                "analysis": fundamental_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": fundamental_result.get("recommendations", [])[:3] if fundamental_result.get("recommendations") else [],
+            })
+            
             fundamental_score = _extract_score(fundamental_result, 'fundamental_score')
             print(f"   ✅ Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
             print(f"   📊 Fundamental Score: {fundamental_score}/10")
@@ -199,9 +239,12 @@ def run_multi_analyst_discussion(
     if use_tools and tool_calls_count < tool_budget:
         try:
             sentiment_analyst: BaseAgent = fac.create("sentiment_analyst")
+            
+            # 格式化之前的对话历史（包含所有之前的讨论）
+            previous_discussion_text = _format_discussion_history(discussion_history)
             sentiment_prompt_vars = {
                 "market_view": json.dumps(market_summary, indent=2),
-                "previous_discussion": json.dumps(analyst_reports, indent=2)[:500],
+                "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
             }
             
@@ -233,6 +276,16 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            # 添加到对话历史
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst"]
+            discussion_history.append({
+                "analyst": "Sentiment Analyst",
+                "stance": sentiment_result.get("stance", "neutral"),
+                "analysis": sentiment_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": sentiment_result.get("recommendations", [])[:3] if sentiment_result.get("recommendations") else [],
+            })
+            
             sentiment_score = _extract_score(sentiment_result, 'sentiment_score')
             print(f"   ✅ Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
             print(f"   📊 Sentiment Score: {sentiment_score}/10")
@@ -250,12 +303,17 @@ def run_multi_analyst_discussion(
     print(f"工具调用总数: {tool_calls_count}/{tool_budget}")
     print(f"参与的Analysts: {len([k for k, v in analyst_reports.items() if 'error' not in v])}/4")
     
+    # 生成transcript（使用对话历史，显示完整的讨论流程）
+    transcript_text = _format_discussion_history(discussion_history)
+    transcript_list = transcript_text.split("\n\n") if transcript_text else []
+    
     return {
         "final_stance": final_stance,
         "analyst_reports": analyst_reports,
         "tool_calls": all_tool_calls,
         "tool_calls_count": tool_calls_count,
-        "transcript": _generate_transcript(analyst_reports),
+        "transcript": transcript_list,  # 使用对话历史生成的transcript
+        "discussion_history": discussion_history,  # 添加完整对话历史
         "tool_context": [f"{tc['analyst']}: {tc['tool']}" for tc in all_tool_calls],
     }
 
@@ -309,6 +367,49 @@ def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
         return float(score)
     except:
         return 'N/A'
+
+
+def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
+    """
+    格式化对话历史，让下一个analyst能够看到之前的讨论
+    
+    格式：
+    --- Market Analyst ---
+    Stance: risk_on
+    Analysis: The market is showing strong bullish signals...
+    Tools Used: get_market_indices, get_sector_rotation
+    Key Points: - Sector rotation favors tech
+                 - Market breadth is strong
+    
+    --- Technical Analyst ---
+    ...
+    """
+    if not discussion_history:
+        return "No previous discussion."
+    
+    formatted = []
+    for entry in discussion_history:
+        analyst_name = entry.get("analyst", "Unknown")
+        stance = entry.get("stance", "N/A")
+        analysis = entry.get("analysis", "No analysis provided")
+        tools_used = entry.get("tools_used", [])
+        key_points = entry.get("key_points", [])
+        
+        formatted.append(f"--- {analyst_name} ---")
+        formatted.append(f"Stance: {stance}")
+        formatted.append(f"Analysis: {analysis[:500]}...")  # 限制长度
+        
+        if tools_used:
+            formatted.append(f"Tools Used: {', '.join(tools_used)}")
+        
+        if key_points:
+            formatted.append("Key Points:")
+            for point in key_points[:3]:  # 最多3个要点
+                formatted.append(f"  - {point}")
+        
+        formatted.append("")  # 空行分隔
+    
+    return "\n".join(formatted)
 
 
 def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:

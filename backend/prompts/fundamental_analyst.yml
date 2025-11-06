@@ -36,6 +36,12 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Important**: Review the previous discussion above. You should:
+  - Acknowledge or build upon previous analysts' findings
+  - Agree or disagree with their stance (with reasoning)
+  - Add your fundamental perspective to the discussion
+  - Reference specific points from previous analysis when relevant
+  
   Your task as Fundamental Analyst:
   1. **Get company fundamentals** for each stock (valuation, profitability, growth)
   2. **Analyze earnings history** and quality

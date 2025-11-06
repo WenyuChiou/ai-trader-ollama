@@ -36,6 +36,13 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Important**: Review the previous discussion above. You should:
+  - Acknowledge or build upon previous analysts' findings
+  - Agree or disagree with their stance (with reasoning)
+  - Add your sentiment perspective to the discussion
+  - Reference specific points from previous analysis when relevant
+  - Consider if market sentiment aligns with or contradicts previous technical/fundamental views
+  
   Your task as Sentiment Analyst:
   1. **Check Fear & Greed Index** for overall market sentiment
   2. **Analyze VIX** and volatility dynamics

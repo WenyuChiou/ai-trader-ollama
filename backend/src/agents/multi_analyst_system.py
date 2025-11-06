@@ -72,11 +72,26 @@ def run_multi_analyst_discussion(
             market_prompt_vars["previous_discussion"] = previous_discussion_text
             
             market_response = market_analyst.run(market_prompt_vars, expect_json=True)
+            
+            # 调试：打印原始响应（前500字符）
+            if isinstance(market_response, dict):
+                print(f"   🔍 LLM Response (dict): {str(market_response)[:200]}...")
+            else:
+                print(f"   🔍 LLM Response (str, first 300 chars): {str(market_response)[:300]}...")
+            
             market_result = _parse_analyst_response(market_response)
             analyst_reports["market"] = market_result
             
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = market_result.get("tool_calls", [])
+            
+            # Fallback: 如果agent没有调用工具，使用默认工具
+            if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                print(f"   ⚠️  No tools requested, using fallback tools")
+                tool_calls_list = [
+                    {"name": "get_market_indices", "args": {}, "why": "Fallback: Get market indices"},
+                    {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"}
+                ]
             
             if use_tools and tool_calls_list:
                 print(f"   🔧 Tools requested: {len(tool_calls_list)}")
@@ -144,6 +159,14 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = technical_result.get("tool_calls", [])
             
+            # Fallback: 如果agent没有调用工具，使用默认工具
+            if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                print(f"   ⚠️  No tools requested, using fallback tools")
+                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                tool_calls_list = []
+                for sym in sample_symbols:
+                    tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym}"})
+            
             if use_tools and tool_calls_list:
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
@@ -195,6 +218,14 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = fundamental_result.get("tool_calls", [])
             
+            # Fallback: 如果agent没有调用工具，使用默认工具
+            if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                print(f"   ⚠️  No tools requested, using fallback tools")
+                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                tool_calls_list = []
+                for sym in sample_symbols:
+                    tool_calls_list.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Fallback: Get fundamental data for {sym}"})
+            
             if use_tools and tool_calls_list:
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
@@ -245,6 +276,14 @@ def run_multi_analyst_discussion(
             
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = sentiment_result.get("tool_calls", [])
+            
+            # Fallback: 如果agent没有调用工具，使用默认工具
+            if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                print(f"   ⚠️  No tools requested, using fallback tools")
+                tool_calls_list = [
+                    {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
+                    {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"}
+                ]
             
             if use_tools and tool_calls_list:
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
@@ -472,6 +511,24 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             "analysis": parsed.get("analysis", str(response)[:300] if isinstance(response, str) else ""),
             "tool_calls": parsed.get("tool_calls", []),
         }
+        
+        # 确保tool_calls是列表格式
+        if defaults["tool_calls"] and not isinstance(defaults["tool_calls"], list):
+            if isinstance(defaults["tool_calls"], dict):
+                defaults["tool_calls"] = [defaults["tool_calls"]]
+            else:
+                defaults["tool_calls"] = []
+        
+        # 验证tool_calls格式：每个tool_call必须有name字段
+        if defaults["tool_calls"]:
+            validated_tool_calls = []
+            for tc in defaults["tool_calls"]:
+                if isinstance(tc, dict) and "name" in tc:
+                    validated_tool_calls.append(tc)
+                elif isinstance(tc, str):
+                    # 如果tool_calls是字符串列表，转换为dict格式
+                    validated_tool_calls.append({"name": tc, "args": {}, "why": "Auto-converted"})
+            defaults["tool_calls"] = validated_tool_calls
         
         # 根据analyst类型设置score字段
         if "market_score" not in parsed and "technical_score" not in parsed and "fundamental_score" not in parsed and "sentiment_score" not in parsed:

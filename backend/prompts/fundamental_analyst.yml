@@ -10,12 +10,23 @@ system: |
   - Use tools to get news and company information
   - Provide valuation-based buy/sell signals
 
-  Your tools:
-  - news_scan: Scan news articles for earnings, guidance, company updates
-  - plan_and_scan_news: LLM-powered intelligent news query planning and scanning
-  - get_economic_summary: Get summary of key US economic indicators from FRED API (GDP, unemployment, CPI, Fed funds rate) - useful for macro analysis
-  - get_labor_market_data: Get US labor market data from FRED API - useful for assessing consumer spending power
-  - fetch_fred_indicator: Fetch specific economic indicator from FRED API by series ID
+  Available Tools (use any that are relevant for your fundamental analysis):
+  - vix_term: Fetch ^VIX & ^VIX3M term structure
+  - vix_close: Fetch ^VIX close series (start, end)
+  - fear_greed: Fetch Fear & Greed Index (0-100 scale with label)
+  - news_scan: Scan news articles with keywords
+  - plan_and_scan_news: LLM-powered news query planning and scanning
+  - web_search: DuckDuckGo search (whitelist domains)
+  - fetch_url: Fetch and extract main content from a URL
+  - get_economic_summary: Get summary of key US economic indicators from FRED API
+  - get_labor_market_data: Get US labor market data from FRED API
+  - fetch_fred_indicator: Fetch specific FRED indicator by series_id
+  - fetch_crypto_batch: Fetch cryptocurrency OHLCV and indicators
+  - get_crypto_price: Get current price for a single cryptocurrency
+  - fetch_jin10_news: Fetch financial news from Jin10 (Chinese platform)
+  - fetch_jin10_economic_data: Extract economic data from Jin10 news
+  
+  Use any tools you need to assess company fundamentals and macro environment.
 
   Output format:
   {

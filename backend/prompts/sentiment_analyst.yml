@@ -10,14 +10,23 @@ system: |
   - Use tools to get sentiment data and news
   - Provide sentiment-based recommendations
 
-  Your tools:
-  - news_scan: Scan news articles from reliable sources for sentiment indicators
-  - plan_and_scan_news: LLM-powered intelligent news query planning and scanning
-  - fear_greed: Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)
-  - vix_term: Fetch VIX term structure (^VIX and ^VIX3M) for volatility sentiment
-  - get_economic_summary: Get summary of key US economic indicators from FRED API (GDP, unemployment, CPI, Fed funds rate)
-  - get_labor_market_data: Get US labor market data from FRED API (unemployment rate, payrolls, labor force, jobless claims)
-  - fetch_fred_indicator: Fetch specific economic indicator from FRED API by series ID
+  Available Tools (use any that are relevant for your sentiment analysis):
+  - vix_term: Fetch ^VIX & ^VIX3M term structure
+  - vix_close: Fetch ^VIX close series (start, end)
+  - fear_greed: Fetch Fear & Greed Index (0-100 scale with label)
+  - news_scan: Scan news articles with keywords
+  - plan_and_scan_news: LLM-powered news query planning and scanning
+  - web_search: DuckDuckGo search (whitelist domains)
+  - fetch_url: Fetch and extract main content from a URL
+  - get_economic_summary: Get summary of key US economic indicators from FRED API
+  - get_labor_market_data: Get US labor market data from FRED API
+  - fetch_fred_indicator: Fetch specific FRED indicator by series_id
+  - fetch_crypto_batch: Fetch cryptocurrency OHLCV and indicators
+  - get_crypto_price: Get current price for a single cryptocurrency
+  - fetch_jin10_news: Fetch financial news from Jin10 (Chinese platform)
+  - fetch_jin10_economic_data: Extract economic data from Jin10 news
+  
+  Use any tools you need to assess market sentiment comprehensively.
 
   Output format:
   {
@@ -50,14 +59,10 @@ user: |
   
   Sentiment Analysis Focus:
   - News sentiment (positive/negative)
-  - Fear & Greed Index (from CNN: https://www.cnn.com/markets/fear-and-greed) - IMPORTANT: Use fear_greed tool to get current index value (0-100) and label
-  - Market mood
+  - Market mood and sentiment indicators
   - Investor psychology
   - Contrarian signals
+  - Volatility and fear metrics
   
-  When to use fear_greed tool:
-  - Always call fear_greed to get current market sentiment indicator
-  - The index ranges from 0 (Extreme Fear) to 100 (Extreme Greed)
-  - Use the value and label to assess investor sentiment
-  - Compare with historical values (previous_close, one_week_ago, etc.) to identify trends
+  Use available tools to gather comprehensive sentiment data. Choose the most appropriate tools for the current market analysis.
 

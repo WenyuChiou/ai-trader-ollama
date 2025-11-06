@@ -23,6 +23,26 @@
 
 ## 🚀 Quick Start
 
+### 🆕 Latest Updates (November 2025)
+
+**UI Enhancements:**
+- ✨ Bright, vibrant color scheme with purple-pink gradient header
+- 🎬 Enhanced animations (pulse-glow, shimmer, fadeInUp effects)
+- 📊 Professional empty states with icons and action buttons
+- ⚡ Enhanced loading spinner with gradient glow
+- 📱 Skeleton screens for better loading UX
+
+**Frontend Integration:**
+- 📈 Economic data tool display (FRED API integration)
+- 📰 Full news headline display (up to 20 articles)
+- 💬 Complete conversation content (no truncation)
+- 🔧 Enhanced tool result formatting
+
+**Testing Infrastructure:**
+- ✅ Comprehensive scenario testing (trading hours, non-trading hours, multi-day flow)
+- 🧪 Backend API test suite
+- 📊 Trade history tracking with cooldown management
+
 ### 5-Day Live Trading Test
 
 For running a 5-day live trading test with automatic market hours management:
@@ -225,7 +245,19 @@ python test_october_simulation_full.py
 
 ### API Endpoint Testing
 
-**Test all endpoints:**
+**🆕 Automated API Test Suite:**
+```bash
+cd backend
+python scripts/test_backend_api.py
+```
+
+This will test:
+- ✅ Portfolio endpoints (summary, real-time, positions, equity history)
+- ✅ Agent conversation endpoints
+- ✅ Trading endpoints (pending orders, order history)
+- ✅ Error handling and status codes
+
+**Test all endpoints (PowerShell):**
 ```powershell
 cd backend
 powershell -ExecutionPolicy Bypass -File TEST_BACKEND_SIMPLE.ps1
@@ -248,6 +280,27 @@ curl http://localhost:8000/api/agents/conversations?limit=10
 # Trade records
 curl http://localhost:8000/api/trades/recent?limit=10
 ```
+
+### 🆕 Comprehensive Scenario Testing
+
+**Test all 3 scenarios (trading hours, non-trading, multi-day):**
+```bash
+cd backend
+python scripts/test_all_scenarios.py
+```
+
+This comprehensive test validates:
+- **Scenario 1:** Trading hours (order execution, position updates, real-time data)
+- **Scenario 2:** Non-trading hours (data persistence, historical records)
+- **Scenario 3:** Cross-period flow (multi-day continuity, data consistency)
+
+Each scenario checks:
+- ✅ Portfolio state persistence
+- ✅ Order execution (pending → filled)
+- ✅ Position tracking and updates
+- ✅ Equity history recording
+- ✅ Agent conversations and tool usage (minimum 3 tools per cycle)
+- ✅ Data continuity across trading days
 
 ### Test Trading Cycle
 

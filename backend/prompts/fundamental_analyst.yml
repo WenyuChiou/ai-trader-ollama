@@ -56,7 +56,6 @@ user: |
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",
-    "fundamental_score": 0-10,
     "analysis": "<your fundamental analysis>",
     "valuations": {
       "<symbol>": {"pe": X, "forward_pe": Y, "assessment": "overvalued/undervalued/fair"}

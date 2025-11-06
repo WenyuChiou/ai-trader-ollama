@@ -109,9 +109,9 @@ def run_multi_analyst_discussion(
                 "key_points": market_result.get("recommendations", [])[:3] if market_result.get("recommendations") else [],
             })
             
-            market_score = _extract_score(market_result, 'market_score')
             print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
-            print(f"   📊 Market Score: {market_score}/10")
+            analysis_preview = market_result.get('analysis', '')[:100] if market_result.get('analysis') else 'No analysis'
+            print(f"   💬 Analysis: {analysis_preview}...")
         except Exception as e:
             print(f"   ❌ Market Analyst error: {e}")
             analyst_reports["market"] = {"error": str(e), "stance": "neutral"}
@@ -168,9 +168,9 @@ def run_multi_analyst_discussion(
                 "key_points": technical_result.get("recommendations", [])[:3] if technical_result.get("recommendations") else [],
             })
             
-            technical_score = _extract_score(technical_result, 'technical_score')
             print(f"   ✅ Technical Stance: {technical_result.get('stance', 'N/A')}")
-            print(f"   📊 Technical Score: {technical_score}/10")
+            analysis_preview = technical_result.get('analysis', '')[:100] if technical_result.get('analysis') else 'No analysis'
+            print(f"   💬 Analysis: {analysis_preview}...")
         except Exception as e:
             print(f"   ❌ Technical Analyst error: {e}")
             analyst_reports["technical"] = {"error": str(e), "stance": "neutral"}
@@ -227,9 +227,9 @@ def run_multi_analyst_discussion(
                 "key_points": fundamental_result.get("recommendations", [])[:3] if fundamental_result.get("recommendations") else [],
             })
             
-            fundamental_score = _extract_score(fundamental_result, 'fundamental_score')
             print(f"   ✅ Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
-            print(f"   📊 Fundamental Score: {fundamental_score}/10")
+            analysis_preview = fundamental_result.get('analysis', '')[:100] if fundamental_result.get('analysis') else 'No analysis'
+            print(f"   💬 Analysis: {analysis_preview}...")
         except Exception as e:
             print(f"   ❌ Fundamental Analyst error: {e}")
             analyst_reports["fundamental"] = {"error": str(e), "stance": "neutral"}
@@ -286,12 +286,45 @@ def run_multi_analyst_discussion(
                 "key_points": sentiment_result.get("recommendations", [])[:3] if sentiment_result.get("recommendations") else [],
             })
             
-            sentiment_score = _extract_score(sentiment_result, 'sentiment_score')
             print(f"   ✅ Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
-            print(f"   📊 Sentiment Score: {sentiment_score}/10")
+            analysis_preview = sentiment_result.get('analysis', '')[:100] if sentiment_result.get('analysis') else 'No analysis'
+            print(f"   💬 Analysis: {analysis_preview}...")
         except Exception as e:
             print(f"   ❌ Sentiment Analyst error: {e}")
             analyst_reports["sentiment"] = {"error": str(e), "stance": "neutral"}
+    
+    # ===== 5. Discussion Coordinator: 统整所有观点 =====
+    print("\n" + "="*80)
+    print("💬 Discussion Coordinator: 统整所有观点")
+    print("="*80)
+    
+    coordinator_summary = None
+    try:
+        # 创建Discussion Agent来统整观点
+        coordinator = fac.create("discussion_agent")
+        coordinator_summary = _run_discussion_coordinator(
+            coordinator=coordinator,
+            discussion_history=discussion_history,
+            analyst_reports=analyst_reports,
+            market_view=market_view,
+            toolbox=toolbox if use_tools else None,
+            tool_budget=max(0, tool_budget - tool_calls_count),
+        )
+        
+        if coordinator_summary:
+            discussion_history.append({
+                "analyst": "Discussion Coordinator",
+                "stance": coordinator_summary.get("stance", "neutral"),
+                "analysis": coordinator_summary.get("summary", ""),
+                "tools_used": [],
+                "key_points": coordinator_summary.get("key_points", []),
+            })
+            print(f"   ✅ Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
+            summary_preview = coordinator_summary.get('summary', '')[:150] if coordinator_summary.get('summary') else 'No summary'
+            print(f"   💬 Summary: {summary_preview}...")
+    except Exception as e:
+        print(f"   ❌ Discussion Coordinator error: {e}")
+        coordinator_summary = None
     
     # ===== 综合分析 =====
     print("\n" + "="*80)
@@ -310,6 +343,7 @@ def run_multi_analyst_discussion(
     return {
         "final_stance": final_stance,
         "analyst_reports": analyst_reports,
+        "coordinator_summary": coordinator_summary,  # 添加coordinator统整结果
         "tool_calls": all_tool_calls,
         "tool_calls_count": tool_calls_count,
         "transcript": transcript_list,  # 使用对话历史生成的transcript
@@ -542,4 +576,113 @@ def _generate_transcript(analyst_reports: Dict[str, Dict[str, Any]]) -> List[str
         )
     
     return transcript
+
+
+def _run_discussion_coordinator(
+    coordinator: BaseAgent,
+    discussion_history: List[Dict[str, Any]],
+    analyst_reports: Dict[str, Dict[str, Any]],
+    market_view: Dict[str, Any],
+    toolbox: Optional[ToolBox] = None,
+    tool_budget: int = 5,
+) -> Optional[Dict[str, Any]]:
+    """
+    运行Discussion Coordinator来统整所有analyst的观点
+    
+    使用chat方式，让coordinator能够：
+    1. 阅读所有analyst的分析
+    2. 识别共识和分歧
+    3. 统整关键观点
+    4. 形成最终建议
+    """
+    # 格式化讨论历史
+    discussion_text = _format_discussion_history(discussion_history)
+    
+    # 准备coordinator的prompt
+    coordinator_prompt = f"""You are a Discussion Coordinator. Your task is to synthesize and unify the perspectives from all analysts.
+
+**Previous Discussion History:**
+{discussion_text}
+
+**Analyst Reports Summary:**
+"""
+    
+    for analyst_type, report in analyst_reports.items():
+        if "error" not in report:
+            stance = report.get("stance", "neutral")
+            analysis = report.get("analysis", "")[:300]
+            tools_used = report.get("tools_used", [])
+            coordinator_prompt += f"\n- **{analyst_type.capitalize()} Analyst**: Stance={stance}\n"
+            coordinator_prompt += f"  Analysis: {analysis}\n"
+            if tools_used:
+                coordinator_prompt += f"  Tools used: {', '.join(tools_used[:5])}\n"
+    
+    coordinator_prompt += f"""
+
+**Market Context:**
+{_summarize_market(market_view)}
+
+**Your Task:**
+1. Review all analyst perspectives above
+2. Identify areas of consensus and disagreement
+3. Synthesize the key insights from each analyst
+4. Provide a unified summary that integrates all perspectives
+5. Highlight any critical points that need attention
+
+**Output Format (JSON):**
+{{
+    "stance": "bullish" | "bearish" | "neutral",
+    "summary": "<Your unified summary integrating all analyst perspectives>",
+    "consensus_points": ["point1", "point2", ...],
+    "disagreements": ["point1", "point2", ...],
+    "key_points": ["critical insight 1", "critical insight 2", ...],
+    "recommendations": ["recommendation 1", "recommendation 2", ...]
+}}
+
+Focus on creating a coherent narrative that brings together all the analyst views through dialogue and synthesis.
+"""
+    
+    try:
+        # 使用coordinator的run方法（chat方式）
+        response = coordinator.run(
+            {"user": coordinator_prompt},
+            expect_json=True
+        )
+        
+        # 解析响应
+        if isinstance(response, dict):
+            result = response
+        else:
+            # 尝试从markdown代码块中提取JSON
+            import re
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', str(response), re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group(1))
+            else:
+                # 尝试直接解析
+                result = json.loads(str(response))
+        
+        # 确保必要字段存在
+        defaults = {
+            "stance": "neutral",
+            "summary": "",
+            "consensus_points": [],
+            "disagreements": [],
+            "key_points": [],
+            "recommendations": [],
+        }
+        result = {**defaults, **result}
+        
+        return result
+    except Exception as e:
+        print(f"   ⚠️  Coordinator parsing error: {e}")
+        # 返回fallback结果
+        return {
+            "stance": "neutral",
+            "summary": f"Coordinator encountered an error: {str(e)}. Please refer to individual analyst reports.",
+            "consensus_points": [],
+            "disagreements": [],
+            "key_points": [],
+            "recommendations": [],
+        }
 

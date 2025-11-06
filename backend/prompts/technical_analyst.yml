@@ -55,7 +55,6 @@ user: |
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",
-    "technical_score": 0-10,
     "analysis": "<your technical analysis>",
     "key_levels": {
       "<symbol>": {"support": [prices], "resistance": [prices]}

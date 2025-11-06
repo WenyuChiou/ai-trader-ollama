@@ -53,7 +53,6 @@ user: |
   Output format:
   {
     "stance": "risk_on" | "risk_off" | "neutral",
-    "market_score": 0-10,
     "analysis": "<your market analysis>",
     "market_regime": {
       "trend": "bull/bear/sideways",

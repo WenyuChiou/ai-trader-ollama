@@ -10,6 +10,9 @@ from src.tools.news_tools import (
 )
 from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
 from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data
+from src.tools.economic_indicators import (
+    get_economic_summary, get_labor_market_data, fetch_fred_indicator
+)
 
 
 @dataclass
@@ -49,6 +52,11 @@ class ToolBox:
         self.register(Tool("news_scan", self._news_scan_adapter, "Compat adapter → news_scan(keywords, days, max_n, top)"))
         # composite
         self.register(Tool("plan_and_scan_news", self._plan_and_scan_news_adapter, "LLM→queries→news_scan→(optional)fetch_url"))
+        
+        # economic data (FRED API)
+        self.register(Tool("get_economic_summary", self._economic_summary_adapter, "Get summary of key US economic indicators (GDP, unemployment, CPI, Fed funds rate, etc.) from FRED API"))
+        self.register(Tool("get_labor_market_data", self._labor_market_adapter, "Get US labor market data (unemployment rate, nonfarm payrolls, labor force, initial claims) from FRED API"))
+        self.register(Tool("fetch_fred_indicator", self._fred_indicator_adapter, "Fetch specific economic indicator from FRED API by series_id (e.g., GDP, UNRATE, CPIAUCSL, FEDFUNDS)"))
 
     # ---------- public API ----------
     def register(self, tool: Tool) -> None:
@@ -274,6 +282,59 @@ class ToolBox:
         
         # 调用函数，传入必需的参数
         return plan_and_scan_news(mview=mview, **kwargs)
+
+    def _economic_summary_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_economic_summary 不需要参数，返回字符串摘要
+        """
+        try:
+            result = get_economic_summary()
+            return {"ok": True, "result": result}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    
+    def _labor_market_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_labor_market_data 不需要参数，返回字符串摘要
+        """
+        try:
+            result = get_labor_market_data()
+            return {"ok": True, "result": result}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    
+    def _fred_indicator_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_fred_indicator 需要 series_id 参数
+        如果 LLM 提供了其他关键词，尝试从中提取或映射到常见的 series_id
+        """
+        # 提取 series_id
+        series_id = kwargs.get("series_id") or kwargs.get("indicator") or kwargs.get("series")
+        
+        if not series_id:
+            # 如果没有提供 series_id，尝试从关键词中推断
+            keywords = str(kwargs).lower()
+            if "gdp" in keywords:
+                series_id = "GDP"
+            elif "unemployment" in keywords or "unrate" in keywords:
+                series_id = "UNRATE"
+            elif "cpi" in keywords or "inflation" in keywords:
+                series_id = "CPIAUCSL"
+            elif "fed" in keywords and "rate" in keywords:
+                series_id = "FEDFUNDS"
+            elif "treasury" in keywords or "10-year" in keywords:
+                series_id = "DGS10"
+            else:
+                return {"ok": False, "error": "No series_id provided and unable to infer from keywords"}
+        
+        # 提取 limit 参数（默认为1）
+        limit = _safe_int(kwargs.get("limit", 1), default=1)
+        
+        try:
+            result = fetch_fred_indicator(series_id=series_id, limit=limit)
+            return {"ok": True, "result": result, "series_id": series_id}
+        except Exception as e:
+            return {"ok": False, "error": str(e), "series_id": series_id}
 
 
 def _safe_int(x: Any, default: int = 0) -> int:

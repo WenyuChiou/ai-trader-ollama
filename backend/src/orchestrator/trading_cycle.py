@@ -55,7 +55,8 @@ def execute_daily_trade(
     universe: List[str] | None = None,
     rounds: int = 3,
     auto_tools: bool = True,
-    tool_budget: int = 2,
+    tool_budget: int = 8,
+    min_tools: int = 3,
     preferred_domains: List[str] | None = None,
     portfolio: Optional[Portfolio] = None,
     trade_logger: Optional[TradeLogger] = None,
@@ -75,10 +76,7 @@ def execute_daily_trade(
     if start is None or end is None:
         start, end = _default_window()
     if preferred_domains is None:
-        preferred_domains = [
-            "www.cboe.com", "www.wsj.com", "www.reuters.com", "www.ft.com",
-            "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov"
-        ]
+        preferred_domains = []
 
     # ---- (1) 市場層 ----
     # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 调用
@@ -155,6 +153,7 @@ def execute_daily_trade(
         rounds=rounds,
         auto_tools=auto_tools,
         tool_budget=tool_budget,
+        min_tools=min_tools,
         preferred_domains=preferred_domains,
         historical_memories=historical_memories,  # 注入歷史記憶
     )

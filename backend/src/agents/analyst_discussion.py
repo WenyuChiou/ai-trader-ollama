@@ -154,6 +154,7 @@ def run_analyst_discussion(
     rounds: int = 3,
     auto_tools: bool = True,
     tool_budget: int = 3,
+    min_tools: int = 3,
     preferred_domains: List[str] | None = None,
     historical_memories: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
@@ -288,17 +289,17 @@ def run_analyst_discussion(
                 actions_taken.append("finalize")
                 decided_finalize = True
 
-        # 早退條件：使用者主動 finalize
-        if decided_finalize:
+        # 早退條件：使用者主動 finalize (但需满足 min_tools)
+        if decided_finalize and len(tool_context_lines) >= min_tools:
             break
 
-        # 早退條件：連續兩回合都沒有新工具執行，且沒有外部硬性 rounds 要求
+        # 早退條件：連續兩回合都沒有新工具執行，且沒有外部硬性 rounds 要求 (但需满足 min_tools)
         if new_tools_executed == 0:
             consecutive_no_tools += 1
         else:
             consecutive_no_tools = 0
 
-        if consecutive_no_tools >= 2:
+        if consecutive_no_tools >= 2 and len(tool_context_lines) >= min_tools:
             # 已經兩回合沒有新的工具，代表內容穩定，不用硬跑滿
             break
 

@@ -984,16 +984,41 @@ def execute_daily_trade(
         )
 
         # 额外：写入最新组合状态（方便测试与前端直接读取）
+        # 🔥 关键修复：确保positions字段格式正确，包含所有必要信息
         try:
             portfolio_state_fp = logs_dir / "portfolio_state.json"
             import json as _json
+            
+            # 确保positions字段格式正确（从updated_positions_info构建，包含所有持仓）
+            final_positions = {}
+            for symbol, pos_info in updated_positions_info.items():
+                if pos_info.get("quantity", 0) > 0:  # 只保存有效持仓
+                    final_positions[symbol] = {
+                        "quantity": int(pos_info.get("quantity", 0)),
+                        "avg_cost": float(pos_info.get("avg_cost", 0.0)),
+                        "total_cost": float(pos_info.get("total_cost", pos_info.get("avg_cost", 0.0) * pos_info.get("quantity", 0))),
+                        "current_price": float(pos_info.get("current_price", pos_info.get("avg_cost", 0.0))),
+                        "market_value": float(pos_info.get("market_value", 0.0)),
+                    }
+            
+            # 确保snapshot包含最新的positions
+            final_snapshot = {
+                **portfolio_snapshot,
+                "positions": final_positions,  # 🔥 使用重新构建的positions
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            }
+            
             with portfolio_state_fp.open("w", encoding="utf-8") as f:
                 f.write(_json.dumps({
                     "date": today,
-                    "snapshot": portfolio_snapshot,
-                }, ensure_ascii=False))
+                    "snapshot": final_snapshot,
+                }, ensure_ascii=False, indent=2))
+            
+            print(f"[PORTFOLIO STATE] Saved {len(final_positions)} positions to portfolio_state.json")
         except Exception as _e:
             print(f"[MEMORY WARN] Failed to write portfolio_state.json: {_e}")
+            import traceback
+            print(f"[MEMORY WARN] Traceback: {traceback.format_exc()}")
 
         # 额外：写入一条簡單的實時快照（若真正的實時模組未產生時，提供占位）
         try:

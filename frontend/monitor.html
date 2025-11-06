@@ -1318,6 +1318,77 @@
             }
         }
 
+        // Update market status indicator
+        function updateMarketStatus(isOpen) {
+            const dot = document.getElementById('marketStatusDot');
+            const text = document.getElementById('marketStatusText');
+            if (dot && text) {
+                if (isOpen) {
+                    dot.style.background = '#10b981';
+                    dot.style.boxShadow = '0 0 4px #10b981';
+                    text.textContent = 'Market: Open';
+                    text.style.color = '#10b981';
+                } else {
+                    dot.style.background = '#ef4444';
+                    dot.style.boxShadow = 'none';
+                    text.textContent = 'Market: Closed';
+                    text.style.color = '#ef4444';
+                }
+            }
+        }
+
+        // Update order status indicator
+        function updateOrderStatus(tradesData) {
+            const dot = document.getElementById('orderStatusDot');
+            const pendingEl = document.getElementById('pendingCount');
+            const filledEl = document.getElementById('filledCount');
+            
+            if (!tradesData || !Array.isArray(tradesData)) {
+                if (pendingEl) pendingEl.textContent = '0';
+                if (filledEl) filledEl.textContent = '0';
+                return;
+            }
+            
+            const pending = tradesData.filter(t => t.status === 'pending').length;
+            const filled = tradesData.filter(t => t.status === 'filled').length;
+            
+            if (pendingEl) pendingEl.textContent = pending;
+            if (filledEl) filledEl.textContent = filled;
+            
+            // Update dot color based on order activity
+            if (dot) {
+                if (pending > 0) {
+                    dot.style.background = '#f59e0b';
+                    dot.style.boxShadow = '0 0 4px #f59e0b';
+                } else if (filled > 0) {
+                    dot.style.background = '#10b981';
+                    dot.style.boxShadow = '0 0 4px #10b981';
+                } else {
+                    dot.style.background = '#9ca3af';
+                    dot.style.boxShadow = 'none';
+                }
+            }
+        }
+
+        // Update conversation status indicator
+        function updateConversationStatus(isRunning) {
+            const dot = document.getElementById('conversationStatusDot');
+            const text = document.getElementById('conversationStatusText');
+            if (dot && text) {
+                if (isRunning) {
+                    dot.style.background = '#f59e0b';
+                    dot.style.boxShadow = '0 0 4px #f59e0b';
+                    text.textContent = 'Agents: Running';
+                    text.style.color = '#f59e0b';
+                } else {
+                    dot.style.background = '#9ca3af';
+                    dot.style.boxShadow = 'none';
+                    text.textContent = 'Agents: Idle';
+                    text.style.color = '#64748b';
+                }
+            }
+        }
+
         // Fetch portfolio data
         async function fetchPortfolio(options = {}) {
             try {
@@ -1508,6 +1579,9 @@
             }
             
             isTradingExecuting = true;
+            // Update conversation status to Running
+            updateConversationStatus(true);
+            
             try {
                 console.log('[Trade Cycle] Executing trading cycle...');
                 const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
@@ -1544,6 +1618,8 @@
                 }
             } finally {
                 isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
+                // Update conversation status back to Idle
+                updateConversationStatus(false);
             }
         }
         
@@ -2360,6 +2436,237 @@
             `;
         }
 
+        // Global chart instances
+        let equityChart = null;
+        let distributionChart = null;
+        let chartScaleType = 'linear'; // 'linear' or 'logarithmic'
+
+        // Toggle chart scale
+        function toggleChartScale() {
+            chartScaleType = chartScaleType === 'linear' ? 'logarithmic' : 'linear';
+            document.getElementById('chartScaleBtn').textContent = 
+                chartScaleType === 'linear' ? 'Linear Scale' : 'Log Scale';
+            
+            // Re-render equity chart with new scale
+            if (equityChart && equityChart.data.datasets[0].data.length > 0) {
+                equityChart.options.scales.y.type = chartScaleType;
+                equityChart.update();
+            }
+        }
+
+        // Render Equity Curve Chart
+        async function renderEquityChart() {
+            try {
+                const response = await fetch(`${API_BASE}/api/portfolio/equity-history`);
+                if (!response.ok) {
+                    console.warn('[Chart] Failed to fetch equity history');
+                    return;
+                }
+                
+                const data = await response.json();
+                const equityData = data.equity_history || [];
+                
+                if (equityData.length === 0) {
+                    console.log('[Chart] No equity data available yet');
+                    document.getElementById('chartDataPoints').textContent = '0 data points';
+                    return;
+                }
+                
+                // Sort by date
+                equityData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Prepare chart data
+                const labels = equityData.map(item => {
+                    const date = new Date(item.date || item.timestamp);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                });
+                
+                const values = equityData.map(item => item.total_value || item.equity || 0);
+                
+                document.getElementById('chartDataPoints').textContent = `${values.length} data points`;
+                
+                // Destroy existing chart
+                if (equityChart) {
+                    equityChart.destroy();
+                }
+                
+                // Create new chart
+                const ctx = document.getElementById('equityChart').getContext('2d');
+                equityChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Portfolio Value',
+                            data: values,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return 'Value: $' + formatNumber(context.parsed.y, 2);
+                                    }
+                                }
+                            },
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    display: false,
+                                },
+                                ticks: {
+                                    color: '#64748b',
+                                    font: {
+                                        size: 11,
+                                    },
+                                },
+                            },
+                            y: {
+                                type: chartScaleType,
+                                position: 'left',
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)',
+                                },
+                                ticks: {
+                                    color: '#64748b',
+                                    font: {
+                                        size: 11,
+                                    },
+                                    callback: function(value) {
+                                        return '$' + formatNumber(value, 0);
+                                    }
+                                },
+                            }
+                        }
+                    }
+                });
+                
+                console.log(`[Chart] Equity chart rendered with ${values.length} points`);
+            } catch (error) {
+                console.error('[Chart] Error rendering equity chart:', error);
+            }
+        }
+
+        // Render Portfolio Distribution Pie Chart
+        function renderDistributionChart(portfolio) {
+            try {
+                const positions = portfolio.positions || {};
+                const positionsArray = Object.entries(positions);
+                
+                if (positionsArray.length === 0) {
+                    console.log('[Chart] No positions for distribution chart');
+                    document.getElementById('pieChartInfo').textContent = 'No positions yet';
+                    if (distributionChart) {
+                        distributionChart.destroy();
+                        distributionChart = null;
+                    }
+                    return;
+                }
+                
+                // Prepare data
+                const labels = positionsArray.map(([symbol]) => symbol);
+                const data = positionsArray.map(([, pos]) => pos.market_value || 0);
+                const totalValue = data.reduce((sum, val) => sum + val, 0);
+                
+                // Color palette - professional blues and grays
+                const colors = [
+                    '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe',
+                    '#1e40af', '#2563eb', '#3b82f6', '#60a5fa',
+                    '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0',
+                ];
+                
+                document.getElementById('pieChartInfo').textContent = 
+                    `${positionsArray.length} positions • Total: ${formatCurrency(totalValue)}`;
+                
+                // Destroy existing chart
+                if (distributionChart) {
+                    distributionChart.destroy();
+                }
+                
+                // Create new chart
+                const ctx = document.getElementById('distributionChart').getContext('2d');
+                distributionChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors.slice(0, labels.length),
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    color: '#1e293b',
+                                    font: {
+                                        size: 12,
+                                        family: "'Inter', sans-serif",
+                                    },
+                                    padding: 12,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                },
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                                padding: 12,
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${context.label}: $${formatNumber(value, 2)} (${percentage}%)`;
+                                    }
+                                }
+                            },
+                        },
+                    }
+                });
+                
+                console.log(`[Chart] Distribution chart rendered with ${labels.length} positions`);
+            } catch (error) {
+                console.error('[Chart] Error rendering distribution chart:', error);
+            }
+        }
+
         // Render positions table
         function renderPositions(portfolio) {
             const positions = portfolio.positions || {};
@@ -3005,13 +3312,15 @@
                     // 交易时段：实时更新所有数据
                     renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
                     renderPositions(portfolio);     // 更新持仓表格
-                    drawChart(history);             // 更新净值图表（实时数据）
+                    renderEquityChart();            // 更新净值曲线图
+                    renderDistributionChart(portfolio); // 更新持仓圆饼图
                 } else {
                     // 非交易时段：显示历史数据和最后快照
                     if (portfolio) {
                         // 如果有portfolio数据，显示最后快照
                         renderSummaryCards(portfolio);  // 显示最后的总资产、P&L等
                         renderPositions(portfolio);     // 显示最后的持仓
+                        renderDistributionChart(portfolio); // 更新持仓圆饼图
                     } else {
                         // 如果没有portfolio数据，显示市场状态提示
                         const summaryCards = document.getElementById('summaryCards');
@@ -3026,12 +3335,16 @@
                             summaryCards.appendChild(marketStatusCard);
                         }
                     }
-                    // ✅ 修复：非交易时段也要显示净值历史图表（显示历史趋势，包括今天的数据）
-                    drawChart(history);  // 显示历史净值趋势
+                    // ✅ 非交易时段也显示净值历史图表（显示历史趋势）
+                    renderEquityChart();  // 显示历史净值趋势
                 }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
                 renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）
+                
+                // Update status indicators
+                updateMarketStatus(isMarketOpen);
+                updateOrderStatus(tradesData);
                 
                 // Update response time
                 const responseTimeEl = document.getElementById('responseTime');

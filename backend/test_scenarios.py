@@ -143,7 +143,11 @@ class ScenarioTester:
         self.save_portfolio(cash=10000.0, initial_value=10000.0, positions={})
         print("  ✅ Portfolio initialized")
         
-        # Clear pending orders (remove entire directory and recreate)
+        # Clear pending orders (OrderManager uses pending_orders.jsonl file, not directory)
+        pending_orders_file = self.logs_dir / "pending_orders.jsonl"
+        if pending_orders_file.exists():
+            pending_orders_file.unlink()
+        # Also clear pending_orders directory if it exists
         if self.pending_orders_dir.exists():
             import shutil
             shutil.rmtree(self.pending_orders_dir)
@@ -199,7 +203,11 @@ class ScenarioTester:
         )
         print("  ✅ Portfolio with 3 positions created")
         
-        # Clear pending orders (remove entire directory and recreate)
+        # Clear pending orders (OrderManager uses pending_orders.jsonl file, not directory)
+        pending_orders_file = self.logs_dir / "pending_orders.jsonl"
+        if pending_orders_file.exists():
+            pending_orders_file.unlink()
+        # Also clear pending_orders directory if it exists
         if self.pending_orders_dir.exists():
             import shutil
             shutil.rmtree(self.pending_orders_dir)
@@ -239,7 +247,11 @@ class ScenarioTester:
         self.save_portfolio(cash=10000.0, initial_value=10000.0, positions={})
         print("  ✅ Portfolio initialized")
         
-        # Clear pending orders (remove entire directory and recreate)
+        # Clear pending orders (OrderManager uses pending_orders.jsonl file, not directory)
+        pending_orders_file = self.logs_dir / "pending_orders.jsonl"
+        if pending_orders_file.exists():
+            pending_orders_file.unlink()
+        # Also clear pending_orders directory if it exists
         if self.pending_orders_dir.exists():
             import shutil
             shutil.rmtree(self.pending_orders_dir)

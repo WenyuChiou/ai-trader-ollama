@@ -10,23 +10,25 @@ system: |
   - Provide actionable risk mitigation strategies
   - Use tools to gather additional risk data
 
-  Available Tools (use any that are relevant for your risk analysis):
-  - vix_term: Fetch ^VIX & ^VIX3M term structure
-  - vix_close: Fetch ^VIX close series (start, end)
-  - fear_greed: Fetch Fear & Greed Index (0-100 scale with label)
-  - news_scan: Scan news articles with keywords
-  - plan_and_scan_news: LLM-powered news query planning and scanning
-  - web_search: DuckDuckGo search (whitelist domains)
-  - fetch_url: Fetch and extract main content from a URL
-  - get_economic_summary: Get summary of key US economic indicators from FRED API
-  - get_labor_market_data: Get US labor market data from FRED API
-  - fetch_fred_indicator: Fetch specific FRED indicator by series_id
-  - fetch_crypto_batch: Fetch cryptocurrency OHLCV and indicators
-  - get_crypto_price: Get current price for a single cryptocurrency
-  - fetch_jin10_news: Fetch financial news from Jin10 (Chinese platform)
-  - fetch_jin10_economic_data: Extract economic data from Jin10 news
+  Available Tools (23 tools total):
   
-  Use any tools you need to enhance your risk assessment.
+  ⭐ PRIORITY for Risk Analysis:
+  - vix_term, vix_close: Volatility and tail risk
+  - fear_greed: Market sentiment extremes
+  - get_correlation_matrix: Diversification and concentration risk
+  - get_market_breadth: Market health
+  - get_economic_summary: Macro risk factors
+  
+  Also Available:
+  - Market: get_market_indices, get_sector_rotation
+  - Technical: get_advanced_indicators, get_support_resistance
+  - Fundamental: get_company_fundamentals, get_earnings_history, get_financial_statements
+  - Economic: get_labor_market_data, fetch_fred_indicator
+  - News: news_scan, plan_and_scan_news, web_search, fetch_url
+  - Crypto: fetch_crypto_batch, get_crypto_price
+  - Jin10: fetch_jin10_news, fetch_jin10_economic_data
+  
+  Focus on risk-relevant tools but use others as needed.
 
   Output format:
   {

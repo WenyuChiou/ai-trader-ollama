@@ -7,8 +7,8 @@ from pathlib import Path  # 统一在文件顶部导入，避免函数内部重�
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
 
-# --- Discussion: 帶經驗調整機制（auto-tools）---
-from src.agents.analyst_discussion import run_analyst_discussion
+# --- Multi-Analyst Discussion: 多个专门的分析师协同工作 ---
+from src.agents.multi_analyst_system import run_multi_analyst_discussion
 
 # --- Risk Analyst: 評估倉位風險 (LLM-powered) ---
 from src.agents.risk_analyst_llm import run_risk_analyst_llm
@@ -147,16 +147,12 @@ def execute_daily_trade(
         print(f"[MEMORY WARN] Failed to load historical memories: {e}")
         # 不影響主流程，繼續執行
 
-    # ---- (2) 討論層（自動補工具 + 歷史記憶注入）----
-    convo = run_analyst_discussion(
-        enriched_market,
-        _unused=None,                   # 第二个参数是 _unused（用于向后兼容）
-        rounds=rounds,
-        auto_tools=auto_tools,
+    # ---- (2) 多Analyst討論層 ----
+    # 运行多个专门的分析师：Market, Technical, Fundamental, Sentiment
+    convo = run_multi_analyst_discussion(
+        market_view=market_view,  # 传入完整的market_view
+        use_tools=auto_tools,
         tool_budget=tool_budget,
-        min_tools=min_tools,
-        preferred_domains=preferred_domains,
-        historical_memories=historical_memories,  # 注入歷史記憶
     )
     final_stance = convo.get("final_stance", "neutral")
 

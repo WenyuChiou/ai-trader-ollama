@@ -16,6 +16,24 @@ market_analyst:
   temperature: 0.3
   prompt_file: ../prompts/market_analyst.yml
 
+technical_analyst:
+  name: Technical Analyst
+  model: llama3.1
+  temperature: 0.2
+  prompt_file: ../prompts/technical_analyst.yml
+
+fundamental_analyst:
+  name: Fundamental Analyst
+  model: llama3.1
+  temperature: 0.2
+  prompt_file: ../prompts/fundamental_analyst.yml
+
+sentiment_analyst:
+  name: Sentiment Analyst
+  model: llama3.1
+  temperature: 0.3
+  prompt_file: ../prompts/sentiment_analyst.yml
+
 discussion_agent:
   name: Discussion / Consensus
   model: llama3.1

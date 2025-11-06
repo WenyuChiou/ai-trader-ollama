@@ -13,6 +13,15 @@ from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data
 from src.tools.economic_indicators import (
     get_economic_summary, get_labor_market_data, fetch_fred_indicator
 )
+from src.tools.technical_indicators import (
+    calculate_advanced_indicators, get_support_resistance
+)
+from src.tools.fundamental_data import (
+    get_company_fundamentals, get_earnings_history, get_financial_statements
+)
+from src.tools.market_indicators import (
+    get_market_breadth, get_sector_rotation, get_correlation_matrix, get_market_indices
+)
 
 
 @dataclass
@@ -57,6 +66,21 @@ class ToolBox:
         self.register(Tool("get_economic_summary", self._economic_summary_adapter, "Get summary of key US economic indicators (GDP, unemployment, CPI, Fed funds rate, etc.) from FRED API"))
         self.register(Tool("get_labor_market_data", self._labor_market_adapter, "Get US labor market data (unemployment rate, nonfarm payrolls, labor force, initial claims) from FRED API"))
         self.register(Tool("fetch_fred_indicator", self._fred_indicator_adapter, "Fetch specific economic indicator from FRED API by series_id (e.g., GDP, UNRATE, CPIAUCSL, FEDFUNDS)"))
+        
+        # technical indicators (advanced)
+        self.register(Tool("get_advanced_indicators", self._advanced_indicators_adapter, "Calculate advanced technical indicators (RSI, MACD, Bollinger Bands, ADX, Stochastic, ATR, OBV, Volume) for a stock"))
+        self.register(Tool("get_support_resistance", self._support_resistance_adapter, "Identify support and resistance levels for a stock"))
+        
+        # fundamental data
+        self.register(Tool("get_company_fundamentals", self._company_fundamentals_adapter, "Get comprehensive fundamental data (valuation, profitability, growth, financial health, dividends, analyst ratings) for a company"))
+        self.register(Tool("get_earnings_history", self._earnings_history_adapter, "Get earnings history (quarterly and annual earnings, earnings dates, surprises) for a company"))
+        self.register(Tool("get_financial_statements", self._financial_statements_adapter, "Get financial statements summary (balance sheet, cashflow) for a company"))
+        
+        # market indicators
+        self.register(Tool("get_market_breadth", self._market_breadth_adapter, "Analyze market breadth (advancing/declining stocks, market sentiment)"))
+        self.register(Tool("get_sector_rotation", self._sector_rotation_adapter, "Analyze sector rotation and performance across different sectors"))
+        self.register(Tool("get_correlation_matrix", self._correlation_matrix_adapter, "Calculate correlation matrix between stocks to identify diversification opportunities"))
+        self.register(Tool("get_market_indices", self._market_indices_adapter, "Get current performance of major market indices (S&P 500, Dow Jones, NASDAQ, Russell 2000, VIX)"))
 
     # ---------- public API ----------
     def register(self, tool: Tool) -> None:
@@ -335,6 +359,110 @@ class ToolBox:
             return {"ok": True, "result": result, "series_id": series_id}
         except Exception as e:
             return {"ok": False, "error": str(e), "series_id": series_id}
+    
+    # -------- Technical Indicators Adapters --------
+    def _advanced_indicators_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for calculate_advanced_indicators"""
+        symbol = kwargs.get("symbol", "")
+        if not symbol:
+            return {"ok": False, "error": "symbol is required"}
+        
+        period = kwargs.get("period", "3mo")
+        result = calculate_advanced_indicators(symbol=symbol, period=period)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    def _support_resistance_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_support_resistance"""
+        symbol = kwargs.get("symbol", "")
+        if not symbol:
+            return {"ok": False, "error": "symbol is required"}
+        
+        period = kwargs.get("period", "6mo")
+        result = get_support_resistance(symbol=symbol, period=period)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    # -------- Fundamental Data Adapters --------
+    def _company_fundamentals_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_company_fundamentals"""
+        symbol = kwargs.get("symbol", "")
+        if not symbol:
+            return {"ok": False, "error": "symbol is required"}
+        
+        result = get_company_fundamentals(symbol=symbol)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    def _earnings_history_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_earnings_history"""
+        symbol = kwargs.get("symbol", "")
+        if not symbol:
+            return {"ok": False, "error": "symbol is required"}
+        
+        result = get_earnings_history(symbol=symbol)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    def _financial_statements_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_financial_statements"""
+        symbol = kwargs.get("symbol", "")
+        if not symbol:
+            return {"ok": False, "error": "symbol is required"}
+        
+        result = get_financial_statements(symbol=symbol)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    # -------- Market Indicators Adapters --------
+    def _market_breadth_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_market_breadth"""
+        symbols = kwargs.get("symbols")  # Optional
+        result = get_market_breadth(symbols=symbols)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    def _sector_rotation_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_sector_rotation"""
+        period = kwargs.get("period", "1mo")
+        result = get_sector_rotation(period=period)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    def _correlation_matrix_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_correlation_matrix"""
+        symbols = kwargs.get("symbols", [])
+        if not symbols:
+            return {"ok": False, "error": "symbols list is required"}
+        
+        period = kwargs.get("period", "3mo")
+        result = get_correlation_matrix(symbols=symbols, period=period)
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
+    
+    def _market_indices_adapter(self, **kwargs) -> Dict[str, Any]:
+        """Adapter for get_market_indices"""
+        result = get_market_indices()
+        
+        if "error" in result:
+            return {"ok": False, "error": result["error"]}
+        return {"ok": True, "result": result}
 
 
 def _safe_int(x: Any, default: int = 0) -> int:

@@ -44,24 +44,41 @@ def _calc_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     Compute indicators and simple composite signal for the latest bar of df.
     Expects columns: Open, High, Low, Close, Volume (yfinance default, capitalized via market_data).
     Always returns a dict with the full set of keys.
+    
+    扩充版：包含更多技术指标
+    - 趋势: MA20, MA50, ADX
+    - 动量: RSI, MACD, Stochastic, ROC, Williams %R
+    - 波动率: ATR, BB Position, BB Width
+    - 成交量: OBV, MFI
     """
     try:
         close = df["Close"]
+        high = df["High"]
+        low = df["Low"]
     except KeyError:
         # fallback if column capitalization failed upstream
         close = df[df.columns[df.columns.str.lower().eq("close")][0]]
+        high = df[df.columns[df.columns.str.lower().eq("high")][0]]
+        low = df[df.columns[df.columns.str.lower().eq("low")][0]]
 
     try:
         vol = df["Volume"]
     except KeyError:
         vol = pd.Series([float("nan")] * len(close), index=close.index)
 
+    # ============= 趋势指标 =============
     # Moving averages (warmup to avoid NaN in short windows)
     ma20_series = close.rolling(20, min_periods=1).mean()
     ma50_series = close.rolling(50, min_periods=1).mean()
     ma20 = _to_float(ma20_series)
     ma50 = _to_float(ma50_series)
 
+    # ADX - 趋势强度
+    from .ta_indicators import adx as calc_adx
+    adx_series = calc_adx(high, low, close, period=14)
+    adx_val = _to_float(adx_series)
+
+    # ============= 动量指标 =============
     # RSI
     rsi_series = rsi(close, period=14)
     rsi14 = _to_float(rsi_series)
@@ -71,6 +88,28 @@ def _calc_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     macd_val = _to_float(macd_line)
     macd_sig = _to_float(macd_sig_line)
     macd_hist = _to_float(macd_hist_line)
+
+    # Stochastic Oscillator
+    from .ta_indicators import stochastic
+    stoch_k, stoch_d = stochastic(high, low, close, k_period=14, d_period=3)
+    stoch_k_val = _to_float(stoch_k)
+    stoch_d_val = _to_float(stoch_d)
+
+    # ROC - Rate of Change
+    from .ta_indicators import roc as calc_roc
+    roc_series = calc_roc(close, period=12)
+    roc_val = _to_float(roc_series)
+
+    # Williams %R
+    from .ta_indicators import williams_r
+    wr_series = williams_r(high, low, close, period=14)
+    wr_val = _to_float(wr_series)
+
+    # ============= 波动率指标 =============
+    # ATR - Average True Range
+    from .ta_indicators import atr as calc_atr
+    atr_series = calc_atr(high, low, close, period=14)
+    atr_val = _to_float(atr_series)
 
     # Bollinger Bands + position (0=lower, 1=upper)
     upper, mid, lower = bbands(close, period=20, n_std=2.0)
@@ -82,30 +121,76 @@ def _calc_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     else:
         bb_pos = float("nan")
 
+    # BB Width
+    from .ta_indicators import bbands_width
+    bb_width_series = bbands_width(close, period=20, n_std=2.0)
+    bb_width_val = _to_float(bb_width_series)
+
+    # ============= 成交量指标 =============
+    # OBV - On Balance Volume
+    from .ta_indicators import obv as calc_obv
+    obv_series = calc_obv(close, vol)
+    obv_val = _to_float(obv_series)
+
+    # MFI - Money Flow Index
+    from .ta_indicators import mfi as calc_mfi
+    mfi_series = calc_mfi(high, low, close, vol, period=14)
+    mfi_val = _to_float(mfi_series)
+
+    # ============= 价格变化 =============
     # Daily pct change (last)
     chg_series = close.pct_change()
     change_pct = _to_float(chg_series)
 
-    # Simple composite signal score (0–3)
+    # ============= 增强版信号评分系统 (0–6) =============
+    # 原有信号 (0-3)
     sig_up_ma = (math.isfinite(ma20) and math.isfinite(ma50) and ma20 > ma50)
     sig_macd_cross_up = (
         math.isfinite(macd_val) and math.isfinite(macd_sig) and math.isfinite(macd_hist)
         and macd_val > macd_sig and macd_hist > 0
     )
     sig_rsi_strong = (math.isfinite(rsi14) and 55 <= rsi14 <= 70)
-    signal_score = int(sig_up_ma) + int(sig_macd_cross_up) + int(sig_rsi_strong)
+    
+    # 新增信号 (0-3)
+    sig_adx_trending = (math.isfinite(adx_val) and adx_val > 25)  # 强趋势
+    sig_stoch_buy = (math.isfinite(stoch_k_val) and 20 < stoch_k_val < 80 and stoch_k_val > stoch_d_val)  # 随机指标买入
+    sig_volume_confirm = (math.isfinite(mfi_val) and 40 < mfi_val < 80)  # 资金流量确认
+    
+    # 总信号评分 (0-6)
+    signal_score = (int(sig_up_ma) + int(sig_macd_cross_up) + int(sig_rsi_strong) + 
+                    int(sig_adx_trending) + int(sig_stoch_buy) + int(sig_volume_confirm))
 
     return _safe_dict(
+        # 基本价格信息
         price=c,
         change_pct=change_pct,
         volume=_to_float(vol),
+        
+        # 趋势指标
         ma20=ma20,
         ma50=ma50,
+        adx=adx_val,
+        
+        # 动量指标
         rsi14=rsi14,
         macd=macd_val,
         macd_signal=macd_sig,
         macd_hist=macd_hist,
+        stoch_k=stoch_k_val,
+        stoch_d=stoch_d_val,
+        roc=roc_val,
+        williams_r=wr_val,
+        
+        # 波动率指标
+        atr=atr_val,
         bb_pos=bb_pos,
+        bb_width=bb_width_val,
+        
+        # 成交量指标
+        obv=obv_val,
+        mfi=mfi_val,
+        
+        # 信号评分 (0-6, 越高越强)
         signal_score=signal_score
     )
 

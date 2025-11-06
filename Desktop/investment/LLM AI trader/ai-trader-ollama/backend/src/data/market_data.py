@@ -1,7 +1,6 @@
 # src/data/market_data.py
 from __future__ import annotations
 from typing import List, Dict
-from datetime import date, datetime, timedelta
 import yfinance as yf
 import pandas as pd
 
@@ -27,43 +26,17 @@ def get_stock_price(symbol: str, start: str, end: str, interval: str = "1d",
     """
     Download OHLCV for a single symbol from yfinance.
     Returns columns: Open, High, Low, Close, Adj Close, Volume
-    
-    Improved: If current date fails, try using yesterday's date or wider range.
     """
-    # Try original date range first
     df = yf.download(
         symbol, start=start, end=end, interval=interval,
         progress=False, auto_adjust=auto_adjust, group_by="column"
     )
-    
     if df is None or df.empty:
-        # Strategy 1: Try using yesterday's date (current day data might not be available yet)
+        # 尝试使用更宽的时间范围
+        from datetime import datetime, timedelta
         try:
             start_dt = datetime.fromisoformat(start.split('T')[0])
-            end_dt = datetime.fromisoformat(end.split('T')[0])
-            
-            # If end date is today, try using yesterday
-            if end_dt.date() == date.today():
-                yesterday = (end_dt - timedelta(days=1)).date()
-                # Skip weekends
-                while yesterday.weekday() >= 5:
-                    yesterday = yesterday - timedelta(days=1)
-                
-                yesterday_start = yesterday.isoformat()
-                yesterday_end = (yesterday + timedelta(days=1)).isoformat()
-                
-                df = yf.download(
-                    symbol, start=yesterday_start, end=yesterday_end, interval=interval,
-                    progress=False, auto_adjust=auto_adjust, group_by="column"
-                )
-                if df is not None and not df.empty:
-                    return _normalize_ohlcv(df)
-        except Exception:
-            pass
-        
-        # Strategy 2: Try using extended time range (30 days back)
-        try:
-            start_dt = datetime.fromisoformat(start.split('T')[0])
+            # 扩展时间范围到30天
             extended_start = (start_dt - timedelta(days=30)).isoformat().split('T')[0]
             extended_end = (datetime.fromisoformat(end.split('T')[0]) + timedelta(days=1)).isoformat().split('T')[0]
             df = yf.download(
@@ -74,16 +47,9 @@ def get_stock_price(symbol: str, start: str, end: str, interval: str = "1d",
                 raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
             # 只返回请求日期范围内的数据
             if start and end:
-                try:
-                    df = df.loc[start:end]
-                except KeyError:
-                    # If exact date not found, return latest available
-                    if not df.empty:
-                        return _normalize_ohlcv(df)
-                    raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
+                df = df.loc[start:end]
         except Exception:
             raise ValueError(f"No data for {symbol} in {start}~{end} (interval={interval})")
-    
     return _normalize_ohlcv(df)
 
 def get_multi_prices(symbols: List[str], start: str, end: str, interval: str = "1d",

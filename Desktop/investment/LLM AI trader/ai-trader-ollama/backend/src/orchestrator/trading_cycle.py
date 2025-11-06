@@ -17,7 +17,7 @@ from src.agents.risk_analyst import run_risk_analyst
 from src.agents.trader_agent import run_trader
 
 # --- Portfolio: 持倉管理 ---
-from src.data.portfolio import Portfolio
+from src.data.portfolio import Portfolio, Position
 
 # --- Trade Logger: 交易記錄 ---
 from src.data.trade_log import TradeLogger
@@ -55,7 +55,8 @@ def execute_daily_trade(
     universe: List[str] | None = None,
     rounds: int = 3,
     auto_tools: bool = True,
-    tool_budget: int = 2,
+    tool_budget: int = 8,  # 充足的工具预算，确保至少使用3个工具
+    min_tools: int = 3,  # 要求至少使用3个工具
     preferred_domains: List[str] | None = None,
     portfolio: Optional[Portfolio] = None,
     trade_logger: Optional[TradeLogger] = None,
@@ -74,11 +75,9 @@ def execute_daily_trade(
         universe = _default_universe()
     if start is None or end is None:
         start, end = _default_window()
+    # 不限制域名，让Agent自由选择新闻来源
     if preferred_domains is None:
-        preferred_domains = [
-            "www.cboe.com", "www.wsj.com", "www.reuters.com", "www.ft.com",
-            "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov"
-        ]
+        preferred_domains = []  # 空列表表示不限制域名
 
     # ---- (1) 市場層 ----
     # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 调用
@@ -143,7 +142,62 @@ def execute_daily_trade(
 
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
     if portfolio is None:
-        portfolio = Portfolio()
+        # 🔥 关键修复：从 portfolio_state.json 加载已有持仓，而不是创建新的空portfolio
+        try:
+            logs_dir = Path("data/logs")
+            if not logs_dir.exists():
+                backend_root = Path(__file__).parent.parent.parent
+                logs_dir = backend_root / "data" / "logs"
+                if not logs_dir.exists():
+                    project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                    logs_dir = project_root / "backend" / "data" / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            
+            portfolio_state_fp = logs_dir / "portfolio_state.json"
+            if portfolio_state_fp.exists():
+                import json as _json
+                with portfolio_state_fp.open("r", encoding="utf-8") as f:
+                    state = _json.load(f)
+                
+                # 处理嵌套结构：{date, snapshot: {...}}
+                snapshot = state.get("snapshot", state)  # 支持两种格式
+                
+                portfolio = Portfolio(
+                    cash=float(snapshot.get("cash", 10000.0)),
+                    initial_value=float(snapshot.get("initial_value", state.get("initial_value", 10000.0))),
+                )
+                
+                # 🔥 恢复持仓（关键步骤）
+                positions = snapshot.get("positions", {})
+                for symbol, pos_info in positions.items():
+                    if isinstance(pos_info, dict):
+                        quantity = int(pos_info.get("quantity", 0))
+                        avg_cost = float(pos_info.get("avg_cost", 0.0))
+                        total_cost = float(pos_info.get("total_cost", 0.0))
+                        # 如果total_cost没有保存或为0，从avg_cost和quantity计算
+                        if total_cost <= 0:
+                            total_cost = avg_cost * quantity
+                        
+                        if quantity > 0:  # 只恢复有效持仓
+                            portfolio._positions[symbol] = Position(
+                                symbol=symbol,
+                                quantity=quantity,
+                                avg_cost=avg_cost,
+                                total_cost=total_cost,
+                            )
+                
+                print(f"[PORTFOLIO] Loaded existing portfolio from portfolio_state.json: cash=${portfolio.cash:.2f}, {len(portfolio._positions)} positions")
+            else:
+                # 如果文件不存在，创建新的portfolio
+                portfolio = Portfolio()
+                print(f"[PORTFOLIO] Created new portfolio (no existing state file)")
+        except Exception as e:
+            # 如果加载失败，创建新的portfolio（避免崩溃）
+            print(f"[PORTFOLIO WARN] Failed to load portfolio state: {e}, creating new portfolio")
+            import traceback
+            print(f"[PORTFOLIO WARN] Traceback: {traceback.format_exc()}")
+            portfolio = Portfolio()
+    
     if trade_logger is None:
         trade_logger = TradeLogger()
 
@@ -179,6 +233,7 @@ def execute_daily_trade(
         rounds=rounds,
         auto_tools=auto_tools,
         tool_budget=tool_budget,
+        min_tools=min_tools,            # 要求至少使用min_tools個工具
         preferred_domains=preferred_domains,
         historical_memories=historical_memories,  # 注入歷史記憶
     )
@@ -246,7 +301,7 @@ def execute_daily_trade(
                 "date": trade_date_str,  # 使用交易日期，不是當前日期
                 "agent": agent_name,
                 "round": round_num,
-                "content": round_text[:500] if len(round_text) > 500 else round_text,  # 限制長度
+                "content": round_text,  # 移除长度限制，保存完整内容
                 "type": "discussion",  # 標記為真實討論，非 demo
             }
             
@@ -986,10 +1041,29 @@ def execute_daily_trade(
         # 额外：写入最新组合状态（方便测试与前端直接读取）
         # 🔥 关键修复：确保positions字段格式正确，包含所有必要信息
         try:
-            portfolio_state_fp = logs_dir / "portfolio_state.json"
+            # 🔥 修复：确保保存到项目根目录的 data/logs（与 server.py 保持一致）
+            save_logs_dir = Path("data/logs")
+            if not save_logs_dir.exists():
+                save_logs_dir.mkdir(parents=True, exist_ok=True)
+            portfolio_state_fp = save_logs_dir / "portfolio_state.json"
+            
             import json as _json
             
-            # 确保positions字段格式正确（从updated_positions_info构建，包含所有持仓）
+            # 🔥 关键修复：确保positions字段格式正确（从updated_positions_info构建，包含所有持仓）
+            # 如果updated_positions_info为空但portfolio._positions有数据，直接从portfolio._positions构建
+            if not updated_positions_info and portfolio and len(portfolio._positions) > 0:
+                print(f"[PORTFOLIO STATE] updated_positions_info is empty, building from portfolio._positions")
+                for symbol, pos in portfolio._positions.items():
+                    if pos.quantity > 0:
+                        current_price = last_prices.get(symbol, pos.avg_cost)
+                        updated_positions_info[symbol] = {
+                            "quantity": pos.quantity,
+                            "avg_cost": pos.avg_cost,
+                            "total_cost": pos.total_cost if hasattr(pos, 'total_cost') and pos.total_cost > 0 else pos.avg_cost * pos.quantity,
+                            "current_price": current_price,
+                            "market_value": pos.quantity * current_price,
+                        }
+            
             final_positions = {}
             for symbol, pos_info in updated_positions_info.items():
                 if pos_info.get("quantity", 0) > 0:  # 只保存有效持仓
@@ -1001,10 +1075,14 @@ def execute_daily_trade(
                         "market_value": float(pos_info.get("market_value", 0.0)),
                     }
             
-            # 确保snapshot包含最新的positions
+            # 🔥 确保包含positions_pnl（从portfolio_pnl构建）
+            final_positions_pnl = portfolio_pnl if portfolio_pnl else {}
+            
+            # 确保snapshot包含最新的positions和positions_pnl
             final_snapshot = {
                 **portfolio_snapshot,
                 "positions": final_positions,  # 🔥 使用重新构建的positions
+                "positions_pnl": final_positions_pnl,  # 🔥 确保包含positions_pnl
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             }
             
@@ -1014,7 +1092,7 @@ def execute_daily_trade(
                     "snapshot": final_snapshot,
                 }, ensure_ascii=False, indent=2))
             
-            print(f"[PORTFOLIO STATE] Saved {len(final_positions)} positions to portfolio_state.json")
+            print(f"[PORTFOLIO STATE] Saved {len(final_positions)} positions to {portfolio_state_fp}")
         except Exception as _e:
             print(f"[MEMORY WARN] Failed to write portfolio_state.json: {_e}")
             import traceback

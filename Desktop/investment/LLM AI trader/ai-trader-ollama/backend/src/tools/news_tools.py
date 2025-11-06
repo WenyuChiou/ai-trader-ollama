@@ -162,13 +162,15 @@ def fetch_url(url: str, timeout: float = 10.0) -> Dict[str, Any]:
 def news_scan(
     *,
     keywords: List[str],
-    max_articles: int = 12,
+    max_articles: int = 20,  # 增加到20个新闻
     recency_days: int = 10,
     domains: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     先用 RSS（business + google news）組合；若仍不足、且允許 domains=None，可再用 ddgs 搜尋補充。
     回傳 {"hits":[{title,link,source},...], "queries":[...]}。
+    
+    返回格式增强：包含所有新闻标题列表，方便前端显示。
     """
     # RSS 先來一輪
     rss = fetch_rss(keywords, include_business=True, per_query=10, cap=max_articles)
@@ -184,7 +186,16 @@ def news_scan(
                     hits.append(h)
             if len(hits) >= max_articles:
                 break
-    return {"hits": hits[:max_articles], "queries": rss.get("queries", keywords[:6])}
+    
+    # 提取所有标题列表，方便前端显示
+    titles = [h.get("title", "") for h in hits[:max_articles] if h.get("title")]
+    
+    return {
+        "hits": hits[:max_articles], 
+        "queries": rss.get("queries", keywords[:6]),
+        "titles": titles,  # 新增：所有新闻标题列表
+        "count": len(titles)  # 新增：新闻数量
+    }
 
 # ---------------------------
 # LLM 規劃 + 掃描（供 Market Analyst/Discussion 使用）
@@ -247,12 +258,14 @@ def plan_and_scan_news(
     mview: Dict[str, Any],
     preferred_domains: Optional[List[str]] = None,
     recency_days: int = 10,
-    max_articles: int = 12,
+    max_articles: int = 20,  # 增加到20个新闻
     fetch_body_top: int = 0,  # >0 時，對前 N 篇做 fetch_url 摘要
 ) -> Dict[str, Any]:
     """
     LLM 產 query → news_scan（先白名單，空則放寬）→（可選）fetch_url。
-    回傳 {"queries":[...], "hits":[...], "articles":[...]}。
+    回傳 {"queries":[...], "hits":[...], "articles":[...], "titles":[...]}。
+    
+    增强：返回所有新闻标题列表供前端显示。
     """
     if preferred_domains is None:
         preferred_domains = [
@@ -294,4 +307,13 @@ def plan_and_scan_news(
                     "excerpt": (fr["result"].get("text") or "")[:800],
                 })
 
-    return {"queries": queries, "hits": hits, "articles": articles}
+    # 提取所有标题列表
+    titles = [h.get("title", "") for h in hits if h.get("title")]
+    
+    return {
+        "queries": queries, 
+        "hits": hits, 
+        "articles": articles,
+        "titles": titles,  # 所有新闻标题列表
+        "count": len(titles)  # 新闻数量
+    }

@@ -10,6 +10,11 @@ from src.tools.news_tools import (
 )
 from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
 from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data
+from src.tools.economic_indicators import (
+    get_economic_summary,
+    get_labor_market_data,
+    fetch_fred_indicator
+)
 
 
 @dataclass
@@ -42,6 +47,11 @@ class ToolBox:
         # fetch_jin10_news 和 fetch_jin10_economic_data 是 LangChain StructuredTool，需要适配器
         self.register(Tool("fetch_jin10_news", self._jin10_news_adapter, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
         self.register(Tool("fetch_jin10_economic_data", self._jin10_economic_data_adapter, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
+
+        # FRED economic indicators (US economic data from Federal Reserve)
+        self.register(Tool("get_economic_summary", self._economic_summary_adapter, "Get summary of key US economic indicators (GDP, unemployment, CPI, Fed funds rate, etc.) from FRED API"))
+        self.register(Tool("get_labor_market_data", self._labor_market_adapter, "Get US labor market data (unemployment rate, nonfarm payrolls, labor force, initial claims) from FRED API"))
+        self.register(Tool("fetch_fred_indicator", self._fred_indicator_adapter, "Fetch specific economic indicator from FRED API by series_id (e.g., GDP, UNRATE, CPIAUCSL, FEDFUNDS)"))
 
         # news / web primitives
         self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))
@@ -274,6 +284,63 @@ class ToolBox:
         
         # 调用函数，传入必需的参数
         return plan_and_scan_news(mview=mview, **kwargs)
+
+    # ---------- Economic Indicators Adapters ----------
+    
+    def _economic_summary_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_economic_summary 获取关键经济指标摘要
+        不需要参数，返回 GDP, CPI, 失业率, 利率等关键指标
+        """
+        try:
+            result = get_economic_summary()
+            return result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Failed to fetch economic summary"
+            }
+    
+    def _labor_market_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_labor_market_data 获取劳动市场数据
+        返回失业率、非农就业、劳动力等数据
+        """
+        try:
+            result = get_labor_market_data()
+            return result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "Failed to fetch labor market data"
+            }
+    
+    def _fred_indicator_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_fred_indicator 获取单个FRED指标
+        参数:
+        - series_id: FRED series ID (例如: GDP, UNRATE, CPIAUCSL, FEDFUNDS)
+        - limit: 返回的观测值数量 (默认1)
+        """
+        # 确保有 series_id
+        if "series_id" not in kwargs:
+            return {
+                "success": False,
+                "error": "series_id is required",
+                "message": "Please provide a FRED series_id (e.g., GDP, UNRATE, CPIAUCSL)"
+            }
+        
+        try:
+            result = fetch_fred_indicator(**kwargs)
+            return result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Failed to fetch FRED indicator {kwargs.get('series_id')}"
+            }
 
 
 def _safe_int(x: Any, default: int = 0) -> int:

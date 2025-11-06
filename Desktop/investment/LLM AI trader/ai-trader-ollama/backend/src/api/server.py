@@ -424,7 +424,17 @@ async def get_real_time_portfolio():
         is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
         
         # Load portfolio state
+        # 🔥 修复路径解析：支持多种路径格式
         state_file = Path("data/logs/portfolio_state.json")
+        if not state_file.exists():
+            # 尝试从backend目录查找
+            backend_root = Path(__file__).parent.parent.parent
+            state_file = backend_root / "data" / "logs" / "portfolio_state.json"
+            if not state_file.exists():
+                # 尝试从项目根目录查找
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                state_file = project_root / "backend" / "data" / "logs" / "portfolio_state.json"
+        
         if not state_file.exists():
             # Fallback: return simple default portfolio when no state file exists
             return {
@@ -445,12 +455,21 @@ async def get_real_time_portfolio():
             state = json.load(f)
         
         # Handle nested snapshot structure: {date, snapshot: {...}}
-        snapshot = state.get("snapshot", state)  # Support both formats
+        # 🔥 修复：支持两种格式，但优先使用snapshot字段
+        if "snapshot" in state:
+            snapshot = state["snapshot"]
+        else:
+            # 如果没有snapshot字段，整个state就是snapshot（旧格式）
+            snapshot = state
         
         from src.data.portfolio import Portfolio, Position
+        # 🔥 修复：确保从正确的位置获取initial_value
+        initial_value_from_state = state.get("initial_value") if "snapshot" in state else None
+        initial_value = float(snapshot.get("initial_value", initial_value_from_state or 10000.0))
+        
         portfolio = Portfolio(
             cash=float(snapshot.get("cash", 10000.0)),
-            initial_value=float(snapshot.get("initial_value", state.get("initial_value", 10000.0))),
+            initial_value=initial_value,
         )
         
         # Restore positions
@@ -474,37 +493,33 @@ async def get_real_time_portfolio():
         
         # If there are no positions, avoid external data calls and return simple snapshot
         if len(portfolio._positions) == 0:
-            total_value = portfolio.cash
+            total_value = float(portfolio.cash)
+            initial_value = float(portfolio.initial_value)
+            total_pnl = total_value - initial_value
+            total_pnl_pct = (total_pnl / initial_value * 100) if initial_value > 0 else 0.0
             snapshot = {
                 "ok": True,
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                "initial_value": portfolio.initial_value,
-                "total_value": round(total_value, 2),
-                "total_pnl": round(total_value - portfolio.initial_value, 2),
-                "total_pnl_pct": 0.0,
-                "cash": round(portfolio.cash, 2),
-                "equity_value": 0.0,
+                "initial_value": float(initial_value),
+                "total_value": float(round(total_value, 2)),
+                "total_pnl": float(round(total_pnl, 2)),
+                "total_pnl_pct": float(round(total_pnl_pct, 2)),
+                "cash": float(round(portfolio.cash, 2)),
+                "equity_value": float(0.0),
                 "positions": {},
-                "positions_pnl": {},
+                "positions_pnl": {},  # 🔥 确保始终包含positions_pnl字段
                 "source": "simple",
             }
         else:
             # 非交易时段：不更新数据，只返回已保存的快照
             if not is_market_open:
+                # 🔥 修复：不依赖RealTimeTracker的缓存，直接使用portfolio_state.json的数据
+                # 因为缓存可能过期或没有持仓数据
                 # 优先使用snapshot中的positions_pnl（如果有）
                 snapshot_positions_pnl = snapshot.get("positions_pnl", {})
                 
-                # 获取最新快照（不更新）
-                try:
-                    from src.data.real_time_tracker import RealTimeTracker
-                    tracker = RealTimeTracker(root="data/logs")
-                    cached_snapshot = tracker.get_latest_snapshot()
-                    if cached_snapshot:
-                        cached_snapshot["ok"] = True
-                        cached_snapshot["source"] = "cached"
-                        return {"ok": True, **cached_snapshot}
-                except Exception:
-                    pass
+                # 跳过缓存快照，直接使用portfolio_state.json中的数据
+                # （因为缓存可能过期或没有持仓数据）
                 
                 # 如果没有快照，使用snapshot中的positions_pnl（如果存在）
                 # 使用snapshot中保存的positions_pnl（如果有），否则计算
@@ -545,19 +560,40 @@ async def get_real_time_portfolio():
                                 "unrealized_pnl": round(unrealized_pnl, 2),
                                 "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
                             }
+                # 🔥 确保positions_pnl被正确计算（如果为空，从持仓计算）
+                # 注意：在非交易时段，last_prices可能为空，需要从positions_detail获取价格
+                if not positions_pnl and portfolio and len(portfolio._positions) > 0:
+                    # 构建last_prices（从positions_detail获取current_price）
+                    calc_last_prices = {}
+                    for sym, pos_detail in positions_detail.items():
+                        calc_last_prices[sym] = pos_detail.get("current_price", pos_detail.get("avg_cost", 0))
+                    
+                    # 使用portfolio的get_all_positions_pnl方法计算
+                    positions_pnl = portfolio.get_all_positions_pnl(calc_last_prices)
+                    # 转换为简单格式
+                    positions_pnl = {
+                        sym: {
+                            "unrealized_pnl": float(pnl_data.get("unrealized_pnl", 0.0)),
+                            "unrealized_pnl_pct": float(pnl_data.get("unrealized_pnl_pct", 0.0)),
+                        }
+                        for sym, pnl_data in positions_pnl.items()
+                    }
+                
                 snapshot = {
                     "ok": True,
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                    "initial_value": portfolio.initial_value,
-                    "total_value": round(total_value, 2),
-                    "total_pnl": round(total_value - portfolio.initial_value, 2),
-                    "total_pnl_pct": round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2),
-                    "cash": round(portfolio.cash, 2),
-                    "equity_value": round(equity, 2),
+                    "initial_value": float(portfolio.initial_value),
+                    "total_value": float(round(total_value, 2)),
+                    "total_pnl": float(round(total_value - portfolio.initial_value, 2)),
+                    "total_pnl_pct": float(round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2)),
+                    "cash": float(round(portfolio.cash, 2)),
+                    "equity_value": float(round(equity, 2)),
                     "positions": positions_detail,
-                    "positions_pnl": positions_pnl,
+                    "positions_pnl": positions_pnl,  # 🔥 确保包含positions_pnl
                     "source": "static_after_hours",
                 }
+                # 🔥 确保返回扁平格式，包含所有必要字段
+                # 继续执行，在最后统一返回（允许记录净值）
             else:
                 # 交易时段：更新实时数据
                 snapshot = None
@@ -648,19 +684,22 @@ async def get_real_time_portfolio():
                 snapshot = {
                     "ok": True,
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                    "initial_value": portfolio.initial_value,
-                    "total_value": round(total_value, 2),
-                    "total_pnl": round(total_value - portfolio.initial_value, 2),
-                    "total_pnl_pct": round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2),
-                    "cash": round(portfolio.cash, 2),
-                    "equity_value": round(total_value - portfolio.cash, 2),
+                    "initial_value": float(portfolio.initial_value),
+                    "total_value": float(round(total_value, 2)),
+                    "total_pnl": float(round(total_value - portfolio.initial_value, 2)),
+                    "total_pnl_pct": float(round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2)),
+                    "cash": float(round(portfolio.cash, 2)),
+                    "equity_value": float(round(total_value - portfolio.cash, 2)),
                     "positions": positions_detail,
                     "positions_pnl": positions_pnl,
                     "source": "fallback_realtime",
                 }
         
         # 定期记录净值（每30秒或净值变化超过0.5%时）
+        # 🔥 非交易时段：只在今天还没有记录时记录一次，避免频繁记录
+        # 🔥 交易时段：每30秒或净值变化超过0.5%时记录
         try:
+            # 只在交易时段或今天还没有记录时尝试记录
             from src.data.equity_tracker import EquityTracker
             today_str = date.today().isoformat()
             equity_tracker = EquityTracker(root="data/logs")
@@ -670,54 +709,65 @@ async def get_real_time_portfolio():
             current_time = datetime.now()
             should_record = False
             
-            if not existing_records:
-                # 如果今天还没有记录，立即记录
-                should_record = True
-                print(f"[Portfolio API] No records today, recording first snapshot")
+            # 🔥 非交易时段：只在今天还没有记录时记录一次
+            if not is_market_open:
+                if not existing_records:
+                    # 如果今天还没有记录，记录一次
+                    should_record = True
+                    print(f"[Portfolio API] Market closed. No records today, recording first snapshot")
+                else:
+                    # 非交易时段已有记录，跳过（净值不会变化）
+                    print(f"[Portfolio API] Market closed. Already have {len(existing_records)} records today, skipping recording")
             else:
-                # 检查最后一条记录的时间
-                last_record = existing_records[-1]
-                last_timestamp_str = last_record.get("timestamp", "")
-                
-                if last_timestamp_str:
-                    try:
-                        # 尝试解析时间戳（支持多种格式）
-                        last_timestamp_str_clean = last_timestamp_str.replace('Z', '+00:00').replace('+00:00', '')
+                # 交易时段：按原有逻辑记录（每30秒或净值变化超过0.5%）
+                if not existing_records:
+                    # 如果今天还没有记录，立即记录
+                    should_record = True
+                    print(f"[Portfolio API] No records today, recording first snapshot")
+                else:
+                    # 检查最后一条记录的时间
+                    last_record = existing_records[-1]
+                    last_timestamp_str = last_record.get("timestamp", "")
+                    
+                    if last_timestamp_str:
                         try:
-                            last_timestamp = datetime.fromisoformat(last_timestamp_str_clean)
-                        except:
-                            # 如果ISO格式失败，尝试其他格式
-                            last_timestamp = datetime.strptime(last_timestamp_str_clean.split('.')[0], '%Y-%m-%dT%H:%M:%S')
-                        
-                        # 如果时区信息存在，转换为本地时间
-                        if last_timestamp.tzinfo:
-                            last_timestamp = last_timestamp.astimezone().replace(tzinfo=None)
-                        
-                        time_diff = (current_time - last_timestamp).total_seconds()
-                        
-                        # 如果距离上次记录超过30秒，或者净值变化超过0.5%
-                        last_value = last_record.get("total_value", 0.0)
-                        current_value = snapshot.get("total_value", 0.0)
-                        value_change_pct = abs((current_value - last_value) / last_value * 100) if last_value > 0 else 0
-                        
-                        if time_diff >= 30:
-                            should_record = True
-                            print(f"[Portfolio API] Time diff: {time_diff:.1f}s, recording snapshot")
-                        elif value_change_pct >= 0.5:
-                            should_record = True
-                            print(f"[Portfolio API] Value changed {value_change_pct:.2f}%, recording snapshot")
-                    except Exception as e:
-                        # 如果时间解析失败，每30秒记录一次（简化逻辑）
-                        print(f"[Portfolio API] Timestamp parse error: {e}, will record anyway")
-                        # 如果无法解析时间，但记录数少于10，也记录（避免无限记录）
+                            # 尝试解析时间戳（支持多种格式）
+                            last_timestamp_str_clean = last_timestamp_str.replace('Z', '+00:00').replace('+00:00', '')
+                            try:
+                                last_timestamp = datetime.fromisoformat(last_timestamp_str_clean)
+                            except:
+                                # 如果ISO格式失败，尝试其他格式
+                                last_timestamp = datetime.strptime(last_timestamp_str_clean.split('.')[0], '%Y-%m-%dT%H:%M:%S')
+                            
+                            # 如果时区信息存在，转换为本地时间
+                            if last_timestamp.tzinfo:
+                                last_timestamp = last_timestamp.astimezone().replace(tzinfo=None)
+                            
+                            time_diff = (current_time - last_timestamp).total_seconds()
+                            
+                            # 如果距离上次记录超过30秒，或者净值变化超过0.5%
+                            last_value = last_record.get("total_value", 0.0)
+                            current_value = snapshot.get("total_value", 0.0) if snapshot else 0.0
+                            value_change_pct = abs((current_value - last_value) / last_value * 100) if last_value > 0 else 0
+                            
+                            if time_diff >= 30:
+                                should_record = True
+                                print(f"[Portfolio API] Time diff: {time_diff:.1f}s, recording snapshot")
+                            elif value_change_pct >= 0.5:
+                                should_record = True
+                                print(f"[Portfolio API] Value changed {value_change_pct:.2f}%, recording snapshot")
+                        except Exception as e:
+                            # 如果时间解析失败，每30秒记录一次（简化逻辑）
+                            print(f"[Portfolio API] Timestamp parse error: {e}, will record anyway")
+                            # 如果无法解析时间，但记录数少于10，也记录（避免无限记录）
+                            if len(existing_records) < 10:
+                                should_record = True
+                    else:
+                        # 没有时间戳，每30秒记录一次
                         if len(existing_records) < 10:
                             should_record = True
-                else:
-                    # 没有时间戳，每30秒记录一次
-                    if len(existing_records) < 10:
-                        should_record = True
             
-            if should_record:
+            if should_record and snapshot:
                 portfolio_snapshot_for_record = {
                     "cash": snapshot.get("cash", 0.0),
                     "equity_value": snapshot.get("equity_value", 0.0),
@@ -748,6 +798,7 @@ async def get_real_time_portfolio():
         print(f"[Portfolio API ERROR] get_real_time_portfolio failed: {error_msg}")
         print(f"[Portfolio API ERROR] Traceback:\n{error_trace}")
         # Return a safe fallback response instead of 500 error
+        # 🔥 确保错误响应也包含所有必要字段，包括positions_pnl
         return JSONResponse(
             status_code=500,
             content={
@@ -757,14 +808,14 @@ async def get_real_time_portfolio():
                 "message": "Failed to get portfolio data. Using default values.",
                 # Fallback data so frontend can still render
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                "initial_value": 10000.0,
-                "total_value": 10000.0,
-                "total_pnl": 0.0,
-                "total_pnl_pct": 0.0,
-                "cash": 10000.0,
-                "equity_value": 0.0,
+                "initial_value": float(10000.0),
+                "total_value": float(10000.0),
+                "total_pnl": float(0.0),
+                "total_pnl_pct": float(0.0),
+                "cash": float(10000.0),
+                "equity_value": float(0.0),
                 "positions": {},
-                "positions_pnl": {},
+                "positions_pnl": {},  # 🔥 确保错误响应也包含positions_pnl
                 "source": "error_fallback",
             },
             headers={"Access-Control-Allow-Origin": "*"}
@@ -1103,8 +1154,17 @@ async def get_agent_conversations(
         import json
         from pathlib import Path
         
-        # Load from discussion_actions.jsonl
+        # 🔥 修复：支持多种路径格式
         log_file = Path("data/logs/discussion_actions.jsonl")
+        if not log_file.exists():
+            # 尝试从backend目录查找
+            backend_root = Path(__file__).parent.parent.parent
+            log_file = backend_root / "data" / "logs" / "discussion_actions.jsonl"
+            if not log_file.exists():
+                # 尝试从项目根目录查找
+                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
+                log_file = project_root / "backend" / "data" / "logs" / "discussion_actions.jsonl"
+        
         conversations = []
         
         if log_file.exists():
@@ -1185,11 +1245,20 @@ async def get_agent_conversations(
         }
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return JSONResponse(
-            status_code=500,
-            content={"ok": False, "error": str(e)}
-        )
+        error_trace = traceback.format_exc()
+        error_msg = str(e)
+        print(f"[Conversations API ERROR] get_agent_conversations failed: {error_msg}")
+        print(f"[Conversations API ERROR] Traceback:\n{error_trace}")
+        # 🔥 修复：返回正常响应而不是500错误，避免连接重置
+        # 返回空列表，让前端正常处理
+        return {
+            "ok": True,  # 返回True，让前端知道请求成功，只是没有数据
+            "conversations": [],
+            "count": 0,
+            "total": 0,
+            "has_more": False,
+            "error": error_msg,  # 可选：包含错误信息用于调试
+        }
 
 
 @app.get("/api/market/is-open")

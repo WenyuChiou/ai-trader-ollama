@@ -135,9 +135,14 @@ def _summarize_tool_result(name: str, result: Any) -> str:
         if name == "news_scan" and isinstance(result, dict):
             hits = result.get("hits", [])
             q = result.get("queries", [])
-            # 添加更详细的信息
-            hit_titles = [h.get("title", "")[:50] for h in hits[:2] if isinstance(h, dict)]
-            return f"news_scan: {len(hits)} hits, queries={q[:3]}, samples={hit_titles}"
+            titles = result.get("titles", [])
+            # 返回所有标题信息
+            if titles:
+                return f"news_scan: {len(hits)} hits, queries={q[:3]}, titles={titles[:20]}"
+            else:
+                # Fallback to old format
+                hit_titles = [h.get("title", "")[:50] for h in hits[:2] if isinstance(h, dict)]
+                return f"news_scan: {len(hits)} hits, queries={q[:3]}, samples={hit_titles}"
         return f"{name}: ok"
     except Exception:
         return f"{name}: ok"
@@ -156,11 +161,13 @@ def run_analyst_discussion(
     tool_budget: int = 3,
     preferred_domains: List[str] | None = None,
     historical_memories: List[Dict[str, Any]] | None = None,
+    min_tools: int = 3,  # 最少使用工具数量
 ) -> Dict[str, Any]:
     """
     多輪討論（包含：提出需要 → 呼叫 ToolBox → 補充資訊 → 下一輪再用）的主流程。
     - 不會因第一輪無工具就提前結束
     - 連續兩輪無新工具才早退（或遇到 finalize）
+    - 必須至少使用 min_tools 個工具（除非 tool_budget 耗盡）
     """
     # 使用 AgentFactory 的自动路径查找功能
     # AgentFactory 会自动尝试多个可能的路径
@@ -223,6 +230,18 @@ def run_analyst_discussion(
                 + "⚠️ IMPORTANT: The tools listed above have already been executed. "
                 + "DO NOT call these tools again in tool_calls. Use the results shown above directly in your rationale."
             )
+        
+        # 如果未達到最小工具數要求，明確提示Agent需要更多工具
+        if len(tool_context_lines) < min_tools:
+            tools_needed = min_tools - len(tool_context_lines)
+            available_tools = tb.list()[:10]  # 前10个工具
+            tools_str = ', '.join([t if isinstance(t, str) else t.name for t in available_tools])
+            extra_user += (
+                f"\n\n⚠️ MINIMUM TOOL REQUIREMENT: You have used {len(tool_context_lines)} tools so far. "
+                f"You MUST call at least {tools_needed} more tool(s) to reach the minimum requirement of {min_tools} tools. "
+                f"Available tools: {tools_str}. "
+                f"Choose different tools to gather comprehensive market intelligence."
+            )
 
         out_text = agent.run(vars_ctx, expect_json=False, user_append=extra_user)
         transcript.append(f"--- Round {r} ---\n{out_text}")
@@ -248,7 +267,7 @@ def run_analyst_discussion(
                 # 強制給 news_scan 合理預設（避免模型遺漏鍵）
                 if name == "news_scan":
                     kwargs.setdefault("recency_days", 7)
-                    kwargs.setdefault("max_articles", 10)
+                    kwargs.setdefault("max_articles", 20)  # 增加到20个新闻
                     kwargs.setdefault("fetch_body_top", 0)
                     # keywords 至少要有東西；若模型沒給，退而求其次：從 market_view 裡取 symbols 或給常見詞彙
                     if not kwargs.get("keywords"):
@@ -288,8 +307,8 @@ def run_analyst_discussion(
                 actions_taken.append("finalize")
                 decided_finalize = True
 
-        # 早退條件：使用者主動 finalize
-        if decided_finalize:
+        # 早退條件：使用者主動 finalize（但仍需满足min_tools）
+        if decided_finalize and len(tool_context_lines) >= min_tools:
             break
 
         # 早退條件：連續兩回合都沒有新工具執行，且沒有外部硬性 rounds 要求
@@ -298,8 +317,8 @@ def run_analyst_discussion(
         else:
             consecutive_no_tools = 0
 
-        if consecutive_no_tools >= 2:
-            # 已經兩回合沒有新的工具，代表內容穩定，不用硬跑滿
+        if consecutive_no_tools >= 2 and len(tool_context_lines) >= min_tools:
+            # 已經兩回合沒有新的工具，且已滿足最少工具數要求，代表內容穩定，不用硬跑滿
             break
 
         # 更新下一輪上下文（保留新聞 hits 的縮寫也可，但避免 prompt 過大）

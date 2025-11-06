@@ -2,12 +2,14 @@
 
 > **A self-evolving multi-agent trading system powered by LangChain + Ollama + yfinance**  
 > 📈 Designed for **NASDAQ-100** stock universe with hedging and leveraged ETF support  
-> 🧠 Agents that analyze, discuss, and decide — entirely autonomously
+> 🧠 **8+ Specialized Agents** that analyze, discuss, and decide — entirely autonomously  
+> ✨ **Modern Neon Cyberpunk UI** with real-time data visualization and glassmorphism effects
 
 ---
 
 ## 📚 Table of Contents
 
+- [Key Features](#-key-features)
 - [Quick Start](#-quick-start)
 - [API Startup & Shutdown](#-api-startup--shutdown)
 - [Backend Testing](#-backend-testing)
@@ -18,6 +20,158 @@
 - [Project Structure](#-project-structure)
 - [Troubleshooting](#-troubleshooting)
 - [Documentation](#-documentation)
+
+---
+
+## ✨ Key Features
+
+### 🎨 Modern Neon Cyberpunk UI Design
+
+**Visual Design:**
+- 🌌 **Dynamic Background**: Deep space gradient with animated neon grid
+- 💎 **Glassmorphism Effects**: Translucent cards with backdrop blur and color saturation
+- 🌈 **Neon Gradients**: Cyan (`#00f5ff`) and Purple (`#a855f7`) color scheme throughout
+- ✨ **Glow Effects**: Multi-layer text shadows and neon borders on interactive elements
+- 🎭 **3D Hover Effects**: Cards lift up and scale with animated gradient borders
+
+**Data Visualization:**
+- 📊 **Real-time Charts**: Equity curves with neon glow effects and smooth animations
+- 💰 **Glowing Numbers**: Large currency values with cyan/purple text shadows
+- 📈 **Live Indicators**: Status dots with pulsing animations for market and agent status
+- 🎯 **Smart Tables**: Gradient headers, hover effects with left neon accent bars
+
+**Interaction Design:**
+- 🔘 **Neon Buttons**: Gradient backgrounds with light sweep animations on hover
+- 🏷️ **Status Badges**: Glowing pills with semantic colors (green/orange/gray)
+- 💬 **Conversation Cards**: Glassmorphic containers with left gradient accent bars
+- ⚡ **Smooth Transitions**: 0.3-0.4s cubic-bezier easing for all animations
+
+**Typography & Formatting:**
+- 🔢 **Precision Display**: All numbers rounded to 1 decimal place for clarity
+- 📏 **Enhanced Spacing**: Larger padding and margins for better readability
+- 🎨 **Gradient Text**: Major headings use cyan-to-purple gradient text
+- ✍️ **Modern Fonts**: System font stack with tabular numbers for data consistency
+
+### 🤖 Advanced Multi-Agent System
+
+**8 Specialized Trading Agents:**
+1. **MarketAnalyst** 📊
+   - Analyzes entire universe (72+ stocks) technical indicators
+   - Generates market sentiment and key observations
+   - Identifies trending stocks and market patterns
+
+2. **FundamentalAnalyst** 📈
+   - Evaluates fundamental data and earnings
+   - Synthesizes company sentiment analysis
+   - Provides long-term value assessments
+
+3. **TechnicalAnalyst** 📉
+   - Calculates RSI, MACD, Bollinger Bands
+   - Generates technical signal scores
+   - Identifies top trading opportunities
+
+4. **SentimentAnalyst** 😊
+   - Monitors Fear & Greed Index (CNN)
+   - Tracks VIX term structure (VIX vs VIX3M)
+   - Calculates VIX risk scores
+   - Assesses market emotional state
+
+5. **DiscussionAgent** 💬
+   - Conducts multi-round analysis (3 rounds default)
+   - Automatically calls 20+ tools for data gathering
+   - Synthesizes all information into actionable insights
+   - Provides detailed reasoning and stance
+
+6. **RiskAnalyst** ⚠️
+   - Evaluates portfolio concentration
+   - Checks position limit compliance
+   - Generates risk warnings and diversification advice
+   - Calculates overall risk scores
+
+7. **TraderAgent** 💼
+   - Makes final BUY/SELL decisions
+   - Calculates optimal position sizes
+   - Sets price bands for limit orders
+   - Generates detailed trade rationale
+
+8. **ToolSystem** 🔧
+   - Logs all tool usage (news, VIX, Fear & Greed, etc.)
+   - Tracks data source reliability
+   - Records API call timestamps
+
+**Agent Intelligence:**
+- 🧠 **Autonomous Operation**: Agents make decisions without human intervention
+- 🔄 **Continuous Learning**: Each cycle builds on historical context
+- 🤝 **Collaborative Analysis**: Agents share insights through discussion rounds
+- 📊 **Tool Integration**: Automatic access to 20+ market data and news tools
+- 💾 **Memory System**: All conversations saved to `discussion_actions.jsonl`
+
+### 🛠️ 20+ Integrated Tools
+
+**Market Data:**
+- `fetch_market_batch`: Batch OHLCV + technical indicators for full universe
+- `vix_term`: VIX term structure analysis (contango/backwardation)
+- `vix_close`: Historical VIX data for volatility analysis
+- `fear_greed`: CNN Fear & Greed Index (0-100 scale)
+
+**News & Intelligence:**
+- `news_scan`: Multi-source news aggregation (Reuters, WSJ, FT, etc.)
+- `plan_and_scan_news`: LLM-powered intelligent news planning
+- `web_search`: DuckDuckGo search with domain whitelist
+- `fetch_url`: Full article content extraction
+
+**Crypto Analysis:**
+- `fetch_crypto_batch`: Batch cryptocurrency data and indicators
+- `get_crypto_price`: Real-time crypto prices
+
+**Agent Features:**
+- 🎯 **Auto Tool Selection**: LLM chooses relevant tools based on context
+- 📊 **Tool Budget**: 20 calls per cycle (configurable)
+- 🔄 **Smart Caching**: Reduces redundant API calls
+- 📝 **Full Logging**: All tool calls recorded in conversation history
+
+### 📈 Trading Features
+
+**Position Management:**
+- 💰 Initial Cash: $10,000 (configurable)
+- 📊 Position Limits: Per-stock (15%), Total (85%)
+- 🎯 Minimum Position: 3% per stock
+- 🔄 Auto Rebalancing: Based on risk analysis
+
+**Order Types:**
+- 📍 **Limit Orders**: Price bands (min/max) for better execution
+- ⏱️ **Pending Orders**: Hold overnight, execute during market hours
+- ✅ **Filled Orders**: Complete history with timestamps
+- 📊 **Order Status**: Real-time tracking (PENDING → FILLED)
+
+**Risk Management:**
+- ⚠️ **Real-time Risk Scores**: Continuous risk evaluation
+- 🎯 **Position Concentration Alerts**: Warns of over-exposure
+- 📊 **VIX Risk Integration**: Volatility-based position sizing
+- 🛡️ **Hedging Support**: Inverse ETFs (SQQQ, SPXU, SH, etc.)
+- ⚡ **Leveraged ETF Control**: Moderate use with strict limits
+
+**Trading Schedule:**
+- 🌅 **Market Hours**: Auto-detect US market open/close
+- ⏰ **Auto Trading**: Configurable intervals (default 30 min)
+- 📅 **Pre-planning**: Off-hours planning for next trading day
+- 📊 **Historical View**: Charts and conversations visible 24/7
+
+### 📊 Data Persistence
+
+**Complete Record Keeping:**
+- 💾 `portfolio_state.json`: Current holdings and cash
+- 📈 `equity_history.jsonl`: Daily equity snapshots with timestamps
+- 💬 `discussion_actions.jsonl`: All agent conversations and tool calls
+- 📋 `pending_orders.jsonl`: Unfilled orders awaiting market hours
+- ✅ `filled_orders.jsonl`: Complete trade execution history
+- 📊 `real_time_snapshots.jsonl`: Intraday portfolio snapshots
+
+**Data Features:**
+- ⏱️ **Multi-record per Day**: Track intraday changes (every 30s or 0.5% change)
+- 🔄 **Auto Persistence**: Never lose data except on initialization
+- 📊 **Historical Charts**: Full equity curve with zoom and pan
+- 💾 **Memory System**: Agents reference past decisions
 
 ---
 
@@ -516,25 +670,191 @@ cd frontend
 
 ### Agent Types and Responsibilities
 
-The system runs all agents each cycle (trading and off-hours planning) and logs their outputs to `backend/data/logs/discussion_actions.jsonl` so the frontend shows them in the Conversations panel:
+The system uses **two types of agents**: **Core Agents** (LLM-powered decision makers) and **Virtual Agents** (data aggregators for frontend display). All outputs are logged to `backend/data/logs/discussion_actions.jsonl` for the frontend Conversations panel:
 
-- MarketAnalyst: Market sentiment + recommended stocks; key observations
-- FundamentalAnalyst: Fundamental/sentiment summary for recommended stocks
-- TechnicalAnalyst: Technical snapshot (RSI/MACD/BB) and top-signal tickers
-- SentimentAnalyst: VIX term structure, Fear & Greed Index (FGI), vix_risk_score
-- RiskAnalyst: Overall risk, limits, warnings, diversification guidance
-- TraderAgent: Action, buy/sell counts and rationale
-- ToolSystem: Tool usage entries (news_scan, vix_term, fear_greed, etc.)
-- DiscussionAgent: Multi-round discussion with final stance and reasoning
+### 🎯 Core Agents (LLM-Powered)
+These agents use LLMs for autonomous decision-making. Defined in `backend/src/agents/`:
 
-Notes:
-- Off-hours: if a plan for the next trading day already exists, the system reuses it (no duplicate plans). Conversations and pending orders still display.
-- Frontend renders conversations without raw JSON blocks; JSON-like payloads are formatted as bullet lists.
+#### 1. **DiscussionAgent** 💬
+- **File**: `analyst_discussion.py`
+- **Role**: Multi-round discussion and tool orchestration
+- **Type**: Full LLM agent with autonomous tool calling
+- **Features**:
+  - 3-5 discussion rounds
+  - **Minimum 3 tools required** per cycle
+  - Tool budget: 8 calls per round
+  - Auto tool selection based on market context
+  - Agent-generated keywords
+  - Historical memory integration (last 5 days)
+- **Outputs**: Final stance (BULLISH/BEARISH/NEUTRAL), detailed reasoning, complete tool results
+
+#### 2. **RiskAnalyst** ⚠️
+- **File**: `risk_analyst.py`
+- **Role**: Portfolio risk evaluation
+- **Type**: Full LLM agent analyzing risk factors
+- **Inputs**: Current positions, portfolio value, market volatility, discussion insights
+- **Outputs**:
+  - `overall_risk`: LOW/MEDIUM/HIGH
+  - Position concentration warnings
+  - Diversification recommendations
+  - P&L analysis for each position
+- **Features**: Real-time P&L tracking, position limit enforcement
+
+#### 3. **TraderAgent** 💼
+- **File**: `trader_agent.py`
+- **Role**: Final trading decisions and order generation
+- **Type**: Full LLM agent making trade decisions
+- **Inputs**: Discussion stance, risk report, position limits, market conditions
+- **Outputs**:
+  - `action`: BUY/SELL/HOLD
+  - `buy_orders` / `sell_orders` with quantities and price bands
+  - Trade rationale
+- **Features**: Optimal position sizing (3-15% per stock), risk-adjusted quantities
+
+---
+
+### 📊 Virtual Agents (Data Aggregators)
+These are **not separate agent classes** but data formatting layers in `trading_cycle.py` that package tool outputs for frontend display:
+
+#### 4. **MarketAnalyst** 📊
+- **Source**: `src/tools/market_analyst.py`
+- **Purpose**: Aggregates market data analysis
+- **Data**: Market sentiment, recommended stocks (top 10), key observations (trend analysis)
+
+#### 5. **TechnicalAnalyst** 📉
+- **Source**: `src/tools/market_tools.py` (technical indicators)
+- **Purpose**: Formats technical analysis
+- **Data**: Top signals (stocks with signal_score ≥3), RSI, MACD, Bollinger Bands
+
+#### 6. **FundamentalAnalyst** 📈
+- **Source**: Market analysis aggregation
+- **Purpose**: Presents fundamental view
+- **Data**: Market sentiment, recommended stocks, key observations
+
+#### 7. **SentimentAnalyst** 😊
+- **Source**: `src/tools/sentiment_tools.py`
+- **Purpose**: Packages sentiment data
+- **Data**: 
+  - Fear & Greed Index (0-100, with label)
+  - VIX Term Structure (VIX vs VIX3M ratio)
+  - VIX Risk Score (0-10)
+
+#### 8. **ToolSystem** 🔧
+- **Source**: Direct tool call logging in `trading_cycle.py`
+- **Purpose**: Logs all tool invocations
+- **Tracked Tools**:
+  - `news_scan`: 20 news articles, all headlines displayed
+  - `vix_term`: VIX term structure analysis
+  - `fear_greed`: Market sentiment index
+  - `get_economic_summary`: GDP, CPI, Unemployment, Fed Rate
+  - `get_labor_market_data`: Nonfarm Payrolls, Labor Force, Initial Claims
+  - `fetch_fred_indicator`: Custom economic indicator queries
+  - `fetch_jin10_news`: International financial news
+
+### 🔄 Multi-Agent Discussion Flow
+
+```
+Trading Cycle Start
+        ↓
+┌───────────────────────────────────────────────────────────┐
+│ Phase 1: Market Data Collection                          │
+├───────────────────────────────────────────────────────────┤
+│ • fetch_market_batch (72+ stocks)                         │
+│ • OHLCV + Technical Indicators                            │
+│ • Real-time prices                                        │
+└─────────────────────┬─────────────────────────────────────┘
+                      ↓
+┌───────────────────────────────────────────────────────────┐
+│ Phase 2: Data Aggregation (Virtual Agents)               │
+├───────────────────────────────────────────────────────────┤
+│ MarketAnalyst → Market sentiment, recommended stocks      │
+│   (from market_tools)                                     │
+│ TechnicalAnalyst → Technical signals, top stocks          │
+│   (from market_tools indicators)                          │
+│ FundamentalAnalyst → Fundamental ratings                  │
+│   (aggregated from market analysis)                       │
+│ SentimentAnalyst → Fear/Greed, VIX risk                   │
+│   (from sentiment_tools)                                  │
+└─────────────────────┬─────────────────────────────────────┘
+                      ↓
+┌───────────────────────────────────────────────────────────┐
+│ Phase 3: Multi-Round Discussion (DiscussionAgent)        │
+├───────────────────────────────────────────────────────────┤
+│ Round 1: Initial analysis                                 │
+│   - Synthesize all analyst inputs                         │
+│   - Form preliminary stance                               │
+│                                                            │
+│ Round 2: Deep dive with tools (Min 3 tools required)      │
+│   - Call news_scan (20 articles, agent-selected keywords) │
+│   - Call economic tools (GDP, unemployment, etc.)         │
+│   - Call vix_term, fear_greed for sentiment               │
+│   - Agent autonomously selects tools based on context     │
+│                                                            │
+│ Round 3: Final synthesis                                  │
+│   - Integrate all information                             │
+│   - Generate final stance with confidence                 │
+│   - Provide detailed reasoning                            │
+└─────────────────────┬─────────────────────────────────────┘
+                      ↓
+┌───────────────────────────────────────────────────────────┐
+│ Phase 4: Risk Evaluation (RiskAnalyst)                   │
+├───────────────────────────────────────────────────────────┤
+│ • Evaluate current positions                              │
+│ • Check concentration limits                              │
+│ • Calculate P&L for each position                         │
+│ • Generate warnings and recommendations                   │
+└─────────────────────┬─────────────────────────────────────┘
+                      ↓
+┌───────────────────────────────────────────────────────────┐
+│ Phase 5: Trading Decision (TraderAgent)                  │
+├───────────────────────────────────────────────────────────┤
+│ • Consider discussion stance + risk report                │
+│ • Calculate optimal position sizes                        │
+│ • Generate BUY/SELL orders                                │
+│ • Set limit price bands                                   │
+└─────────────────────┬─────────────────────────────────────┘
+                      ↓
+┌───────────────────────────────────────────────────────────┐
+│ Phase 6: Order Execution & Persistence                   │
+├───────────────────────────────────────────────────────────┤
+│ • Save orders to pending_orders.jsonl                     │
+│ • Update portfolio_state.json                             │
+│ • Record conversations to discussion_actions.jsonl        │
+│ • Save equity snapshot to equity_history.jsonl            │
+│ • Log all tool usage (ToolSystem)                         │
+└───────────────────────────────────────────────────────────┘
+```
+
+### 🧠 Agent Intelligence Features
+
+- **Autonomous Operation**: Agents make decisions without human intervention
+- **Historical Memory**: Each cycle loads last 5 days of portfolio snapshots and decisions
+- **Collaborative Analysis**: Agents share insights through structured discussion rounds
+- **Tool Integration**: 
+  - Auto tool selection based on context
+  - 8 tool calls per round budget (increased for comprehensive analysis)
+  - **Minimum 3 tools required** per trading cycle for thorough research
+  - No domain restrictions for news sources
+  - Agent-generated keywords (not hardcoded)
+- **Economic Data Integration** (FRED API):
+  - Real-time US economic indicators (GDP, CPI, Unemployment, Fed Funds Rate)
+  - Labor market data (Nonfarm Payrolls, Labor Force, Initial Claims)
+  - Custom indicator queries by series ID
+- **Complete Logging**: All conversations saved in full (no truncation)
+  - Discussion rounds: Complete content preserved
+  - Tool results: All 20 news headlines displayed
+  - Market indicators: VIX, Fear & Greed tracked every cycle
+  - Economic data: Tracked when relevant to market conditions
+
+### 📝 Notes
+
+- **Off-hours**: If a plan for the next trading day already exists, the system reuses it (no duplicate plans). Conversations and pending orders still display.
+- **Frontend**: Renders conversations without raw JSON blocks; JSON-like payloads are formatted as bullet lists with proper spacing and typography.
+- **Tool Budget**: Increased from 2 to 8 calls per round, with minimum 3 tools required per cycle to ensure comprehensive market analysis.
 
 ### Sentiment Data Sources
-- Fear & Greed Index (FGI): pulled each cycle; logged as a ToolSystem entry like `fear_greed: value=XX, label=Greed/Fear, asof=YYYY-MM-DD` and summarized by `SentimentAnalyst`.
-- VIX Term Structure: `VIX` vs `VIX3M` and `ratio`; logged as ToolSystem and summarized by `SentimentAnalyst` with a computed `vix_risk_score`.
-- Economic Data (Jin10): key recent items appended as a ToolSystem entry and injected into the discussion context.
+- **Fear & Greed Index (FGI)**: Pulled each cycle; logged as a ToolSystem entry like `fear_greed: value=XX, label=Greed/Fear, asof=YYYY-MM-DD` and summarized by `SentimentAnalyst`.
+- **VIX Term Structure**: `VIX` vs `VIX3M` and `ratio`; logged as ToolSystem and summarized by `SentimentAnalyst` with a computed `vix_risk_score`.
 
 ---
 
@@ -581,22 +901,51 @@ Notes:
 
 ---
 
-## 🧰 Tool Catalog (Always Available)
+## 🧰 Tool Catalog
 
-- Market Data
-  - fetch_market_batch: OHLCV + indicators for full universe
-  - ta_indicators helpers (internal)
+### Market Data Tools
+- **fetch_market_batch**: OHLCV + technical indicators for 72+ stocks
+- **Technical Indicators** (via `ta_indicators.py`):
+  - **Trend**: SMA, ADX
+  - **Momentum**: RSI, MACD, Stochastic, ROC, Williams %R
+  - **Volatility**: Bollinger Bands, ATR, Keltner Channels
+  - **Volume**: OBV, VWAP, MFI
+  - **Other**: Pivot Points, Ichimoku Cloud
+  - **Signal Scoring**: 0-6 scale based on multi-indicator confirmation
 
-- Sentiment
-  - fear_greed: CNN Fear & Greed (multi‑source fallback); ToolSystem entry every cycle
-  - vix_term: VIX vs VIX3M ratio (+ vix_risk_score); ToolSystem entry every cycle
+### Sentiment Tools
+- **fear_greed**: CNN Fear & Greed Index (0-100 scale, multi-source fallback)
+- **vix_term**: VIX vs VIX3M ratio, contango/backwardation analysis
+- **vix_close**: Current VIX level
+- Computed: **vix_risk_score** (0-10 volatility risk rating)
 
-- News & Web
-  - news_scan: multi‑query recent news; recorded when called by discussion
-  - web_search/fetch_url (optional in some flows)
+### News & Web Tools
+- **news_scan**: Multi-query news aggregation (20 articles per call)
+  - Agent-generated keywords
+  - All headlines displayed in frontend
+  - No domain restrictions
+- **fetch_jin10_news**: International financial news
+- **web_search**: General web search (optional)
+- **fetch_url**: Direct URL content fetching (optional)
 
-- Economic
-  - jin10_economic_data: key recent economic datapoints; ToolSystem entry each cycle
+### Economic Data Tools (FRED API)
+- **get_economic_summary**: Comprehensive US economic indicators
+  - GDP, CPI, Unemployment Rate, Fed Funds Rate
+  - 10-Year Treasury Yield, Nonfarm Payrolls
+  - Consumer Sentiment, Housing Starts
+- **get_labor_market_data**: Labor market statistics
+  - Unemployment Rate, Nonfarm Payrolls
+  - Labor Force Participation, Continuing Claims
+  - Initial Claims (weekly)
+- **fetch_fred_indicator**: Custom indicator query by series ID
+  - Any FRED series (e.g., UNRATE, GDP, CPIAUCSL)
+  - Configurable data points and date range
+
+### Tool Usage Strategy
+- **Priority 1**: Market data (always fetched)
+- **Priority 2**: Sentiment tools (VIX, Fear & Greed - every cycle)
+- **Priority 3**: News and economic data (agent-selected based on context)
+- **Minimum**: 3 tools per trading cycle for comprehensive analysis
 
 ---
 
@@ -778,7 +1127,7 @@ Tools available to Agents, categorized by type:
 - Determine if market is overly fearful or greedy
 - Discussion Agent synthesizes market sentiment analysis
 
-### 📰 News & Economic Data Tools
+### 📰 News Tools
 
 #### `news_scan`
 **Purpose**: Scan news articles, search for news related to stocks/keywords  
@@ -798,24 +1147,6 @@ Tools available to Agents, categorized by type:
   "domains": ["www.reuters.com", "www.wsj.com"]
 }
 ```
-
-#### `fetch_jin10_news`
-**Purpose**: Get Jin10 financial news (Chinese financial news platform)  
-**Input**: Max entries, category  
-**Output**: News titles, times, content, categories, URLs  
-**Use Cases**: 
-- Get Chinese financial news
-- Analyze Chinese market sentiment
-- Get real-time financial news flashes
-
-#### `fetch_jin10_economic_data`
-**Purpose**: Get economic data (GDP, CPI, PMI, etc.)  
-**Input**: Max entries  
-**Output**: Economic data indicators, values, times, impacts  
-**Use Cases**: 
-- Assess macroeconomic environment
-- Analyze impact of economic indicators on markets
-- Risk Analyst evaluates systemic risk
 
 #### `web_search`
 **Purpose**: DuckDuckGo web search (whitelisted domains)  
@@ -869,10 +1200,9 @@ Tools available to Agents, categorized by type:
 **Tool call priority:**
 1. **Market data first**: `fetch_market_batch` is usually called first to get technical indicators for all stocks (entire universe, 72 stocks)
 2. **Sentiment indicators**: `vix_term`, `fear_greed` for market sentiment assessment
-3. **News supplement**: `news_scan` gets latest news to supplement market analysis (one of the most important tools)
-4. **Economic data**: `fetch_jin10_economic_data` assesses macroeconomic environment
+3. **News supplement**: `news_scan` gets latest news to supplement market analysis (one of the most important tools, 20 articles per call)
 
-**Tool budget**: Default each trading cycle has **20 tool call budget**, allowing Agents to fully use tools for analysis.
+**Tool budget**: Default each trading cycle has **15 tool call budget** (5 calls per round × 3 rounds), allowing Agents to fully use tools for analysis.
 
 **Important Notes**: 
 - `news_scan` is one of the most important tools for Discussion Agent to get real-time market news
@@ -1025,5 +1355,5 @@ MIT License © 2025 Wenyu Chiou
 ## 👤 Author
 
 **Wenyu Chiou**  
-Lehigh University  
+Lehigh University
 📧 wec324@lehigh.edu

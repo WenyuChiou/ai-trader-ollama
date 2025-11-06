@@ -86,4 +86,47 @@ class TradeHistoryTracker:
         """
         recent_trades = self.get_recent_trades(hours=cooldown_hours)
         return {trade.get('symbol') for trade in recent_trades if trade.get('symbol')}
+    
+    def can_trade(self, symbol: str, cooldown_hours: float = 24.0) -> tuple:
+        """Check if a symbol can be traded (not in cooldown)
+        
+        Args:
+            symbol: Stock symbol
+            cooldown_hours: Cooldown period in hours
+        
+        Returns:
+            Tuple of (can_trade: bool, hours_remaining: float)
+        """
+        recent_trades = self.get_recent_trades(hours=cooldown_hours)
+        
+        # Find the most recent trade for this symbol
+        most_recent_trade = None
+        most_recent_time = None
+        
+        for trade in recent_trades:
+            if trade.get('symbol') == symbol:
+                trade_time_str = trade.get('filled_timestamp') or trade.get('timestamp')
+                if trade_time_str:
+                    try:
+                        trade_time = datetime.fromisoformat(trade_time_str.replace('Z', '+00:00'))
+                        if most_recent_time is None or trade_time > most_recent_time:
+                            most_recent_trade = trade
+                            most_recent_time = trade_time
+                    except:
+                        pass
+        
+        # If no recent trades, can trade
+        if most_recent_trade is None:
+            return (True, 0.0)
+        
+        # Calculate hours remaining in cooldown
+        now = datetime.now()
+        time_since_trade = now - most_recent_time
+        hours_since_trade = time_since_trade.total_seconds() / 3600
+        hours_remaining = max(0.0, cooldown_hours - hours_since_trade)
+        
+        # Can trade if cooldown period has passed
+        can_trade = hours_remaining == 0.0
+        
+        return (can_trade, hours_remaining)
 

@@ -5,9 +5,10 @@ Provides WebSocket for real-time updates and REST API for historical data.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from typing import List, Dict, Any
 import random
 from pathlib import Path
@@ -27,7 +28,21 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS for frontend (including file:// protocol)
+# Custom CORS middleware to handle file:// protocol (null origin)
+class CORSNullOriginMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        # Always add CORS headers to allow file:// access
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Expose-Headers"] = "*"
+        return response
+
+# Apply custom CORS middleware first
+app.add_middleware(CORSNullOriginMiddleware)
+
+# Then apply standard CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins including file://
@@ -36,21 +51,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
-# Additional middleware to handle null origin (file://)
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-
-class CORSNullOriginMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        # Always add CORS headers to allow file:// access
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        return response
-
-app.add_middleware(CORSNullOriginMiddleware)
 
 # Global event bus
 event_bus = EventBus.get_instance()

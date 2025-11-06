@@ -7,6 +7,12 @@ import sys
 import os
 from pathlib import Path
 
+# Fix Windows encoding
+if sys.platform == 'win32':
+    os.system('chcp 65001 > nul 2>&1')
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+
 ROOT = Path(__file__).resolve().parents[0]
 sys.path.insert(0, str(ROOT))
 

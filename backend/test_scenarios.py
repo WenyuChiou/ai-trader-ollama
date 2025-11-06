@@ -587,12 +587,21 @@ class ScenarioTester:
             print(f"   Buy Orders: {len(buy_orders)}")
             print(f"   Sell Orders: {len(sell_orders)}")
             
-            # Check 7: Order execution
+            # Check 7: Order execution (or pending orders for closed market)
             placed_orders = result.get("placed_orders", [])
             executed_trades = result.get("executed_trades", [])
-            checks.append(("Orders placed/executed", len(placed_orders) > 0 or len(executed_trades) > 0))
-            print(f"   Placed Orders: {len(placed_orders)}")
-            print(f"   Executed Trades: {len(executed_trades)}")
+            # For scenarios 3 and 4 (market closed), check pending orders instead
+            if scenario_num in [3, 4]:
+                # Check if pending orders file exists and has content
+                pending_orders_file = self.logs_dir / "pending_orders.jsonl"
+                has_pending = pending_orders_file.exists() and pending_orders_file.stat().st_size > 0
+                checks.append(("Pending orders created (market closed)", has_pending or len(placed_orders) > 0))
+                print(f"   Pending Orders: {'Yes' if has_pending else 'No'}")
+                print(f"   Placed Orders: {len(placed_orders)}")
+            else:
+                checks.append(("Orders placed/executed", len(placed_orders) > 0 or len(executed_trades) > 0))
+                print(f"   Placed Orders: {len(placed_orders)}")
+                print(f"   Executed Trades: {len(executed_trades)}")
             
             # Check 8: Portfolio updated
             portfolio = self.load_portfolio()

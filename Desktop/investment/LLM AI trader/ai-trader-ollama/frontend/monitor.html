@@ -2825,6 +2825,28 @@
                 }
             } else if (toolName === 'fear_greed') {
                 indicators = toolResult || 'Market sentiment index';
+            } else if (toolName === 'get_economic_summary') {
+                // 格式化经济数据摘要
+                try {
+                    // 经济摘要格式: GDP, CPI, Unemployment, Fed Rate等
+                    indicators = '📊 US Economic Indicators:\n' + toolResult;
+                } catch (e) {
+                    indicators = toolResult;
+                }
+            } else if (toolName === 'get_labor_market_data') {
+                // 格式化劳动市场数据
+                try {
+                    indicators = '👥 Labor Market Data:\n' + toolResult;
+                } catch (e) {
+                    indicators = toolResult;
+                }
+            } else if (toolName === 'fetch_fred_indicator') {
+                // 格式化FRED指标
+                try {
+                    indicators = '📈 FRED Indicator:\n' + toolResult;
+                } catch (e) {
+                    indicators = toolResult;
+                }
             }
             
             return { 

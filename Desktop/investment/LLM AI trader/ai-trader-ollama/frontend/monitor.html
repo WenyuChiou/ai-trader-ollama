@@ -2240,6 +2240,21 @@
             
             console.log(`[Conversations] Rendering ${conversations.length} conversations`);
             
+            // 🔥 额外强制：检查section是否真的可见
+            const section = document.getElementById('conversationsOverviewSection');
+            if (section) {
+                const computedStyle = window.getComputedStyle(section);
+                console.log('[Conversations] Computed styles:', {
+                    display: computedStyle.display,
+                    visibility: computedStyle.visibility,
+                    opacity: computedStyle.opacity,
+                    position: computedStyle.position,
+                    zIndex: computedStyle.zIndex,
+                    height: section.offsetHeight,
+                    isVisible: section.offsetHeight > 0
+                });
+            }
+            
             if (conversations.length === 0) {
                 container.innerHTML = `<div class="empty-conversations"><p>No conversations yet. Run a trading cycle to generate agent discussions.</p></div>`;
                 console.log('[Conversations] No conversations, showing empty state');

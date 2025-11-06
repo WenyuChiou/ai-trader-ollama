@@ -69,8 +69,18 @@ def run_multi_analyst_discussion(
             analyst_reports["market"] = market_result
             
             # 执行工具调用
-            if use_tools and market_result.get("tool_calls"):
-                for tool_call in market_result.get("tool_calls", [])[:3]:  # 最多3个工具
+            tool_calls_list = market_result.get("tool_calls", [])
+            # 如果没有tool_calls，根据analyst类型自动调用相关工具
+            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
+                # Market Analyst默认工具
+                default_tools = [
+                    {"name": "get_market_indices", "args": {}, "why": "Get current market indices for context"},
+                    {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Analyze sector performance"}
+                ]
+                tool_calls_list = default_tools[:2]
+            
+            if use_tools and tool_calls_list:
+                for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
                     tool_result = _execute_tool(toolbox, tool_call)
@@ -104,8 +114,18 @@ def run_multi_analyst_discussion(
             analyst_reports["technical"] = technical_result
             
             # 执行工具调用
-            if use_tools and technical_result.get("tool_calls"):
-                for tool_call in technical_result.get("tool_calls", [])[:3]:  # 最多3个工具
+            tool_calls_list = technical_result.get("tool_calls", [])
+            # 如果没有tool_calls，根据analyst类型自动调用相关工具
+            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
+                # Technical Analyst默认工具 - 使用sample stocks
+                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                default_tools = []
+                for sym in sample_symbols:
+                    default_tools.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Get technical indicators for {sym}"})
+                tool_calls_list = default_tools
+            
+            if use_tools and tool_calls_list:
+                for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
                     tool_result = _execute_tool(toolbox, tool_call)
@@ -142,8 +162,18 @@ def run_multi_analyst_discussion(
             analyst_reports["fundamental"] = fundamental_result
             
             # 执行工具调用
-            if use_tools and fundamental_result.get("tool_calls"):
-                for tool_call in fundamental_result.get("tool_calls", [])[:3]:  # 最多3个工具
+            tool_calls_list = fundamental_result.get("tool_calls", [])
+            # 如果没有tool_calls，根据analyst类型自动调用相关工具
+            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
+                # Fundamental Analyst默认工具
+                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                default_tools = []
+                for sym in sample_symbols:
+                    default_tools.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Get fundamental data for {sym}"})
+                tool_calls_list = default_tools
+            
+            if use_tools and tool_calls_list:
+                for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
                     tool_result = _execute_tool(toolbox, tool_call)
@@ -177,8 +207,18 @@ def run_multi_analyst_discussion(
             analyst_reports["sentiment"] = sentiment_result
             
             # 执行工具调用
-            if use_tools and sentiment_result.get("tool_calls"):
-                for tool_call in sentiment_result.get("tool_calls", [])[:3]:  # 最多3个工具
+            tool_calls_list = sentiment_result.get("tool_calls", [])
+            # 如果没有tool_calls，根据analyst类型自动调用相关工具
+            if use_tools and not tool_calls_list and tool_calls_count < tool_budget:
+                # Sentiment Analyst默认工具
+                default_tools = [
+                    {"name": "fear_greed", "args": {}, "why": "Get Fear & Greed Index for market sentiment"},
+                    {"name": "vix_term", "args": {}, "why": "Get VIX term structure for volatility analysis"}
+                ]
+                tool_calls_list = default_tools[:2]
+            
+            if use_tools and tool_calls_list:
+                for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
                     tool_result = _execute_tool(toolbox, tool_call)

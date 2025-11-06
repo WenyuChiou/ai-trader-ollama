@@ -143,11 +143,11 @@ class ScenarioTester:
         self.save_portfolio(cash=10000.0, initial_value=10000.0, positions={})
         print("  ✅ Portfolio initialized")
         
-        # Clear pending orders
+        # Clear pending orders (remove entire directory and recreate)
         if self.pending_orders_dir.exists():
             import shutil
             shutil.rmtree(self.pending_orders_dir)
-            self.pending_orders_dir.mkdir(parents=True, exist_ok=True)
+        self.pending_orders_dir.mkdir(parents=True, exist_ok=True)
         print("  ✅ Pending orders cleared")
         
         return {
@@ -199,11 +199,11 @@ class ScenarioTester:
         )
         print("  ✅ Portfolio with 3 positions created")
         
-        # Clear pending orders
+        # Clear pending orders (remove entire directory and recreate)
         if self.pending_orders_dir.exists():
             import shutil
             shutil.rmtree(self.pending_orders_dir)
-            self.pending_orders_dir.mkdir(parents=True, exist_ok=True)
+        self.pending_orders_dir.mkdir(parents=True, exist_ok=True)
         print("  ✅ Pending orders cleared")
         
         return {
@@ -239,11 +239,11 @@ class ScenarioTester:
         self.save_portfolio(cash=10000.0, initial_value=10000.0, positions={})
         print("  ✅ Portfolio initialized")
         
-        # Clear pending orders
+        # Clear pending orders (remove entire directory and recreate)
         if self.pending_orders_dir.exists():
             import shutil
             shutil.rmtree(self.pending_orders_dir)
-            self.pending_orders_dir.mkdir(parents=True, exist_ok=True)
+        self.pending_orders_dir.mkdir(parents=True, exist_ok=True)
         print("  ✅ Pending orders cleared")
         
         return {

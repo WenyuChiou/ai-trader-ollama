@@ -2047,9 +2047,46 @@
                 indicators = toolResult;
             } else if (toolName === 'news_scan' && toolResult) {
                 // 解析新闻扫描结果：10 hits, queries=['AAPL'], samples=[...]
-                indicators = toolResult;
+                // 尝试解析并提取标题列表
+                try {
+                    // 如果包含titles字段，提取并格式化
+                    if (toolResult.includes('titles=')) {
+                        const titlesMatch = toolResult.match(/titles=\[(.*?)\]/s);
+                        if (titlesMatch) {
+                            const titlesStr = titlesMatch[1];
+                            const titles = titlesStr.split(',').map(t => t.trim().replace(/^['"]|['"]$/g, ''));
+                            const count = titles.length;
+                            indicators = `📰 Found ${count} news:\n` + titles.slice(0, 20).map((t, i) => `${i+1}. ${t}`).join('\n');
+                        } else {
+                            indicators = toolResult;
+                        }
+                    } else if (toolResult.includes('samples=')) {
+                        // 兼容旧格式：提取samples
+                        const samplesMatch = toolResult.match(/samples=\[(.*?)\]/);
+                        if (samplesMatch) {
+                            const samplesStr = samplesMatch[1];
+                            const samples = samplesStr.split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
+                            indicators = `📰 News headlines:\n` + samples.map((s, i) => `${i+1}. ${s}`).join('\n');
+                        } else {
+                            indicators = toolResult;
+                        }
+                    } else {
+                        indicators = toolResult;
+                    }
+                } catch (e) {
+                    indicators = toolResult;
+                }
             } else if (toolName === 'fear_greed') {
                 indicators = toolResult || 'Market sentiment index';
+            } else if (toolName === 'get_economic_summary') {
+                // 格式化经济数据摘要
+                indicators = '📊 US Economic Indicators:\n' + toolResult;
+            } else if (toolName === 'get_labor_market_data') {
+                // 格式化劳动力市场数据
+                indicators = '👥 Labor Market Data:\n' + toolResult;
+            } else if (toolName === 'fetch_fred_indicator') {
+                // 格式化单个FRED指标
+                indicators = '📈 FRED Indicator:\n' + toolResult;
             }
             
             return { 

@@ -64,7 +64,7 @@ def run_multi_analyst_discussion(
                 "tools_context": tools_str,
             }
             
-            market_response = market_analyst.chat(market_prompt_vars)
+            market_response = market_analyst.run(market_prompt_vars, expect_json=True)
             market_result = _parse_analyst_response(market_response)
             analyst_reports["market"] = market_result
             
@@ -99,7 +99,7 @@ def run_multi_analyst_discussion(
                 "tools_context": tools_str,
             }
             
-            technical_response = technical_analyst.chat(technical_prompt_vars)
+            technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
             technical_result = _parse_analyst_response(technical_response)
             analyst_reports["technical"] = technical_result
             
@@ -137,7 +137,7 @@ def run_multi_analyst_discussion(
                 "tools_context": tools_str,
             }
             
-            fundamental_response = fundamental_analyst.chat(fundamental_prompt_vars)
+            fundamental_response = fundamental_analyst.run(fundamental_prompt_vars, expect_json=True)
             fundamental_result = _parse_analyst_response(fundamental_response)
             analyst_reports["fundamental"] = fundamental_result
             
@@ -172,7 +172,7 @@ def run_multi_analyst_discussion(
                 "tools_context": tools_str,
             }
             
-            sentiment_response = sentiment_analyst.chat(sentiment_prompt_vars)
+            sentiment_response = sentiment_analyst.run(sentiment_prompt_vars, expect_json=True)
             sentiment_result = _parse_analyst_response(sentiment_response)
             analyst_reports["sentiment"] = sentiment_result
             
@@ -228,8 +228,13 @@ def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _parse_analyst_response(response: str) -> Dict[str, Any]:
-    """解析analyst的响应（可能是JSON或文本）"""
+def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
+    """解析analyst的响应（可能是JSON dict或文本）"""
+    # 如果已经是dict，直接返回
+    if isinstance(response, dict):
+        return response
+    
+    # 否则是string，尝试解析
     try:
         # 尝试提取JSON
         if "```json" in response:
@@ -248,7 +253,7 @@ def _parse_analyst_response(response: str) -> Dict[str, Any]:
         # Fallback: 返回文本响应
         return {
             "stance": "neutral",
-            "analysis": response[:300],
+            "analysis": str(response)[:300],
             "tool_calls": [],
             "error": "Failed to parse JSON"
         }

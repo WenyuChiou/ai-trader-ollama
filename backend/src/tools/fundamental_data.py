@@ -3,6 +3,7 @@
 """
 from typing import Dict, Any, Optional
 import yfinance as yf
+import pandas as pd
 from datetime import datetime
 
 

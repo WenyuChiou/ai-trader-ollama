@@ -24,7 +24,48 @@ from src.data.trade_log import TradeLogger
 
 
 def _default_universe() -> List[str]:
-    # 最小預設，不依賴 config，直接可跑
+    """
+    加载完整的股票universe（默认从config.json加载）
+    如果config.json中有universe字段，使用它；否则使用最小预设
+    """
+    try:
+        # 尝试从config.json加载完整的universe
+        config_file = Path(__file__).parent.parent.parent / "config" / "config.json"
+        if config_file.exists():
+            import json
+            with config_file.open("r", encoding="utf-8") as f:
+                config_data = json.load(f)
+                # config.json中universe字段
+                if "universe" in config_data and isinstance(config_data["universe"], list):
+                    symbols = config_data["universe"]
+                    if symbols and len(symbols) > 0:
+                        print(f"[UNIVERSE] Loaded {len(symbols)} symbols from config.json")
+                        return symbols
+        
+        # 也尝试从universe.json加载（如果存在）
+        universe_file = Path(__file__).parent.parent.parent / "config" / "universe.json"
+        if universe_file.exists():
+            import json
+            with universe_file.open("r", encoding="utf-8") as f:
+                universe_data = json.load(f)
+                # universe.json格式可能是 {"nasdaq100": [...]} 或直接是列表
+                if isinstance(universe_data, dict):
+                    # 尝试不同的key
+                    for key in ["nasdaq100", "symbols", "universe", "stocks"]:
+                        if key in universe_data and isinstance(universe_data[key], list):
+                            symbols = universe_data[key]
+                            if symbols and len(symbols) > 0:
+                                print(f"[UNIVERSE] Loaded {len(symbols)} symbols from {universe_file.name}")
+                                return symbols
+                elif isinstance(universe_data, list):
+                    if len(universe_data) > 0:
+                        print(f"[UNIVERSE] Loaded {len(universe_data)} symbols from {universe_file.name}")
+                        return universe_data
+    except Exception as e:
+        print(f"[UNIVERSE WARN] Failed to load universe from config: {e}")
+    
+    # Fallback: 最小预设（仅用于测试）
+    print("[UNIVERSE WARN] Using minimal default universe (5 stocks)")
     return ["NVDA", "MSFT", "AAPL", "AMZN", "GOOGL"]
 
 

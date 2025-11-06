@@ -92,8 +92,9 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            market_score = market_result.get('market_score', market_result.get('score', 'N/A'))
             print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
-            print(f"   📊 Market Score: {market_result.get('market_score', 'N/A')}/10")
+            print(f"   📊 Market Score: {market_score}/10")
         except Exception as e:
             print(f"   ❌ Market Analyst error: {e}")
             analyst_reports["market"] = {"error": str(e), "stance": "neutral"}
@@ -137,8 +138,9 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            technical_score = technical_result.get('technical_score', technical_result.get('score', 'N/A'))
             print(f"   ✅ Technical Stance: {technical_result.get('stance', 'N/A')}")
-            print(f"   📊 Technical Score: {technical_result.get('technical_score', 'N/A')}/10")
+            print(f"   📊 Technical Score: {technical_score}/10")
         except Exception as e:
             print(f"   ❌ Technical Analyst error: {e}")
             analyst_reports["technical"] = {"error": str(e), "stance": "neutral"}
@@ -185,8 +187,9 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            fundamental_score = fundamental_result.get('fundamental_score', fundamental_result.get('score', 'N/A'))
             print(f"   ✅ Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
-            print(f"   📊 Fundamental Score: {fundamental_result.get('fundamental_score', 'N/A')}/10")
+            print(f"   📊 Fundamental Score: {fundamental_score}/10")
         except Exception as e:
             print(f"   ❌ Fundamental Analyst error: {e}")
             analyst_reports["fundamental"] = {"error": str(e), "stance": "neutral"}
@@ -230,8 +233,9 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
             
+            sentiment_score = sentiment_result.get('sentiment_score', sentiment_result.get('score', 'N/A'))
             print(f"   ✅ Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
-            print(f"   📊 Sentiment Score: {sentiment_result.get('sentiment_score', 'N/A')}/10")
+            print(f"   📊 Sentiment Score: {sentiment_score}/10")
         except Exception as e:
             print(f"   ❌ Sentiment Analyst error: {e}")
             analyst_reports["sentiment"] = {"error": str(e), "stance": "neutral"}
@@ -288,14 +292,43 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
         else:
             json_str = response
         
-        return json.loads(json_str)
-    except:
+        parsed = json.loads(json_str)
+        # 确保所有必需的字段都有默认值
+        if not isinstance(parsed, dict):
+            parsed = {}
+        
+        # 设置默认值
+        defaults = {
+            "stance": parsed.get("stance", "neutral"),
+            "analysis": parsed.get("analysis", str(response)[:300] if isinstance(response, str) else ""),
+            "tool_calls": parsed.get("tool_calls", []),
+        }
+        
+        # 根据analyst类型设置score字段
+        if "market_score" not in parsed and "technical_score" not in parsed and "fundamental_score" not in parsed and "sentiment_score" not in parsed:
+            # 如果没有任何score字段，尝试从response中提取
+            if isinstance(response, str) and "score" in response.lower():
+                # 尝试提取数字
+                import re
+                score_match = re.search(r'score["\']?\s*:\s*(\d+(?:\.\d+)?)', response, re.IGNORECASE)
+                if score_match:
+                    defaults["score"] = float(score_match.group(1))
+                else:
+                    defaults["score"] = 5.0  # 默认中性分数
+            else:
+                defaults["score"] = 5.0
+        
+        # 合并parsed和defaults
+        result = {**defaults, **parsed}
+        return result
+    except Exception as e:
         # Fallback: 返回文本响应
         return {
             "stance": "neutral",
-            "analysis": str(response)[:300],
+            "analysis": str(response)[:300] if isinstance(response, str) else "No analysis provided",
             "tool_calls": [],
-            "error": "Failed to parse JSON"
+            "score": 5.0,
+            "error": f"Failed to parse JSON: {e}"
         }
 
 

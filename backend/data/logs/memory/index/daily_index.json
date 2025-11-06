@@ -172,9 +172,9 @@
     "date": "2025-11-06",
     "stance": "neutral",
     "stocks_involved": [
+      "GOOGL",
       "AAPL",
-      "NVDA",
-      "GOOGL"
+      "NVDA"
     ],
     "recommended_stocks": [
       "AAPL",

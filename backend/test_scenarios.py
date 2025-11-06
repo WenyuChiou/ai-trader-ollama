@@ -41,6 +41,62 @@ class ScenarioTester:
         self.backup_dir = self.logs_dir / "test_backup"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
     
+    def save_portfolio(self, cash: float, initial_value: float, positions: dict = None):
+        """Save portfolio state to JSON file"""
+        import json
+        if positions is None:
+            positions = {}
+        
+        # Convert Portfolio positions to JSON format
+        positions_json = {}
+        for symbol, pos in positions.items():
+            if hasattr(pos, 'quantity'):  # Position object
+                positions_json[symbol] = {
+                    "quantity": pos.quantity,
+                    "avg_cost": pos.avg_cost,
+                    "total_cost": pos.total_cost if hasattr(pos, 'total_cost') else pos.avg_cost * pos.quantity
+                }
+            elif isinstance(pos, dict):  # Already dict
+                positions_json[symbol] = pos
+        
+        state = {
+            "cash": cash,
+            "initial_value": initial_value,
+            "positions": positions_json
+        }
+        
+        with self.portfolio_file.open("w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    
+    def load_portfolio(self):
+        """Load portfolio from JSON file"""
+        import json
+        from src.data.portfolio import Portfolio, Position
+        
+        if not self.portfolio_file.exists():
+            return Portfolio(cash=10000.0, initial_value=10000.0)
+        
+        with self.portfolio_file.open("r", encoding="utf-8") as f:
+            state = json.load(f)
+        
+        portfolio = Portfolio(
+            cash=state.get("cash", 10000.0),
+            initial_value=state.get("initial_value", 10000.0)
+        )
+        
+        # Load positions
+        positions_data = state.get("positions", {})
+        for symbol, pos_data in positions_data.items():
+            if isinstance(pos_data, dict):
+                portfolio._positions[symbol] = Position(
+                    symbol=symbol,
+                    quantity=pos_data.get("quantity", 0),
+                    avg_cost=pos_data.get("avg_cost", 0.0),
+                    total_cost=pos_data.get("total_cost", pos_data.get("avg_cost", 0.0) * pos_data.get("quantity", 0))
+                )
+        
+        return portfolio
+    
     def backup_state(self):
         """Backup current state before testing"""
         print("\n📦 Backing up current state...")
@@ -84,9 +140,7 @@ class ScenarioTester:
         print()
         
         # Create empty portfolio
-        from src.data.portfolio import Portfolio
-        portfolio = Portfolio(cash=10000.0, initial_value=10000.0)
-        portfolio.save()
+        self.save_portfolio(cash=10000.0, initial_value=10000.0, positions={})
         print("  ✅ Portfolio initialized")
         
         # Clear pending orders
@@ -134,7 +188,12 @@ class ScenarioTester:
         portfolio.buy("MSFT", 15, 380.0)
         portfolio.buy("AAPL", 20, 185.0)
         
-        portfolio.save()
+        # Save portfolio state
+        self.save_portfolio(
+            cash=portfolio.cash,
+            initial_value=portfolio.initial_value,
+            positions=portfolio._positions
+        )
         print("  ✅ Portfolio with 3 positions created")
         
         # Clear pending orders
@@ -174,9 +233,7 @@ class ScenarioTester:
         print()
         
         # Create empty portfolio
-        from src.data.portfolio import Portfolio
-        portfolio = Portfolio(cash=10000.0, initial_value=10000.0)
-        portfolio.save()
+        self.save_portfolio(cash=10000.0, initial_value=10000.0, positions={})
         print("  ✅ Portfolio initialized")
         
         # Clear pending orders
@@ -225,7 +282,12 @@ class ScenarioTester:
         portfolio.buy("AAPL", 25, 185.0)
         portfolio.buy("GOOGL", 10, 140.0)
         
-        portfolio.save()
+        # Save portfolio state
+        self.save_portfolio(
+            cash=portfolio.cash,
+            initial_value=portfolio.initial_value,
+            positions=portfolio._positions
+        )
         print("  ✅ Portfolio with 4 positions created")
         
         return {
@@ -248,10 +310,9 @@ class ScenarioTester:
         print("="*80)
         
         from src.orchestrator.trading_cycle import execute_daily_trade
-        from src.data.portfolio import Portfolio
         
         # Load portfolio
-        portfolio = Portfolio.load()
+        portfolio = self.load_portfolio()
         print(f"\n📊 Initial Portfolio State:")
         print(f"   Cash: ${portfolio.cash:,.2f}")
         print(f"   Positions: {len(portfolio._positions)}")
@@ -332,8 +393,7 @@ class ScenarioTester:
             print(f"   Executed Trades: {len(executed_trades)}")
             
             # Check 8: Portfolio updated
-            from src.data.portfolio import Portfolio
-            portfolio = Portfolio.load()
+            portfolio = self.load_portfolio()
             portfolio_updated = True  # Portfolio file exists
             checks.append(("Portfolio state saved", portfolio_updated))
             

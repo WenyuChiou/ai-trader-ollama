@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#0f172a" stroke="url(#grad)" stroke-width="4"/>
+  
+  <!-- Chart bars (simplified) -->
+  <rect x="20" y="55" width="8" height="20" fill="#22d3ee" opacity="0.8"/>
+  <rect x="32" y="45" width="8" height="30" fill="#22d3ee" opacity="0.9"/>
+  <rect x="44" y="35" width="8" height="40" fill="#22d3ee"/>
+  <rect x="56" y="40" width="8" height="35" fill="#22d3ee" opacity="0.9"/>
+  <rect x="68" y="30" width="8" height="45" fill="#22d3ee"/>
+  
+  <!-- Upward trend arrow -->
+  <path d="M 75 32 L 85 25 L 85 35 Z" fill="#10b981" stroke="#10b981" stroke-width="1"/>
+  <line x1="68" y1="40" x2="82" y2="28" stroke="#10b981" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- AI sparkle -->
+  <circle cx="25" cy="30" r="2" fill="#22d3ee"/>
+  <circle cx="30" cy="25" r="1.5" fill="#22d3ee" opacity="0.7"/>
+  <circle cx="20" cy="25" r="1.5" fill="#22d3ee" opacity="0.7"/>
+</svg>
+

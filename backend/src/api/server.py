@@ -565,6 +565,26 @@ async def get_recent_snapshots(hours: int = 24):
         )
 
 
+@app.get("/api/vix/term")
+async def get_vix_term():
+    """Get VIX term structure data"""
+    try:
+        from src.tools.sentiment_tools import vix_term_structure
+        vix_data = vix_term_structure()
+        if vix_data and vix_data.get("ok"):
+            return vix_data.get("result", {})
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "VIX data not available"}
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+
 @app.get("/api/tools/list")
 async def list_tools():
     """Return an empty tool list in minimal demo mode to avoid optional deps."""

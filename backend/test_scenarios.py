@@ -451,6 +451,8 @@ def main():
                        help="Skip backup of current state")
     parser.add_argument("--no-restore", action="store_true",
                        help="Skip restore of original state after testing")
+    parser.add_argument("--auto", action="store_true",
+                       help="Auto-run without user prompts (for non-interactive testing)")
     args = parser.parse_args()
     
     tester = ScenarioTester()
@@ -485,12 +487,15 @@ def main():
                 print(f"   {i}. {behavior}")
             
             # Confirm before proceeding
-            print(f"\nPress Enter to run Scenario {scenario_num}, or Ctrl+C to skip...")
-            try:
-                input()
-            except KeyboardInterrupt:
-                print("\n⏭️  Skipping scenario")
-                continue
+            if not args.auto:
+                print(f"\nPress Enter to run Scenario {scenario_num}, or Ctrl+C to skip...")
+                try:
+                    input()
+                except KeyboardInterrupt:
+                    print("\n⏭️  Skipping scenario")
+                    continue
+            else:
+                print(f"\n🚀 Auto-running Scenario {scenario_num}...")
             
             # Run trading cycle
             result = tester.run_trading_cycle(scenario_info)
@@ -503,7 +508,7 @@ def main():
                 results[scenario_num] = {"success": False, "result": None}
             
             # Wait before next scenario
-            if scenario_num < max(scenarios_to_run):
+            if scenario_num < max(scenarios_to_run) and not args.auto:
                 print("\n" + "="*80)
                 print(f"Scenario {scenario_num} complete. Press Enter for next scenario...")
                 try:
@@ -511,6 +516,8 @@ def main():
                 except KeyboardInterrupt:
                     print("\n⏭️  Stopping tests")
                     break
+            elif scenario_num < max(scenarios_to_run):
+                print(f"\n✅ Scenario {scenario_num} complete. Continuing to next scenario...")
     
     finally:
         # Restore original state

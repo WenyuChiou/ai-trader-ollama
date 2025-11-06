@@ -1212,10 +1212,13 @@
         <div id="mainContent" style="display: none;">
             <div id="dashboardPage">
             <!-- Summary Cards -->
-            <div id="summary-section" class="summary-grid" id="summaryCards"></div>
+            <div id="summary-section">
+                <div class="summary-grid" id="summaryCards"></div>
+            </div>
 
             <!-- Chart Section - Equity Curve -->
-            <div id="chart-section" class="chart-section" id="chartSection" style="display: block;">
+            <div id="chart-section">
+            <div class="chart-section" id="chartSection" style="display: block;">
                 <div class="chart-header">
                     <h2>📈 Total Asset Value Over Time</h2>
                     <div style="display: flex; gap: 10px; align-items: center;">
@@ -1240,9 +1243,11 @@
                     <canvas id="distributionChart" style="max-width: 400px; max-height: 400px;"></canvas>
                 </div>
             </div>
+            </div>
 
             <!-- Holdings Section -->
-            <div id="holdings-section" class="positions-section" id="positionsSection" style="display: none;">
+            <div id="holdings-section">
+            <div class="positions-section" id="positionsSection" style="display: none;">
                 <div class="section-header">
                     <h2>Current Holdings</h2>
                     <span class="position-count" id="positionCount">0 holdings</span>
@@ -1266,12 +1271,14 @@
                     </table>
                 </div>
             </div>
+            </div>
 
 
             <!-- Live Chat and Execution Details Side by Side -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
                 <!-- Live Chat (Left) -->
-                <div id="conversations-section" class="trades-section" id="conversationsOverviewSection">
+                <div id="conversations-section">
+                <div class="trades-section" id="conversationsOverviewSection">
                     <div class="section-header">
                         <h2>
                             💬 AI Agent Conversations (Live)
@@ -1280,9 +1287,11 @@
                     </div>
                     <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
                 </div>
+                </div>
 
                 <!-- Execution Details (Right) -->
-                <div id="execution-section" class="trades-section" id="executionDetailsSection">
+                <div id="execution-section">
+                <div class="trades-section" id="executionDetailsSection">
                     <div class="section-header">
                         <h2>📋 Execution Details</h2>
                         <span class="position-count" id="executionCount">0 trades</span>
@@ -1303,6 +1312,7 @@
                             <tbody id="executionDetailsBody"></tbody>
                         </table>
                     </div>
+                </div>
                 </div>
             </div>
 

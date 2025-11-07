@@ -555,13 +555,9 @@ class ScenarioTester:
                                     # Get latest close price (use a date range around current_date)
                                     start_date = (datetime.fromisoformat(current_date_str) - timedelta(days=5)).isoformat().split('T')[0]
                                     end_date = (datetime.fromisoformat(current_date_str) + timedelta(days=1)).isoformat().split('T')[0]
-                                    price_series = get_latest_close(symbol, start_date, end_date)
-                                    if price_series is not None and len(price_series) > 0:
-                                        last_prices[symbol] = float(price_series.iloc[-1])
-                                    else:
-                                        # Fallback to avg_cost if price not available
-                                        pos = portfolio.get_position(symbol)
-                                        last_prices[symbol] = pos.avg_cost if pos else 0.0
+                                    price = get_latest_close(symbol, start_date, end_date)
+                                    # get_latest_close returns float directly
+                                    last_prices[symbol] = float(price)
                                 except Exception:
                                     # Fallback to avg_cost if price fetch fails
                                     pos = portfolio.get_position(symbol)

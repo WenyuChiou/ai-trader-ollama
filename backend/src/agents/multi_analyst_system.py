@@ -410,8 +410,18 @@ def run_multi_analyst_discussion(
                 "key_points": coordinator_summary.get("key_points", []),
             })
             print(f"   ✅ Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
-            summary_preview = coordinator_summary.get('summary', '')[:150] if coordinator_summary.get('summary') else 'No summary'
-            print(f"   💬 Summary: {summary_preview}...")
+            summary_text = coordinator_summary.get('summary', '')
+            if summary_text and len(summary_text.strip()) > 0:
+                summary_preview = summary_text[:150]
+                print(f"   💬 Summary: {summary_preview}...")
+            else:
+                print(f"   ⚠️  Summary: Empty (using fallback)")
+                # 如果summary为空，使用fallback
+                fallback = _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
+                coordinator_summary["summary"] = fallback.get("summary", "Coordinator synthesized all analyst perspectives.")
+                coordinator_summary["stance"] = fallback.get("stance", coordinator_summary.get("stance", "neutral"))
+                coordinator_summary["key_points"] = fallback.get("key_points", coordinator_summary.get("key_points", []))
+                print(f"   💬 Summary (fallback): {coordinator_summary['summary'][:150]}...")
     except Exception as e:
         print(f"   ❌ Discussion Coordinator error: {e}")
         coordinator_summary = None
@@ -1079,6 +1089,14 @@ Focus on creating a coherent narrative that brings together all the analyst view
             "recommendations": [],
         }
         result = {**defaults, **result}
+        
+        # 如果summary仍然为空，使用fallback
+        if not result.get("summary", "").strip() or result.get("summary", "").strip() == "No summary...":
+            print(f"   ⚠️  Summary still empty, using fallback")
+            fallback = _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
+            result["summary"] = fallback.get("summary", "Coordinator synthesized all analyst perspectives.")
+            result["stance"] = fallback.get("stance", result.get("stance", "neutral"))
+            result["key_points"] = fallback.get("key_points", result.get("key_points", []))
         
         return result
     except Exception as e:

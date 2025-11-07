@@ -288,24 +288,36 @@ class ToolBox:
 
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：plan_and_scan_news 需要 mview 参数，如果缺失则创建最小化的 mview。
+        适配器：plan_and_scan_news 需要 tickers 和 mview 参数。
         """
-        # 如果提供了 mview，直接使用
-        if "mview" in kwargs:
-            return plan_and_scan_news(**kwargs)
+        # 提取 tickers 参数（必需）
+        tickers = kwargs.pop("tickers", None)
+        if not tickers:
+            # 尝试从其他参数中提取
+            tickers = kwargs.pop("stocks", None)
+            if isinstance(tickers, str):
+                tickers = [tickers]
+            elif not tickers:
+                # 如果没有提供，使用默认值
+                tickers = ["AAPL", "MSFT", "NVDA"]  # 默认股票列表
         
-        # 如果没有 mview，尝试从 kwargs 中提取或创建最小化的 mview
+        # 确保 tickers 是列表
+        if isinstance(tickers, str):
+            tickers = [tickers]
+        elif not isinstance(tickers, list):
+            tickers = list(tickers) if tickers else ["AAPL", "MSFT", "NVDA"]
+        
+        # 处理 mview 参数
         mview = kwargs.pop("mview", {})
         if not mview or not isinstance(mview, dict):
             # 创建最小化的 mview（至少包含基本结构）
             mview = {
-                "market_sentiment": kwargs.pop("market_sentiment", "neutral"),
-                "key_observations": kwargs.pop("key_observations", []),
-                "recommended_stocks": kwargs.pop("recommended_stocks", []),
+                "vix": kwargs.pop("vix", {}),
+                "stocks": kwargs.pop("stocks", {}),
             }
         
         # 调用函数，传入必需的参数
-        return plan_and_scan_news(mview=mview, **kwargs)
+        return plan_and_scan_news(tickers=tickers, mview=mview, **kwargs)
 
     def _economic_summary_adapter(self, **kwargs) -> Dict[str, Any]:
         """

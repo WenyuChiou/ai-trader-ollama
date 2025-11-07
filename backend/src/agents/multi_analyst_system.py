@@ -166,11 +166,23 @@ def run_multi_analyst_discussion(
             }
             
             technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
+            
+            # 调试：检查LLM响应中是否包含tool_calls
+            if isinstance(technical_response, dict):
+                if "tool_calls" not in technical_response or not technical_response.get("tool_calls"):
+                    print(f"   ⚠️  LLM response missing tool_calls field")
+            elif isinstance(technical_response, str) and "tool_calls" not in technical_response.lower():
+                print(f"   ⚠️  LLM response (str) may not contain tool_calls")
+            
             technical_result = _parse_analyst_response(technical_response)
             analyst_reports["technical"] = technical_result
             
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = technical_result.get("tool_calls", [])
+            
+            # 如果tool_calls为空，打印警告
+            if not tool_calls_list:
+                print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
             
             # Fallback: 如果agent没有调用工具，使用默认工具
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
@@ -245,11 +257,23 @@ def run_multi_analyst_discussion(
             }
             
             fundamental_response = fundamental_analyst.run(fundamental_prompt_vars, expect_json=True)
+            
+            # 调试：检查LLM响应中是否包含tool_calls
+            if isinstance(fundamental_response, dict):
+                if "tool_calls" not in fundamental_response or not fundamental_response.get("tool_calls"):
+                    print(f"   ⚠️  LLM response missing tool_calls field")
+            elif isinstance(fundamental_response, str) and "tool_calls" not in fundamental_response.lower():
+                print(f"   ⚠️  LLM response (str) may not contain tool_calls")
+            
             fundamental_result = _parse_analyst_response(fundamental_response)
             analyst_reports["fundamental"] = fundamental_result
             
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = fundamental_result.get("tool_calls", [])
+            
+            # 如果tool_calls为空，打印警告
+            if not tool_calls_list:
+                print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
             
             # Fallback: 如果agent没有调用工具，使用默认工具
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
@@ -914,18 +938,34 @@ def _extract_summary_from_text(
         if summary_match2:
             summary = summary_match2.group(1).strip()
         else:
-            # 模式3: 提取第一段较长的文本作为summary（排除开头说明性文字）
+            # 模式3: 提取第一段较长的文本作为summary（排除开头说明性文字和工具列表）
             paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
-            # 跳过开头可能包含说明性文字的段落
+            # 跳过开头可能包含说明性文字、工具列表或格式说明的段落
+            skip_patterns = ['i will', 'i\'ll', 'based on', 'here is', 'this is', 'get_', 'tool', 'available tools', '* get_', '- get_']
             for para in paragraphs:
-                if not any(skip in para.lower()[:100] for skip in ['i will', 'i\'ll', 'based on', 'here is', 'this is']):
-                    summary = para[:500]
-                    break
+                para_lower = para.lower()[:200]
+                # 如果段落包含工具列表特征，跳过
+                if any(pattern in para_lower for pattern in skip_patterns):
+                    continue
+                # 如果段落太短或看起来像列表，跳过
+                if len(para) < 100 or para.count('*') > 3 or para.count('-') > 3:
+                    continue
+                summary = para[:500]
+                break
             if not summary and paragraphs:
-                summary = paragraphs[0][:500]
+                # 如果所有段落都被跳过，使用第一个非工具列表段落
+                for para in paragraphs:
+                    if not any(pattern in para.lower()[:200] for pattern in ['get_', 'tool', '* get_', '- get_']):
+                        summary = para[:500]
+                        break
+                if not summary:
+                    summary = paragraphs[0][:500]
             elif not summary:
-                # 最后fallback：使用整个响应的前500字符
+                # 最后fallback：使用整个响应的前500字符，但排除工具列表
                 summary = text_response[:500].strip()
+                # 如果包含工具列表特征，使用fallback
+                if any(pattern in summary.lower() for pattern in ['get_', '* get_', '- get_', 'available tools']):
+                    summary = ""  # 触发fallback
     
     # 清理summary（移除多余的空白和换行）
     summary = re.sub(r'\s+', ' ', summary).strip()[:500]
@@ -1015,15 +1055,24 @@ def _run_discussion_coordinator(
 4. Provide a unified summary that integrates all perspectives
 5. Highlight any critical points that need attention
 
-**Output Format (JSON):**
+**CRITICAL: You MUST output valid JSON only. Do not include any text before or after the JSON.**
+
+**Output Format (JSON - this is the ONLY format you should use):**
 {{
     "stance": "bullish" | "bearish" | "neutral",
-    "summary": "<Your unified summary integrating all analyst perspectives>",
+    "summary": "<Your unified summary integrating all analyst perspectives - at least 200 words>",
     "consensus_points": ["point1", "point2", ...],
     "disagreements": ["point1", "point2", ...],
     "key_points": ["critical insight 1", "critical insight 2", ...],
     "recommendations": ["recommendation 1", "recommendation 2", ...]
 }}
+
+**IMPORTANT RULES:**
+1. Output ONLY the JSON object, nothing else
+2. Do NOT include markdown code blocks (no ```json or ```)
+3. Do NOT include any explanatory text before or after the JSON
+4. The "summary" field must be a comprehensive analysis (at least 200 words), not a list of tools
+5. Start directly with {{ and end with }}
 
 Focus on creating a coherent narrative that brings together all the analyst views through dialogue and synthesis.
 """
@@ -1054,28 +1103,37 @@ Focus on creating a coherent narrative that brings together all the analyst view
                 print(f"   ⚠️  Coordinator returned empty string, using fallback")
                 return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
             
-            # 尝试从markdown代码块中提取
-            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_str, re.DOTALL)
-            if json_match:
-                try:
-                    result = json.loads(json_match.group(1))
-                except json.JSONDecodeError as e:
-                    print(f"   ⚠️  Failed to parse JSON from markdown block: {e}")
-                    # 尝试使用文本模式重新调用
-                    result = None
-            else:
-                # 尝试直接解析整个响应
-                try:
-                    result = json.loads(response_str)
-                except json.JSONDecodeError as e:
-                    print(f"   ⚠️  Failed to parse JSON directly: {e}")
+            # 首先尝试直接解析（如果LLM遵循指令，应该直接返回JSON）
+            try:
+                result = json.loads(response_str)
+            except json.JSONDecodeError:
+                # 如果直接解析失败，尝试从markdown代码块中提取
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_str, re.DOTALL)
+                if json_match:
+                    try:
+                        result = json.loads(json_match.group(1))
+                    except json.JSONDecodeError as e:
+                        print(f"   ⚠️  Failed to parse JSON from markdown block: {e}")
+                        result = None
+                else:
                     # 尝试查找JSON对象（即使不在代码块中）
-                    json_obj_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_str, re.DOTALL)
+                    # 使用更精确的正则表达式匹配完整的JSON对象
+                    json_obj_match = re.search(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', response_str, re.DOTALL)
                     if json_obj_match:
                         try:
                             result = json.loads(json_obj_match.group(0))
                         except json.JSONDecodeError:
-                            result = None
+                            # 尝试更宽松的匹配
+                            json_obj_match2 = re.search(r'\{.*"stance".*\}', response_str, re.DOTALL)
+                            if json_obj_match2:
+                                try:
+                                    result = json.loads(json_obj_match2.group(0))
+                                except json.JSONDecodeError:
+                                    result = None
+                            else:
+                                result = None
+                    else:
+                        result = None
         
         # 如果解析失败，尝试使用文本模式重新调用
         if result is None:

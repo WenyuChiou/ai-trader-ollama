@@ -168,12 +168,15 @@ def run_multi_analyst_discussion(
             
             technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
             
-            # 调试：检查LLM响应中是否包含tool_calls
+            # 调试：打印原始响应
             if isinstance(technical_response, dict):
+                print(f"   🔍 LLM Response (dict): {str(technical_response)[:200]}...")
                 if "tool_calls" not in technical_response or not technical_response.get("tool_calls"):
                     print(f"   ⚠️  LLM response missing tool_calls field")
-            elif isinstance(technical_response, str) and "tool_calls" not in technical_response.lower():
-                print(f"   ⚠️  LLM response (str) may not contain tool_calls")
+            else:
+                print(f"   🔍 LLM Response (str, first 300 chars): {str(technical_response)[:300]}...")
+                if "tool_calls" not in str(technical_response).lower():
+                    print(f"   ⚠️  LLM response (str) may not contain tool_calls")
             
             technical_result = _parse_analyst_response(technical_response)
             analyst_reports["technical"] = technical_result
@@ -184,6 +187,11 @@ def run_multi_analyst_discussion(
             # 如果tool_calls为空，打印警告
             if not tool_calls_list:
                 print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
+            elif len(tool_calls_list) > 0:
+                # 如果成功提取了工具调用，显示信息
+                extracted_count = sum(1 for tc in tool_calls_list if tc.get("why", "").startswith("Extracted from"))
+                if extracted_count > 0:
+                    print(f"   ✅ Extracted {extracted_count} tool call(s) from analysis text")
             
             # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
             # 如果没有调用工具，使用默认工具

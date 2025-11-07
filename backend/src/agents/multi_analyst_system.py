@@ -651,6 +651,30 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             "tool_calls": parsed.get("tool_calls", []),
         }
         
+        # 如果tool_calls为空，尝试从analysis文本中提取工具名称
+        if not defaults["tool_calls"] and isinstance(response, str):
+            # 尝试从文本中提取工具调用
+            import re
+            # 查找常见的工具名称模式
+            tool_patterns = [
+                r'get_market_indices', r'get_sector_rotation', r'get_market_breadth',
+                r'get_advanced_indicators', r'get_support_resistance',
+                r'get_company_fundamentals', r'get_earnings_history',
+                r'fear_greed', r'vix_term', r'news_scan',
+                r'get_correlation_matrix', r'get_market_indices',
+            ]
+            found_tools = []
+            for pattern in tool_patterns:
+                if re.search(pattern, response, re.IGNORECASE):
+                    tool_name = pattern
+                    found_tools.append({
+                        "name": tool_name,
+                        "args": {},
+                        "why": f"Extracted from analysis text"
+                    })
+            if found_tools:
+                defaults["tool_calls"] = found_tools[:3]  # 最多3个
+        
         # 确保tool_calls是列表格式
         if defaults["tool_calls"] and not isinstance(defaults["tool_calls"], list):
             if isinstance(defaults["tool_calls"], dict):

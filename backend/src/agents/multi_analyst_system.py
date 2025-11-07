@@ -1073,6 +1073,8 @@ def _run_discussion_coordinator(
 3. Do NOT include any explanatory text before or after the JSON
 4. The "summary" field must be a comprehensive analysis (at least 200 words), not a list of tools
 5. Start directly with {{ and end with }}
+6. The "summary" should synthesize the analyst perspectives, NOT list tool names or technical details
+7. Use proper JSON syntax: double quotes for strings, no trailing commas
 
 Focus on creating a coherent narrative that brings together all the analyst views through dialogue and synthesis.
 """

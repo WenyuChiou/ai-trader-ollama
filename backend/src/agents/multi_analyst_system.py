@@ -171,7 +171,12 @@ def run_multi_analyst_discussion(
             # 调试：打印原始响应
             if isinstance(technical_response, dict):
                 print(f"   🔍 LLM Response (dict): {str(technical_response)[:200]}...")
-                if "tool_calls" not in technical_response or not technical_response.get("tool_calls"):
+                # 检查是否是单个tool_call对象（会被自动包装）
+                is_single_tool_call = ("name" in technical_response and "args" in technical_response and 
+                                      "stance" not in technical_response and "analysis" not in technical_response)
+                if is_single_tool_call:
+                    print(f"   ℹ️  LLM returned single tool_call object (will be auto-wrapped)")
+                elif "tool_calls" not in technical_response or not technical_response.get("tool_calls"):
                     print(f"   ⚠️  LLM response missing tool_calls field")
             else:
                 print(f"   🔍 LLM Response (str, first 300 chars): {str(technical_response)[:300]}...")
@@ -188,6 +193,9 @@ def run_multi_analyst_discussion(
             if not tool_calls_list:
                 print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
             elif len(tool_calls_list) > 0:
+                # 检查是否是从单个tool_call包装的
+                if len(tool_calls_list) == 1 and isinstance(technical_response, dict) and "name" in technical_response:
+                    print(f"   ✅ Auto-wrapped single tool_call: {tool_calls_list[0].get('name', 'unknown')}")
                 # 如果成功提取了工具调用，显示信息
                 extracted_count = sum(1 for tc in tool_calls_list if tc.get("why", "").startswith("Extracted from"))
                 if extracted_count > 0:
@@ -273,10 +281,18 @@ def run_multi_analyst_discussion(
             
             # 调试：检查LLM响应中是否包含tool_calls
             if isinstance(fundamental_response, dict):
-                if "tool_calls" not in fundamental_response or not fundamental_response.get("tool_calls"):
+                print(f"   🔍 LLM Response (dict): {str(fundamental_response)[:200]}...")
+                # 检查是否是单个tool_call对象（会被自动包装）
+                is_single_tool_call = ("name" in fundamental_response and "args" in fundamental_response and 
+                                      "stance" not in fundamental_response and "analysis" not in fundamental_response)
+                if is_single_tool_call:
+                    print(f"   ℹ️  LLM returned single tool_call object (will be auto-wrapped)")
+                elif "tool_calls" not in fundamental_response or not fundamental_response.get("tool_calls"):
                     print(f"   ⚠️  LLM response missing tool_calls field")
-            elif isinstance(fundamental_response, str) and "tool_calls" not in fundamental_response.lower():
-                print(f"   ⚠️  LLM response (str) may not contain tool_calls")
+            else:
+                print(f"   🔍 LLM Response (str, first 300 chars): {str(fundamental_response)[:300]}...")
+                if "tool_calls" not in str(fundamental_response).lower():
+                    print(f"   ⚠️  LLM response (str) may not contain tool_calls")
             
             fundamental_result = _parse_analyst_response(fundamental_response)
             analyst_reports["fundamental"] = fundamental_result
@@ -287,6 +303,10 @@ def run_multi_analyst_discussion(
             # 如果tool_calls为空，打印警告
             if not tool_calls_list:
                 print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
+            elif len(tool_calls_list) > 0:
+                # 检查是否是从单个tool_call包装的
+                if len(tool_calls_list) == 1 and isinstance(fundamental_response, dict) and "name" in fundamental_response:
+                    print(f"   ✅ Auto-wrapped single tool_call: {tool_calls_list[0].get('name', 'unknown')}")
             
             # Fallback: Fundamental Analyst可选使用工具（如果已有数据可以基于现有分析）
             # 但建议获取最新数据，所以如果没有调用工具，使用默认工具

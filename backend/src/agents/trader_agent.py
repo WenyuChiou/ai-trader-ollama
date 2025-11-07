@@ -415,13 +415,30 @@ def run_trader(
     # 从convo中提取coordinator summary
     coordinator_summary = ""
     if convo and isinstance(convo, dict):
-        discussion = convo.get("discussion", {})
-        if isinstance(discussion, dict):
-            coordinator = discussion.get("coordinator_summary", {})
-            if isinstance(coordinator, dict):
-                summary_text = coordinator.get("summary", "")
-                if summary_text and len(summary_text) > 20:  # 确保summary有意义
-                    coordinator_summary = summary_text[:200]  # 限制长度
+        # 尝试从convo中直接获取coordinator_summary
+        coordinator = convo.get("coordinator_summary", {})
+        if isinstance(coordinator, dict):
+            summary_text = coordinator.get("summary", "")
+            if summary_text and len(summary_text.strip()) > 20:  # 确保summary有意义
+                coordinator_summary = summary_text[:200]  # 限制长度
+        # 如果直接获取失败，尝试从discussion中获取
+        if not coordinator_summary:
+            discussion = convo.get("discussion", {})
+            if isinstance(discussion, dict):
+                coordinator = discussion.get("coordinator_summary", {})
+                if isinstance(coordinator, dict):
+                    summary_text = coordinator.get("summary", "")
+                    if summary_text and len(summary_text.strip()) > 20:
+                        coordinator_summary = summary_text[:200]
+        # 如果还是没有，尝试从discussion_history中提取
+        if not coordinator_summary:
+            discussion_history = convo.get("discussion_history", [])
+            for entry in discussion_history:
+                if entry.get("analyst") == "Discussion Coordinator":
+                    analysis = entry.get("analysis", "")
+                    if analysis and len(analysis.strip()) > 20:
+                        coordinator_summary = analysis[:200]
+                        break
     
     # 构建rationale
     base_rationale = ""

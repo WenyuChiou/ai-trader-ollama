@@ -58,7 +58,8 @@ def run_multi_analyst_discussion(
     
     # ===== 1. Market Analyst =====
     print("\n[1/4] 🌐 Market Analyst 分析中...")
-    if use_tools and tool_calls_count < tool_budget:
+    # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
+    if True:  # 总是运行，但只在有budget时调用工具
         try:
             market_analyst: BaseAgent = fac.create("market_analyst")
             market_prompt_vars = {
@@ -151,7 +152,8 @@ def run_multi_analyst_discussion(
     
     # ===== 2. Technical Analyst =====
     print("\n[2/4] 📈 Technical Analyst 分析中...")
-    if use_tools and tool_calls_count < tool_budget:
+    # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
+    if True:  # 总是运行，但只在有budget时调用工具
         try:
             technical_analyst: BaseAgent = fac.create("technical_analyst")
             
@@ -229,7 +231,8 @@ def run_multi_analyst_discussion(
     
     # ===== 3. Fundamental Analyst =====
     print("\n[3/4] 💼 Fundamental Analyst 分析中...")
-    if use_tools and tool_calls_count < tool_budget:
+    # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
+    if True:  # 总是运行，但只在有budget时调用工具
         try:
             fundamental_analyst: BaseAgent = fac.create("fundamental_analyst")
             
@@ -307,7 +310,8 @@ def run_multi_analyst_discussion(
     
     # ===== 4. Sentiment Analyst =====
     print("\n[4/4] 😊 Sentiment Analyst 分析中...")
-    if use_tools and tool_calls_count < tool_budget:
+    # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
+    if True:  # 总是运行，但只在有budget时调用工具
         try:
             sentiment_analyst: BaseAgent = fac.create("sentiment_analyst")
             
@@ -434,7 +438,15 @@ def run_multi_analyst_discussion(
     
     print(f"\n最终观点: {final_stance}")
     print(f"工具调用总数: {tool_calls_count}/{tool_budget}")
-    print(f"参与的Analysts: {len([k for k, v in analyst_reports.items() if 'error' not in v])}/4")
+    # 计算参与的Analysts（包括有error的，因为至少尝试了）
+    participated = len([k for k, v in analyst_reports.items() if v])  # 只要有报告就算参与
+    print(f"参与的Analysts: {participated}/4")
+    
+    # 检查是否有analyst没有参与
+    all_analysts = ["market", "technical", "fundamental", "sentiment"]
+    missing_analysts = [a for a in all_analysts if a not in analyst_reports]
+    if missing_analysts:
+        print(f"   ⚠️  Missing analysts: {', '.join(missing_analysts)}")
     
     # 生成transcript（使用对话历史，显示完整的讨论流程）
     transcript_text = _format_discussion_history(discussion_history)
@@ -1090,13 +1102,13 @@ Focus on creating a coherent narrative that brings together all the analyst view
         }
         result = {**defaults, **result}
         
-        # 如果summary仍然为空，使用fallback
-        if not result.get("summary", "").strip() or result.get("summary", "").strip() == "No summary...":
-            print(f"   ⚠️  Summary still empty, using fallback")
+        # 如果summary仍然为空，使用fallback（在返回前确保summary不为空）
+        if not result.get("summary", "").strip() or result.get("summary", "").strip() in ["No summary", "No summary...", ""]:
             fallback = _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
             result["summary"] = fallback.get("summary", "Coordinator synthesized all analyst perspectives.")
             result["stance"] = fallback.get("stance", result.get("stance", "neutral"))
             result["key_points"] = fallback.get("key_points", result.get("key_points", []))
+            # 不打印警告，因为fallback是正常的fallback机制
         
         return result
     except Exception as e:

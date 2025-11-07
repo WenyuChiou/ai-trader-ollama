@@ -55,6 +55,8 @@ user: |
   **CRITICAL**: You MUST call at least 2-3 tools to gather sentiment data before providing your analysis.
   Do NOT skip tool calls. Use tools like fear_greed, vix_term, news_scan.
   
+  **MANDATORY**: Your tool_calls array MUST contain at least 2 tool calls. This is not optional - you must use tools to analyze the market.
+  
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",

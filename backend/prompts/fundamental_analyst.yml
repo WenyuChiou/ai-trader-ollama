@@ -54,6 +54,8 @@ user: |
   **CRITICAL**: You MUST call at least 2-3 tools to gather fundamental data before providing your analysis.
   Do NOT skip tool calls. Use tools like get_company_fundamentals, get_earnings_history, get_financial_statements.
   
+  **MANDATORY**: Your tool_calls array MUST contain at least 2 tool calls. This is not optional - you must use tools to analyze the market.
+  
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",

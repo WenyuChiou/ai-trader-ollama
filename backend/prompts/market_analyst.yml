@@ -51,6 +51,8 @@ user: |
   **CRITICAL**: You MUST call at least 2-3 tools to gather market-level data before providing your analysis. 
   Do NOT skip tool calls. Use tools like get_market_indices, get_sector_rotation, get_market_breadth, etc.
   
+  **MANDATORY**: Your tool_calls array MUST contain at least 2 tool calls. This is not optional - you must use tools to analyze the market.
+  
   Output format:
   {
     "stance": "risk_on" | "risk_off" | "neutral",

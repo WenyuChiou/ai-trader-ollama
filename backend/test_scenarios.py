@@ -461,6 +461,7 @@ class ScenarioTester:
             
             # Calculate date for this day (simulate consecutive trading days)
             # Day 1: today, Day 2: today+1, etc. (skip weekends)
+            # Note: timedelta is imported at the top of the file
             today_date = date.today()
             day_offset = day - 1
             current_date = today_date + timedelta(days=day_offset)
@@ -544,7 +545,8 @@ class ScenarioTester:
                         if portfolio._positions:
                             # Get latest prices for positions
                             from src.data.market_data import get_latest_close
-                            from datetime import datetime, timedelta
+                            from datetime import datetime
+                            # Note: timedelta is already imported at the top of the file
                             
                             # Use current date or yesterday for price lookup
                             price_date = current_date_str

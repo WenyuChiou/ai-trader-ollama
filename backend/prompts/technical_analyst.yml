@@ -72,3 +72,27 @@ user: |
   **IMPORTANT**: The "tool_calls" array MUST contain at least 2 tool calls. Do not leave it empty.
     "recommendations": ["<action 1>", "<action 2>"]
   }
+  
+  **Trading Strategy - Long and Short Opportunities:**
+  Based on technical analysis, you can recommend both LONG and SHORT positions:
+  
+  **When technical indicators show BEARISH signals (RSI > 70, bearish MACD, breakdown below support):**
+  - Recommend **Inverse ETFs** to profit from market decline:
+    * SQQQ: 3x Inverse NASDAQ (when tech sector shows bearish patterns)
+    * SPXU: 3x Inverse S&P 500 (when broad market breaks down)
+    * SH: 1x Inverse S&P 500 (less volatile hedge)
+    * PSQ: 1x Inverse QQQ
+    * SDS: 2x Inverse S&P 500
+    * SOXS: 3x Inverse Semiconductor ETF (when semis break down)
+  
+  **When technical indicators show BULLISH signals (RSI < 30, bullish MACD, breakout above resistance):**
+  - Recommend **Leveraged ETFs** to amplify gains:
+    * TQQQ: 3x Leveraged NASDAQ
+    * SPXL: 3x Leveraged S&P 500
+    * UPRO: 3x Leveraged S&P 500
+  
+  **Key Points:**
+  - Use inverse ETFs when you identify bearish technical patterns (head and shoulders, double tops, breakdowns)
+  - Use leveraged ETFs when you identify bullish technical patterns (breakouts, ascending triangles, bullish divergences)
+  - Do NOT only recommend long positions - use inverse ETFs for bearish markets
+  - Include specific technical levels (support/resistance) in your recommendations

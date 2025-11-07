@@ -84,3 +84,27 @@ user: |
   **IMPORTANT**: The "tool_calls" array MUST contain at least 2 tool calls. Do not leave it empty.
     "recommendations": ["<action 1>", "<action 2>"]
   }
+  
+  **Trading Strategy - Long and Short Opportunities:**
+  You can recommend both LONG (buy) and SHORT (sell) positions based on your analysis:
+  
+  **For BEARISH markets or declining sectors, you can recommend:**
+  - **Inverse ETFs** (go up when market goes down):
+    * SQQQ: 3x Inverse NASDAQ (bet against tech sector decline)
+    * SPXU: 3x Inverse S&P 500 (bet against broad market decline)
+    * SH: 1x Inverse S&P 500 (less volatile inverse bet)
+    * PSQ: 1x Inverse QQQ (bet against NASDAQ)
+    * SDS: 2x Inverse S&P 500 (moderate leverage)
+    * DOG: 1x Inverse Dow Jones
+    * SOXS: 3x Inverse Semiconductor ETF
+  
+  - **Leveraged ETFs** (amplify market moves):
+    * TQQQ: 3x Leveraged NASDAQ (amplify tech gains)
+    * SPXL: 3x Leveraged S&P 500 (amplify market gains)
+    * UPRO: 3x Leveraged S&P 500
+  
+  **Recommendations should include:**
+  - LONG positions when market is bullish/risk-on
+  - SHORT positions (via inverse ETFs) when market is bearish/risk-off
+  - Sector-specific inverse ETFs when specific sectors are declining
+  - Do NOT limit yourself to only long positions - use inverse ETFs for bearish markets

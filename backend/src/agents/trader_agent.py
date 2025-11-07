@@ -226,49 +226,64 @@ def run_trader(
         "warnings": [],
     }
 
+    # 反向ETF列表（用于做空市场）
+    INVERSE_ETFS = ["SQQQ", "SPXU", "SH", "PSQ", "SDS", "DOG", "SOXS"]
+    LEVERAGED_ETFS = ["TQQQ", "SPXL", "UPRO"]
+    
     # 更激进的阈值：只有在 VIX 非常高时才保守处理
     # 从 6.0 提高到 8.0，允许在中等风险时也交易
-    if vix_risk > 8.0 or final_stance == "bearish":  # 移除 "cautious"，允许 cautious 时也能买入
-        # 检查是否需要减仓
-        if current_positions and rview:
-            for symbol, pos_info in current_positions.items():
-                if isinstance(pos_info, dict):
-                    qty = pos_info.get("quantity", 0)
-                else:
-                    qty = pos_info if isinstance(pos_info, (int, float)) else 0
-                
-                if qty > 0 and symbol in last_prices:
-                    sell_qty = _calculate_sell_size(
-                        symbol, qty, portfolio_value, last_prices[symbol], rview
-                    )
-                    if sell_qty > 0:
-                        current_price = last_prices[symbol]
-                        # 卖出价格范围（高卖）：期望比当前价格高 0.5%-2%
-                        sell_price_min = current_price * 1.005  # 至少高0.5%
-                        sell_price_max = current_price * 1.02   # 最高高2%
-                        sell_price = sell_price_min  # 用于计算的基准价格（保守估算）
-                        sell_orders.append({
-                            "symbol": symbol,
-                            "sell_price": sell_price,  # 用于计算的基准价格
-                            "sell_price_min": sell_price_min,  # 最低卖出价（范围下限）
-                            "sell_price_max": sell_price_max,  # 最高卖出价（范围上限，高卖）
-                            "quantity": sell_qty,
-                            "total_proceeds": sell_price * sell_qty,  # 基于基准价格估算
-                        })
+    if vix_risk > 8.0 or final_stance == "bearish":
+        # 检查推荐列表中是否有反向ETF（用于做空）
+        inverse_etf_recommendations = [sym for sym in recs if sym in INVERSE_ETFS]
         
-        action = "SELL" if sell_orders else "HOLD"
-        return {
-            "action": action,
-            "targets": [],
-            "buy_orders": buy_orders,
-            "sell_orders": sell_orders,
-            "rationale": f"Hold/Sell due to VIX risk={vix_risk:.1f} / news stance={final_stance}",
-            "stance": final_stance,
-            "vix_risk": vix_risk,
-            "risk_compliance": risk_compliance,
-        }
+        # 如果有反向ETF推荐，允许买入（做空策略）
+        if inverse_etf_recommendations:
+            # 继续处理买入逻辑（包括反向ETF），见下面的买入订单生成
+            pass
+        else:
+            # 如果没有反向ETF推荐，检查是否需要减仓
+            if current_positions and rview:
+                for symbol, pos_info in current_positions.items():
+                    if isinstance(pos_info, dict):
+                        qty = pos_info.get("quantity", 0)
+                    else:
+                        qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                    
+                    if qty > 0 and symbol in last_prices:
+                        sell_qty = _calculate_sell_size(
+                            symbol, qty, portfolio_value, last_prices[symbol], rview
+                        )
+                        if sell_qty > 0:
+                            current_price = last_prices[symbol]
+                            # 卖出价格范围（高卖）：期望比当前价格高 0.5%-2%
+                            sell_price_min = current_price * 1.005  # 至少高0.5%
+                            sell_price_max = current_price * 1.02   # 最高高2%
+                            sell_price = sell_price_min  # 用于计算的基准价格（保守估算）
+                            sell_orders.append({
+                                "symbol": symbol,
+                                "sell_price": sell_price,  # 用于计算的基准价格
+                                "sell_price_min": sell_price_min,  # 最低卖出价（范围下限）
+                                "sell_price_max": sell_price_max,  # 最高卖出价（范围上限，高卖）
+                                "quantity": sell_qty,
+                                "total_proceeds": sell_price * sell_qty,  # 基于基准价格估算
+                            })
+            
+            # 如果没有反向ETF推荐且没有卖出订单，返回HOLD
+            if not inverse_etf_recommendations and not sell_orders:
+                action = "HOLD"
+                return {
+                    "action": action,
+                    "targets": [],
+                    "buy_orders": buy_orders,
+                    "sell_orders": sell_orders,
+                    "rationale": f"Hold due to VIX risk={vix_risk:.1f} / stance={final_stance} (no inverse ETF recommendations)",
+                    "stance": final_stance,
+                    "vix_risk": vix_risk,
+                    "risk_compliance": risk_compliance,
+                }
 
     # 生成买入订单（改进：支持同时买入多只股票，每只股票仓位更灵活）
+    # 包括：普通股票、杠杆ETF（做多）、反向ETF（做空）
     if recs and portfolio_value > 0:
         # 从配置中读取仓位限制参数
         if position_config:
@@ -304,6 +319,7 @@ def run_trader(
             pass
         else:
             # 遍历所有推荐股票，计算每只股票的买入数量
+            # 包括普通股票、杠杆ETF（做多）、反向ETF（做空）
             for symbol in recs:
                 if symbol not in last_prices:
                     continue
@@ -311,6 +327,10 @@ def run_trader(
                 last_price = last_prices[symbol]
                 if last_price <= 0:
                     continue
+                
+                # 检查是否是反向ETF（用于做空）
+                is_inverse_etf = symbol in INVERSE_ETFS
+                is_leveraged_etf = symbol in LEVERAGED_ETFS
                 
                 # 计算买入数量（使用改进后的函数）
                 quantity = _calculate_position_size(
@@ -338,14 +358,23 @@ def run_trader(
                     # 但由于我们在 _calculate_position_size 中已经考虑了总仓位限制，
                     # 这里主要检查单笔交易是否可行
                     
-                    buy_orders.append({
+                    # 构建订单信息
+                    order_info = {
                         "symbol": symbol,
                         "buy_price": buy_price,  # 用于计算的基准价格
                         "buy_price_min": buy_price_min,  # 最低买入价（范围下限，低买）
                         "buy_price_max": buy_price_max,  # 最高买入价（范围上限，不超过当前价格）
                         "quantity": quantity,
                         "total_cost": total_cost,
-                    })
+                    }
+                    
+                    # 标记ETF类型（用于后续处理和日志）
+                    if is_inverse_etf:
+                        order_info["etf_type"] = "inverse"  # 反向ETF（做空市场）
+                    elif is_leveraged_etf:
+                        order_info["etf_type"] = "leveraged"  # 杠杆ETF（放大做多）
+                    
+                    buy_orders.append(order_info)
     
     # 检查是否有超限持仓需要卖出
     if current_positions and rview:

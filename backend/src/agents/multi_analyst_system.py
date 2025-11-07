@@ -603,8 +603,26 @@ def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
 
 def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
     """解析analyst的响应（可能是JSON dict或文本）"""
-    # 如果已经是dict，直接返回
+    # 如果已经是dict，检查是否是完整的分析结果
     if isinstance(response, dict):
+        # 检查是否是单个tool_call对象（只有name/args/why字段）
+        if "name" in response and "args" in response and "stance" not in response and "analysis" not in response:
+            # 这是一个单独的tool_call，需要包装成完整的分析结果
+            return {
+                "stance": "neutral",
+                "analysis": f"Requested tool: {response.get('name', 'unknown')} - {response.get('why', 'No reason provided')}",
+                "tool_calls": [response],  # 将单个tool_call包装成列表
+            }
+        # 检查是否缺少必需字段
+        if "stance" not in response:
+            response["stance"] = "neutral"
+        if "analysis" not in response:
+            response["analysis"] = "No analysis provided"
+        if "tool_calls" not in response:
+            response["tool_calls"] = []
+        # 如果tool_calls是单个dict而不是列表，转换为列表
+        if isinstance(response.get("tool_calls"), dict):
+            response["tool_calls"] = [response["tool_calls"]]
         return response
     
     # 否则是string，尝试解析

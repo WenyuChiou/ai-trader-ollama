@@ -107,7 +107,30 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/api/agents/status")
 async def get_agents_status():
     """Get current status of all agents"""
-    return event_bus.get_all_agents_status()
+    try:
+        # Get status from event bus
+        status = event_bus.get_all_agents_status()
+        
+        # If empty, load from agents.yaml to show registered agents
+        if not status:
+            from pathlib import Path
+            import yaml
+            
+            agents_file = Path("config/agents.yaml")
+            if agents_file.exists():
+                with agents_file.open("r", encoding="utf-8") as f:
+                    agents_config = yaml.safe_load(f)
+                    if agents_config and "agents" in agents_config:
+                        # Return agent names as keys with "idle" status
+                        agents = {}
+                        for agent_name in agents_config["agents"].keys():
+                            agents[agent_name] = {"status": "idle", "last_activity": None}
+                        return agents
+        
+        return status
+    except Exception as e:
+        print(f"[API] Error getting agents status: {e}")
+        return {}
 
 
 @app.get("/api/agents/{agent_name}/status")
@@ -611,8 +634,15 @@ async def get_vix_term():
 
 @app.get("/api/tools/list")
 async def list_tools():
-    """Return an empty tool list in minimal demo mode to avoid optional deps."""
-    return {"ok": True, "tools": []}
+    """List all available tools from ToolBox"""
+    try:
+        from src.agents.toolbox import ToolBox
+        toolbox = ToolBox()
+        tools = toolbox.list()
+        return {"ok": True, "tools": tools}
+    except Exception as e:
+        print(f"[API] Error listing tools: {e}")
+        return {"ok": True, "tools": []}
 
 
 @app.get("/api/demo/real-time")

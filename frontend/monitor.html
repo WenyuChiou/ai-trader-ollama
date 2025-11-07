@@ -1406,7 +1406,12 @@
                     <span style="font-weight: 600;">API:</span>
                     <span class="api-url" id="apiUrl">http://127.0.0.1:8000</span>
                 </div>
-                <div id="dataTimestamp"></div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button onclick="toggleTheme()" style="padding: 6px 12px; border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; background: rgba(15, 23, 42, 0.6); color: #22d3ee; cursor: pointer; font-size: 12px; transition: all 0.2s;">
+                        🎨 <span id="themeText">Light Theme</span>
+                    </button>
+                    <div id="dataTimestamp"></div>
+                </div>
             </div>
         </footer>
     </div>
@@ -3770,6 +3775,34 @@
             }
             if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
             if (agentStatusTimer) { clearInterval(agentStatusTimer); agentStatusTimer = null; }
+        }
+        
+        // Theme toggle function
+        function toggleTheme() {
+            const body = document.body;
+            const themeText = document.getElementById('themeText');
+            
+            if (body.classList.contains('light-theme')) {
+                body.classList.remove('light-theme');
+                if (themeText) themeText.textContent = 'Light Theme';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-theme');
+                if (themeText) themeText.textContent = 'Dark Theme';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        
+        // Load saved theme on page load
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeText = document.getElementById('themeText');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                if (themeText) themeText.textContent = 'Dark Theme';
+            } else {
+                if (themeText) themeText.textContent = 'Light Theme';
+            }
         }
 
         // 手动启动交易循环（用户点击按钮时）

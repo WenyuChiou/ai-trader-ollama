@@ -1872,7 +1872,8 @@
                 }
 
                 const data = await response.json();
-                return data.agents || {};
+                // API returns agents directly as object, not nested under "agents" key
+                return data || {};
             } catch (err) {
                 console.error('Failed to fetch agent status:', err);
                 return {};

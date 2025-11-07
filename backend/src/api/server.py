@@ -115,16 +115,27 @@ async def get_agents_status():
         if not status:
             from pathlib import Path
             import yaml
+            import sys
             
-            agents_file = Path("config/agents.yaml")
+            # Ensure we're in the backend directory
+            backend_dir = Path(__file__).parent.parent.parent
+            agents_file = backend_dir / "config" / "agents.yaml"
+            
             if agents_file.exists():
                 with agents_file.open("r", encoding="utf-8") as f:
                     agents_config = yaml.safe_load(f)
-                    if agents_config and "agents" in agents_config:
+                    # agents.yaml structure: direct dict of agent_name -> config
+                    # OR nested under "agents" key
+                    agent_dict = agents_config
+                    if isinstance(agents_config, dict) and "agents" in agents_config:
+                        agent_dict = agents_config["agents"]
+                    
+                    if agent_dict and isinstance(agent_dict, dict):
                         # Return agent names as keys with "idle" status
                         agents = {}
-                        for agent_name in agents_config["agents"].keys():
+                        for agent_name in agent_dict.keys():
                             agents[agent_name] = {"status": "idle", "last_activity": None}
+                        print(f"[API] Loaded {len(agents)} agents from agents.yaml")
                         return agents
         
         return status

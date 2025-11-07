@@ -643,7 +643,8 @@ class ScenarioTester:
         # Calculate final value with current prices
         try:
             from src.data.market_data import get_latest_close
-            from datetime import datetime, timedelta
+            from datetime import datetime
+            # Note: timedelta is already imported at the top of the file
             last_prices = {}
             for symbol in final_portfolio._positions.keys():
                 try:

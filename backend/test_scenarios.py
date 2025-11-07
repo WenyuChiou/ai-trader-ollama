@@ -606,10 +606,23 @@ class ScenarioTester:
                             print(f"   Coordinator Summary: {str(coordinator)[:100]}...")
                     
                     decision = result.get("decision", {})
+                    # Get actual placed orders from result, not from decision (decision may be empty if orders were skipped)
+                    placed_orders = result.get("placed_orders", [])
                     buy_orders = decision.get("buy_orders", [])
                     sell_orders = decision.get("sell_orders", [])
-                    print(f"   Buy Orders: {len(buy_orders)}")
-                    print(f"   Sell Orders: {len(sell_orders)}")
+                    
+                    # If orders were skipped, show the actual placed orders count
+                    if placed_orders:
+                        buy_count = sum(1 for o in placed_orders if o.get("action") == "BUY")
+                        sell_count = sum(1 for o in placed_orders if o.get("action") == "SELL")
+                        print(f"   Buy Orders: {buy_count} (from placed_orders)")
+                        print(f"   Sell Orders: {sell_count} (from placed_orders)")
+                    else:
+                        print(f"   Buy Orders: {len(buy_orders)} (from decision)")
+                        print(f"   Sell Orders: {len(sell_orders)} (from decision)")
+                        if len(buy_orders) == 0 and len(sell_orders) == 0:
+                            # Check if orders were skipped due to existing pending orders
+                            print(f"   ℹ️  Note: Orders may have been skipped if pending orders already exist for this date")
                     print(f"   Portfolio Cash: ${portfolio.cash:,.2f}")
                     print(f"   Portfolio Positions: {len(portfolio._positions)}")
                     print(f"   Total Value: ${total_value:,.2f}")

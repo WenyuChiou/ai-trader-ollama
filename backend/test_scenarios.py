@@ -459,9 +459,22 @@ class ScenarioTester:
             print("   • Performing risk analysis")
             print("   • Generating trading decisions")
             
+            # Calculate date for this day (simulate consecutive trading days)
+            # Day 1: today, Day 2: today+1, etc. (skip weekends)
+            today_date = date.today()
+            day_offset = day - 1
+            current_date = today_date + timedelta(days=day_offset)
+            # Skip weekends
+            while current_date.weekday() >= 5:
+                current_date += timedelta(days=1)
+            current_date_str = current_date.isoformat()
+            
+            print(f"   📅 Simulated Date: {current_date_str}")
+            
             try:
                 result = execute_daily_trade(
                     universe=None,
+                    end=current_date_str,  # Use different date for each day
                     rounds=3,
                     auto_tools=True,
                     tool_budget=15,
@@ -470,8 +483,73 @@ class ScenarioTester:
                 )
                 
                 if result:
+                    # After execute_daily_trade, check and execute pending orders from previous day
+                    # (For Day 1, there are no previous orders, so skip)
+                    # Note: In multi-day simulation, orders from previous day should be executed
+                    # to update portfolio state for the next day
+                    if day > 1:
+                        print(f"\n📋 Checking pending orders from Day {day-1}...")
+                        try:
+                            from src.data.order_manager import OrderManager
+                            order_manager = OrderManager(root="data/logs")
+                            
+                            # Check orders from previous day
+                            prev_date = current_date - timedelta(days=1)
+                            # Skip weekends for previous date
+                            while prev_date.weekday() >= 5:
+                                prev_date -= timedelta(days=1)
+                            prev_date_str = prev_date.isoformat()
+                            
+                            # Load pending orders from previous day
+                            pending_orders = order_manager.load_pending_orders(order_date=prev_date_str)
+                            
+                            if pending_orders:
+                                print(f"   Found {len(pending_orders)} pending orders from {prev_date_str}")
+                                # Try to execute orders (simplified: assume all orders fill at limit price)
+                                # This is a simulation, so we can execute orders directly
+                                for order in pending_orders:
+                                    symbol = order.get("symbol")
+                                    action = order.get("action")
+                                    quantity = order.get("quantity", 0)
+                                    limit_price = order.get("limit_price", 0.0)
+                                    
+                                    if action == "BUY" and limit_price > 0 and quantity > 0:
+                                        cost = limit_price * quantity
+                                        if portfolio.cash >= cost:
+                                            portfolio.buy(symbol, quantity, limit_price)
+                                            print(f"   ✅ Executed: BUY {symbol} x{quantity} @ ${limit_price:.2f}")
+                                    elif action == "SELL" and quantity > 0:
+                                        pos = portfolio.get_position(symbol)
+                                        if pos and pos.quantity >= quantity:
+                                            portfolio.sell(symbol, quantity, limit_price)
+                                            print(f"   ✅ Executed: SELL {symbol} x{quantity} @ ${limit_price:.2f}")
+                            else:
+                                print(f"   No pending orders from {prev_date_str}")
+                        except Exception as e:
+                            print(f"   ⚠️  Failed to check/execute pending orders: {e}")
+                            # Continue even if order execution fails
+                    
+                    # Save portfolio state after each day (CRITICAL for multi-day simulation)
+                    # This ensures Day 2+ loads the correct portfolio state from Day 1+
+                    self.save_portfolio(
+                        cash=portfolio.cash,
+                        initial_value=portfolio.initial_value,
+                        positions=portfolio._positions
+                    )
+                    print(f"   💾 Portfolio state saved for Day {day}")
+                    
+                    # Recalculate total value after potential order execution
+                    from src.data.market_data import get_market_data
+                    try:
+                        market_data = get_market_data(universe=list(portfolio._positions.keys()) if portfolio._positions else [])
+                        last_prices = {s: float(d.get("price", 0)) for s, d in market_data.get("stocks", {}).items()}
+                        total_value = portfolio.value(last_prices) if hasattr(portfolio, 'value') else portfolio.cash
+                    except:
+                        total_value = portfolio.cash
+                    
                     all_results.append({
                         "day": day,
+                        "date": current_date_str,
                         "result": result,
                         "portfolio_state": {
                             "cash": portfolio.cash,
@@ -491,23 +569,28 @@ class ScenarioTester:
                     print(f"\n📊 Day {day} Summary:")
                     print(f"   Tools Used: {len(tool_calls)}")
                     if coordinator:
-                        print(f"   Coordinator Stance: {coordinator.get('stance', 'N/A')}")
-                        print(f"   Consensus Points: {len(coordinator.get('consensus_points', []))}")
+                        if isinstance(coordinator, dict):
+                            print(f"   Coordinator Stance: {coordinator.get('stance', 'N/A')}")
+                        else:
+                            print(f"   Coordinator Summary: {str(coordinator)[:100]}...")
                     
                     decision = result.get("decision", {})
                     buy_orders = decision.get("buy_orders", [])
                     sell_orders = decision.get("sell_orders", [])
                     print(f"   Buy Orders: {len(buy_orders)}")
                     print(f"   Sell Orders: {len(sell_orders)}")
+                    print(f"   Portfolio Cash: ${portfolio.cash:,.2f}")
+                    print(f"   Portfolio Positions: {len(portfolio._positions)}")
+                    print(f"   Total Value: ${total_value:,.2f}")
                 else:
                     print(f"\n⚠️  Day {day} returned no result")
-                    all_results.append({"day": day, "result": None})
+                    all_results.append({"day": day, "date": current_date_str, "result": None})
                 
             except Exception as e:
                 print(f"\n❌ Day {day} failed: {e}")
                 import traceback
                 traceback.print_exc()
-                all_results.append({"day": day, "result": None, "error": str(e)})
+                all_results.append({"day": day, "date": current_date_str, "result": None, "error": str(e)})
             
             # Wait between days (except last day)
             if day < num_days:

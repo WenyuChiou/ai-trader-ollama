@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-Trader Portfolio Monitor</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <!-- Chart.js for visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -3629,7 +3629,7 @@
                 }
                 
                 // Update timestamp
-                const timestamp = portfolio.timestamp || new Date().toISOString();
+                const timestamp = (portfolio && !portfolio.error) ? (portfolio.timestamp || new Date().toISOString()) : new Date().toISOString();
                 // Format timestamp in English (YYYY-MM-DD HH:MM:SS)
                 const formatTimestamp = (ts) => {
                     const d = new Date(ts);

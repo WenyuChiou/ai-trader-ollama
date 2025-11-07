@@ -811,6 +811,101 @@ def _generate_transcript(analyst_reports: Dict[str, Dict[str, Any]]) -> List[str
     return transcript
 
 
+def _generate_fallback_coordinator_summary(
+    analyst_reports: Dict[str, Dict[str, Any]],
+    discussion_history: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """基于analyst reports生成fallback摘要"""
+    stances = []
+    analyses = []
+    tools_used_all = []
+    
+    for analyst_type, report in analyst_reports.items():
+        if "error" not in report:
+            stance = report.get("stance", "neutral")
+            analysis = report.get("analysis", "")
+            tools_used = report.get("tools_used", [])
+            
+            stances.append(f"{analyst_type.capitalize()}: {stance}")
+            if analysis:
+                analyses.append(f"{analyst_type.capitalize()} Analyst: {analysis[:200]}")
+            if tools_used:
+                tools_used_all.extend(tools_used)
+    
+    # 综合stance
+    bullish_count = sum(1 for s in stances if "bullish" in s.lower() or "risk_on" in s.lower())
+    bearish_count = sum(1 for s in stances if "bearish" in s.lower() or "risk_off" in s.lower())
+    
+    if bullish_count > bearish_count:
+        final_stance = "bullish"
+    elif bearish_count > bullish_count:
+        final_stance = "bearish"
+    else:
+        final_stance = "neutral"
+    
+    # 生成摘要
+    summary_parts = []
+    if analyses:
+        summary_parts.append("Summary of analyst perspectives:")
+        summary_parts.extend(analyses[:3])  # 最多3个分析
+    
+    summary = "\n".join(summary_parts) if summary_parts else "All analysts have provided their perspectives. Please review individual reports for details."
+    
+    # 提取关键点
+    key_points = []
+    for entry in discussion_history:
+        key_pts = entry.get("key_points", [])
+        if key_pts:
+            key_points.extend(key_pts[:2])  # 每个analyst最多2个关键点
+    
+    return {
+        "stance": final_stance,
+        "summary": summary[:500],  # 限制长度
+        "consensus_points": [],
+        "disagreements": [],
+        "key_points": list(set(key_points))[:5],  # 去重并限制数量
+        "recommendations": [f"Review {at.capitalize()} Analyst report" for at in analyst_reports.keys() if "error" not in analyst_reports[at]][:3],
+    }
+
+
+def _extract_summary_from_text(
+    text_response: str,
+    analyst_reports: Dict[str, Dict[str, Any]]
+) -> Dict[str, Any]:
+    """从文本响应中提取关键信息"""
+    import re
+    
+    # 尝试提取stance
+    stance_match = re.search(r'stance["\']?\s*:\s*["\']?(bullish|bearish|neutral)', text_response, re.IGNORECASE)
+    stance = stance_match.group(1).lower() if stance_match else "neutral"
+    
+    # 尝试提取summary（查找"summary"关键词后的文本）
+    summary_match = re.search(r'summary["\']?\s*:\s*["\']?([^"]+)', text_response, re.IGNORECASE | re.DOTALL)
+    if not summary_match:
+        # 尝试提取第一段较长的文本作为summary
+        paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
+        summary = paragraphs[0][:500] if paragraphs else text_response[:500]
+    else:
+        summary = summary_match.group(1).strip()[:500]
+    
+    # 尝试提取关键点（列表格式）
+    key_points_match = re.search(r'key_points?["\']?\s*:\s*\[(.*?)\]', text_response, re.IGNORECASE | re.DOTALL)
+    key_points = []
+    if key_points_match:
+        points_text = key_points_match.group(1)
+        points = re.findall(r'["\']([^"\']+)["\']', points_text)
+        key_points = points[:5]
+    
+    return {
+        "stance": stance,
+        "summary": summary,
+        "consensus_points": [],
+        "disagreements": [],
+        "key_points": key_points,
+        "recommendations": [],
+    }
+
+
 def _run_discussion_coordinator(
     coordinator: BaseAgent,
     discussion_history: List[Dict[str, Any]],
@@ -882,18 +977,61 @@ Focus on creating a coherent narrative that brings together all the analyst view
             expect_json=True
         )
         
+        # 调试：打印原始响应
+        if not response:
+            print(f"   ⚠️  Coordinator returned empty response, using fallback")
+            return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
+        
         # 解析响应
+        result = None
         if isinstance(response, dict):
             result = response
         else:
             # 尝试从markdown代码块中提取JSON
             import re
-            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', str(response), re.DOTALL)
+            response_str = str(response).strip()
+            
+            # 检查是否为空
+            if not response_str:
+                print(f"   ⚠️  Coordinator returned empty string, using fallback")
+                return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
+            
+            # 尝试从markdown代码块中提取
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_str, re.DOTALL)
             if json_match:
-                result = json.loads(json_match.group(1))
+                try:
+                    result = json.loads(json_match.group(1))
+                except json.JSONDecodeError as e:
+                    print(f"   ⚠️  Failed to parse JSON from markdown block: {e}")
+                    # 尝试使用文本模式重新调用
+                    result = None
             else:
-                # 尝试直接解析
-                result = json.loads(str(response))
+                # 尝试直接解析整个响应
+                try:
+                    result = json.loads(response_str)
+                except json.JSONDecodeError as e:
+                    print(f"   ⚠️  Failed to parse JSON directly: {e}")
+                    # 尝试查找JSON对象（即使不在代码块中）
+                    json_obj_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_str, re.DOTALL)
+                    if json_obj_match:
+                        try:
+                            result = json.loads(json_obj_match.group(0))
+                        except json.JSONDecodeError:
+                            result = None
+        
+        # 如果解析失败，尝试使用文本模式重新调用
+        if result is None:
+            print(f"   🔄 Retrying coordinator with text mode...")
+            try:
+                text_response = coordinator.run(
+                    {"user": coordinator_prompt},
+                    expect_json=False
+                )
+                # 从文本中提取关键信息
+                result = _extract_summary_from_text(text_response, analyst_reports)
+            except Exception as e2:
+                print(f"   ⚠️  Text mode also failed: {e2}")
+                return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
         
         # 确保必要字段存在
         defaults = {
@@ -909,13 +1047,8 @@ Focus on creating a coherent narrative that brings together all the analyst view
         return result
     except Exception as e:
         print(f"   ⚠️  Coordinator parsing error: {e}")
+        import traceback
+        print(f"   📋 Traceback: {traceback.format_exc()[:300]}")
         # 返回fallback结果
-        return {
-            "stance": "neutral",
-            "summary": f"Coordinator encountered an error: {str(e)}. Please refer to individual analyst reports.",
-            "consensus_points": [],
-            "disagreements": [],
-            "key_points": [],
-            "recommendations": [],
-        }
+        return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
 

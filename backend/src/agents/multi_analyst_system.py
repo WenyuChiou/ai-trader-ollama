@@ -879,14 +879,45 @@ def _extract_summary_from_text(
     stance_match = re.search(r'stance["\']?\s*:\s*["\']?(bullish|bearish|neutral)', text_response, re.IGNORECASE)
     stance = stance_match.group(1).lower() if stance_match else "neutral"
     
-    # 尝试提取summary（查找"summary"关键词后的文本）
-    summary_match = re.search(r'summary["\']?\s*:\s*["\']?([^"]+)', text_response, re.IGNORECASE | re.DOTALL)
-    if not summary_match:
-        # 尝试提取第一段较长的文本作为summary
-        paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
-        summary = paragraphs[0][:500] if paragraphs else text_response[:500]
+    # 尝试提取summary（多种模式）
+    summary = ""
+    
+    # 模式1: "summary": "..." 或 summary: "..."
+    summary_match = re.search(r'summary["\']?\s*:\s*["\']?([^"\']+)', text_response, re.IGNORECASE | re.DOTALL)
+    if summary_match:
+        summary = summary_match.group(1).strip()
     else:
-        summary = summary_match.group(1).strip()[:500]
+        # 模式2: 查找"Summary:"或"Summary"后的文本
+        summary_match2 = re.search(r'[Ss]ummary\s*:?\s*(.+?)(?:\n\n|\n[A-Z]|$)', text_response, re.DOTALL)
+        if summary_match2:
+            summary = summary_match2.group(1).strip()
+        else:
+            # 模式3: 提取第一段较长的文本作为summary（排除开头说明性文字）
+            paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
+            # 跳过开头可能包含说明性文字的段落
+            for para in paragraphs:
+                if not any(skip in para.lower()[:100] for skip in ['i will', 'i\'ll', 'based on', 'here is', 'this is']):
+                    summary = para[:500]
+                    break
+            if not summary and paragraphs:
+                summary = paragraphs[0][:500]
+            elif not summary:
+                # 最后fallback：使用整个响应的前500字符
+                summary = text_response[:500].strip()
+    
+    # 清理summary（移除多余的空白和换行）
+    summary = re.sub(r'\s+', ' ', summary).strip()[:500]
+    
+    # 如果summary仍然为空或太短，使用fallback
+    if len(summary) < 50:
+        # 基于analyst reports生成summary
+        summary_parts = []
+        for analyst_type, report in analyst_reports.items():
+            if "error" not in report:
+                analysis = report.get("analysis", "")
+                if analysis:
+                    summary_parts.append(f"{analyst_type.capitalize()} Analyst: {analysis[:150]}")
+        summary = " | ".join(summary_parts[:3])[:500] if summary_parts else "Coordinator synthesized all analyst perspectives."
     
     # 尝试提取关键点（列表格式）
     key_points_match = re.search(r'key_points?["\']?\s*:\s*\[(.*?)\]', text_response, re.IGNORECASE | re.DOTALL)
@@ -895,6 +926,11 @@ def _extract_summary_from_text(
         points_text = key_points_match.group(1)
         points = re.findall(r'["\']([^"\']+)["\']', points_text)
         key_points = points[:5]
+    else:
+        # 尝试提取bullet points
+        bullet_points = re.findall(r'[-*•]\s*(.+?)(?:\n|$)', text_response)
+        if bullet_points:
+            key_points = [p.strip()[:100] for p in bullet_points[:5]]
     
     return {
         "stance": stance,

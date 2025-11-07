@@ -411,15 +411,34 @@ def run_trader(
         if limit_checks:
             risk_compliance["position_limits_ok"] = False
     
-    # 生成决策理由
+    # 生成决策理由（包含coordinator summary）
+    # 从convo中提取coordinator summary
+    coordinator_summary = ""
+    if convo and isinstance(convo, dict):
+        discussion = convo.get("discussion", {})
+        if isinstance(discussion, dict):
+            coordinator = discussion.get("coordinator_summary", {})
+            if isinstance(coordinator, dict):
+                summary_text = coordinator.get("summary", "")
+                if summary_text and len(summary_text) > 20:  # 确保summary有意义
+                    coordinator_summary = summary_text[:200]  # 限制长度
+    
+    # 构建rationale
+    base_rationale = ""
     if buy_orders:
         buy_symbols = [o["symbol"] for o in buy_orders]
-        rationale = f"Buying {len(buy_orders)} stocks ({', '.join(buy_symbols[:5])}{'...' if len(buy_symbols) > 5 else ''}); stance={final_stance}, VIX risk={vix_risk:.1f}"
+        base_rationale = f"Buying {len(buy_orders)} stocks ({', '.join(buy_symbols[:5])}{'...' if len(buy_symbols) > 5 else ''}); stance={final_stance}, VIX risk={vix_risk:.1f}"
     elif sell_orders:
         sell_symbols = [o["symbol"] for o in sell_orders]
-        rationale = f"Selling {len(sell_orders)} stocks ({', '.join(sell_symbols[:5])}{'...' if len(sell_symbols) > 5 else ''}); stance={final_stance}, VIX risk={vix_risk:.1f}"
+        base_rationale = f"Selling {len(sell_orders)} stocks ({', '.join(sell_symbols[:5])}{'...' if len(sell_symbols) > 5 else ''}); stance={final_stance}, VIX risk={vix_risk:.1f}"
     else:
-        rationale = f"No strong consensus; stance={final_stance}, VIX risk={vix_risk:.1f}"
+        base_rationale = f"No strong consensus; stance={final_stance}, VIX risk={vix_risk:.1f}"
+    
+    # 如果有coordinator summary，添加到rationale
+    if coordinator_summary:
+        rationale = f"{base_rationale}. Analysis: {coordinator_summary}"
+    else:
+        rationale = base_rationale
 
     return {
         "action": action,

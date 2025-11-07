@@ -918,54 +918,64 @@ def _extract_summary_from_text(
     text_response: str,
     analyst_reports: Dict[str, Dict[str, Any]]
 ) -> Dict[str, Any]:
-    """从文本响应中提取关键信息"""
+    """从自然语言文本响应中提取关键信息（stance和summary）"""
     import re
     
-    # 尝试提取stance
-    stance_match = re.search(r'stance["\']?\s*:\s*["\']?(bullish|bearish|neutral)', text_response, re.IGNORECASE)
-    stance = stance_match.group(1).lower() if stance_match else "neutral"
+    # 清理文本
+    text_response = text_response.strip()
     
-    # 尝试提取summary（多种模式）
+    # 尝试提取stance（多种模式）
+    stance = "neutral"  # 默认值
+    
+    # 模式1: 查找 "stance is [bullish/bearish/neutral]" 或 "market stance is ..."
+    stance_patterns = [
+        r'stance\s+is\s+(bullish|bearish|neutral)',
+        r'market\s+stance\s+is\s+(bullish|bearish|neutral)',
+        r'overall\s+stance\s+is\s+(bullish|bearish|neutral)',
+        r'(bullish|bearish|neutral)\s+stance',
+        r'stance["\']?\s*:\s*["\']?(bullish|bearish|neutral)',
+    ]
+    
+    for pattern in stance_patterns:
+        stance_match = re.search(pattern, text_response, re.IGNORECASE)
+        if stance_match:
+            stance = stance_match.group(1).lower()
+            break
+    
+    # 如果还没找到，尝试在文本开头查找
+    if stance == "neutral":
+        first_50_chars = text_response[:50].lower()
+        if "bullish" in first_50_chars:
+            stance = "bullish"
+        elif "bearish" in first_50_chars:
+            stance = "bearish"
+    
+    # 提取summary（现在coordinator直接输出自然语言段落）
     summary = ""
     
-    # 模式1: "summary": "..." 或 summary: "..."
-    summary_match = re.search(r'summary["\']?\s*:\s*["\']?([^"\']+)', text_response, re.IGNORECASE | re.DOTALL)
-    if summary_match:
-        summary = summary_match.group(1).strip()
+    # 模式1: 如果文本以 "Based on..." 或类似开头，直接使用整个响应
+    if text_response.lower().startswith(('based on', 'the market', 'considering', 'after reviewing')):
+        # 使用整个响应作为summary（限制长度）
+        summary = text_response[:500].strip()
     else:
-        # 模式2: 查找"Summary:"或"Summary"后的文本
-        summary_match2 = re.search(r'[Ss]ummary\s*:?\s*(.+?)(?:\n\n|\n[A-Z]|$)', text_response, re.DOTALL)
-        if summary_match2:
-            summary = summary_match2.group(1).strip()
-        else:
-            # 模式3: 提取第一段较长的文本作为summary（排除开头说明性文字和工具列表）
-            paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
-            # 跳过开头可能包含说明性文字、工具列表或格式说明的段落
-            skip_patterns = ['i will', 'i\'ll', 'based on', 'here is', 'this is', 'get_', 'tool', 'available tools', '* get_', '- get_']
-            for para in paragraphs:
-                para_lower = para.lower()[:200]
-                # 如果段落包含工具列表特征，跳过
-                if any(pattern in para_lower for pattern in skip_patterns):
-                    continue
-                # 如果段落太短或看起来像列表，跳过
-                if len(para) < 100 or para.count('*') > 3 or para.count('-') > 3:
-                    continue
-                summary = para[:500]
-                break
-            if not summary and paragraphs:
-                # 如果所有段落都被跳过，使用第一个非工具列表段落
-                for para in paragraphs:
-                    if not any(pattern in para.lower()[:200] for pattern in ['get_', 'tool', '* get_', '- get_']):
-                        summary = para[:500]
-                        break
-                if not summary:
-                    summary = paragraphs[0][:500]
-            elif not summary:
-                # 最后fallback：使用整个响应的前500字符，但排除工具列表
-                summary = text_response[:500].strip()
-                # 如果包含工具列表特征，使用fallback
-                if any(pattern in summary.lower() for pattern in ['get_', '* get_', '- get_', 'available tools']):
-                    summary = ""  # 触发fallback
+        # 模式2: 查找第一个有意义的段落（排除工具列表）
+        paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
+        skip_patterns = ['i will', 'i\'ll', 'here is', 'this is', 'get_', 'tool', 'available tools', '* get_', '- get_']
+        
+        for para in paragraphs:
+            para_lower = para.lower()[:200]
+            # 跳过工具列表和说明性文字
+            if any(pattern in para_lower for pattern in skip_patterns):
+                continue
+            # 跳过太短或看起来像列表的段落
+            if len(para) < 100 or para.count('*') > 3 or para.count('-') > 3:
+                continue
+            summary = para[:500]
+            break
+        
+        # 如果没找到合适的段落，使用整个响应
+        if not summary:
+            summary = text_response[:500].strip()
     
     # 清理summary（移除多余的空白和换行）
     summary = re.sub(r'\s+', ' ', summary).strip()[:500]
@@ -1024,8 +1034,8 @@ def _run_discussion_coordinator(
     # 格式化讨论历史
     discussion_text = _format_discussion_history(discussion_history)
     
-    # 准备coordinator的prompt
-    coordinator_prompt = f"""You are a Discussion Coordinator. Your task is to synthesize and unify the perspectives from all analysts.
+    # 准备coordinator的prompt - 使用自然语言总结，不强制JSON
+    coordinator_prompt = f"""You are a Discussion Coordinator. Your task is to synthesize and unify the perspectives from all analysts into a clear, concise summary.
 
 **Previous Discussion History:**
 {discussion_text}
@@ -1049,107 +1059,34 @@ def _run_discussion_coordinator(
 {_summarize_market(market_view)}
 
 **Your Task:**
-1. Review all analyst perspectives above
-2. Identify areas of consensus and disagreement
-3. Synthesize the key insights from each analyst
-4. Provide a unified summary that integrates all perspectives
-5. Highlight any critical points that need attention
+Review all analyst perspectives above and provide a natural language summary that:
+1. Synthesizes the key insights from each analyst
+2. Identifies areas of consensus and any disagreements
+3. Provides a unified market stance (bullish, bearish, or neutral)
+4. Highlights critical points that need attention
+5. Offers actionable recommendations
 
-**CRITICAL: You MUST output valid JSON only. Do not include any text before or after the JSON.**
+**Output Format:**
+Write a clear, concise paragraph (200-300 words) that integrates all perspectives. Start with your overall stance, then provide the synthesis. Use natural language - no need for JSON or structured format.
 
-**Output Format (JSON - this is the ONLY format you should use):**
-{{
-    "stance": "bullish" | "bearish" | "neutral",
-    "summary": "<Your unified summary integrating all analyst perspectives - at least 200 words>",
-    "consensus_points": ["point1", "point2", ...],
-    "disagreements": ["point1", "point2", ...],
-    "key_points": ["critical insight 1", "critical insight 2", ...],
-    "recommendations": ["recommendation 1", "recommendation 2", ...]
-}}
-
-**IMPORTANT RULES:**
-1. Output ONLY the JSON object, nothing else
-2. Do NOT include markdown code blocks (no ```json or ```)
-3. Do NOT include any explanatory text before or after the JSON
-4. The "summary" field must be a comprehensive analysis (at least 200 words), not a list of tools
-5. Start directly with {{ and end with }}
-6. The "summary" should synthesize the analyst perspectives, NOT list tool names or technical details
-7. Use proper JSON syntax: double quotes for strings, no trailing commas
-
-Focus on creating a coherent narrative that brings together all the analyst views through dialogue and synthesis.
+Example format:
+"Based on the analysis from all analysts, the market stance is [bullish/bearish/neutral]. [Your comprehensive summary integrating all perspectives, highlighting consensus and disagreements, key insights, and recommendations.]"
 """
     
     try:
-        # 使用coordinator的run方法（chat方式）
-        response = coordinator.run(
+        # 使用coordinator的run方法，直接使用文本模式（自然语言总结）
+        text_response = coordinator.run(
             {"user": coordinator_prompt},
-            expect_json=True
+            expect_json=False
         )
         
         # 调试：打印原始响应
-        if not response:
+        if not text_response:
             print(f"   ⚠️  Coordinator returned empty response, using fallback")
             return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
         
-        # 解析响应
-        result = None
-        if isinstance(response, dict):
-            result = response
-        else:
-            # 尝试从markdown代码块中提取JSON
-            import re
-            response_str = str(response).strip()
-            
-            # 检查是否为空
-            if not response_str:
-                print(f"   ⚠️  Coordinator returned empty string, using fallback")
-                return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
-            
-            # 首先尝试直接解析（如果LLM遵循指令，应该直接返回JSON）
-            try:
-                result = json.loads(response_str)
-            except json.JSONDecodeError:
-                # 如果直接解析失败，尝试从markdown代码块中提取
-                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_str, re.DOTALL)
-                if json_match:
-                    try:
-                        result = json.loads(json_match.group(1))
-                    except json.JSONDecodeError as e:
-                        print(f"   ⚠️  Failed to parse JSON from markdown block: {e}")
-                        result = None
-                else:
-                    # 尝试查找JSON对象（即使不在代码块中）
-                    # 使用更精确的正则表达式匹配完整的JSON对象
-                    json_obj_match = re.search(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', response_str, re.DOTALL)
-                    if json_obj_match:
-                        try:
-                            result = json.loads(json_obj_match.group(0))
-                        except json.JSONDecodeError:
-                            # 尝试更宽松的匹配
-                            json_obj_match2 = re.search(r'\{.*"stance".*\}', response_str, re.DOTALL)
-                            if json_obj_match2:
-                                try:
-                                    result = json.loads(json_obj_match2.group(0))
-                                except json.JSONDecodeError:
-                                    result = None
-                            else:
-                                result = None
-                    else:
-                        result = None
-        
-        # 如果解析失败，尝试使用文本模式重新调用
-        if result is None:
-            print(f"   🔄 Retrying coordinator with text mode...")
-            try:
-                text_response = coordinator.run(
-                    {"user": coordinator_prompt},
-                    expect_json=False
-                )
-                # 从文本中提取关键信息
-                result = _extract_summary_from_text(text_response, analyst_reports)
-            except Exception as e2:
-                print(f"   ⚠️  Text mode also failed: {e2}")
-                return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
+        # 从文本中提取关键信息（stance, summary等）
+        result = _extract_summary_from_text(str(text_response), analyst_reports)
         
         # 确保必要字段存在
         defaults = {

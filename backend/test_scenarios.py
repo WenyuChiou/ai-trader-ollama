@@ -553,6 +553,9 @@ class ScenarioTester:
         
         checks = []
         
+        # Load portfolio early to ensure it's available in all code paths
+        portfolio = self.load_portfolio()
+        
         # Check 1: Trading cycle completed
         checks.append(("Trading cycle completed", result is not None))
         
@@ -586,9 +589,8 @@ class ScenarioTester:
             # Allow no orders if stance is bearish and no holdings (scenario 3)
             discussion = result.get("discussion", {})
             final_stance = discussion.get("final_stance", "neutral")
-            # Load portfolio to check holdings
-            portfolio = self.load_portfolio()
-            has_holdings = len(portfolio._positions) > 0 if result else False
+            # Portfolio already loaded at function start
+            has_holdings = len(portfolio._positions) > 0
             # For scenario 3 (no holdings), allow no orders if stance is bearish
             if scenario_num == 3 and final_stance == "bearish" and not has_holdings:
                 # Bearish stance with no holdings - no buy orders is acceptable
@@ -620,7 +622,7 @@ class ScenarioTester:
                 print(f"   Executed Trades: {len(executed_trades)}")
             
             # Check 8: Portfolio updated
-            portfolio = self.load_portfolio()
+            # Portfolio already loaded at function start
             portfolio_updated = True  # Portfolio file exists
             checks.append(("Portfolio state saved", portfolio_updated))
             

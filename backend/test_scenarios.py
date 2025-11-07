@@ -760,23 +760,35 @@ class ScenarioTester:
         total_buy_orders = 0
         total_sell_orders = 0
         total_tools_used = 0
+        total_placed_orders = 0
         
         for day_info in all_results:
             day_num = day_info.get("day", 0)
             result = day_info.get("result")
             if result:
-                decision = result.get("decision", {})
-                buy_orders = decision.get("buy_orders", [])
-                sell_orders = decision.get("sell_orders", [])
+                # Prefer placed_orders (actual orders created) over decision orders
+                placed_orders = result.get("placed_orders", [])
+                if placed_orders:
+                    buy_count = sum(1 for o in placed_orders if o.get("action") == "BUY")
+                    sell_count = sum(1 for o in placed_orders if o.get("action") == "SELL")
+                    total_buy_orders += buy_count
+                    total_sell_orders += sell_count
+                    total_placed_orders += len(placed_orders)
+                else:
+                    # Fallback to decision orders if placed_orders not available
+                    decision = result.get("decision", {})
+                    buy_orders = decision.get("buy_orders", [])
+                    sell_orders = decision.get("sell_orders", [])
+                    total_buy_orders += len(buy_orders)
+                    total_sell_orders += len(sell_orders)
+                
                 discussion = result.get("discussion", {})
                 tool_calls = discussion.get("tool_calls", [])
-                
-                total_buy_orders += len(buy_orders)
-                total_sell_orders += len(sell_orders)
                 total_tools_used += len(tool_calls)
         
-        print(f"   Total Buy Orders: {total_buy_orders}")
-        print(f"   Total Sell Orders: {total_sell_orders}")
+        print(f"   Total Buy Orders Created: {total_buy_orders}")
+        print(f"   Total Sell Orders Created: {total_sell_orders}")
+        print(f"   Total Orders Placed: {total_placed_orders if total_placed_orders > 0 else total_buy_orders + total_sell_orders}")
         print(f"   Total Tools Used: {total_tools_used}")
         
         # ===== 5. Days Completed =====

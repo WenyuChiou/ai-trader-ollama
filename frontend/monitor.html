@@ -2106,15 +2106,16 @@
                             // Agent 专属图标映射
                             function getAgentIcon(agentName) {
                                 const icons = {
-                                    'MarketAgent': '📊',
-                                    'MarketAnalyst': '📈',
+                                    'MarketAgent': '🌐',
+                                    'MarketAnalyst': '🌐',
+                                    'TechnicalAnalyst': '📈',
+                                    'FundamentalAnalyst': '💼',
+                                    'SentimentAnalyst': '😊',
+                                    'DiscussionCoordinator': '💬',
                                     'DiscussionAgent': '💬',
                                     'RiskAnalyst': '⚠️',
                                     'TraderAgent': '🤖',
                                     'ToolSystem': '🔧',
-                                    'TechnicalAnalyst': '🔬',
-                                    'FundamentalAnalyst': '📑',
-                                    'SentimentAnalyst': '😊',
                                     'Unknown': '🤖'
                                 };
                                 // 匹配部分名称
@@ -2151,6 +2152,8 @@
                                         <span class="conversation-date">${new Date(timestamp).toLocaleTimeString()}</span>
                                     </div>
                                     ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
+                                    ${stanceHtml}
+                                    ${toolsUsedHtml}
                                     ${toolHtml}
                                     ${toolResultHtml}
                                     ${indicatorsHtml}

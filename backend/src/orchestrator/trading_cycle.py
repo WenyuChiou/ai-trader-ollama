@@ -236,45 +236,89 @@ def execute_daily_trade(
         # 寫入每一輪對話
         import json
         
-        for round_num, round_text in enumerate(transcript, 1):
-            # 提取 agent 名稱（從 transcript 文本中或使用默認）
-            agent_name = "DiscussionAgent"  # 默認
-            if "--- Round" in round_text:
-                # 嘗試從文本中提取 agent 信息
-                lines = round_text.split("\n")
-                for line in lines[:5]:  # 檢查前幾行
-                    if "agent" in line.lower() or "analyst" in line.lower():
-                        if "technical" in line.lower():
-                            agent_name = "TechnicalAnalyst"
-                        elif "fundamental" in line.lower():
-                            agent_name = "FundamentalAnalyst"
-                        elif "risk" in line.lower():
-                            agent_name = "RiskAnalyst"
-                        elif "sentiment" in line.lower():
-                            agent_name = "SentimentAnalyst"
-                        break
+        # 寫入每個analyst的分析結果（從discussion_history中提取）
+        discussion_history = convo.get("discussion_history", [])
+        for entry_data in discussion_history:
+            analyst_name = entry_data.get("analyst", "Unknown")
+            stance = entry_data.get("stance", "neutral")
+            analysis = entry_data.get("analysis", "No analysis provided")
+            tools_used = entry_data.get("tools_used", [])
+            
+            # 標準化agent名稱
+            agent_name_map = {
+                "market": "MarketAnalyst",
+                "technical": "TechnicalAnalyst",
+                "fundamental": "FundamentalAnalyst",
+                "sentiment": "SentimentAnalyst",
+            }
+            agent_name = agent_name_map.get(analyst_name.lower(), analyst_name)
             
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                "date": trade_date_str,  # 使用交易日期，不是當前日期
+                "date": trade_date_str,
                 "agent": agent_name,
-                "round": round_num,
-                "content": round_text[:500] if len(round_text) > 500 else round_text,  # 限制長度
-                "type": "discussion",  # 標記為真實討論，非 demo
+                "round": 0,
+                "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
+                "type": "discussion",
+                "stance": stance,
+                "tools_used": tools_used,
             }
             
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         
-        # 寫入工具使用記錄
-        for tool_info in tool_context:
+        # 寫入Coordinator統整結果
+        coordinator_summary = convo.get("coordinator_summary")
+        if coordinator_summary:
+            if isinstance(coordinator_summary, dict):
+                stance = coordinator_summary.get("stance", "neutral")
+                summary = coordinator_summary.get("summary", "No summary provided")
+                entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "date": trade_date_str,
+                    "agent": "DiscussionCoordinator",
+                    "round": 0,
+                    "content": f"Stance: {stance}\n\nSummary: {summary}",
+                    "type": "discussion",
+                    "stance": stance,
+                }
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        # 寫入工具使用記錄（從tool_calls中提取）
+        tool_calls = convo.get("tool_calls", [])
+        for tool_call in tool_calls:
+            analyst_name = tool_call.get("analyst", "Unknown")
+            tool_name = tool_call.get("tool", "")
+            tool_result = tool_call.get("result", {})
+            
+            # 標準化agent名稱
+            agent_name_map = {
+                "market": "MarketAnalyst",
+                "technical": "TechnicalAnalyst",
+                "fundamental": "FundamentalAnalyst",
+                "sentiment": "SentimentAnalyst",
+            }
+            agent_name = agent_name_map.get(analyst_name.lower(), analyst_name)
+            
+            # 格式化工具結果
+            if isinstance(tool_result, dict):
+                if "error" in tool_result:
+                    result_text = f"Error: {tool_result.get('error', 'Unknown error')}"
+                else:
+                    # 提取關鍵信息
+                    result_text = json.dumps(tool_result, ensure_ascii=False, indent=2)[:500]
+            else:
+                result_text = str(tool_result)[:500]
+            
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                "date": trade_date_str,  # 使用交易日期，不是當前日期
-                "agent": "ToolSystem",
+                "date": trade_date_str,
+                "agent": agent_name,
                 "round": 0,
-                "content": f"Tool used: {tool_info}",
+                "content": f"Tool used: {tool_name}: {result_text}",
                 "type": "tool",
+                "tool_name": tool_name,
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")

@@ -628,19 +628,150 @@ class ScenarioTester:
                 print(f"\n⏸️  Day {day} complete. Portfolio state saved.")
                 print("   Continuing to next day...\n")
         
-        # Final summary
+        # Final summary with detailed portfolio evolution
         print("\n" + "="*80)
         print("📊 MULTI-DAY SIMULATION SUMMARY")
         print("="*80)
         
         final_portfolio = self.load_portfolio()
-        print(f"\nFinal Portfolio State:")
-        print(f"   Cash: ${final_portfolio.cash:,.2f}")
-        print(f"   Positions: {len(final_portfolio._positions)}")
-        final_value = final_portfolio.value({}) if hasattr(final_portfolio, 'value') else final_portfolio.cash
-        print(f"   Total Value: ${final_value:,.2f}")
         
-        print(f"\nDays Completed: {len([r for r in all_results if r.get('result')])}/{num_days}")
+        # Get initial portfolio state (Day 1)
+        initial_cash = 10000.0  # From setup_scenario_5
+        initial_positions = 0
+        initial_value = initial_cash
+        
+        # Calculate final value with current prices
+        try:
+            from src.data.market_data import get_latest_close
+            from datetime import datetime, timedelta
+            last_prices = {}
+            for symbol in final_portfolio._positions.keys():
+                try:
+                    # Use today's date for price lookup
+                    today_str = date.today().isoformat()
+                    start_date = (datetime.fromisoformat(today_str) - timedelta(days=5)).isoformat().split('T')[0]
+                    end_date = (datetime.fromisoformat(today_str) + timedelta(days=1)).isoformat().split('T')[0]
+                    price = get_latest_close(symbol, start_date, end_date)
+                    last_prices[symbol] = float(price)
+                except Exception:
+                    pos = final_portfolio.get_position(symbol)
+                    last_prices[symbol] = pos.avg_cost if pos else 0.0
+            final_value = final_portfolio.value(last_prices) if hasattr(final_portfolio, 'value') else final_portfolio.cash
+        except Exception:
+            final_value = final_portfolio.cash + sum(
+                pos.quantity * pos.avg_cost 
+                for pos in final_portfolio._positions.values()
+            )
+        
+        # Calculate P&L
+        total_pnl = final_value - initial_value
+        total_pnl_pct = (total_pnl / initial_value * 100) if initial_value > 0 else 0.0
+        
+        # ===== 1. Portfolio Evolution Summary =====
+        print(f"\n💰 Portfolio Evolution:")
+        print(f"   Initial Value (Day 1): ${initial_value:,.2f}")
+        print(f"   Final Value (Day {num_days}): ${final_value:,.2f}")
+        print(f"   Total P&L: ${total_pnl:+,.2f} ({total_pnl_pct:+.2f}%)")
+        print(f"   Return: {total_pnl_pct:+.2f}%")
+        
+        # ===== 2. Daily Equity Changes =====
+        print(f"\n📈 Daily Equity Changes:")
+        print(f"   {'Day':<6} {'Date':<12} {'Cash':<12} {'Positions':<12} {'Total Value':<15} {'Change':<12}")
+        print(f"   {'-'*6} {'-'*12} {'-'*12} {'-'*12} {'-'*15} {'-'*12}")
+        
+        prev_value = initial_value
+        for day_info in all_results:
+            day_num = day_info.get("day", 0)
+            day_date = day_info.get("date", "N/A")
+            portfolio_state = day_info.get("portfolio_state", {})
+            day_cash = portfolio_state.get("cash", 0.0)
+            day_positions = len(portfolio_state.get("positions", {}))
+            day_value = portfolio_state.get("total_value", day_cash)
+            day_change = day_value - prev_value
+            day_change_pct = (day_change / prev_value * 100) if prev_value > 0 else 0.0
+            
+            print(f"   {day_num:<6} {day_date:<12} ${day_cash:<11,.2f} {day_positions:<12} ${day_value:<14,.2f} ${day_change:+,.2f} ({day_change_pct:+.2f}%)")
+            prev_value = day_value
+        
+        # ===== 3. Final Portfolio State =====
+        print(f"\n💼 Final Portfolio State (Day {num_days}):")
+        print(f"   Cash: ${final_portfolio.cash:,.2f} ({final_portfolio.cash/final_value*100:.1f}% of portfolio)")
+        print(f"   Positions: {len(final_portfolio._positions)}")
+        
+        if final_portfolio._positions:
+            total_position_value = sum(
+                pos.quantity * last_prices.get(symbol, pos.avg_cost)
+                for symbol, pos in final_portfolio._positions.items()
+            )
+            position_pct = (total_position_value / final_value * 100) if final_value > 0 else 0.0
+            print(f"   Total Position Value: ${total_position_value:,.2f} ({position_pct:.1f}% of portfolio)")
+            
+            # Show top 10 positions by value
+            print(f"\n   📊 Top Positions (by Market Value):")
+            print(f"   {'Symbol':<10} {'Quantity':<10} {'Avg Cost':<12} {'Current Price':<15} {'Market Value':<15} {'P&L':<12} {'P&L %':<10}")
+            print(f"   {'-'*10} {'-'*10} {'-'*12} {'-'*15} {'-'*15} {'-'*12} {'-'*10}")
+            
+            position_list = []
+            for symbol, pos in final_portfolio._positions.items():
+                current_price = last_prices.get(symbol, pos.avg_cost)
+                market_value = pos.quantity * current_price
+                cost_basis = pos.quantity * pos.avg_cost
+                pnl = market_value - cost_basis
+                pnl_pct = (pnl / cost_basis * 100) if cost_basis > 0 else 0.0
+                position_list.append({
+                    "symbol": symbol,
+                    "quantity": pos.quantity,
+                    "avg_cost": pos.avg_cost,
+                    "current_price": current_price,
+                    "market_value": market_value,
+                    "pnl": pnl,
+                    "pnl_pct": pnl_pct
+                })
+            
+            # Sort by market value (descending)
+            position_list.sort(key=lambda x: x["market_value"], reverse=True)
+            
+            for pos_info in position_list[:10]:  # Top 10
+                print(f"   {pos_info['symbol']:<10} {pos_info['quantity']:<10} ${pos_info['avg_cost']:<11.2f} "
+                      f"${pos_info['current_price']:<14.2f} ${pos_info['market_value']:<14,.2f} "
+                      f"${pos_info['pnl']:+,.2f} ({pos_info['pnl_pct']:+.2f}%)")
+            
+            if len(position_list) > 10:
+                print(f"   ... and {len(position_list) - 10} more positions")
+        else:
+            print(f"   No positions held")
+        
+        # ===== 4. Trading Activity Summary =====
+        print(f"\n📊 Trading Activity Summary:")
+        total_buy_orders = 0
+        total_sell_orders = 0
+        total_tools_used = 0
+        
+        for day_info in all_results:
+            day_num = day_info.get("day", 0)
+            result = day_info.get("result")
+            if result:
+                decision = result.get("decision", {})
+                buy_orders = decision.get("buy_orders", [])
+                sell_orders = decision.get("sell_orders", [])
+                discussion = result.get("discussion", {})
+                tool_calls = discussion.get("tool_calls", [])
+                
+                total_buy_orders += len(buy_orders)
+                total_sell_orders += len(sell_orders)
+                total_tools_used += len(tool_calls)
+        
+        print(f"   Total Buy Orders: {total_buy_orders}")
+        print(f"   Total Sell Orders: {total_sell_orders}")
+        print(f"   Total Tools Used: {total_tools_used}")
+        
+        # ===== 5. Days Completed =====
+        completed_days = len([r for r in all_results if r.get("result")])
+        print(f"\n✅ Days Completed: {completed_days}/{num_days}")
+        
+        if completed_days < num_days:
+            failed_days = [r.get("day") for r in all_results if not r.get("result")]
+            print(f"   ⚠️  Failed Days: {failed_days}")
         
         return {
             "scenario": 5,

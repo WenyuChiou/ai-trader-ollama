@@ -2132,15 +2132,55 @@
                             // Parse tool information if it's a tool entry
                             let toolHtml = '';
                             let toolResultHtml = '';
+                            let indicatorsHtml = '';
                             if (entry_type === 'tool') {
                                 const toolInfo = parseToolInfo(content_text);
                                 if (toolInfo) {
-                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: ${escapeHtml(toolInfo.name)}</div>`;
+                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
                                     if (toolInfo.result) {
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: #fef3c7; padding: 8px 12px; margin: 8px 0; border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 13px; color: #92400e;">
-                                            <strong>Tool Result:</strong><br/>
-                                            ${escapeHtml(toolInfo.result)}
+                                            <strong>📊 Tool Result:</strong><br/>
+                                            <div style="margin-top: 4px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">${escapeHtml(toolInfo.result)}</div>
                                         </div>`;
+                                    }
+                                    if (toolInfo.indicators) {
+                                        indicatorsHtml = `<div class="conversation-indicators" style="background: #eff6ff; padding: 8px 12px; margin: 8px 0; border-radius: 6px; border-left: 3px solid #3b82f6; font-size: 13px; color: #1e40af;">
+                                            <strong>📈 Indicators:</strong><br/>
+                                            <div style="margin-top: 4px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">${escapeHtml(toolInfo.indicators)}</div>
+                                        </div>`;
+                                    }
+                                }
+                            }
+                            
+                            // Display stance if available
+                            let stanceHtml = '';
+                            if (conv.stance) {
+                                const stanceColor = conv.stance === 'bullish' ? '#10b981' : conv.stance === 'bearish' ? '#ef4444' : '#6b7280';
+                                stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">🎯 Stance: ${conv.stance.toUpperCase()}</div>`;
+                            }
+                            
+                            // Display tools used if available
+                            let toolsUsedHtml = '';
+                            if (conv.tools_used && Array.isArray(conv.tools_used) && conv.tools_used.length > 0) {
+                                toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${conv.tools_used.join(', ')}</div>`;
+                            }
+                            
+                            // For discussion entries, extract and display partial text + tools + tool info
+                            let analysisText = '';
+                            let toolsListHtml = '';
+                            if (entry_type === 'discussion' && content_text) {
+                                // Extract analysis text (first 300 chars)
+                                const analysisMatch = content_text.match(/Analysis:\s*(.+?)(?:\n|$)/i);
+                                if (analysisMatch) {
+                                    analysisText = analysisMatch[1].substring(0, 300);
+                                    if (analysisMatch[1].length > 300) {
+                                        analysisText += '...';
+                                    }
+                                } else {
+                                    // If no "Analysis:" prefix, use first part of content
+                                    analysisText = content_text.substring(0, 300);
+                                    if (content_text.length > 300) {
+                                        analysisText += '...';
                                     }
                                 }
                             }
@@ -2157,7 +2197,11 @@
                                     ${toolHtml}
                                     ${toolResultHtml}
                                     ${indicatorsHtml}
-                                    <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content_text, entry_type)}</div>
+                                    ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6;">
+                                        <strong>💬 Analysis:</strong><br/>
+                                        ${escapeHtml(analysisText)}
+                                    </div>` : ''}
+                                    ${entry_type === 'tool' ? '' : (analysisText ? '' : `<div class="conversation-content">${formatConversationContent(content_text, entry_type)}</div>`)}
                                 </div>
                             `;
                         }).join('')}
@@ -2297,14 +2341,46 @@
                                 if (toolInfo.result) {
                                     toolResultHtml = `<div class="conversation-tool-result" style="background: #fef3c7; padding: 8px 12px; margin: 8px 0; border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 13px; color: #92400e;">
                                         <strong>📊 Tool Result:</strong><br/>
-                                        <div style="margin-top: 4px; font-family: monospace; white-space: pre-wrap;">${escapeHtml(toolInfo.result)}</div>
+                                        <div style="margin-top: 4px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">${escapeHtml(toolInfo.result)}</div>
                                     </div>`;
                                 }
                                 if (toolInfo.indicators) {
                                     indicatorsHtml = `<div class="conversation-indicators" style="background: #eff6ff; padding: 8px 12px; margin: 8px 0; border-radius: 6px; border-left: 3px solid #3b82f6; font-size: 13px; color: #1e40af;">
                                         <strong>📈 Indicators:</strong><br/>
-                                        <div style="margin-top: 4px; font-family: monospace; white-space: pre-wrap;">${escapeHtml(toolInfo.indicators)}</div>
+                                        <div style="margin-top: 4px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">${escapeHtml(toolInfo.indicators)}</div>
                                     </div>`;
+                                }
+                            }
+                        }
+                        
+                        // Display stance if available
+                        let stanceHtml = '';
+                        if (c.stance) {
+                            const stanceColor = c.stance === 'bullish' ? '#10b981' : c.stance === 'bearish' ? '#ef4444' : '#6b7280';
+                            stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">🎯 Stance: ${c.stance.toUpperCase()}</div>`;
+                        }
+                        
+                        // Display tools used if available
+                        let toolsUsedHtml = '';
+                        if (c.tools_used && Array.isArray(c.tools_used) && c.tools_used.length > 0) {
+                            toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${c.tools_used.join(', ')}</div>`;
+                        }
+                        
+                        // For discussion entries, extract and display partial text + tools + tool info
+                        let analysisText = '';
+                        if (entry_type === 'discussion' && content) {
+                            // Extract analysis text (first 300 chars)
+                            const analysisMatch = content.match(/Analysis:\s*(.+?)(?:\n|$)/i);
+                            if (analysisMatch) {
+                                analysisText = analysisMatch[1].substring(0, 300);
+                                if (analysisMatch[1].length > 300) {
+                                    analysisText += '...';
+                                }
+                            } else {
+                                // If no "Analysis:" prefix, use first part of content
+                                analysisText = content.substring(0, 300);
+                                if (content.length > 300) {
+                                    analysisText += '...';
                                 }
                             }
                         }
@@ -2316,10 +2392,16 @@
                                     <span class="conversation-date">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
                                 </div>
                                 ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
+                                ${stanceHtml}
+                                ${toolsUsedHtml}
                                 ${toolHtml}
                                 ${toolResultHtml}
                                 ${indicatorsHtml}
-                                <div class="conversation-content">${entry_type === 'tool' ? '' : formatConversationContent(content, entry_type)}</div>
+                                ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6;">
+                                    <strong>💬 Analysis:</strong><br/>
+                                    ${escapeHtml(analysisText)}
+                                </div>` : ''}
+                                ${entry_type === 'tool' ? '' : (analysisText ? '' : `<div class="conversation-content">${formatConversationContent(content, entry_type)}</div>`)}
                             </div>`;
                     }).join('')}
                 </div>

@@ -466,13 +466,59 @@ def run_trader(
     else:
         rationale = base_rationale
 
-    return {
-        "action": action,
-        "targets": targets,
-        "buy_orders": buy_orders,
-        "sell_orders": sell_orders,
-        "rationale": rationale,
-        "stance": final_stance,
-        "vix_risk": vix_risk,
-        "risk_compliance": risk_compliance,
+    # 严格JSON格式输出（交易决策必须严格遵守JSON格式，因为交易系统根据这个判断）
+    # 确保所有字段都是JSON可序列化的类型
+    decision = {
+        "action": str(action),  # 确保是字符串
+        "targets": list(targets) if targets else [],  # 确保是列表
+        "buy_orders": [
+            {
+                "symbol": str(order.get("symbol", "")),
+                "buy_price": float(order.get("buy_price", 0.0)),
+                "buy_price_min": float(order.get("buy_price_min", 0.0)),
+                "buy_price_max": float(order.get("buy_price_max", 0.0)),
+                "quantity": int(order.get("quantity", 0)),
+                "total_cost": float(order.get("total_cost", 0.0)),
+            }
+            for order in buy_orders
+        ],
+        "sell_orders": [
+            {
+                "symbol": str(order.get("symbol", "")),
+                "sell_price": float(order.get("sell_price", 0.0)),
+                "sell_price_min": float(order.get("sell_price_min", 0.0)),
+                "sell_price_max": float(order.get("sell_price_max", 0.0)),
+                "quantity": int(order.get("quantity", 0)),
+                "total_proceeds": float(order.get("total_proceeds", 0.0)),
+            }
+            for order in sell_orders
+        ],
+        "rationale": str(rationale),  # 确保是字符串
+        "stance": str(final_stance),  # 确保是字符串
+        "vix_risk": float(vix_risk),  # 确保是数字
+        "risk_compliance": {
+            "position_limits_ok": bool(risk_compliance.get("position_limits_ok", True)),
+            "diversification_ok": bool(risk_compliance.get("diversification_ok", True)),
+            "warnings": [str(w) for w in risk_compliance.get("warnings", [])],  # 确保是字符串列表
+        },
     }
+    
+    # 验证JSON可序列化
+    import json
+    try:
+        json.dumps(decision)
+    except (TypeError, ValueError) as e:
+        print(f"[TRADER] WARNING: Decision contains non-JSON-serializable data: {e}")
+        # 如果序列化失败，返回最小化版本
+        decision = {
+            "action": "HOLD",
+            "targets": [],
+            "buy_orders": [],
+            "sell_orders": [],
+            "rationale": f"Error: {str(e)}",
+            "stance": "neutral",
+            "vix_risk": 0.0,
+            "risk_compliance": {"position_limits_ok": False, "diversification_ok": False, "warnings": [str(e)]},
+        }
+    
+    return decision

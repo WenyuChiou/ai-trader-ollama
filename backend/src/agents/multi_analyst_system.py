@@ -86,12 +86,13 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = market_result.get("tool_calls", [])
             
-            # Fallback: 如果agent没有调用工具，使用默认工具
+            # Fallback: Market Analyst必须使用工具（市场数据变化快，需要实时获取）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools")
+                print(f"   ⚠️  No tools requested, using fallback tools (Market analysis requires real-time data)")
                 tool_calls_list = [
                     {"name": "get_market_indices", "args": {}, "why": "Fallback: Get market indices"},
-                    {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"}
+                    {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"},
+                    {"name": "get_market_breadth", "args": {}, "why": "Fallback: Get market breadth"}
                 ]
             
             # 收集工具调用结果
@@ -184,13 +185,17 @@ def run_multi_analyst_discussion(
             if not tool_calls_list:
                 print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
             
-            # Fallback: 如果agent没有调用工具，使用默认工具
+            # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
+            # 如果没有调用工具，使用默认工具
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools")
+                print(f"   ⚠️  No tools requested, using fallback tools (Technical analysis requires indicators)")
                 sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
                 tool_calls_list = []
                 for sym in sample_symbols:
                     tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym}"})
+                # 也添加support/resistance工具
+                if len(tool_calls_list) < 2:
+                    tool_calls_list.append({"name": "get_support_resistance", "args": {"symbol": sample_symbols[0] if sample_symbols else "NVDA"}, "why": "Fallback: Get support/resistance levels"})
             
             # 收集工具调用结果
             tool_results_summary = []
@@ -275,9 +280,10 @@ def run_multi_analyst_discussion(
             if not tool_calls_list:
                 print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
             
-            # Fallback: 如果agent没有调用工具，使用默认工具
+            # Fallback: Fundamental Analyst可选使用工具（如果已有数据可以基于现有分析）
+            # 但建议获取最新数据，所以如果没有调用工具，使用默认工具
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools")
+                print(f"   ⚠️  No tools requested, using fallback tools (Recommended: Get latest fundamental data)")
                 sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
                 tool_calls_list = []
                 for sym in sample_symbols:
@@ -354,12 +360,13 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = sentiment_result.get("tool_calls", [])
             
-            # Fallback: 如果agent没有调用工具，使用默认工具
+            # Fallback: Sentiment Analyst必须使用工具（情绪数据变化快，需要实时获取）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools")
+                print(f"   ⚠️  No tools requested, using fallback tools (Sentiment analysis requires real-time data)")
                 tool_calls_list = [
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
-                    {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"}
+                    {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
+                    {"name": "news_scan", "args": {"query": "market sentiment", "limit": 5}, "why": "Fallback: Get recent news sentiment"}
                 ]
             
             # 收集工具调用结果

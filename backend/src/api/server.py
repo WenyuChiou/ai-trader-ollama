@@ -647,12 +647,22 @@ async def get_vix_term():
 async def list_tools():
     """List all available tools from ToolBox"""
     try:
+        import sys
+        from pathlib import Path
+        # Ensure we're in the backend directory
+        backend_dir = Path(__file__).parent.parent.parent
+        if str(backend_dir) not in sys.path:
+            sys.path.insert(0, str(backend_dir))
+        
         from src.agents.toolbox import ToolBox
         toolbox = ToolBox()
         tools = toolbox.list()
+        print(f"[API] Tools list: {len(tools)} tools found")
         return {"ok": True, "tools": tools}
     except Exception as e:
+        import traceback
         print(f"[API] Error listing tools: {e}")
+        print(f"[API] Traceback: {traceback.format_exc()}")
         return {"ok": True, "tools": []}
 
 

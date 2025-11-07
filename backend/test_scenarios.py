@@ -637,11 +637,17 @@ class ScenarioTester:
         
         if result and result.get("decision"):
             print(f"\n💼 Sample Trading Decision:")
-            buy_orders = result["decision"].get("buy_orders", [])
+            decision = result["decision"]
+            buy_orders = decision.get("buy_orders", [])
             if buy_orders:
                 sample = buy_orders[0]
                 print(f"   BUY {sample.get('symbol')} x{sample.get('quantity')} @ ${sample.get('buy_price', 0):.2f}")
-                print(f"   Rationale: {sample.get('rationale', 'N/A')[:100]}...")
+                # rationale在decision的顶层，不在每个buy_order中
+                rationale = decision.get("rationale", "N/A")
+                if rationale and rationale != "N/A":
+                    print(f"   Rationale: {rationale[:200]}...")
+                else:
+                    print(f"   Rationale: N/A (decision rationale not found)")
         
         return passed == total
     

@@ -421,6 +421,7 @@ def run_trader(
             summary_text = coordinator.get("summary", "")
             if summary_text and len(summary_text.strip()) > 20:  # 确保summary有意义
                 coordinator_summary = summary_text[:200]  # 限制长度
+                print(f"[TRADER] Found coordinator summary from convo.coordinator_summary ({len(coordinator_summary)} chars)")
         # 如果直接获取失败，尝试从discussion中获取
         if not coordinator_summary:
             discussion = convo.get("discussion", {})
@@ -430,6 +431,7 @@ def run_trader(
                     summary_text = coordinator.get("summary", "")
                     if summary_text and len(summary_text.strip()) > 20:
                         coordinator_summary = summary_text[:200]
+                        print(f"[TRADER] Found coordinator summary from convo.discussion.coordinator_summary")
         # 如果还是没有，尝试从discussion_history中提取
         if not coordinator_summary:
             discussion_history = convo.get("discussion_history", [])
@@ -438,7 +440,14 @@ def run_trader(
                     analysis = entry.get("analysis", "")
                     if analysis and len(analysis.strip()) > 20:
                         coordinator_summary = analysis[:200]
+                        print(f"[TRADER] Found coordinator summary from discussion_history")
                         break
+        if not coordinator_summary:
+            print(f"[TRADER] WARNING: Could not find coordinator summary in convo")
+            print(f"[TRADER] convo keys: {list(convo.keys())[:10]}")
+            if "coordinator_summary" in convo:
+                print(f"[TRADER] coordinator_summary type: {type(convo.get('coordinator_summary'))}")
+                print(f"[TRADER] coordinator_summary content: {str(convo.get('coordinator_summary'))[:200]}")
     
     # 构建rationale
     base_rationale = ""

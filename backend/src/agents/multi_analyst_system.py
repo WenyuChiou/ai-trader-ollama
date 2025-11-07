@@ -93,6 +93,8 @@ def run_multi_analyst_discussion(
                     {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"}
                 ]
             
+            # 收集工具调用结果
+            tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   🔧 Tools requested: {len(tool_calls_list)}")
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
@@ -109,11 +111,20 @@ def run_multi_analyst_discussion(
                         })
                         tool_calls_count += 1
                         print(f"   ✅ Tool {tool_name} executed successfully")
+                        # 格式化工具结果用于反馈
+                        tool_summary = _format_tool_result(tool_name, tool_result)
+                        tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
                         print(f"   ⚠️  Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
                     print(f"   ℹ️  No tools requested by agent")
+            
+            # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
+            _generate_analysis_from_tools(
+                market_analyst, market_prompt_vars, tool_results_summary,
+                "market", market_result, all_tool_calls, "MarketAnalyst"
+            )
             
             # 添加到对话历史（工具调用完成后）
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst"]
@@ -167,18 +178,37 @@ def run_multi_analyst_discussion(
                 for sym in sample_symbols:
                     tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym}"})
             
+            # 收集工具调用结果
+            tool_results_summary = []
             if use_tools and tool_calls_list:
+                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
+                    tool_name = tool_call.get("name", "unknown")
+                    print(f"   🔧 Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "TechnicalAnalyst",
-                            "tool": tool_call.get("name"),
+                            "tool": tool_name,
                             "result": tool_result
                         })
                         tool_calls_count += 1
+                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        tool_summary = _format_tool_result(tool_name, tool_result)
+                        tool_results_summary.append(f"{tool_name}: {tool_summary}")
+                    else:
+                        print(f"   ⚠️  Tool {tool_name} returned no result")
+            else:
+                if not tool_calls_list:
+                    print(f"   ℹ️  No tools requested by agent")
+            
+            # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
+            _generate_analysis_from_tools(
+                technical_analyst, technical_prompt_vars, tool_results_summary,
+                "technical", technical_result, all_tool_calls, "TechnicalAnalyst"
+            )
             
             # 添加到对话历史
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst"]
@@ -226,18 +256,37 @@ def run_multi_analyst_discussion(
                 for sym in sample_symbols:
                     tool_calls_list.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Fallback: Get fundamental data for {sym}"})
             
+            # 收集工具调用结果
+            tool_results_summary = []
             if use_tools and tool_calls_list:
+                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
+                    tool_name = tool_call.get("name", "unknown")
+                    print(f"   🔧 Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "FundamentalAnalyst",
-                            "tool": tool_call.get("name"),
+                            "tool": tool_name,
                             "result": tool_result
                         })
                         tool_calls_count += 1
+                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        tool_summary = _format_tool_result(tool_name, tool_result)
+                        tool_results_summary.append(f"{tool_name}: {tool_summary}")
+                    else:
+                        print(f"   ⚠️  Tool {tool_name} returned no result")
+            else:
+                if not tool_calls_list:
+                    print(f"   ℹ️  No tools requested by agent")
+            
+            # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
+            _generate_analysis_from_tools(
+                fundamental_analyst, fundamental_prompt_vars, tool_results_summary,
+                "fundamental", fundamental_result, all_tool_calls, "FundamentalAnalyst"
+            )
             
             # 添加到对话历史
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst"]
@@ -285,18 +334,37 @@ def run_multi_analyst_discussion(
                     {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"}
                 ]
             
+            # 收集工具调用结果
+            tool_results_summary = []
             if use_tools and tool_calls_list:
+                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
                 for tool_call in tool_calls_list[:3]:  # 最多3个工具
                     if tool_calls_count >= tool_budget:
                         break
+                    tool_name = tool_call.get("name", "unknown")
+                    print(f"   🔧 Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "SentimentAnalyst",
-                            "tool": tool_call.get("name"),
+                            "tool": tool_name,
                             "result": tool_result
                         })
                         tool_calls_count += 1
+                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        tool_summary = _format_tool_result(tool_name, tool_result)
+                        tool_results_summary.append(f"{tool_name}: {tool_summary}")
+                    else:
+                        print(f"   ⚠️  Tool {tool_name} returned no result")
+            else:
+                if not tool_calls_list:
+                    print(f"   ℹ️  No tools requested by agent")
+            
+            # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
+            _generate_analysis_from_tools(
+                sentiment_analyst, sentiment_prompt_vars, tool_results_summary,
+                "sentiment", sentiment_result, all_tool_calls, "SentimentAnalyst"
+            )
             
             # 添加到对话历史
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst"]
@@ -556,6 +624,116 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             "score": 5.0,
             "error": f"Failed to parse JSON: {e}"
         }
+
+
+def _generate_analysis_from_tools(
+    analyst: BaseAgent,
+    prompt_vars: Dict[str, Any],
+    tool_results_summary: List[str],
+    analyst_type: str,
+    result_dict: Dict[str, Any],
+    all_tool_calls: List[Dict[str, Any]],
+    analyst_name: str
+) -> None:
+    """基于工具结果生成分析"""
+    if not tool_results_summary or result_dict.get("analysis", "").strip():
+        return
+    
+    print(f"   🔄 Generating analysis based on tool results...")
+    tool_results_text = "\n".join(tool_results_summary)
+    
+    # 根据analyst类型定制prompt
+    if analyst_type == "market":
+        task_desc = """Analyze the market data above and provide:
+1. Market trend assessment (bullish/bearish/neutral)
+2. Key insights from the data
+3. Sector rotation observations
+4. Market regime identification
+5. Risk factors"""
+    elif analyst_type == "technical":
+        task_desc = """Analyze the technical indicators above and provide:
+1. Technical trend assessment (bullish/bearish/neutral)
+2. Key support/resistance levels
+3. Momentum indicators interpretation
+4. Volume analysis
+5. Trading signals"""
+    elif analyst_type == "fundamental":
+        task_desc = """Analyze the fundamental data above and provide:
+1. Valuation assessment (overvalued/undervalued/fair)
+2. Earnings quality analysis
+3. Financial health assessment
+4. Growth prospects
+5. Investment recommendation"""
+    else:  # sentiment
+        task_desc = """Analyze the sentiment data above and provide:
+1. Market sentiment assessment (bullish/bearish/neutral)
+2. Fear & Greed interpretation
+3. VIX analysis
+4. News sentiment trends
+5. Contrarian signals"""
+    
+    analysis_prompt = f"""Based on the tool results below, provide a comprehensive {analyst_type} analysis.
+
+**Tool Results:**
+{tool_results_text}
+
+**Your Task:**
+{task_desc}
+
+Output a detailed analysis (at least 200 words) based on the actual data from the tools."""
+    
+    try:
+        analysis_response = analyst.run(
+            {**prompt_vars, "extra_user_content": analysis_prompt},
+            expect_json=False
+        )
+        if isinstance(analysis_response, str):
+            result_dict["analysis"] = analysis_response[:1000]
+        else:
+            result_dict["analysis"] = str(analysis_response)[:1000]
+        print(f"   ✅ Analysis generated from tool results")
+    except Exception as e:
+        print(f"   ⚠️  Failed to generate analysis from tool results: {e}")
+        tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
+        result_dict["analysis"] = f"Analysis based on tools: {', '.join(tools_used)}"
+
+
+def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
+    """格式化工具结果用于反馈给LLM"""
+    if not tool_result or isinstance(tool_result, str):
+        return str(tool_result)[:200] if tool_result else "No data"
+    
+    if isinstance(tool_result, dict):
+        # 提取关键信息
+        if "error" in tool_result:
+            return f"Error: {tool_result.get('error', 'Unknown error')}"
+        
+        # 根据工具类型提取关键数据
+        if tool_name == "get_market_indices":
+            indices = tool_result.get("indices", {})
+            return f"S&P 500: {indices.get('sp500', {}).get('change_percent', 'N/A')}%, NASDAQ: {indices.get('nasdaq', {}).get('change_percent', 'N/A')}%"
+        elif tool_name == "get_sector_rotation":
+            sectors = tool_result.get("sectors", [])
+            top = sectors[:3] if sectors else []
+            return f"Top sectors: {', '.join([s.get('sector', '') for s in top])}"
+        elif tool_name == "get_advanced_indicators":
+            indicators = tool_result.get("indicators", {})
+            return f"RSI: {indicators.get('rsi', 'N/A')}, MACD: {indicators.get('macd_signal', 'N/A')}"
+        elif tool_name == "get_company_fundamentals":
+            fundamentals = tool_result.get("fundamentals", {})
+            return f"PE: {fundamentals.get('pe_ratio', 'N/A')}, Market Cap: {fundamentals.get('market_cap', 'N/A')}"
+        elif tool_name == "fear_greed":
+            fg = tool_result.get("fear_greed", {})
+            return f"Index: {fg.get('value', 'N/A')} ({fg.get('label', 'N/A')})"
+        elif tool_name == "vix_term":
+            vix = tool_result.get("vix", {})
+            return f"VIX: {vix.get('vix', 'N/A')}, Term structure: {vix.get('term_structure', 'N/A')}"
+        else:
+            # 通用格式化：提取前几个键值对
+            items = list(tool_result.items())[:5]
+            return ", ".join([f"{k}: {str(v)[:50]}" for k, v in items])
+    
+    return str(tool_result)[:200]
 
 
 def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any]) -> Optional[Dict[str, Any]]:

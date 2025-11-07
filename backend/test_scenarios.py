@@ -539,13 +539,46 @@ class ScenarioTester:
                     print(f"   💾 Portfolio state saved for Day {day}")
                     
                     # Recalculate total value after potential order execution
-                    from src.data.market_data import get_market_data
+                    # Use portfolio's value method with current prices (or avg_cost as fallback)
                     try:
-                        market_data = get_market_data(universe=list(portfolio._positions.keys()) if portfolio._positions else [])
-                        last_prices = {s: float(d.get("price", 0)) for s, d in market_data.get("stocks", {}).items()}
-                        total_value = portfolio.value(last_prices) if hasattr(portfolio, 'value') else portfolio.cash
-                    except:
-                        total_value = portfolio.cash
+                        if portfolio._positions:
+                            # Get latest prices for positions
+                            from src.data.market_data import get_latest_close
+                            from datetime import datetime, timedelta
+                            
+                            # Use current date or yesterday for price lookup
+                            price_date = current_date_str
+                            # Get prices for all positions
+                            last_prices = {}
+                            for symbol in portfolio._positions.keys():
+                                try:
+                                    # Get latest close price (use a date range around current_date)
+                                    start_date = (datetime.fromisoformat(current_date_str) - timedelta(days=5)).isoformat().split('T')[0]
+                                    end_date = (datetime.fromisoformat(current_date_str) + timedelta(days=1)).isoformat().split('T')[0]
+                                    price_series = get_latest_close(symbol, start_date, end_date)
+                                    if price_series is not None and len(price_series) > 0:
+                                        last_prices[symbol] = float(price_series.iloc[-1])
+                                    else:
+                                        # Fallback to avg_cost if price not available
+                                        pos = portfolio.get_position(symbol)
+                                        last_prices[symbol] = pos.avg_cost if pos else 0.0
+                                except Exception:
+                                    # Fallback to avg_cost if price fetch fails
+                                    pos = portfolio.get_position(symbol)
+                                    last_prices[symbol] = pos.avg_cost if pos else 0.0
+                            
+                            total_value = portfolio.value(last_prices) if hasattr(portfolio, 'value') else portfolio.cash
+                        else:
+                            total_value = portfolio.cash
+                    except Exception as e:
+                        # Fallback: use portfolio cash + positions at avg_cost
+                        try:
+                            total_value = portfolio.cash + sum(
+                                pos.quantity * pos.avg_cost 
+                                for pos in portfolio._positions.values()
+                            )
+                        except:
+                            total_value = portfolio.cash
                     
                     all_results.append({
                         "day": day,

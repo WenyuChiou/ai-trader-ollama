@@ -86,30 +86,25 @@ user: |
   }
   
   **Trading Strategy - Long and Short Opportunities:**
-  Based on sentiment analysis, you can recommend both LONG and SHORT positions:
+  Based on your sentiment analysis, you can recommend both LONG and SHORT positions. You have access to the following ETF tools - use them according to your analysis and judgment:
   
-  **When sentiment is EXTREMELY BEARISH (Fear & Greed < 20, VIX > 30, negative news):**
-  - Consider **Inverse ETFs** for contrarian plays or to profit from continued decline:
-    * SQQQ: 3x Inverse NASDAQ (when tech sentiment is very negative)
-    * SPXU: 3x Inverse S&P 500 (when broad market sentiment is bearish)
+  **Available Inverse ETFs** :
+    * SQQQ: 3x Inverse NASDAQ
+    * SPXU: 3x Inverse S&P 500
     * SH: 1x Inverse S&P 500 (conservative inverse position)
     * PSQ: 1x Inverse QQQ
     * SDS: 2x Inverse S&P 500
-    * SOXS: 3x Inverse Semiconductor ETF (when semis sentiment is negative)
+    * SOXS: 3x Inverse Semiconductor ETF
   
-  **When sentiment is EXTREMELY BULLISH (Fear & Greed > 80, VIX < 15, positive news):**
-  - Consider **Leveraged ETFs** to amplify gains (but be cautious of reversal):
+  **Available Leveraged ETFs** (amplify market moves):
     * TQQQ: 3x Leveraged NASDAQ
     * SPXL: 3x Leveraged S&P 500
     * UPRO: 3x Leveraged S&P 500
   
-  **Contrarian Strategy:**
-  - When sentiment is EXTREME (fear or greed), consider the opposite direction
-  - Extreme fear (< 20) might signal buying opportunity (but use inverse ETFs if decline continues)
-  - Extreme greed (> 80) might signal selling opportunity (use inverse ETFs to hedge)
-  
   **Key Points:**
-  - Use inverse ETFs when sentiment is bearish and you expect continued decline
-  - Use leveraged ETFs when sentiment is bullish and you expect continued rally
-  - Do NOT only recommend long positions - use inverse ETFs for bearish sentiment
-  - Include sentiment indicators (Fear & Greed, VIX) in your recommendations
+  - Based on your sentiment analysis (Fear & Greed Index, VIX, news sentiment), decide when to use these tools
+  - You can use inverse ETFs when your analysis suggests bearish sentiment or market decline
+  - You can use leveraged ETFs when your analysis suggests bullish sentiment or market rally
+  - Consider contrarian strategies when sentiment is extreme
+  - Do NOT limit yourself to only long positions - inverse ETFs are available tools for your analysis
+  - Include sentiment indicators (Fear & Greed, VIX) in your recommendations and explain your reasoning

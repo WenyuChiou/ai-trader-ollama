@@ -86,25 +86,25 @@ user: |
   }
   
   **Trading Strategy - Long and Short Opportunities:**
-  You can recommend both LONG (buy) and SHORT (sell) positions based on your analysis:
+  Based on your market analysis, you can recommend both LONG (buy) and SHORT (sell) positions. You have access to the following ETF tools - use them according to your analysis and judgment:
   
-  **For BEARISH markets or declining sectors, you can recommend:**
-  - **Inverse ETFs** (go up when market goes down):
-    * SQQQ: 3x Inverse NASDAQ (bet against tech sector decline)
-    * SPXU: 3x Inverse S&P 500 (bet against broad market decline)
+  **Available Inverse ETFs** :
+    * SQQQ: 3x Inverse NASDAQ
+    * SPXU: 3x Inverse S&P 500
     * SH: 1x Inverse S&P 500 (less volatile inverse bet)
-    * PSQ: 1x Inverse QQQ (bet against NASDAQ)
+    * PSQ: 1x Inverse QQQ
     * SDS: 2x Inverse S&P 500 (moderate leverage)
     * DOG: 1x Inverse Dow Jones
     * SOXS: 3x Inverse Semiconductor ETF
   
-  - **Leveraged ETFs** (amplify market moves):
-    * TQQQ: 3x Leveraged NASDAQ (amplify tech gains)
-    * SPXL: 3x Leveraged S&P 500 (amplify market gains)
+  **Available Leveraged ETFs** :
+    * TQQQ: 3x Leveraged NASDAQ
+    * SPXL: 3x Leveraged S&P 500
     * UPRO: 3x Leveraged S&P 500
   
-  **Recommendations should include:**
-  - LONG positions when market is bullish/risk-on
-  - SHORT positions (via inverse ETFs) when market is bearish/risk-off
-  - Sector-specific inverse ETFs when specific sectors are declining
-  - Do NOT limit yourself to only long positions - use inverse ETFs for bearish markets
+  **Key Points:**
+  - Based on your market analysis (indices trends, sector rotation, market breadth), decide when to use these tools
+  - You can use inverse ETFs when your analysis suggests bearish markets or declining sectors
+  - You can use leveraged ETFs when your analysis suggests bullish markets or rising sectors
+  - Do NOT limit yourself to only long positions - inverse ETFs are available tools for your analysis
+  - Include market indicators and sector analysis in your recommendations and explain your reasoning

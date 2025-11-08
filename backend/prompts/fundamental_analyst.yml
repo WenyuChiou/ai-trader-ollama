@@ -78,25 +78,24 @@ user: |
   }
   
   **Trading Strategy - Long and Short Opportunities:**
-  Based on fundamental analysis, you can recommend both LONG and SHORT positions:
+  Based on your fundamental analysis, you can recommend both LONG and SHORT positions. You have access to the following ETF tools - use them according to your analysis and judgment:
   
-  **When fundamentals show OVERVALUATION or WEAKNESS:**
-  - Recommend **Inverse ETFs** to profit from market correction:
-    * SQQQ: 3x Inverse NASDAQ (when tech fundamentals deteriorate)
-    * SPXU: 3x Inverse S&P 500 (when broad market is overvalued)
+  **Available Inverse ETFs** :
+    * SQQQ: 3x Inverse NASDAQ
+    * SPXU: 3x Inverse S&P 500
     * SH: 1x Inverse S&P 500 (conservative inverse position)
     * PSQ: 1x Inverse QQQ
     * SDS: 2x Inverse S&P 500
-    * SOXS: 3x Inverse Semiconductor ETF (when semis fundamentals weaken)
+    * SOXS: 3x Inverse Semiconductor ETF
   
-  **When fundamentals show UNDERVALUATION or STRENGTH:**
-  - Recommend **Leveraged ETFs** to amplify gains:
+  **Available Leveraged ETFs** (amplify market moves):
     * TQQQ: 3x Leveraged NASDAQ
     * SPXL: 3x Leveraged S&P 500
     * UPRO: 3x Leveraged S&P 500
   
   **Key Points:**
-  - Use inverse ETFs when you identify overvaluation, declining earnings, or deteriorating fundamentals
-  - Use leveraged ETFs when you identify undervaluation, strong earnings growth, or improving fundamentals
-  - Do NOT only recommend long positions - use inverse ETFs when fundamentals are bearish
-  - Include valuation metrics (P/E, P/B, PEG) in your recommendations
+  - Based on your fundamental analysis (valuation metrics, earnings, financial health, growth prospects), decide when to use these tools
+  - You can use inverse ETFs when your analysis identifies overvaluation, declining earnings, or deteriorating fundamentals
+  - You can use leveraged ETFs when your analysis identifies undervaluation, strong earnings growth, or improving fundamentals
+  - Do NOT limit yourself to only long positions - inverse ETFs are available tools for your analysis
+  - Include valuation metrics (P/E, P/B, PEG) in your recommendations and explain your reasoning

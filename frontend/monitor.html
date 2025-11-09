@@ -1606,7 +1606,9 @@
         const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (鈭斗??嗆挾)
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
-        const CONVERSATIONS_LIMIT = 30; // ?撖寡??圈?嚗?????DOM??嚗?        const TRADES_LIMIT = 30; // ?鈭斗??圈?嚗?????DOM??嚗?        let refreshTimer = null;
+        const CONVERSATIONS_LIMIT = 30; // Limit conversations (to avoid DOM overload)
+        const TRADES_LIMIT = 30; // Limit trades (to avoid DOM overload)
+        let refreshTimer = null;
         let orderCheckTimer = null; // 霈Ｗ?璉?亙??嗅
         let equityHistory = [];
         let demoTimer = null;

@@ -5186,16 +5186,13 @@
                 const isTradingHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
                 isMarketOpen = isWeekday && isTradingHours;
                 marketStatusSource = 'fallback';
-                // 只在非静默模式下显示警告（避免在自动刷新时产生过多日志）
-                // 如果错误是超时或连接重置，可能是服务器正在处理请求，这是正常的
-                const isTimeoutOrReset = e.message && (e.message.includes('timeout') || e.message.includes('reset') || e.message.includes('aborted'));
-                if (showLoading && !isTimeoutOrReset) {
-                    console.warn(`[Refresh] API check failed (${e.message || 'network error'}), using time-based fallback: ${isMarketOpen ? 'open' : 'closed'}`);
-                } else if (showLoading) {
-                    console.debug(`[Refresh] API check failed (server may be busy), using time-based fallback: ${isMarketOpen ? 'open' : 'closed'}`);
-                } else {
-                    console.debug(`[Refresh] API check failed, using time-based fallback: ${isMarketOpen ? 'open' : 'closed'}`);
+                // 如果错误是超时或连接重置，静默处理（服务器可能正在处理请求，这是正常的）
+                const isTimeoutOrReset = e.message && (e.message.includes('timeout') || e.message.includes('reset') || e.message.includes('aborted') || e.message.includes('signal timed out'));
+                // 超时错误完全静默，因为fallback逻辑已经处理了
+                if (!isTimeoutOrReset && showLoading) {
+                    console.debug(`[Refresh] API check failed (${e.message || 'network error'}), using time-based fallback: ${isMarketOpen ? 'open' : 'closed'}`);
                 }
+                // 超时错误不显示任何日志，避免控制台噪音
             }
             
             // 请求去重：如果正在刷新，取消之前的请求

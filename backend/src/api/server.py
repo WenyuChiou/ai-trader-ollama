@@ -162,6 +162,19 @@ async def websocket_endpoint(websocket: WebSocket):
             active_connections.remove(websocket)
 
 
+@app.options("/api/agents/status")
+async def agents_status_options():
+    """Handle CORS preflight for agents status endpoint"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 @app.get("/api/agents/status")
 async def get_agents_status():
     """Get current status of all agents"""
@@ -1162,6 +1175,19 @@ async def get_fear_greed():
             }
         }
 
+
+@app.options("/api/tools/list")
+async def tools_list_options():
+    """Handle CORS preflight for tools list endpoint"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 @app.get("/api/tools/list")
 async def list_tools():

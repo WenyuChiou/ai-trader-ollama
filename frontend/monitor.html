@@ -1963,11 +1963,11 @@
                     );
                     if (pendingOrders.length > 0) {
                         console.log(`[Trade Cycle] Warning: ${pendingOrders.length} pending orders exist. New orders may replace existing ones for the same symbol/action/date.`);
-                        // ?臭誑??曄內?內?誧蝏剜銵?                    }
-                }
+                        console.log([Trade Cycle] Warning:  pending orders exist. New orders may replace existing ones for the same symbol/action/date.);
+                        // Warning: Existing orders may be replaced
             } catch (e) {
-                // 憒?璉?亙仃韐伐?蝏抒賒?扯?嚗?敶勗?銝餅?蝔?
-                console.warn('[Trade Cycle] Failed to check existing orders:', e);
+            } catch (e) {
+                // Ignore errors when checking existing orders
             }
             
             // ??璉?亙??箇??隞鈭蝷綽?銝甇Ｘ銵?

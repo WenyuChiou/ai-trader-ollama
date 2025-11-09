@@ -2119,7 +2119,7 @@
                         btn.textContent = '?? Plan Tomorrow';
                     } else {
                         // Check if there are pending orders before executing
-            try {
+                        try {
                             const isOpen = await isMarketOpen();
                             btn.textContent = isOpen ? '?塚? Start Trading' : '?? Plan Tomorrow';
                         } catch {

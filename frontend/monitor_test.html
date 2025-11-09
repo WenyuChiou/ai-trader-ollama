@@ -2483,7 +2483,6 @@
                                             const parsed = JSON.parse(jsonMatch[0]);
                                             const toolName = parsed.tool || parsed.name || 'Unknown';
                                             toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
-                                            const toolName = parsed.tool || parsed.name || 'Unknown';
                                             const tableHtml = formatToolResultAsTable(parsed, toolName);
                                             toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                                 <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
@@ -2767,7 +2766,7 @@
                                         const parsed = JSON.parse(jsonMatch[0]);
                                         const toolName = parsed.tool || parsed.name || 'Unknown';
                                         toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
-                                        const tableHtml = formatToolResultAsTable(parsed);
+                                        const tableHtml = formatToolResultAsTable(parsed, toolName);
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                             <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
                                             ${tableHtml}
@@ -5754,11 +5753,6 @@
         // 页面卸载时清理
         window.addEventListener('beforeunload', () => {
             stopAutoTrade();
-        });
-
-        // Manual refresh button
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            refreshData(true);
         });
 
         // Scroll to section and update active nav button

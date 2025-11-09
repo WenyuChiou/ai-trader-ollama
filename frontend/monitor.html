@@ -2771,10 +2771,16 @@
                                     try {
                                         const jsonMatch = content_text.match(/\{[\s\S]*\}/);
                                         if (jsonMatch) {
-                                            const parsed = JSON.parse(jsonMatch[0]);
+                                            let parsed = JSON.parse(jsonMatch[0]);
                                             const toolName = parsed.tool || parsed.name || 'Unknown';
+                                            // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+                                            // 递归提取 result 字段，直到找到实际数据
+                                            let resultData = parsed;
+                                            while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                                resultData = resultData.result;
+                                            }
                                             toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
-                                            const tableHtml = formatToolResultAsTable(parsed, toolName);
+                                            const tableHtml = formatToolResultAsTable(resultData, toolName);
                                             toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                                 <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
                                                 ${tableHtml}

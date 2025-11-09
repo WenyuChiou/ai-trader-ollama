@@ -5397,6 +5397,8 @@
                         // 如果没有portfolio数据，显示市场状态提示
                         const summaryCards = document.getElementById('summaryCards');
                         if (summaryCards && summaryCards.children.length === 0) {
+                            // 即使没有portfolio数据，也显示 Market Sentiment Dashboard
+                            fetchVIXAndFGICards();
                             const marketStatusCard = document.createElement('div');
                             marketStatusCard.className = 'card';
                             marketStatusCard.style.cssText = `

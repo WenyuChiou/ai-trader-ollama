@@ -5271,10 +5271,10 @@
                             summaryCards.appendChild(marketStatusCard);
                         }
                     }
-                    // ???漱?畾萎??曄內??澆??脣銵剁??曄內?頞嚗?                    await renderEquityChart();  // ?曄內???潸???                }
-                renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
-                renderConversationsOverview(convData.conversations || []);  // 憪??曄內撖寡??捆
-                renderExecutionDetails(tradesData || []);  // ?湔?扯?霂行?嚗??祆??交???
+                    }
+                    // Render equity chart regardless of market status
+                    await renderEquityChart();
+                }
                 
                 // 憒?敶??汽rade History憿菟嚗??湔鈭斗??唳
                 const tradesPage = document.getElementById('tradesPage');

@@ -2892,9 +2892,10 @@
                     }
                     depth++;
                 }
-                // 如果还有result字段，再提取一次
-                if (data && data.result && typeof data.result === 'object') {
+                // 如果还有result字段，再提取一次（处理多层嵌套）
+                while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
                     data = data.result;
+                    depth++;
                 }
                 
                 // 检查是否是错误响应

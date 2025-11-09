@@ -5912,7 +5912,17 @@
                     if (navBtn) navBtn.classList.add('active');
                 }
             }
-        }
+        };
+        
+        // Manual refresh button (moved after scrollToSection to ensure it's defined)
+        document.addEventListener('DOMContentLoaded', () => {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    refreshData(true);
+                });
+            }
+        });
     </script>
 </body>
 </html>

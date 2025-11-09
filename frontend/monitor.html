@@ -194,35 +194,32 @@
             border-top: 1px solid rgba(245, 158, 11, 0.15) !important;
         }
 
-        /* Light theme - ensure all text is black */
-        body.light-theme .conversation-content,
-        body.light-theme .conversation-tool-result,
-        body.light-theme .conversation-meta,
-        body.light-theme .conversation-item,
-        body.light-theme .conversation-header,
-        body.light-theme .conversation-agent,
-        body.light-theme .conversation-date,
-        body.light-theme table td,
-        body.light-theme table th,
-        body.light-theme pre,
-        body.light-theme code,
-        body.light-theme .status-item-value,
-        body.light-theme .status-item-label {
+        /* Light theme - ensure all text is black, but preserve special colors */
+        /* Only apply black to elements without inline color styles */
+        body.light-theme .conversation-content:not([style*="color"]),
+        body.light-theme .conversation-item:not([style*="color"]),
+        body.light-theme .conversation-header:not([style*="color"]),
+        body.light-theme .conversation-agent:not([style*="color"]),
+        body.light-theme .conversation-date:not([style*="color"]),
+        body.light-theme .status-item-label:not([style*="color"]) {
             color: #000000 !important;
         }
 
-        body.light-theme .conversation-content *,
-        body.light-theme .conversation-tool-result *,
-        body.light-theme table td *,
-        body.light-theme table th * {
-            color: #000000 !important;
-        }
+        /* Preserve special colors - don't override elements with inline color styles */
+        /* Elements with inline color styles (like FGI, risk levels, status indicators) will keep their colors */
 
         /* Light theme - table styles */
         body.light-theme table {
             background: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        /* Only apply black to table cells without inline color styles */
+        body.light-theme table td:not([style*="color"]),
+        body.light-theme table th:not([style*="color"]) {
             color: #000000 !important;
         }
+        
+        /* Preserve colors in table cells that have inline color styles (for status indicators, etc.) */
 
         body.light-theme table thead tr {
             background: rgba(8, 145, 178, 0.1) !important;

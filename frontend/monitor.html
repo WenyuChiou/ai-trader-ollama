@@ -20,15 +20,15 @@
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
             min-height: 100vh;
             padding: 0 20px 20px 20px;
-            color: #ffffff; /* 暺??摮?- ??撖寞?摨?*/
+            color: #ffffff; /* 黑底配白字 - 提高对比度 */
             font-size: 14px;
             line-height: 1.6;
             letter-spacing: -0.01em;
             transition: background 0.3s ease, color 0.3s ease;
-            cursor: none; /* ??暺恕皜豢?嚗蝙?刻摰?皜豢? */
+            cursor: none; /* 隐藏默认游标，使用自定义游标 */
         }
         
-        /* 皜豢??函 - ??頝??? */
+        /* 游标动画 - 光标跟随效果 */
         .cursor-glow {
             position: fixed;
             width: 20px;
@@ -50,7 +50,7 @@
             box-shadow: 0 0 30px rgba(34, 211, 238, 0.8), 0 0 60px rgba(34, 211, 238, 0.6);
         }
         
-        /* 瘛梯銝駁?銝??函?脰??臬?蝝?雿輻瘛梯皜豢? */
+        /* 深色主题下，在白色背景元素上使用深色游标 */
         .cursor-glow.on-white {
             background: radial-gradient(circle, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 40%, rgba(8, 145, 178, 0.4) 70%, transparent 100%);
             box-shadow: 0 0 15px rgba(15, 23, 42, 0.8), 0 0 30px rgba(8, 145, 178, 0.6), 0 0 50px rgba(8, 145, 178, 0.3);
@@ -64,24 +64,24 @@
             border: 3px solid rgba(8, 145, 178, 1);
         }
         
-        /* Light theme 皜豢? - 雿輻瘛梯隞亦＆靽?質?銝閫?*/
+        /* Light theme 游标 - 使用深色以确保在白色背景上可见 */
         body.light-theme .cursor-glow {
             background: radial-gradient(circle, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 40%, rgba(8, 145, 178, 0.4) 70%, transparent 100%);
             box-shadow: 0 0 15px rgba(15, 23, 42, 0.8), 0 0 30px rgba(8, 145, 178, 0.6), 0 0 50px rgba(8, 145, 178, 0.3);
-            mix-blend-mode: normal; /* ?函?脰??臭?銝蝙??screen 璅∪? */
-            border: 2px solid rgba(8, 145, 178, 0.8); /* 瘛餃?颲寞?憓撩?航???*/
+            mix-blend-mode: normal; /* 在白色背景上不使用 screen 模式 */
+            border: 2px solid rgba(8, 145, 178, 0.8); /* 添加边框增强可见性 */
         }
         
         body.light-theme .cursor-glow.active {
             background: radial-gradient(circle, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.8) 40%, rgba(8, 145, 178, 0.6) 70%, transparent 100%);
             box-shadow: 0 0 25px rgba(15, 23, 42, 1), 0 0 50px rgba(8, 145, 178, 0.8), 0 0 80px rgba(8, 145, 178, 0.5);
-            border: 3px solid rgba(8, 145, 178, 1); /* 瞈瘣餅?渡??器獢?*/
+            border: 3px solid rgba(8, 145, 178, 1); /* 激活时更粗的边框 */
         }
 
         /* Light Theme Styles */
         body.light-theme {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f8fafc 100%);
-            color: #000000; /* ?賢???摮?- ??撖寞?摨?*/
+            color: #000000; /* 白底配黑字 - 提高对比度 */
         }
 
         body.light-theme .header {
@@ -98,23 +98,23 @@
         body.light-theme .card {
             background: rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(148, 163, 184, 0.3);
-            color: #000000; /* ?賢???摮?*/
+            color: #000000; /* 白底配黑字 */
         }
 
         body.light-theme .card-label {
-            color: #1e293b; /* 瘛梯??嚗?擃笆瘥漲 */
-            font-weight: 600; /* ?????航粉??*/
+            color: #1e293b; /* 深色文字，提高对比度 */
+            font-weight: 600; /* 加粗提高可读性 */
         }
 
         body.light-theme .card-value {
             color: #0891b2;
             text-shadow: none;
-            font-weight: 700; /* ?????航粉??*/
+            font-weight: 700; /* 加粗提高可读性 */
         }
 
         body.light-theme .card-subtitle {
-            color: #475569; /* 瘛梯??嚗?擃笆瘥漲 */
-            font-weight: 500; /* ?????航粉??*/
+            color: #475569; /* 深色文字，提高对比度 */
+            font-weight: 500; /* 加粗提高可读性 */
         }
 
         body.light-theme .chart-section,
@@ -137,9 +137,9 @@
         }
 
         body.light-theme td {
-            color: #000000; /* 瘛梯??嚗?擃笆瘥漲 */
+            color: #000000; /* 深色文字，提高对比度 */
             border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-            font-weight: 600; /* ?????航粉??*/
+            font-weight: 600; /* 加粗提高可读性 */
         }
 
         body.light-theme .symbol-cell {
@@ -1307,18 +1307,18 @@
 <body>
     <div class="hero"><div class="hero-inner">
         <div class="brand">
-            <div style="font-size:16px">??</div>
-            <h1>AI?rader Dashboard</h1>
+            <div style="font-size:16px">📈</div>
+            <h1>AI‑Trader Dashboard</h1>
             <span class="brand-badge">Live</span>
         </div>
-        <div class="brand-badge" id="dataTimestampTop">??/div>
+        <div class="brand-badge" id="dataTimestampTop">—</div>
     </div></div>
 
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="header-title">
-                <h1>?? AI-Trader Portfolio Monitor</h1>
+                <h1>📊 AI-Trader Portfolio Monitor</h1>
                 <div class="connection-status">
                     <span class="status-dot disconnected" id="statusDot"></span>
                     <span id="statusText">Checking...</span>
@@ -1346,12 +1346,12 @@
                     <span>Auto Trade (5 min)</span>
                 </label>
                 <button class="refresh-btn" id="startTradeBtn" onclick="startTradingCycle()">
-                    ?塚? Start Trading
+                    ▶️ Start Trading
                 </button>
                 <button class="refresh-btn" id="refreshBtn" onclick="refreshData(true)">
-                    ?? Refresh
+                    🔄 Refresh
                 </button>
-                <button class="refresh-btn" onclick="initSystem()">?? Initialize</button>
+                <button class="refresh-btn" onclick="initSystem()">⚙️ Initialize</button>
                 <label class="auto-refresh-toggle">
                     <input type="checkbox" id="autoDemoLoop">
                     <span>Auto Demo Loop</span>
@@ -1362,24 +1362,24 @@
 
         <!-- Quick Navigation -->
         <div class="quick-nav">
-            <span class="quick-nav-label">?? Quick Navigation:</span>
+            <span class="quick-nav-label">📍 Quick Navigation:</span>
             <a href="#summary-section" class="nav-btn active" onclick="scrollToSection('summary-section', event)">
-                <span>??</span> Summary
+                <span>📊</span> Summary
             </a>
             <a href="#chart-section" class="nav-btn" onclick="scrollToSection('chart-section', event)">
-                <span>??</span> Chart
+                <span>📈</span> Chart
             </a>
             <a href="#holdings-section" class="nav-btn" onclick="scrollToSection('holdings-section', event)">
-                <span>?</span> Holdings
+                <span>💼</span> Holdings
             </a>
             <a href="#conversations-section" class="nav-btn" onclick="scrollToSection('conversations-section', event)">
-                <span>?</span> Conversations
+                <span>💬</span> Conversations
             </a>
             <a href="#execution-section" class="nav-btn" onclick="scrollToSection('execution-section', event)">
-                <span>??/span> Execution
+                <span>⚡</span> Execution
             </a>
             <a href="#trade-history-section" class="nav-btn" onclick="scrollToSection('trade-history-section', event)">
-                <span>??</span> Trade History
+                <span>📋</span> Trade History
             </a>
         </div>
 
@@ -1391,7 +1391,7 @@
 
         <!-- Error State -->
         <div class="error" id="errorState" style="display: none;">
-            <h2>??Connection Error</h2>
+            <h2>❌ Connection Error</h2>
             <p id="errorMessage"></p>
             <button onclick="refreshData(true)">Retry Connection</button>
         </div>
@@ -1408,7 +1408,7 @@
             <div id="chart-section">
             <div class="chart-section" id="chartSection" style="display: block;">
                 <div class="chart-header">
-                    <h2>?? Total Asset Value Over Time</h2>
+                    <h2>📈 Total Asset Value Over Time</h2>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <button onclick="toggleChartScale()" style="padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; font-size: 12px;">
                             <span id="chartScaleBtn">Linear Scale</span>
@@ -1424,7 +1424,7 @@
             <!-- Portfolio Distribution - Pie Chart -->
             <div class="chart-section" id="distributionSection" style="display: block; margin-top: 20px;">
                 <div class="chart-header">
-                    <h2>?尼 Portfolio Distribution</h2>
+                    <h2>🥧 Portfolio Distribution</h2>
                     <span style="font-size: 13px; color: #6b7280;" id="pieChartInfo">By market value</span>
                 </div>
                 <div class="chart-container" style="position: relative; height: 400px; padding: 20px; display: flex; justify-content: center; align-items: center;">
@@ -1469,9 +1469,9 @@
                 <div class="trades-section" id="conversationsOverviewSection">
                     <div class="section-header">
                         <h2>
-                            ? AI Agent Conversations (Live)
+                            💬 AI Agent Conversations (Live)
                         </h2>
-                        <span class="position-count" id="convCount">??/span>
+                        <span class="position-count" id="convCount">—</span>
                     </div>
                     <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
                 </div>
@@ -1481,7 +1481,7 @@
                 <div id="execution-section">
                 <div class="trades-section" id="executionDetailsSection">
                     <div class="section-header">
-                        <h2>?? Execution Details</h2>
+                        <h2>📋 Execution Details</h2>
                         <span class="position-count" id="executionCount">0 trades</span>
                     </div>
                     <div class="table-container" style="max-height: 500px; overflow-y: auto;">
@@ -1507,7 +1507,7 @@
             <!-- No Positions State -->
             <div class="positions-section" id="noPositionsState" style="display: none;">
                 <div class="empty-state">
-                    <div class="empty-icon">??</div>
+                    <div class="empty-icon">📊</div>
                     <h3>No Positions</h3>
                     <p>You don't have any open positions yet.</p>
                     <p class="hint">Run a trading cycle to generate positions</p>
@@ -1570,8 +1570,8 @@
         <div class="modal-overlay" id="conversationsModal" onclick="closeModalOnOverlay(event)">
             <div class="modal-content" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h2>?? AI Agent Conversations</h2>
-                    <button class="modal-close" onclick="closeConversationsModal()">?</button>
+                    <h2>🤖 AI Agent Conversations</h2>
+                    <button class="modal-close" onclick="closeConversationsModal()">×</button>
                 </div>
                 <div id="conversationsContent">
                     <div class="loading">
@@ -1591,7 +1591,7 @@
                 </div>
                 <div style="display: flex; gap: 15px; align-items: center;">
                     <button onclick="toggleTheme()" style="padding: 6px 12px; border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; background: rgba(15, 23, 42, 0.6); color: #22d3ee; cursor: pointer; font-size: 12px; transition: all 0.2s;">
-                        ? <span id="themeText">Light Theme</span>
+                        🎨 <span id="themeText">Light Theme</span>
                     </button>
                     <div id="dataTimestamp"></div>
                 </div>
@@ -1602,14 +1602,14 @@
     <script>
         // Configuration
         const API_BASE = 'http://127.0.0.1:8000';
-        const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh (憓?憸?隞交敹怎??啗恥??鈭?
-        const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (鈭斗??嗆挾)
+        const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh (增加频率以更快看到订单成交)
+        const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (交易时段)
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
-        const CONVERSATIONS_LIMIT = 30; // Limit conversations (to avoid DOM overload)
-        const TRADES_LIMIT = 30; // Limit trades (to avoid DOM overload)
+        const CONVERSATIONS_LIMIT = 30; // 限制对话数量（优化：减少DOM操作）
+        const TRADES_LIMIT = 30; // 限制交易数量（优化：减少DOM操作）
         let refreshTimer = null;
-        let orderCheckTimer = null; // 霈Ｗ?璉?亙??嗅
+        let orderCheckTimer = null; // 订单检查定时器
         let equityHistory = [];
         let demoTimer = null;
         let agentStatusTimer = null;
@@ -1680,7 +1680,8 @@
                 return;
             }
             
-            // ?駁?嚗蝙?其? renderExecutionDetails ?詨??餉?嚗ymbol|side|quantity|price嚗?            const seen = new Set();
+            // 去重：使用与 renderExecutionDetails 相同的逻辑（symbol|side|quantity|price）
+            const seen = new Set();
             const uniqueTrades = [];
             
             for (const trade of tradesData) {
@@ -1688,7 +1689,8 @@
                 const side = (trade.side || trade.action || '').toUpperCase();
                 const qty = parseInt(trade.quantity || 0);
                 const price = parseFloat(trade.price || trade.fill_price || trade.limit_price || 0);
-                const priceNormalized = Math.round(price * 100) / 100; // 靽?2雿???                const key = `${sym}|${side}|${qty}|${priceNormalized}`;
+                const priceNormalized = Math.round(price * 100) / 100; // 保留2位小数
+                const key = `${sym}|${side}|${qty}|${priceNormalized}`;
                 
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -1696,7 +1698,7 @@
                 }
             }
             
-            // 蝏恣 PENDING ??FILLED 霈Ｗ?嚗蝙?典之????銝?renderExecutionDetails 銝?湛?
+            // 统计 PENDING 和 FILLED 订单（使用大写状态匹配，与 renderExecutionDetails 一致）
             const pending = uniqueTrades.filter(t => {
                 const status = (t.status || '').toUpperCase();
                 return status === 'PENDING' || status === 'ASK';
@@ -1748,7 +1750,7 @@
         // Fetch portfolio data
         async function fetchPortfolio(options = {}) {
             try {
-                // Create abort controller for timeout
+                // 增加超时时间到15秒，避免正常刷新时超时
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
@@ -1769,12 +1771,12 @@
 
                     const data = await response.json();
                     
-                    // Check if response is ok
+                    // 验证数据完整性
                     if (!data.ok || data.error) {
                         throw new Error(data.error || 'Failed to load portfolio');
                     }
                     
-                    // Check positions_pnl field
+                    // 确保positions_pnl存在且有效
                     if (!data.positions_pnl || typeof data.positions_pnl !== 'object') {
                         console.warn('[Frontend] Backend did not return positions_pnl, will calculate from positions');
                         data.positions_pnl = {};
@@ -1789,7 +1791,7 @@
                 if (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message.includes('timeout')) {
                     throw new Error('Request timeout, please check your network connection');
                 }
-                // Log error if not aborted
+                // 静默处理其他错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch portfolio:', err.message);
                 }
@@ -1825,9 +1827,9 @@
                     pnl: item.total_pnl || 0,
                 }));
             } catch (err) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
-                    // 憒??秤?航??仿?蝵格?頞嚗?賣??冽迤?典??窈瘙?雿輻debug蝥批
+                    // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
                         console.debug('Failed to fetch equity history (server may be busy):', err.message);
@@ -1862,9 +1864,9 @@
                     timestamp: new Date().toISOString(),
                 };
             } catch (err) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
-                    // 憒??秤?航??仿?蝵格?頞嚗?賣??冽迤?典??窈瘙?雿輻debug蝥批
+                    // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
                         console.debug('Failed to fetch backend status (server may be busy):', err.message);
@@ -1886,16 +1888,17 @@
         }
 
         async function initSystem() {
-            // 蝖株恕撖寡?獢?            const confirmMsg = `?? WARNING: This will DELETE ALL trading history, conversations, and reset portfolio to initial state.\n\n` +
+            // 确认对话框
+            const confirmMsg = `⚠️ WARNING: This will DELETE ALL trading history, conversations, and reset portfolio to initial state.\n\n` +
                               `This action CANNOT be undone!\n\n` +
                               `Are you sure you want to continue?`;
             
             if (!confirm(confirmMsg)) {
-                return; // ?冽??
+                return; // 用户取消
             }
             
-            // 鈭活蝖株恕
-            const secondConfirm = confirm(`?? FINAL CONFIRMATION\n\n` +
+            // 二次确认
+            const secondConfirm = confirm(`⚠️ FINAL CONFIRMATION\n\n` +
                                          `This will permanently delete:\n` +
                                          `- All trading history\n` +
                                          `- All conversation logs\n` +
@@ -1904,56 +1907,59 @@
                                          `Are you absolutely sure?`);
             
             if (!secondConfirm) {
-                return; // ?冽??
+                return; // 用户取消
             }
             
             try {
                 const btn = document.getElementById('initBtn') || document.querySelector('button[onclick="initSystem()"]');
                 if (btn) {
                     btn.disabled = true;
-                    btn.textContent = '??Initializing...';
+                    btn.textContent = '⏳ Initializing...';
                 }
                 
                 const r = await fetch(`${API_BASE}/api/system/init`, { method: 'POST' });
                 const data = await r.json();
                 
                 if (r.ok && data.ok) {
-                    alert('??System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.');
+                    alert('✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.');
                     await refreshData(true);
                 } else {
-                    alert('??Initialization failed: ' + (data.error || 'Unknown error'));
+                    alert('❌ Initialization failed: ' + (data.error || 'Unknown error'));
                 }
             } catch (e) {
-                alert('??Initialization failed: ' + e.message);
+                alert('❌ Initialization failed: ' + e.message);
             } finally {
                 const btn = document.getElementById('initBtn') || document.querySelector('button[onclick="initSystem()"]');
                 if (btn) {
                     btn.disabled = false;
-                    btn.textContent = '?? Initialize';
+                    btn.textContent = '⚙️ Initialize';
                 }
             }
         }
 
-        // ?湔?扯?鈭斗?敺芰嚗餈?嚗???扯?????箏?剜閫??鈭???銝泅cenario嚗?        let tradeCheckTimer = null;
-        let isTradingExecuting = false;  // ??瘛餃??扯??嗆?敹??脫迫???扯?
-        let hasPlannedToday = false;  // ???扇隞予?臬撌脩?閫?餈??其?Auto Trade隡?嚗?        
+        // 直接执行交易循环（改进版：防重复执行、支持市场关闭时规划、适用于所有5个scenario）
+        let tradeCheckTimer = null;
+        let isTradingExecuting = false;  // ✅ 添加执行状态标志，防止重复执行
+        let hasPlannedToday = false;  // ✅ 标记今天是否已经规划过（用于Auto Trade优化）
+        
         async function executeTradeCycle() {
-            // ???脤?憭銵?憒?銝活鈭斗?餈?扯?嚗歲餈甈?            if (isTradingExecuting) {
+            // ✅ 防重复执行：如果上次交易还在执行，跳过本次
+            if (isTradingExecuting) {
                 console.log('[Trade Cycle] Previous trade cycle still executing, skipping...');
                 const btn = document.getElementById('startTradeBtn');
                 if (btn) {
-                    btn.textContent = '??Already Running...';
+                    btn.textContent = '⏳ Already Running...';
                     setTimeout(async () => {
                         if (btn && !btn.disabled) {
                             const isOpen = await isMarketOpen().catch(() => false);
-                            btn.textContent = isOpen ? '?塚? Start Trading' : '?? Plan Tomorrow';
+                            btn.textContent = isOpen ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                         }
                     }, 2000);
                 }
                 return;
             }
             
-            // Check if there are pending orders before executing
+            // ✅ 检查是否有待处理的订单，给出提示
             try {
                 const tradesResponse = await fetch(`${API_BASE}/api/trades/recent?limit=10`);
                 if (tradesResponse.ok) {
@@ -1963,15 +1969,20 @@
                     );
                     if (pendingOrders.length > 0) {
                         console.log(`[Trade Cycle] Warning: ${pendingOrders.length} pending orders exist. New orders may replace existing ones for the same symbol/action/date.`);
-                        console.log([Trade Cycle] Warning:  pending orders exist. New orders may replace existing ones for the same symbol/action/date.);
-                        // Warning: Existing orders may be replaced
+                        // 可以选择显示提示或继续执行
+                    }
+                }
             } catch (e) {
-            } catch (e) {
-                // Ignore errors when checking existing orders
+                // 如果检查失败，继续执行（不影响主流程）
+                console.warn('[Trade Cycle] Failed to check existing orders:', e);
             }
             
-            // ??璉?亙??箇??隞鈭蝷綽?銝甇Ｘ銵?
-            // 瘜冽?嚗??鈭???銝泅cenario嚗?            // - Scenario 1-2: 撣撘???芋??嚗銵??嗡漱??            // - Scenario 3-4: 撣?喲嚗?璅⊥?嚗?閫??予?漱??            // - Scenario 5: 憭予璅⊥?嚗?格?憭拍?撣?嗆銵?            let marketStatus = 'unknown';
+            // ✅ 检查市场状态（仅用于显示，不阻止执行）
+            // 注意：这适用于所有5个scenario：
+            // - Scenario 1-2: 市场开盘（或模拟），执行实时交易
+            // - Scenario 3-4: 市场关闭（或模拟），规划明天的交易
+            // - Scenario 5: 多天模拟，根据每天的市场状态执行
+            let marketStatus = 'unknown';
             try {
                 const isOpen = await isMarketOpen();
                 marketStatus = isOpen ? 'open' : 'closed';
@@ -1982,28 +1993,31 @@
                 }
             } catch (e) {
                 console.warn('[Trade Cycle] Failed to check market status, proceeding anyway:', e);
-                // 憒???璉?亙??箇???挽撣?喲嚗摰嚗?                marketStatus = 'closed';
+                // 如果无法检查市场状态，假设市场关闭（更安全）
+                marketStatus = 'closed';
             }
             
             isTradingExecuting = true;
-            // Update conversation status to Running (agents?嗆)
+            // Update conversation status to Running (agents状态灯)
             updateConversationStatus(true);
             
-            // ?湔??嗆?            const btn = document.getElementById('startTradeBtn');
+            // 更新按钮状态
+            const btn = document.getElementById('startTradeBtn');
             if (btn) {
                 btn.disabled = true;
-                btn.textContent = marketStatus === 'open' ? '??Trading...' : '??Planning...';
+                btn.textContent = marketStatus === 'open' ? '⏳ Trading...' : '⏳ Planning...';
             }
             
             try {
                 console.log('[Trade Cycle] Executing trading cycle...');
                 const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
                     method: 'POST',
-                    mode: 'cors',  // ?＆?? CORS 璅∪?
+                    mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    signal: AbortSignal.timeout(600000),  // 10??頞嚗漱?儐?臬?賡?閬??踵?湛??孵?臬?agent霈刻捏嚗?                });
+                    signal: AbortSignal.timeout(600000),  // 10分钟超时（交易循环可能需要较长时间，特别是多agent讨论）
+                });
                 
                 let data;
                 try {
@@ -2019,39 +2033,42 @@
                     const message = data.message || '';
                     const isPlanning = data.result?.is_planning || false;
                     
-                    // ?寞API餈???????啣??箇??                    if (isPlanning) {
+                    // 根据API返回的实际结果更新市场状态
+                    if (isPlanning) {
                         marketStatus = 'closed';
                         console.log(`[Trade Cycle] Planning completed: ${orderCount} pending orders for tomorrow, ${convCount} conversations. ${message}`);
                     } else {
                         marketStatus = 'open';
-                        // 璉?交?行?霈Ｗ???
+                        // 检查是否有订单生成
                         if (orderCount === 0) {
-                            console.warn(`[Trade Cycle] ?? Trading completed but no orders generated. ${message || 'This may indicate neutral market conditions or all positions already at target levels.'}`);
+                            console.warn(`[Trade Cycle] ⚠️ Trading completed but no orders generated. ${message || 'This may indicate neutral market conditions or all positions already at target levels.'}`);
                         } else {
                             console.log(`[Trade Cycle] Trading completed: ${orderCount} orders, ${convCount} conversations. ${message}`);
                         }
                     }
                     
-                    // ?瑟?唳嚗撩?嗅?唬誑蝖桐??瑕???唳?殷?
-                    // 瘜冽?嚗歲餈摨瑟??伐??踹??冽銵??湔蝷?connection error
+                    // 刷新数据（强制刷新以确保获取最新数据）
+                    // 注意：跳过健康检查，避免在执行期间显示 connection error
                     console.log('[Trade Cycle] Refreshing data after trade execution...');
                     await refreshData(false, true);  // skipHealthCheck = true
                     console.log('[Trade Cycle] Data refresh completed');
-                    // ?瑟摰????湔餈?嗆?                    updateConnectionStatus(true);
+                    // 刷新完成后，更新连接状态
+                    updateConnectionStatus(true);
                 } else {
                     const errorMsg = data.error || data.message || 'Unknown error';
-                    // 璉?交?行429?秤嚗oo Many Requests - ???扯?嚗?                    if (response.status === 429) {
+                    // 检查是否是429错误（Too Many Requests - 重复执行）
+                    if (response.status === 429) {
                         console.warn('[Trade Cycle] Another trading cycle is already executing:', errorMsg);
-                        // ?曄內?末?內
+                        // 显示友好提示
                         if (btn) {
-                            btn.textContent = '??Already Running...';
+                            btn.textContent = '⏳ Already Running...';
                             setTimeout(() => {
                                 if (btn && !btn.disabled) {
-                                    btn.textContent = marketStatus === 'open' ? '?塚? Start Trading' : '?? Plan Tomorrow';
+                                    btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                                 }
                             }, 3000);
                         }
-                        // 撠??瑟?唳嚗?賭????扯?撌脣???
+                        // 尝试刷新数据（可能之前的执行已完成）
                         setTimeout(async () => {
                             try {
                                 await refreshData(false, true);
@@ -2061,33 +2078,34 @@
                         }, 2000);
                     } else {
                         console.error('[Trade Cycle] Failed:', errorMsg);
-                        // ?曄內?秤?內嚗?銝甇Ｗ?蝏剜?雿?
+                        // 显示错误提示（但不阻止后续操作）
                         if (btn) {
-                            btn.textContent = '??Error';
+                            btn.textContent = '❌ Error';
                             setTimeout(() => {
                                 if (btn && !btn.disabled) {
-                                    btn.textContent = marketStatus === 'open' ? '?塚? Start Trading' : '?? Plan Tomorrow';
+                                    btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                                 }
                             }, 2000);
                         }
                     }
                 }
             } catch (e) {
-                // 璉?交?行頞?秤
+                // 检查是否是超时错误
                 if (e.name === 'AbortError' || e.name === 'TimeoutError' || e.message?.includes('timeout') || e.message?.includes('timed out')) {
                     console.warn('[Trade Cycle] Request timed out. This is normal for long-running trading cycles. The server may still be processing...');
-                    // ?曄內?內靽⊥
+                    // 显示提示信息
                     if (btn) {
                         btn.disabled = false;
-                        btn.textContent = '??Processing... (may take several minutes)';
-                        // 5蝘??Ｗ???
+                        btn.textContent = '⏳ Processing... (may take several minutes)';
+                        // 5秒后恢复按钮文本
                         setTimeout(() => {
                             if (btn && !btn.disabled) {
-                                btn.textContent = marketStatus === 'open' ? '?塚? Start Trading' : '?? Plan Tomorrow';
+                                btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                             }
                         }, 5000);
                     }
-                    // ?喃蝙頞嚗?撠??瑟?唳嚗??∪?航撌脩?摰?憭?嚗?                    console.log('[Trade Cycle] Attempting to refresh data despite timeout...');
+                    // 即使超时，也尝试刷新数据（服务器可能已经完成处理）
+                    console.log('[Trade Cycle] Attempting to refresh data despite timeout...');
                     try {
                         await refreshData(false, true);
                         updateConnectionStatus(true);
@@ -2096,54 +2114,58 @@
                     }
                 } else {
                     console.error('[Trade Cycle] Exception:', e);
-                    // ?曄內?秤?內
+                    // 显示错误提示
                     if (btn) {
-                        btn.textContent = '??Error';
+                        btn.textContent = '❌ Error';
                         setTimeout(() => {
                             if (btn && !btn.disabled) {
-                                btn.textContent = marketStatus === 'open' ? '?塚? Start Trading' : '?? Plan Tomorrow';
+                                btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                             }
                         }, 2000);
                     }
                 }
             } finally {
-                isTradingExecuting = false;  // ??蝖桐??捏??憭梯揖?賡?蝵格?敹?                // Update conversation status back to Idle (agents?嗆)
+                isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
+                // Update conversation status back to Idle (agents状态灯)
                 updateConversationStatus(false);
                 
-                // ?Ｗ???嗆??寞摰?撣?嗆?
+                // 恢复按钮状态（根据实际市场状态）
                 if (btn) {
                     btn.disabled = false;
-                    // ?寞撣?嗆?唳??格???                    if (marketStatus === 'open') {
-                        btn.textContent = '?塚? Start Trading';
+                    // 根据市场状态更新按钮文本
+                    if (marketStatus === 'open') {
+                        btn.textContent = '▶️ Start Trading';
                     } else if (marketStatus === 'closed') {
-                        btn.textContent = '?? Plan Tomorrow';
+                        btn.textContent = '📋 Plan Tomorrow';
                     } else {
-                        // Check if there are pending orders before executing
+                        // 如果状态未知，重新检查
                         try {
                             const isOpen = await isMarketOpen();
-                            btn.textContent = isOpen ? '?塚? Start Trading' : '?? Plan Tomorrow';
+                            btn.textContent = isOpen ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                         } catch {
-                            btn.textContent = '?塚? Start Trading';
+                            btn.textContent = '▶️ Start Trading';
                         }
                     }
                 }
             }
         }
         
-        // 璉?亙笆霂葉?臬?漱?遣霈殷?憒????扯?鈭斗?嚗歇摨?嚗?函?交銵?
+        // 检查对话中是否有交易建议，如果有则执行交易（已废弃，改用直接执行）
         let lastCheckedConvoCount = 0;
         
         async function checkAndExecuteTrade() {
             try {
-                // ?瑕???啣笆霂?                const convData = await fetchConversations(CONVERSATIONS_LIMIT);
+                // 获取最新对话
+                const convData = await fetchConversations(CONVERSATIONS_LIMIT);
                 const conversations = convData.conversations || [];
                 const currentConvoCount = conversations.length;
                 
-                // 憒?撖寡??圈?瘝⊥?憓?嚗秩?瓷??悄霈?                if (currentConvoCount <= lastCheckedConvoCount) {
+                // 如果对话数量没有增加，说明没有新的讨论
+                if (currentConvoCount <= lastCheckedConvoCount) {
                     return;
                 }
                 
-                // 璉?交??啣笆霂葉?臬?漱?遣霈殷?TraderAgent ?恥??喳?摰對?
+                // 检查最新对话中是否有交易建议（TraderAgent 或订单相关内容）
                 const recentConvos = conversations.slice(lastCheckedConvoCount);
                 let hasTradeIntent = false;
                 
@@ -2152,14 +2174,14 @@
                     const content = conv.content || '';
                     const lowerContent = content.toLowerCase();
                     
-                    // 璉?交?行 TraderAgent ???思漱??株?
+                    // 检查是否是 TraderAgent 或包含交易关键词
                     if (agent.includes('Trader') || 
                         agent.includes('trader') ||
                         lowerContent.includes('buy order') ||
                         lowerContent.includes('sell order') ||
                         lowerContent.includes('placed order') ||
-                        lowerContent.includes('?扯?霈Ｗ?') ||
-                        lowerContent.includes('??霈Ｗ?') ||
+                        lowerContent.includes('执行订单') ||
+                        lowerContent.includes('生成订单') ||
                         (lowerContent.includes('buy') && lowerContent.includes('shares')) ||
                         (lowerContent.includes('sell') && lowerContent.includes('shares'))) {
                         hasTradeIntent = true;
@@ -2167,9 +2189,9 @@
                     }
                 }
                 
-                // 憒??漱???橘??扯?鈭斗?敺芰
+                // 如果有交易意图，执行交易循环
                 if (hasTradeIntent) {
-                    console.log('[Trade Check] 璉瘚鈭斗??嚗銵漱?儐??..');
+                    console.log('[Trade Check] 检测到交易意图，执行交易循环...');
                     lastCheckedConvoCount = currentConvoCount;
                     
                     const r = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
@@ -2183,17 +2205,18 @@
                     
                     if (r.ok && data.ok) {
                         const orderCount = data.result?.placed_orders || 0;
-                        console.log(`[Trade Check] 鈭斗??扯???: ${orderCount} 蝚恥?);
-                        // ?瑟?唳
+                        console.log(`[Trade Check] 交易执行成功: ${orderCount} 笔订单`);
+                        // 刷新数据
                         await refreshData(false);
                     } else {
-                        console.error('[Trade Check] 鈭斗??扯?憭梯揖:', data.error);
+                        console.error('[Trade Check] 交易执行失败:', data.error);
                     }
                 } else {
-                    // ?湔璉?亥恣??                    lastCheckedConvoCount = currentConvoCount;
+                    // 更新检查计数
+                    lastCheckedConvoCount = currentConvoCount;
                 }
             } catch (e) {
-                console.error('[Trade Check] 璉?亙?撣?', e);
+                console.error('[Trade Check] 检查异常:', e);
             }
         }
         
@@ -2202,42 +2225,48 @@
                 clearInterval(tradeCheckTimer);
             }
             
-            // ??隡?嚗?質?摨佗??芸鈭斗??嗆挾餈?嚗?撠?皞???            // 鈭斗??嗆挾嚗?5???扯?銝甈?            // ?漱?畾蛛??芸撣?喲?銵?甈∟????嗅??迫
+            // ✅ 优化：智能调度，只在交易时段运行，减少资源消耗
+            // 交易时段：每5分钟执行一次
+            // 非交易时段：只在市场关闭后执行一次规划，然后停止
             async function smartAutoTrade() {
                 try {
                     const isOpen = await isMarketOpen();
                     if (isOpen) {
-                        // 鈭斗??嗆挾嚗銵漱?儐??                        console.log('[Auto Trade] Market is open, executing trade cycle...');
-                        hasPlannedToday = false;  // ?蔭?扇嚗?銝箏??箏???
+                        // 交易时段：执行交易循环
+                        console.log('[Auto Trade] Market is open, executing trade cycle...');
+                        hasPlannedToday = false;  // 重置标记，因为市场开盘了
                         try {
                             await executeTradeCycle();
                             console.log('[Auto Trade] Trade cycle completed successfully');
                         } catch (e) {
                             console.error('[Auto Trade] Error during trade cycle:', e);
-                            // ?喃蝙憭梯揖銋誧蝏哨?銝活??
+                            // 即使失败也继续，下次重试
                         }
                     } else {
-                        // ?漱?畾蛛?憒?隞予撌脩?閫?餈?頝唾?
+                        // 非交易时段：如果今天已经规划过，跳过
                         if (hasPlannedToday) {
                             console.log('[Auto Trade] Already planned today, skipping to save resources');
                             return;
                         }
                         
-                        // ?漱?畾蛛??扯?銝甈∟???                        console.log('[Auto Trade] Market is closed, planning tomorrow\'s trades...');
+                        // 非交易时段：执行一次规划
+                        console.log('[Auto Trade] Market is closed, planning tomorrow\'s trades...');
                         try {
                             await executeTradeCycle();
-                            // 閫?摰????扇銝箏歇閫?撟嗅?甇Ｚ?其漱??                            hasPlannedToday = true;
+                            // 规划完成后，标记为已规划并停止自动交易
+                            hasPlannedToday = true;
                             stopAutoTrade();
                             console.log('[Auto Trade] Planning completed, auto trade stopped to save resources');
                         } catch (e) {
                             console.error('[Auto Trade] Error during planning:', e);
-                            // 憒?閫?憭梯揖嚗??扇銝箏歇閫?嚗?甈∪隞仿?霂?                            // 銝?甇糎uto trade嚗悟摰銝活??
+                            // 如果规划失败，不标记为已规划，下次可以重试
+                            // 不停止auto trade，让它在下次重试
                         }
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
-                    // Check if there are pending orders before executing
-            try {
+                    // 如果无法检查市场状态，假设市场开盘并尝试执行（盘中应该能执行）
+                    try {
                         console.log('[Auto Trade] Market status check failed, attempting trade cycle anyway...');
                         await executeTradeCycle();
                     } catch (tradeErr) {
@@ -2246,18 +2275,20 @@
                 }
             }
             
-            // 鈭斗??嗆挾嚗?5???扯?銝甈?            const TRADING_INTERVAL = 5 * 60 * 1000;  // 5??
+            // 交易时段：每5分钟执行一次
+            const TRADING_INTERVAL = 5 * 60 * 1000;  // 5分钟
             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
             console.log(`[Auto Trade] Smart auto trading started (every ${TRADING_INTERVAL / 1000} seconds during market hours)`);
             console.log(`[Auto Trade] Will stop automatically after planning tomorrow's trades when market is closed`);
-            // 蝡?扯?銝甈?            smartAutoTrade();
+            // 立即执行一次
+            smartAutoTrade();
         }
         
         function stopAutoTrade() {
             if (tradeCheckTimer) {
                 clearInterval(tradeCheckTimer);
                 tradeCheckTimer = null;
-                console.log('[Auto Trade] 鈭斗?璉?亙歇?迫');
+                console.log('[Auto Trade] 交易检查已停止');
             }
         }
 
@@ -2281,7 +2312,7 @@
                 // API returns agents directly as object, not nested under "agents" key
                 return data || {};
             } catch (err) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch agent status:', err.message);
                 }
@@ -2307,7 +2338,7 @@
                 const data = await response.json();
                 return data.tools || [];
             } catch (err) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch tools list:', err.message);
                 }
@@ -2333,7 +2364,7 @@
                 const data = await response.json();
                 return data.ok ? data : null;
             } catch (err) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch system info:', err.message);
                 }
@@ -2366,9 +2397,9 @@
                 }
                 return { conversations: [], total: 0, has_more: false };
             } catch (err) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (err.name !== 'AbortError') {
-                    // 憒??秤?航??仿?蝵格?頞嚗?賣??冽迤?典??窈瘙?雿輻debug蝥批
+                    // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
                         console.debug('Failed to fetch conversations (server may be busy):', err.message);
@@ -2483,9 +2514,11 @@
             }
         }
 
-        // Render conversations (?舀?憭予???交????蝷?餈??游?")
-        // ??霈Ｗ??嗆??        function generateOrderStatusCard() {
-            // 隞撅???瑕?霈Ｗ??唳嚗refreshData銝剖歇?瑕?嚗?            if (typeof window.lastTradesData === 'undefined' || !window.lastTradesData) {
+        // Render conversations (支持多天、按日期分组、显示"还有更多")
+        // 生成订单状态卡片
+        function generateOrderStatusCard() {
+            // 从全局变量获取订单数据（在refreshData中已获取）
+            if (typeof window.lastTradesData === 'undefined' || !window.lastTradesData) {
                 return '';
             }
             
@@ -2497,7 +2530,8 @@
                 return '';
             }
             
-            // ?瑕?隞予???            const today = new Date().toISOString().split('T')[0];
+            // 获取今天的日期
+            const today = new Date().toISOString().split('T')[0];
             
             let cardHtml = `
                 <div class="order-status-card" style="
@@ -2509,7 +2543,7 @@
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 ">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <span style="font-size: 20px;">??</span>
+                        <span style="font-size: 20px;">⚠️</span>
                         <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #ef4444;">Current Order Status for ${today}</h3>
                     </div>
             `;
@@ -2518,7 +2552,7 @@
                 cardHtml += `
                     <div style="margin-bottom: 12px;">
                         <div style="font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
-                            ??Pending Orders: ${pendingOrders.length}
+                            ⏳ Pending Orders: ${pendingOrders.length}
                         </div>
                         <div style="font-size: 13px; color: #64748b; max-height: 150px; overflow-y: auto;">
                 `;
@@ -2546,7 +2580,7 @@
                 cardHtml += `
                     <div>
                         <div style="font-weight: 600; color: #10b981; margin-bottom: 8px;">
-                            ??Recently Filled Orders: ${filledOrders.length}
+                            ✅ Recently Filled Orders: ${filledOrders.length}
                         </div>
                         <div style="font-size: 13px; color: #64748b; max-height: 100px; overflow-y: auto;">
                 `;
@@ -2568,7 +2602,7 @@
             
             cardHtml += `
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(239, 68, 68, 0.2); font-size: 12px; color: #64748b; font-style: italic;">
-                        ? Agents are aware of these orders and will consider them in their analysis.
+                        💡 Agents are aware of these orders and will consider them in their analysis.
                     </div>
                 </div>
             `;
@@ -2589,7 +2623,8 @@
                 return;
             }
 
-            // ???蝏?            const byDate = {};
+            // 按日期分组
+            const byDate = {};
             conversations.forEach(conv => {
                 const date = conv.date || conv.timestamp?.split('T')[0] || 'Unknown';
                 if (!byDate[date]) {
@@ -2598,14 +2633,17 @@
                 byDate[date].push(conv);
             });
 
-            // ??HTML嚗??交????曄內嚗?            let html = '';
+            // 生成HTML（按日期分组显示）
+            let html = '';
             
-            // 瘛餃?霈Ｗ??嗆??憒??ending霈Ｗ?嚗?            // 隞撅?????啗?恥???            const orderStatusCard = generateOrderStatusCard();
+            // 添加订单状态卡片（如果有pending订单）
+            // 从全局变量或重新获取订单数据
+            const orderStatusCard = generateOrderStatusCard();
             if (orderStatusCard) {
                 html += orderStatusCard;
             }
             
-            const sortedDates = Object.keys(byDate).sort().reverse(); // ??啁??交??典?
+            const sortedDates = Object.keys(byDate).sort().reverse(); // 最新的日期在前
             
             sortedDates.forEach(dateKey => {
                 const dayConvs = byDate[dateKey];
@@ -2618,7 +2656,7 @@
                 
                 html += `<div style="margin-bottom: 24px; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px;">
                     <h3 style="font-size: 14px; color: #6b7280; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                        ?? ${dateDisplay} (${dayConvs.length} items)
+                        📅 ${dateDisplay} (${dayConvs.length} items)
                     </h3>
                     <div class="conversation-list">
                         ${dayConvs.map(conv => {
@@ -2629,28 +2667,28 @@
                             const entry_type = conv.type || 'discussion';
                             const timestamp = conv.timestamp || date;
                             
-                            // Agent 銝??暹???
+                            // Agent 专属图标映射
                             function getAgentIcon(agentName) {
                                 const icons = {
-                                    'MarketAgent': '??',
-                                    'MarketAnalyst': '??',
-                                    'TechnicalAnalyst': '??',
-                                    'FundamentalAnalyst': '?',
-                                    'SentimentAnalyst': '??',
-                                    'DiscussionCoordinator': '?',
-                                    'DiscussionAgent': '?',
-                                    'RiskAnalyst': '??',
-                                    'TraderAgent': '??',
-                                    'ToolSystem': '?',
-                                    'Unknown': '??'
+                                    'MarketAgent': '🌐',
+                                    'MarketAnalyst': '🌐',
+                                    'TechnicalAnalyst': '📈',
+                                    'FundamentalAnalyst': '💼',
+                                    'SentimentAnalyst': '😊',
+                                    'DiscussionCoordinator': '💬',
+                                    'DiscussionAgent': '💬',
+                                    'RiskAnalyst': '⚠️',
+                                    'TraderAgent': '🤖',
+                                    'ToolSystem': '🔧',
+                                    'Unknown': '🤖'
                                 };
-                                // ?寥??典??妍
+                                // 匹配部分名称
                                 for (const [key, icon] of Object.entries(icons)) {
                                     if (agentName.toLowerCase().includes(key.toLowerCase())) {
                                         return icon;
                                     }
                                 }
-                                return icons[agentName] || '??';
+                                return icons[agentName] || '🤖';
                             }
                             
                             const agentIcon = getAgentIcon(agent);
@@ -2659,33 +2697,34 @@
                             let toolHtml = '';
                             let toolResultHtml = '';
                             if (entry_type === 'tool') {
-                                // 撠?閫??撌亙靽⊥
+                                // 尝试解析工具信息
                                 const toolInfo = parseToolInfo(content_text);
                                 if (toolInfo) {
-                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">? Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
+                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
                                     if (toolInfo.result) {
                                         const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">?? Tool Result:</strong>
+                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
                                             ${tableHtml}
                                         </div>`;
                                     }
                                 } else {
-                                    // 憒?銝???澆?嚗?霂?亥圾??JSON
+                                    // 如果不是标准格式，尝试直接解析 JSON
                                     try {
                                         const jsonMatch = content_text.match(/\{[\s\S]*\}/);
                                         if (jsonMatch) {
                                             const parsed = JSON.parse(jsonMatch[0]);
                                             const toolName = parsed.tool || parsed.name || 'Unknown';
-                                            toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">? Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
+                                            toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
                                             const tableHtml = formatToolResultAsTable(parsed, toolName);
                                             toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                                <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">?? Tool Result:</strong>
+                                                <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
                                                 ${tableHtml}
                                             </div>`;
                                         }
                                     } catch (e) {
-                                        // 憒?閫??憭梯揖嚗蝷箏?憪?摰?                                        toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">? Tool Result</div>`;
+                                        // 如果解析失败，显示原始内容
+                                        toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool Result</div>`;
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                             <div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content_text)}</div>
                                         </div>`;
@@ -2697,55 +2736,62 @@
                             let stanceHtml = '';
                             if (conv.stance) {
                                 const stanceColor = conv.stance === 'bullish' ? '#10b981' : conv.stance === 'bearish' ? '#ef4444' : '#6b7280';
-                                stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">? Stance: ${conv.stance.toUpperCase()}</div>`;
+                                stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">🎯 Stance: ${conv.stance.toUpperCase()}</div>`;
                             }
                             
                             // Display tools used if available
                             let toolsUsedHtml = '';
                             if (conv.tools_used && Array.isArray(conv.tools_used) && conv.tools_used.length > 0) {
-                                toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">? Tools Used: ${conv.tools_used.join(', ')}</div>`;
+                                toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${conv.tools_used.join(', ')}</div>`;
                             }
                             
                             // For discussion entries, extract and display full text
                             let analysisText = '';
                             let toolsListHtml = '';
                             if (entry_type === 'discussion' && content_text) {
-                                // ??摰?????穿?銝??園摨?                                const analysisMatch = content_text.match(/Analysis:\s*(.+)/is);
+                                // 提取完整的分析文本，不限制长度
+                                const analysisMatch = content_text.match(/Analysis:\s*(.+)/is);
                                 if (analysisMatch) {
                                     analysisText = analysisMatch[1].trim();
                                 } else {
-                                    // 憒?瘝⊥?"Analysis:"??嚗蝙?典??游?摰?                                    analysisText = content_text.trim();
+                                    // 如果没有"Analysis:"前缀，使用完整内容
+                                    analysisText = content_text.trim();
                                 }
                                 
-                                // 皜??悖嚗宏?斗???"Requested tool:" ?詨??雿???                                if (analysisText.includes('Requested tool:')) {
-                                    // 蝘駁 "Requested tool: xxx - description" ?澆?????                                    analysisText = analysisText.replace(/Requested tool:\s*[^-]+(?:\s*-\s*[^\n]*)?/gi, '').trim();
-                                    // 憒?皜???拐? "Requested tool:" ?掩隡澆?摰對?皜征
+                                // 清理杂讯：移除所有 "Requested tool:" 相关的占位文本
+                                if (analysisText.includes('Requested tool:')) {
+                                    // 移除 "Requested tool: xxx - description" 格式的文本
+                                    analysisText = analysisText.replace(/Requested tool:\s*[^-]+(?:\s*-\s*[^\n]*)?/gi, '').trim();
+                                    // 如果清理后只剩下 "Requested tool:" 或类似内容，清空
                                     if (analysisText.match(/^(Requested tool|Tool|Analysis using tools):?\s*$/i)) {
                                         analysisText = '';
                                     }
                                 }
                                 
-                                // 皜?嚗宏?斗??極?瑁??冽?餈堆?"Tool Calls Array:", "Tool Calls:", 蝑?
+                                // 清理：移除所有工具调用描述（"Tool Calls Array:", "Tool Calls:", 等）
                                 analysisText = analysisText.replace(/Tool Calls Array:[\s\S]*?\]/gi, '').trim();
                                 analysisText = analysisText.replace(/Tool Calls:[\s\S]*?\]/gi, '').trim();
                                 analysisText = analysisText.replace(/tool_calls[\s\S]*?\]/gi, '').trim();
                                 
-                                // 皜?嚗宏??JSON 隞????霈啣?憭??撘?                                analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+                                // 清理：移除 JSON 代码块标记和多余的格式
+                                analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
                                 analysisText = analysisText.replace(/```python[\s\S]*?```/gi, '').trim();
                                 analysisText = analysisText.replace(/```[\s\S]*?```/gi, '').trim();
                                 
-                                // 皜?嚗宏?斗???JSON ?澆??捆嚗??砍?憟?嚗?                                while (analysisText.includes('{') && analysisText.includes('}')) {
+                                // 清理：移除所有 JSON 格式内容（包括嵌套的）
+                                while (analysisText.includes('{') && analysisText.includes('}')) {
                                     const jsonStart = analysisText.indexOf('{');
                                     const jsonEnd = analysisText.lastIndexOf('}');
                                     if (jsonStart < jsonEnd) {
                                         const beforeJson = analysisText.substring(0, jsonStart).trim();
                                         const afterJson = analysisText.substring(jsonEnd + 1).trim();
-                                        // 憒? JSON ??雲憭???穿?雿輻?????                                        if (afterJson.length > 100) {
+                                        // 如果 JSON 后面有足够长的文本，使用后面的文本
+                                        if (afterJson.length > 100) {
                                             analysisText = afterJson;
                                         } else if (beforeJson.length > 100) {
                                             analysisText = beforeJson;
                                         } else {
-                                            // 憒????賣瓷?雲憭???穿?蝘駁 JSON
+                                            // 如果前后都没有足够长的文本，移除 JSON
                                             analysisText = (beforeJson + ' ' + afterJson).trim();
                                         }
                                     } else {
@@ -2753,11 +2799,12 @@
                                     }
                                 }
                                 
-                                // 皜?嚗宏??"Output:" ??"Stance:" 蝑?蝻??蝞?剖?摰?                                analysisText = analysisText.replace(/^Output:\s*/i, '').trim();
+                                // 清理：移除 "Output:" 或 "Stance:" 等前缀后的简短内容
+                                analysisText = analysisText.replace(/^Output:\s*/i, '').trim();
                                 analysisText = analysisText.replace(/^Stance:\s*\w+\s*$/mi, '').trim();
                                 analysisText = analysisText.replace(/^Stance:\s*\w+\s*\n/gi, '').trim();
                                 
-                                // 皜?嚗宏??"Summary:" ??蝞?剖?銵券★嚗????Ｚ??隞?摰對?
+                                // 清理：移除 "Summary:" 后的简短列表项（如果后面还有其他内容）
                                 if (analysisText.includes('Summary:') && analysisText.length > 200) {
                                     const summaryMatch = analysisText.match(/Summary:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|\n[A-Z]|$)/i);
                                     if (summaryMatch && summaryMatch[1].length < 100) {
@@ -2765,19 +2812,20 @@
                                     }
                                 }
                                 
-                                // 皜?嚗宏??"**Tool Calls:**", "**Analysis:**" 蝑?Markdown ?澆???雿???                                analysisText = analysisText.replace(/\*\*Tool Calls:\*\*[\s\S]*?(?=\*\*|$)/gi, '').trim();
+                                // 清理：移除 "**Tool Calls:**", "**Analysis:**" 等 Markdown 格式的占位文本
+                                analysisText = analysisText.replace(/\*\*Tool Calls:\*\*[\s\S]*?(?=\*\*|$)/gi, '').trim();
                                 analysisText = analysisText.replace(/\*\*Analysis:\*\*[\s\S]*?(?=\*\*|$)/gi, '').trim();
                                 analysisText = analysisText.replace(/\*\*Next Steps:\*\*[\s\S]*?(?=\*\*|$)/gi, '').trim();
                                 
-                                // 皜?嚗宏??"Please note that" 撘憭渡????
+                                // 清理：移除 "Please note that" 开头的占位文本
                                 if (analysisText.startsWith('Please note that') && analysisText.length < 200) {
                                     analysisText = '';
                                 }
                                 
-                                // 皜?嚗宏??"As the [Analyst], I will" 撘憭渡????
+                                // 清理：移除 "As the [Analyst], I will" 开头的占位文本
                                 analysisText = analysisText.replace(/^As the [^,]+,\s*I will[\s\S]*?(?=\n\n|$)/gi, '').trim();
                                 
-                                // 憒?皜??蛹蝛箸?憭芰嚗??曄內
+                                // 如果清理后为空或太短，不显示
                                 if (analysisText.length < 30) {
                                     analysisText = '';
                                 }
@@ -2786,7 +2834,7 @@
                             return `
                                 <div class="conversation-item" style="${entry_type === 'tool' ? 'border-left-color: #f59e0b;' : ''}">
                                     <div class="conversation-header">
-                                        <span class="conversation-agent">${agentIcon} ${agent}${entry_type === 'tool' ? ' ?' : ''}</span>
+                                        <span class="conversation-agent">${agentIcon} ${agent}${entry_type === 'tool' ? ' 🔧' : ''}</span>
                                         <span class="conversation-date">${new Date(timestamp).toLocaleTimeString()}</span>
                                     </div>
                                     ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
@@ -2795,7 +2843,7 @@
                                     ${toolHtml}
                                     ${toolResultHtml}
                                     ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">
-                                        <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">? Analysis:</strong>
+                                        <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                         <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(analysisText)}</div>
                                     </div>` : ''}
                                     ${entry_type === 'tool' ? '' : (!analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content_text, entry_type)}</div>` : '')}
@@ -2806,12 +2854,12 @@
                 </div>`;
             });
 
-            // 瘛餃?"餈??游?"?內
+            // 添加"还有更多"提示
             if (has_more && total > conversations.length) {
                 html += `
                     <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 14px;">
-                        <p>憿舐內 ${conversations.length} / ${total} 璇?閰?/p>
-                        <p class="hint">嚗?憿舐內?餈?撠店嚗??渲????亦?敺垢?亥?嚗?/p>
+                        <p>顯示 ${conversations.length} / ${total} 條對話</p>
+                        <p class="hint">（僅顯示最近的對話，完整記錄請查看後端日誌）</p>
                     </div>
                 `;
             }
@@ -2835,27 +2883,27 @@
                         const content = conv.content || conv.message || conv.reasoning || '';
                         const round = conv.round || conv.turn || '';
                         
-                        // Agent 銝??暹???
+                        // Agent 专属图标映射
                         function getAgentIcon(agentName) {
                             const icons = {
-                                'MarketAgent': '??',
-                                'MarketAnalyst': '??',
-                                'DiscussionAgent': '?',
-                                'RiskAnalyst': '??',
-                                'TraderAgent': '??',
-                                'ToolSystem': '?',
-                                'TechnicalAnalyst': '?',
-                                'FundamentalAnalyst': '??',
-                                'SentimentAnalyst': '??',
-                                'Unknown': '??'
+                                'MarketAgent': '📊',
+                                'MarketAnalyst': '📈',
+                                'DiscussionAgent': '💬',
+                                'RiskAnalyst': '⚠️',
+                                'TraderAgent': '🤖',
+                                'ToolSystem': '🔧',
+                                'TechnicalAnalyst': '🔬',
+                                'FundamentalAnalyst': '📑',
+                                'SentimentAnalyst': '😊',
+                                'Unknown': '🤖'
                             };
-                            // ?寥??典??妍
+                            // 匹配部分名称
                             for (const [key, icon] of Object.entries(icons)) {
                                 if (agentName.toLowerCase().includes(key.toLowerCase())) {
                                     return icon;
                                 }
                             }
-                            return icons[agentName] || '??';
+                            return icons[agentName] || '🤖';
                         }
                         
                         const agentIcon = getAgentIcon(agent);
@@ -2902,27 +2950,27 @@
                         const entry_type = c.type || 'discussion';
                         const timestamp = c.timestamp || date;
                         
-                        // Agent 銝??暹???
+                        // Agent 专属图标映射
                         function getAgentIcon(agentName) {
                             const icons = {
-                                'MarketAgent': '??',
-                                'MarketAnalyst': '??',
-                                'DiscussionAgent': '?',
-                                'RiskAnalyst': '??',
-                                'TraderAgent': '??',
-                                'ToolSystem': '?',
-                                'TechnicalAnalyst': '?',
-                                'FundamentalAnalyst': '??',
-                                'SentimentAnalyst': '??',
-                                'Unknown': '??'
+                                'MarketAgent': '📊',
+                                'MarketAnalyst': '📈',
+                                'DiscussionAgent': '💬',
+                                'RiskAnalyst': '⚠️',
+                                'TraderAgent': '🤖',
+                                'ToolSystem': '🔧',
+                                'TechnicalAnalyst': '🔬',
+                                'FundamentalAnalyst': '📑',
+                                'SentimentAnalyst': '😊',
+                                'Unknown': '🤖'
                             };
-                            // ?寥??典??妍
+                            // 匹配部分名称
                             for (const [key, icon] of Object.entries(icons)) {
                                 if (agentName.toLowerCase().includes(key.toLowerCase())) {
                                     return icon;
                                 }
                             }
-                            return icons[agentName] || '??';
+                            return icons[agentName] || '🤖';
                         }
                         
                         const agentIcon = getAgentIcon(agent);
@@ -2931,33 +2979,34 @@
                         let toolHtml = '';
                         let toolResultHtml = '';
                         if (entry_type === 'tool') {
-                            // 撠?閫??撌亙靽⊥
+                            // 尝试解析工具信息
                             const toolInfo = parseToolInfo(content);
                             if (toolInfo) {
-                                toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">? Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
+                                toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
                                 if (toolInfo.result) {
                                     const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
                                     toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                        <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">?? Tool Result:</strong>
+                                        <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
                                         ${tableHtml}
                                     </div>`;
                                 }
                             } else {
-                                // 憒?銝???澆?嚗?霂?亥圾??JSON
+                                // 如果不是标准格式，尝试直接解析 JSON
                                 try {
                                     const jsonMatch = content.match(/\{[\s\S]*\}/);
                                     if (jsonMatch) {
                                         const parsed = JSON.parse(jsonMatch[0]);
                                         const toolName = parsed.tool || parsed.name || 'Unknown';
-                                        toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">? Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
+                                        toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
                                         const tableHtml = formatToolResultAsTable(parsed, toolName);
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">?? Tool Result:</strong>
+                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
                                             ${tableHtml}
                                         </div>`;
                                     }
                                 } catch (e) {
-                                    // 憒?閫??憭梯揖嚗蝷箏?憪?摰?                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">? Tool Result</div>`;
+                                    // 如果解析失败，显示原始内容
+                                    toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool Result</div>`;
                                     toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                         <div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content)}</div>
                                     </div>`;
@@ -2969,41 +3018,46 @@
                         let stanceHtml = '';
                         if (c.stance) {
                             const stanceColor = c.stance === 'bullish' ? '#10b981' : c.stance === 'bearish' ? '#ef4444' : '#6b7280';
-                            stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">? Stance: ${c.stance.toUpperCase()}</div>`;
+                            stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">🎯 Stance: ${c.stance.toUpperCase()}</div>`;
                         }
                         
                         // Display tools used if available
                         let toolsUsedHtml = '';
                         if (c.tools_used && Array.isArray(c.tools_used) && c.tools_used.length > 0) {
-                            toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">? Tools Used: ${c.tools_used.join(', ')}</div>`;
+                            toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${c.tools_used.join(', ')}</div>`;
                         }
                         
                         // For discussion entries, extract and display full text
                         let analysisText = '';
                         if (entry_type === 'discussion' && content) {
-                            // ??摰?????穿?銝??園摨?                            const analysisMatch = content.match(/Analysis:\s*(.+)/is);
+                            // 提取完整的分析文本，不限制长度
+                            const analysisMatch = content.match(/Analysis:\s*(.+)/is);
                             if (analysisMatch) {
                                 analysisText = analysisMatch[1].trim();
                             } else {
-                                // 憒?瘝⊥?"Analysis:"??嚗蝙?典??游?摰?                                analysisText = content.trim();
+                                // 如果没有"Analysis:"前缀，使用完整内容
+                                analysisText = content.trim();
                             }
                             
-                            // 皜??悖嚗宏?斗???"Requested tool:" ?詨??雿???                            if (analysisText.includes('Requested tool:')) {
-                                // 蝘駁 "Requested tool: xxx - description" ?澆?????                                analysisText = analysisText.replace(/Requested tool:\s*[^-]+(?:\s*-\s*[^\n]*)?/gi, '').trim();
-                                // 憒?皜???拐? "Requested tool:" ?掩隡澆?摰對?皜征
+                            // 清理杂讯：移除所有 "Requested tool:" 相关的占位文本
+                            if (analysisText.includes('Requested tool:')) {
+                                // 移除 "Requested tool: xxx - description" 格式的文本
+                                analysisText = analysisText.replace(/Requested tool:\s*[^-]+(?:\s*-\s*[^\n]*)?/gi, '').trim();
+                                // 如果清理后只剩下 "Requested tool:" 或类似内容，清空
                                 if (analysisText.match(/^(Requested tool|Tool|Analysis using tools):?\s*$/i)) {
                                     analysisText = '';
                                 }
                             }
                             
-                            // 皜?嚗宏??JSON 隞????霈啣?憭??撘?                            analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+                            // 清理：移除 JSON 代码块标记和多余的格式
+                            analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
                             
-                            // 皜?嚗宏??"Output:" ??"Stance:" 蝑?蝻?? JSON ?澆??捆
+                            // 清理：移除 "Output:" 或 "Stance:" 等前缀后的 JSON 格式内容
                             if (analysisText.includes('{') && analysisText.includes('"stance"')) {
-                                // 撠??? JSON ??摰????
+                                // 尝试提取 JSON 后的实际分析文本
                                 const jsonEnd = analysisText.lastIndexOf('}');
                                 if (jsonEnd > 0 && jsonEnd < analysisText.length - 50) {
-                                    // 憒? JSON ?餈??嚗蝙?典??Ｙ??
+                                    // 如果 JSON 后面还有文本，使用后面的文本
                                     const afterJson = analysisText.substring(jsonEnd + 1).trim();
                                     if (afterJson.length > 50) {
                                         analysisText = afterJson;
@@ -3011,9 +3065,10 @@
                                 }
                             }
                             
-                            // 皜?嚗宏??"Stance: xxx" ?銵?憒??餈??嗡??捆嚗?                            analysisText = analysisText.replace(/^Stance:\s*\w+\s*$/mi, '').trim();
+                            // 清理：移除 "Stance: xxx" 单独行（如果后面还有其他内容）
+                            analysisText = analysisText.replace(/^Stance:\s*\w+\s*$/mi, '').trim();
                             
-                            // 皜?嚗宏??"Summary:" ??蝞?剖?銵券★嚗????Ｚ??隞?摰對?
+                            // 清理：移除 "Summary:" 后的简短列表项（如果后面还有其他内容）
                             if (analysisText.includes('Summary:') && analysisText.length > 200) {
                                 const summaryMatch = analysisText.match(/Summary:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|\n[A-Z]|$)/i);
                                 if (summaryMatch && summaryMatch[1].length < 100) {
@@ -3021,7 +3076,7 @@
                                 }
                             }
                             
-                            // 憒?皜??蛹蝛箸?憭芰嚗??曄內
+                            // 如果清理后为空或太短，不显示
                             if (analysisText.length < 30) {
                                 analysisText = '';
                             }
@@ -3030,7 +3085,7 @@
                         return `
                             <div class="conversation-item" style="${entry_type === 'tool' ? 'border-left-color: #f59e0b;' : ''}">
                                 <div class="conversation-header">
-                                    <span class="conversation-agent">${agentIcon} ${agent}${entry_type === 'tool' ? ' ?' : ''}</span>
+                                    <span class="conversation-agent">${agentIcon} ${agent}${entry_type === 'tool' ? ' 🔧' : ''}</span>
                                     <span class="conversation-date">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
                                 </div>
                                 ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
@@ -3039,7 +3094,7 @@
                                 ${toolHtml}
                                 ${toolResultHtml}
                                 ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">
-                                    <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">? Analysis:</strong>
+                                    <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                     <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(analysisText)}</div>
                                 </div>` : ''}
                                 ${entry_type === 'tool' ? '' : (!analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content, entry_type)}</div>` : '')}
@@ -3050,18 +3105,19 @@
         }
 
         // Convert JSON result to table format
-        // ?湔憿園 FGI ?Ｘ
+        // 更新顶部 FGI 面板
         function updateFGIPanel(fgValue, fgLabel) {
             const container = document.getElementById('summaryCards');
             if (!container) return;
             
-            // ?交?唳???VIX & FGI ?Ｘ
+            // 查找现有的 VIX & FGI 面板
             const existingCard = container.querySelector('.card[style*="Market Sentiment Dashboard"]');
             if (existingCard) {
-                // ?湔 FGI ?典?
+                // 更新 FGI 部分
                 const fgiDiv = existingCard.querySelector('div[style*="FEAR & GREED"]');
                 if (fgiDiv) {
-                    // ?寞?潛＆摰???                    let fgColor = '#6b7280';
+                    // 根据值确定颜色
+                    let fgColor = '#6b7280';
                     if (fgValue > 0) {
                         if (fgValue >= 75) fgColor = '#ef4444';
                         else if (fgValue >= 55) fgColor = '#f59e0b';
@@ -3083,15 +3139,15 @@
             if (!resultText) return '';
             
             try {
-                // 撠?閫??JSON
+                // 尝试解析JSON
                 let data;
                 if (typeof resultText === 'string') {
-                    // 撠???JSON撖寡情
+                    // 尝试提取JSON对象
                     const jsonMatch = resultText.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         data = JSON.parse(jsonMatch[0]);
                     } else {
-                        return resultText; // 憒?銝JSON嚗????
+                        return resultText; // 如果不是JSON，返回原文本
                     }
                 } else if (typeof resultText === 'object') {
                     data = resultText;
@@ -3099,29 +3155,33 @@
                     return String(resultText);
                 }
                 
-                // ????摰??唳嚗???憟?result蝏?嚗?                // 靘?: {ok: true, result: {ok: true, result: {indices: [...]}}}
+                // 递归提取实际数据（处理嵌套的result结构）
+                // 例如: {ok: true, result: {ok: true, result: {indices: [...]}}}
                 let depth = 0;
-                const maxDepth = 10; // ?脫迫??敺芰
+                const maxDepth = 10; // 防止无限循环
                 while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
-                    // 憒?result銝剛??k摮挾嚗誧蝏剜???                    if (data.result.ok !== undefined) {
+                    // 如果result中还有ok字段，继续提取
+                    if (data.result.ok !== undefined) {
                         data = data.result;
                     } else {
-                        // 憒?result銝剜瓷?k摮挾嚗秩?歇蝏鈭???桀?
+                        // 如果result中没有ok字段，说明已经到了实际数据层
                         data = data.result;
                         break;
                     }
                     depth++;
                 }
-                // 憒?餈?result摮挾嚗???銝甈∴?憭?憭?撋?嚗?                while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
+                // 如果还有result字段，再提取一次（处理多层嵌套）
+                while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
                     data = data.result;
                     depth++;
                 }
                 
-                // ?寞?憭?嚗ear_greed 撌亙 - ???唳撟嗆?圈▲?券??                if (toolName === 'fear_greed' || toolName === 'fear-greed') {
+                // 特殊处理：fear_greed 工具 - 提取数据并更新顶部面板
+                if (toolName === 'fear_greed' || toolName === 'fear-greed') {
                     let fgValue = 0;
                     let fgLabel = 'N/A';
                     
-                    // 撠?隞???蝵格???FGI ?唳
+                    // 尝试从不同位置提取 FGI 数据
                     if (data.value !== undefined) {
                         fgValue = data.value;
                         fgLabel = data.label || data.classification || '';
@@ -3131,7 +3191,8 @@
                         fgLabel = typeof fg === 'object' ? (fg.label || fg.classification || '') : '';
                     }
                     
-                    // ?寞?潛＆摰?蝑?                    if (fgValue > 0 && !fgLabel) {
+                    // 根据值确定标签
+                    if (fgValue > 0 && !fgLabel) {
                         if (fgValue >= 75) fgLabel = 'Extreme Greed';
                         else if (fgValue >= 55) fgLabel = 'Greed';
                         else if (fgValue >= 45) fgLabel = 'Neutral';
@@ -3139,12 +3200,12 @@
                         else fgLabel = 'Extreme Fear';
                     }
                     
-                    // ?湔憿園?Ｘ
+                    // 更新顶部面板
                     if (fgValue > 0) {
                         updateFGIPanel(fgValue, fgLabel);
                     }
                     
-                    // 餈?蝞瘣??曄內
+                    // 返回简洁的显示
                     let fgColor = '#6b7280';
                     if (fgValue > 0) {
                         if (fgValue >= 75) fgColor = '#ef4444';
@@ -3165,7 +3226,7 @@
                     `;
                 }
                 
-                // 璉?交?行?秤??
+                // 检查是否是错误响应
                 if (data && typeof data === 'object') {
                     const hasError = data.ok === false || data.error || (data.status && data.status !== 'success');
                     if (hasError) {
@@ -3174,7 +3235,7 @@
                         return `
                             <div style="margin-top: 8px; padding: 12px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; border-left: 3px solid #ef4444;">
                                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                    <span style="font-size: 18px;">??</span>
+                                    <span style="font-size: 18px;">⚠️</span>
                                     <strong style="color: #ef4444; font-size: 13px;">Tool Error</strong>
                                 </div>
                                 <div style="color: #fca5a5; font-size: 12px; line-height: 1.6; margin-bottom: ${errorDetails ? '8px' : '0'};">
@@ -3187,10 +3248,12 @@
                     }
                 }
                 
-                // 憒??舀蝏?頧祆銝箄”??                if (Array.isArray(data)) {
+                // 如果是数组，转换为表格
+                if (Array.isArray(data)) {
                     if (data.length === 0) return '<div style="color: #6b7280; font-style: italic;">No data</div>';
                     
-                    // ?瑕????賜???                    const allKeys = new Set();
+                    // 获取所有可能的键
+                    const allKeys = new Set();
                     data.forEach(item => {
                         if (typeof item === 'object' && item !== null) {
                             Object.keys(item).forEach(key => allKeys.add(key));
@@ -3198,7 +3261,8 @@
                     });
                     
                     if (allKeys.size === 0) {
-                        // 憒??啁???銝撖寡情嚗蝷箔蛹蝞??銵?                        return `<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
+                        // 如果数组元素不是对象，显示为简单列表
+                        return `<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
                             <div style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">Array (${data.length} items)</div>
                             <div style="color: #e2e8f0; font-size: 13px; line-height: 1.8;">${data.map(item => escapeHtml(String(item))).join(', ')}</div>
                         </div>`;
@@ -3211,7 +3275,8 @@
                                 <thead>
                                     <tr style="background: rgba(245, 158, 11, 0.25);">
                                         ${keys.map(key => {
-                                            // 撠?蓮?Ｖ蛹憭批??曄內嚗? name -> NAME嚗?                                            const headerText = String(key).toUpperCase();
+                                            // 将键名转换为大写显示（如 name -> NAME）
+                                            const headerText = String(key).toUpperCase();
                                             return `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(245, 158, 11, 0.4); color: #fbbf24; font-weight: 700;">${escapeHtml(headerText)}</th>`;
                                         }).join('')}
                                     </tr>
@@ -3227,7 +3292,8 @@
                                                 if (value === null || value === undefined) {
                                                     displayValue = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                                 } else if (typeof value === 'object') {
-                                                    // 銝??曄內 JSON ?澆?嚗銝箸?霂餅撘?                                                    if (Array.isArray(value)) {
+                                                    // 不要显示 JSON 格式，改为易读格式
+                                                    if (Array.isArray(value)) {
                                                         displayValue = `<span style="color: #818cf8; font-weight: 600;">[${value.length} items]</span>`;
                                                     } else {
                                                         const keys = Object.keys(value);
@@ -3251,8 +3317,10 @@
                     return tableHtml;
                 }
                 
-                // 憒??臬笆鞊∴?璉?交?行??啁?摮挾?笆鞊∪??賂?憒tocks嚗?                if (typeof data === 'object' && data !== null) {
-                    // ?寞?憭?嚗IX term structure ?唳嚗蝷箔蛹隞芾”?踵撘?                    if (data.vix !== undefined || data.vix3m !== undefined || data.ratio !== undefined) {
+                // 如果是对象，检查是否有数组字段或对象字典（如stocks）
+                if (typeof data === 'object' && data !== null) {
+                    // 特殊处理：VIX term structure 数据，显示为仪表板格式
+                    if (data.vix !== undefined || data.vix3m !== undefined || data.ratio !== undefined) {
                         const vix = data.vix || 0;
                         const vix3m = data.vix3m || 0;
                         const ratio = data.ratio || 0;
@@ -3261,34 +3329,35 @@
                         const structureColor = ratio > 1 ? '#10b981' : ratio < 1 ? '#f59e0b' : '#6b7280';
                         const riskColor = riskScore > 7 ? '#ef4444' : riskScore > 5 ? '#f59e0b' : '#10b981';
                         
-                        // 璉?交?行? Fear & Greed Index ?唳
+                        // 检查是否有 Fear & Greed Index 数据
                         const fearGreed = data.fear_greed || (data.result && data.result.fear_greed) || null;
                         const fgValue = fearGreed && typeof fearGreed === 'object' ? (fearGreed.value || fearGreed.index || 0) : (fearGreed || 0);
                         const fgLabel = fearGreed && typeof fearGreed === 'object' ? (fearGreed.label || fearGreed.classification || '') : '';
                         
-                        // ?寞 Fear & Greed ?潛＆摰??脣??倌
+                        // 根据 Fear & Greed 值确定颜色和标签
                         let fgColor = '#6b7280';
                         let fgDisplayLabel = fgLabel;
                         if (fgValue > 0) {
                             if (fgValue >= 75) {
-                                fgColor = '#ef4444'; // ?漲韐芸帚 - 蝥Ｚ
+                                fgColor = '#ef4444'; // 极度贪婪 - 红色
                                 if (!fgDisplayLabel) fgDisplayLabel = 'Extreme Greed';
                             } else if (fgValue >= 55) {
-                                fgColor = '#f59e0b'; // 韐芸帚 - 璈
+                                fgColor = '#f59e0b'; // 贪婪 - 橙色
                                 if (!fgDisplayLabel) fgDisplayLabel = 'Greed';
                             } else if (fgValue >= 45) {
-                                fgColor = '#6b7280'; // 銝剜?- ?啗
+                                fgColor = '#6b7280'; // 中性 - 灰色
                                 if (!fgDisplayLabel) fgDisplayLabel = 'Neutral';
                             } else if (fgValue >= 25) {
-                                fgColor = '#10b981'; // ? - 蝏輯
+                                fgColor = '#10b981'; // 恐惧 - 绿色
                                 if (!fgDisplayLabel) fgDisplayLabel = 'Fear';
                             } else {
-                                fgColor = '#ef4444'; // ?漲? - 蝥Ｚ
+                                fgColor = '#ef4444'; // 极度恐惧 - 红色
                                 if (!fgDisplayLabel) fgDisplayLabel = 'Extreme Fear';
                             }
                         }
                         
-                        // 憒???Fear & Greed ?唳嚗蝙??4 ??撅嚗?蝙??3 ??                        const hasFG = fgValue > 0 || fgLabel;
+                        // 如果有 Fear & Greed 数据，使用 4 列布局，否则使用 3 列
+                        const hasFG = fgValue > 0 || fgLabel;
                         const gridCols = hasFG ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr';
                         
                         return `
@@ -3324,13 +3393,14 @@
                         `;
                     }
                     
-                    // ?寞?憭?嚗ear & Greed Index ?唳嚗??祆蝷綽?
+                    // 特殊处理：Fear & Greed Index 数据（单独显示）
                     if (data.fear_greed !== undefined || (data.result && data.result.fear_greed !== undefined)) {
                         const fearGreed = data.fear_greed || (data.result && data.result.fear_greed) || {};
                         const fgValue = typeof fearGreed === 'object' ? (fearGreed.value || fearGreed.index || 0) : (fearGreed || 0);
                         const fgLabel = typeof fearGreed === 'object' ? (fearGreed.label || fearGreed.classification || '') : '';
                         
-                        // ?寞?潛＆摰???                        let fgColor = '#6b7280';
+                        // 根据值确定颜色
+                        let fgColor = '#6b7280';
                         let fgDisplayLabel = fgLabel;
                         if (fgValue > 0) {
                             if (fgValue >= 75) {
@@ -3362,10 +3432,10 @@
                         `;
                     }
                     
-                    // 隡?璉?交蝏?畾蛛?憒ndices, records蝑?嚗?銝箸蝏撣貉?
+                    // 优先检查数组字段（如indices, records等），因为数组更常见
                     for (const [key, value] of Object.entries(data)) {
                         if (Array.isArray(value) && value.length > 0) {
-                            // ?曉?啁?摮挾嚗蓮?Ｖ蛹銵冽
+                            // 找到数组字段，转换为表格
                             const items = value;
                             const allKeys = new Set();
                             items.forEach(item => {
@@ -3384,7 +3454,7 @@
                                                 <thead>
                                                     <tr style="background: rgba(245, 158, 11, 0.25);">
                                                         ${keys.map(k => {
-                                                            // 撠?蓮?Ｖ蛹憭批??曄內
+                                                            // 将键名转换为大写显示
                                                             const headerText = String(k).toUpperCase();
                                                             return `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(245, 158, 11, 0.4); color: #fbbf24; font-weight: 700;">${escapeHtml(headerText)}</th>`;
                                                         }).join('')}
@@ -3401,7 +3471,8 @@
                                                                 if (val === null || val === undefined) {
                                                                     displayVal = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                                                 } else if (typeof val === 'object') {
-                                                                    // 銝??曄內 JSON ?澆?嚗銝箸?霂餅撘?                                                                    if (Array.isArray(val)) {
+                                                                    // 不要显示 JSON 格式，改为易读格式
+                                                                    if (Array.isArray(val)) {
                                                                         displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                     } else {
                                                                         const keys = Object.keys(val);
@@ -3424,7 +3495,8 @@
                                     </div>
                                 `;
                                 
-                                // 瘛餃??嗡??蝏?畾?                                const otherFields = Object.entries(data).filter(([k, v]) => k !== key && !Array.isArray(v));
+                                // 添加其他非数组字段
+                                const otherFields = Object.entries(data).filter(([k, v]) => k !== key && !Array.isArray(v));
                                 if (otherFields.length > 0) {
                                     tableHtml += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(245, 158, 11, 0.2);">';
                                     otherFields.forEach(([k, v]) => {
@@ -3440,19 +3512,22 @@
                         }
                     }
                     
-                    // ?嗅?璉?交?行撖寡情摮嚗? stocks: {AAPL: {...}, MSFT: {...}}嚗?                    for (const [key, value] of Object.entries(data)) {
-                        // 璉?交?行撖寡情摮嚗潭銝銝芸笆鞊∴?銝??潮?臬笆鞊?                        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                    // 然后检查是否是对象字典（如 stocks: {AAPL: {...}, MSFT: {...}}）
+                    for (const [key, value] of Object.entries(data)) {
+                        // 检查是否是对象字典：值是一个对象，且所有值都是对象
+                        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
                             const entries = Object.entries(value);
                             if (entries.length > 0) {
-                                // 璉?亦洵銝銝芸潭?行撖寡情嚗??臬?憪潘?
+                                // 检查第一个值是否是对象（不是原始值）
                                 const firstValue = entries[0][1];
                                 if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
-                                    // 餈銝銝芸笆鞊∪??賂?頧祆銝箄”??                                    const items = entries.map(([itemKey, itemValue]) => ({
+                                    // 这是一个对象字典，转换为表格
+                                    const items = entries.map(([itemKey, itemValue]) => ({
                                         symbol: itemKey,
                                         ...itemValue
                                     }));
                                     
-                                    // ?瑕????賜??殷??symbol??????
+                                    // 获取所有可能的键（包括symbol和所有指标）
                                     const allKeys = new Set(['symbol']);
                                     items.forEach(item => {
                                         Object.keys(item).forEach(k => allKeys.add(k));
@@ -3467,7 +3542,7 @@
                                                     <thead>
                                                         <tr style="background: rgba(245, 158, 11, 0.25);">
                                                             ${keys.map(k => {
-                                                                // 撠?蓮?Ｖ蛹憭批??曄內
+                                                                // 将键名转换为大写显示
                                                                 const headerText = String(k).toUpperCase();
                                                                 return `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(245, 158, 11, 0.4); color: #fbbf24; font-weight: 700;">${escapeHtml(headerText)}</th>`;
                                                             }).join('')}
@@ -3475,7 +3550,8 @@
                                                     </thead>
                                                     <tbody>
                                                         ${items.map((item, idx) => {
-                                                            // 蝚砌???symbol嚗蝙?函畾???                                                            const symbolVal = item.symbol || '';
+                                                            // 第一列（symbol）使用特殊颜色
+                                                            const symbolVal = item.symbol || '';
                                                             const isEven = idx % 2 === 0;
                                                             return `
                                                             <tr style="border-bottom: 1px solid rgba(245, 158, 11, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
@@ -3486,32 +3562,37 @@
                                                                     if (val === null || val === undefined) {
                                                                         displayVal = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                                                     } else if (typeof val === 'object') {
-                                                                        // 銝??曄內 JSON ?澆?嚗銝箸?霂餅撘?                                                                        if (Array.isArray(val)) {
+                                                                        // 不要显示 JSON 格式，改为易读格式
+                                                                        if (Array.isArray(val)) {
                                                                             displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                         } else {
                                                                             const keys = Object.keys(val);
                                                                             displayVal = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
                                                                         }
                                                                     } else if (typeof val === 'number') {
-                                                                        // ?啣??澆???靽??????唬?
+                                                                        // 数字格式化：保留适当的小数位
                                                                         const formatted = val % 1 === 0 ? val.toString() : val.toFixed(2);
-                                                                        // ?寞?啣澆之撠蝙?其?????                                                                        let numColor = '#10b981'; // 暺恕蝏輯
+                                                                        // 根据数值大小使用不同颜色
+                                                                        let numColor = '#10b981'; // 默认绿色
                                                                         if (k.includes('rsi') || k.includes('RSI')) {
-                                                                            // RSI: <30 頞?(蝏輯), 30-70 甇?虜(暺), >70 頞僭(蝥Ｚ)
+                                                                            // RSI: <30 超卖(绿色), 30-70 正常(黄色), >70 超买(红色)
                                                                             if (val < 30) numColor = '#10b981';
                                                                             else if (val > 70) numColor = '#ef4444';
                                                                             else numColor = '#f59e0b';
                                                                         } else if (k.includes('macd') || k.includes('MACD')) {
-                                                                            // MACD: 甇?蝏輯嚗??啁滯??                                                                            numColor = val >= 0 ? '#10b981' : '#ef4444';
+                                                                            // MACD: 正数绿色，负数红色
+                                                                            numColor = val >= 0 ? '#10b981' : '#ef4444';
                                                                         } else if (k.includes('score') || k.includes('Score')) {
-                                                                            // Score: 擃??啁遛?莎?雿??啁滯??                                                                            numColor = val >= 0.7 ? '#10b981' : val >= 0.5 ? '#f59e0b' : '#ef4444';
+                                                                            // Score: 高分数绿色，低分数红色
+                                                                            numColor = val >= 0.7 ? '#10b981' : val >= 0.5 ? '#f59e0b' : '#ef4444';
                                                                         }
                                                                         displayVal = `<span style="color: ${numColor}; font-weight: 700;">${formatted}</span>`;
                                                                     } else {
                                                                         displayVal = escapeHtml(String(val));
                                                                     }
-                                                                    // Symbol?蝙?函畾??莎??嗡??蝙?冽?????                                                                    const cellColor = isSymbol ? '#22d3ee' : '#f1f5f9';
-                                                                    const cellWeight = 'font-weight: 600;'; // ???摮??隞交?擃笆瘥漲
+                                                                    // Symbol列使用特殊颜色，其他列使用标准颜色
+                                                                    const cellColor = isSymbol ? '#22d3ee' : '#f1f5f9';
+                                                                    const cellWeight = 'font-weight: 600;'; // 所有文字都加粗以提高对比度
                                                                     return `<td style="padding: 8px 12px; color: ${cellColor}; ${cellWeight}">${displayVal}</td>`;
                                                                 }).join('')}
                                                             </tr>
@@ -3523,7 +3604,8 @@
                                         </div>
                                     `;
                                     
-                                    // 瘛餃??嗡??笆鞊∪??詨?畾?                                    const otherFields = Object.entries(data).filter(([k, v]) => k !== key);
+                                    // 添加其他非对象字典字段
+                                    const otherFields = Object.entries(data).filter(([k, v]) => k !== key);
                                     if (otherFields.length > 0) {
                                         tableHtml += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(245, 158, 11, 0.2);">';
                                         otherFields.forEach(([k, v]) => {
@@ -3540,10 +3622,10 @@
                         }
                     }
                     
-                    // ?交?啁?摮挾嚗?indices, records蝑?
+                    // 查找数组字段（如indices, records等）
                     for (const [key, value] of Object.entries(data)) {
                         if (Array.isArray(value) && value.length > 0) {
-                            // ?曉?啁?摮挾嚗蓮?Ｖ蛹銵冽
+                            // 找到数组字段，转换为表格
                             const items = value;
                             const allKeys = new Set();
                             items.forEach(item => {
@@ -3562,7 +3644,7 @@
                                                 <thead>
                                                     <tr style="background: rgba(245, 158, 11, 0.25);">
                                                         ${keys.map(k => {
-                                                            // 撠?蓮?Ｖ蛹憭批??曄內
+                                                            // 将键名转换为大写显示
                                                             const headerText = String(k).toUpperCase();
                                                             return `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(245, 158, 11, 0.4); color: #fbbf24; font-weight: 700;">${escapeHtml(headerText)}</th>`;
                                                         }).join('')}
@@ -3579,7 +3661,8 @@
                                                                 if (val === null || val === undefined) {
                                                                     displayVal = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                                                 } else if (typeof val === 'object') {
-                                                                    // 銝??曄內 JSON ?澆?嚗銝箸?霂餅撘?                                                                    if (Array.isArray(val)) {
+                                                                    // 不要显示 JSON 格式，改为易读格式
+                                                                    if (Array.isArray(val)) {
                                                                         displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                     } else {
                                                                         const keys = Object.keys(val);
@@ -3602,7 +3685,8 @@
                                     </div>
                                 `;
                                 
-                                // 瘛餃??嗡??蝏?畾?                                const otherFields = Object.entries(data).filter(([k, v]) => k !== key && !Array.isArray(v));
+                                // 添加其他非数组字段
+                                const otherFields = Object.entries(data).filter(([k, v]) => k !== key && !Array.isArray(v));
                                 if (otherFields.length > 0) {
                                     tableHtml += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(245, 158, 11, 0.2);">';
                                     otherFields.forEach(([k, v]) => {
@@ -3616,7 +3700,7 @@
                         }
                     }
                     
-                    // ?寞?憭?嚗et_company_fundamentals - ?曄內銝箏??撣?
+                    // 特殊处理：get_company_fundamentals - 显示为卡片式布局
                     if (toolName === 'get_company_fundamentals' && data.fundamentals) {
                         const fund = data.fundamentals;
                         const val = fund.valuation || {};
@@ -3637,7 +3721,8 @@
                         `;
                     }
                     
-                    // ?寞?憭?嚗et_advanced_indicators - ?曄內銝箸????                    if (toolName === 'get_advanced_indicators' && data.indicators) {
+                    // 特殊处理：get_advanced_indicators - 显示为指标卡片
+                    if (toolName === 'get_advanced_indicators' && data.indicators) {
                         const ind = data.indicators;
                         const rsi = ind.rsi_14;
                         const macd = ind.macd || {};
@@ -3656,9 +3741,11 @@
                         `;
                     }
                     
-                    // 憒?瘝⊥??啁?摮挾嚗?銝?寞?撌亙嚗蝷箔蛹?粉??澆笆嚗?雿輻銵冽嚗?                    const entries = Object.entries(data);
+                    // 如果没有数组字段，且不是特殊工具，显示为易读的键值对（不使用表格）
+                    const entries = Object.entries(data);
                     if (entries.length > 0 && entries.length <= 10) {
-                        // 撖嫣?蝞???桀澆笆嚗蝙?典??撣????航”??                        let cardHtml = `
+                        // 对于简单的键值对，使用卡片式布局而不是表格
+                        let cardHtml = `
                             <div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
                                     ${entries.map(([key, value]) => {
@@ -3690,7 +3777,7 @@
                         `;
                         return cardHtml;
                     } else if (entries.length > 10) {
-                        // 撖嫣?憭折??桀澆笆嚗蝙?刻”?潔?隡??曄內
+                        // 对于大量键值对，使用表格但优化显示
                         let tableHtml = `
                             <div style="overflow-x: auto; margin-top: 8px;">
                                 <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(255,255,255,0.05); border-radius: 6px;">
@@ -3703,13 +3790,15 @@
                                     <tbody>
                                         ${entries.map(([key, value], idx) => {
                                             let displayValue = '';
-                                            // ?寞?憭??秤?詨??畾?                                            const isErrorField = key.toLowerCase() === 'error' || key.toLowerCase() === 'message';
+                                            // 特殊处理错误相关的字段
+                                            const isErrorField = key.toLowerCase() === 'error' || key.toLowerCase() === 'message';
                                             const isOkField = key.toLowerCase() === 'ok';
                                             
                                             if (value === null || value === undefined) {
                                                 displayValue = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                             } else if (typeof value === 'object') {
-                                                // 銝??曄內 JSON ?澆?嚗銝箸?霂餅撘?                                                if (Array.isArray(value)) {
+                                                // 不要显示 JSON 格式，改为易读格式
+                                                if (Array.isArray(value)) {
                                                     displayValue = `<span style="color: #818cf8; font-weight: 600;">[${value.length} items]</span>`;
                                                 } else {
                                                     const keys = Object.keys(value);
@@ -3719,9 +3808,11 @@
                                                 const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2);
                                                 displayValue = `<span style="color: #10b981; font-weight: 500;">${formatted}</span>`;
                                             } else if (isErrorField) {
-                                                // ?秤靽⊥?函滯?脫蝷?                                                displayValue = `<span style="color: #ef4444; font-weight: 600;">${escapeHtml(String(value))}</span>`;
+                                                // 错误信息用红色显示
+                                                displayValue = `<span style="color: #ef4444; font-weight: 600;">${escapeHtml(String(value))}</span>`;
                                             } else if (isOkField && value === false) {
-                                                // ok: false ?函滯?脫蝷?                                                displayValue = `<span style="color: #ef4444; font-weight: 600;">${escapeHtml(String(value))}</span>`;
+                                                // ok: false 用红色显示
+                                                displayValue = `<span style="color: #ef4444; font-weight: 600;">${escapeHtml(String(value))}</span>`;
                                             } else {
                                                 displayValue = escapeHtml(String(value));
                                             }
@@ -3746,10 +3837,10 @@
                     }
                 }
                 
-                // 憒???頧祆銝箄”?潘?餈??澆???JSON
-                return formatObjectAsCards(data);
+                // 如果无法转换为表格，返回格式化的JSON
+                return `<pre style="margin: 0; font-size: 11px; color: #cbd5e1; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
             } catch (e) {
-                // 憒?閫??憭梯揖嚗????
+                // 如果解析失败，返回原文本
                 return `<div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(String(resultText))}</div>`;
             }
         }
@@ -3761,55 +3852,57 @@
             
             const toolText = content.substring('Tool used: '.length);
             
-            // 閫??撌亙靽⊥嚗??蝘撘?
+            // 解析工具信息，支持多种格式：
             // 1. "news_scan: 10 hits, queries=['AAPL'], samples=[...]"
             // 2. "vix_term: VIX=17.17, VIX3M=20.38, ratio=1.187"
             // 3. "fear_greed: ok"
-            // 4. "get_market_indices: {...}" (JSON?澆?)
+            // 4. "get_market_indices: {...}" (JSON格式)
             const colonIndex = toolText.indexOf(':');
             if (colonIndex === -1) {
-                // 憒?瘝⊥??嚗銝芸?蝚虫葡?臬極?瑕?
+                // 如果没有冒号，整个字符串是工具名
                 return { name: toolText.trim(), result: '', full: toolText.trim() };
             }
             
             const toolName = toolText.substring(0, colonIndex).trim();
             let toolResult = toolText.substring(colonIndex + 1).trim();
             
-            // Check if there are pending orders before executing
+            // 尝试解析 JSON 格式的结果
             try {
                 const jsonMatch = toolResult.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
                     toolResult = JSON.parse(jsonMatch[0]);
                 }
             } catch (e) {
-                // 憒?閫??憭梯揖嚗?????            }
+                // 如果解析失败，保持原样
+            }
             
-            // ???渲祕蝏???靽⊥
+            // 提取更详细的指标信息
             let indicators = '';
             if (toolName === 'vix_term' && toolResult) {
-                // 閫?? VIX ??嚗IX=17.17, VIX3M=20.38, ratio=1.187 (contango if >1)
+                // 解析 VIX 指标：VIX=17.17, VIX3M=20.38, ratio=1.187 (contango if >1)
                 indicators = toolResult;
             } else if (toolName === 'news_scan' && toolResult) {
-                // 閫???圈?急?蝏?嚗?0 hits, queries=['AAPL'], samples=[...]
-                // Check if there are pending orders before executing
-            try {
-                    // 憒??titles摮挾嚗??僎?澆???                    if (toolResult.includes('titles=')) {
+                // 解析新闻扫描结果：10 hits, queries=['AAPL'], samples=[...]
+                // 尝试解析并提取标题列表
+                try {
+                    // 如果包含titles字段，提取并格式化
+                    if (toolResult.includes('titles=')) {
                         const titlesMatch = toolResult.match(/titles=\[(.*?)\]/s);
                         if (titlesMatch) {
                             const titlesStr = titlesMatch[1];
                             const titles = titlesStr.split(',').map(t => t.trim().replace(/^['"]|['"]$/g, ''));
                             const count = titles.length;
-                            indicators = `? Found ${count} news:\n` + titles.slice(0, 20).map((t, i) => `${i+1}. ${t}`).join('\n');
+                            indicators = `📰 Found ${count} news:\n` + titles.slice(0, 20).map((t, i) => `${i+1}. ${t}`).join('\n');
                         } else {
                             indicators = toolResult;
                         }
                     } else if (toolResult.includes('samples=')) {
-                        // ?澆捆?扳撘???samples
+                        // 兼容旧格式：提取samples
                         const samplesMatch = toolResult.match(/samples=\[(.*?)\]/);
                         if (samplesMatch) {
                             const samplesStr = samplesMatch[1];
                             const samples = samplesStr.split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
-                            indicators = `? News headlines:\n` + samples.map((s, i) => `${i+1}. ${s}`).join('\n');
+                            indicators = `📰 News headlines:\n` + samples.map((s, i) => `${i+1}. ${s}`).join('\n');
                         } else {
                             indicators = toolResult;
                         }
@@ -3822,13 +3915,14 @@
             } else if (toolName === 'fear_greed') {
                 indicators = toolResult || 'Market sentiment index';
             } else if (toolName === 'get_economic_summary') {
-                // ?澆???瘚?格?閬?                indicators = '?? US Economic Indicators:\n' + toolResult;
+                // 格式化经济数据摘要
+                indicators = '📊 US Economic Indicators:\n' + toolResult;
             } else if (toolName === 'get_labor_market_data') {
-                // ?澆???典?撣?唳
-                indicators = '? Labor Market Data:\n' + toolResult;
+                // 格式化劳动力市场数据
+                indicators = '👥 Labor Market Data:\n' + toolResult;
             } else if (toolName === 'fetch_fred_indicator') {
-                // ?澆???銝東RED??
-                indicators = '?? FRED Indicator:\n' + toolResult;
+                // 格式化单个FRED指标
+                indicators = '📈 FRED Indicator:\n' + toolResult;
             }
             
             return { 
@@ -3870,17 +3964,19 @@
         function formatConversationContent(content, entryType) {
             if (!content) return '';
             
-            // 撠?璉瘚僎?澆???JSON/dict ?捆嚗鈭??掩??
+            // 尝试检测并格式化 JSON/dict 内容（适用于所有类型）
             if (typeof content === 'string') {
-                // 撠??? JSON 撖寡情
+                // 尝试提取 JSON 对象
                 const jsonMatch = content.match(/\{[\s\S]{20,}\}/);
                 if (jsonMatch) {
                     try {
                         const parsed = JSON.parse(jsonMatch[0]);
-                        // 憒??臬笆鞊∴?雿輻 formatToolResultAsTable ?澆???                        if (typeof parsed === 'object' && parsed !== null) {
-                            // 撖嫣?撖寡??捆銝剔? JSON嚗蝙?函??撘?                            const entries = Object.entries(parsed);
+                        // 如果是对象，使用 formatToolResultAsTable 格式化
+                        if (typeof parsed === 'object' && parsed !== null) {
+                            // 对于对话内容中的 JSON，使用简化格式
+                            const entries = Object.entries(parsed);
                             if (entries.length > 0 && entries.length <= 15) {
-                                // 雿輻?∠?撘?撅
+                                // 使用卡片式布局
                                 let cardHtml = `
                                     <div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #22d3ee;">
                                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
@@ -3915,49 +4011,55 @@
                             }
                         }
                     } catch (e) {
-                        // JSON 閫??憭梯揖嚗誧蝏剜迤撣詨???                    }
+                        // JSON 解析失败，继续正常处理
+                    }
                 }
             }
             
-            // 憒???risk_analysis 蝐餃?嚗?霂圾??JSON 撟嗥??蝷?            if (entryType === 'risk_analysis') {
+            // 如果是 risk_analysis 类型，尝试解析 JSON 并美化显示
+            if (entryType === 'risk_analysis') {
                 try {
-                    // 撠?閫?? JSON嚗?賣摮泵銝脫?撖寡情嚗?                    let riskData;
+                    // 尝试解析 JSON（可能是字符串或对象）
+                    let riskData;
                     if (typeof content === 'string') {
-                        // 撠??? JSON嚗?賢摮泵銝脖葉嚗?                        const jsonMatch = content.match(/\{[\s\S]*\}/);
+                        // 尝试提取 JSON（可能在字符串中）
+                        const jsonMatch = content.match(/\{[\s\S]*\}/);
                         if (jsonMatch) {
                             riskData = JSON.parse(jsonMatch[0]);
                         } else {
-                            return escapeHtml(content); // 憒?銝 JSON嚗?交蝷?                        }
+                            return escapeHtml(content); // 如果不是 JSON，直接显示
+                        }
                     } else if (typeof content === 'object') {
                         riskData = content;
                     } else {
                         return escapeHtml(String(content));
                     }
                     
-                    // ?澆??蝷?                    let html = '<div style="font-family: monospace; font-size: 13px; line-height: 1.8;">';
+                    // 格式化显示
+                    let html = '<div style="font-family: monospace; font-size: 13px; line-height: 1.8;">';
                     
                     // Overall Risk Level
                     if (riskData.overall_risk_level) {
                         const riskColor = riskData.overall_risk_level === 'high' ? '#dc2626' : 
                                          riskData.overall_risk_level === 'medium' ? '#f59e0b' : '#10b981';
-                        html += `<div style="margin-bottom: 12px;"><strong style="color: ${riskColor};">?? Overall Risk Level:</strong> <span style="color: ${riskColor}; font-weight: 600;">${riskData.overall_risk_level.toUpperCase()}</span></div>`;
+                        html += `<div style="margin-bottom: 12px;"><strong style="color: ${riskColor};">⚠️ Overall Risk Level:</strong> <span style="color: ${riskColor}; font-weight: 600;">${riskData.overall_risk_level.toUpperCase()}</span></div>`;
                     }
                     
                     // Risk Score
                     if (riskData.risk_score !== undefined) {
-                        html += `<div style="margin-bottom: 12px;"><strong>?? Risk Score:</strong> <span style="color: #6b7280;">${Number(riskData.risk_score).toFixed(2)}</span></div>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>📊 Risk Score:</strong> <span style="color: #6b7280;">${Number(riskData.risk_score).toFixed(2)}</span></div>`;
                     }
                     
                     // Max Position Size
                     if (riskData.max_position_size) {
-                        html += `<div style="margin-bottom: 12px;"><strong>?? Position Limits:</strong><br/>`;
-                        html += `&nbsp;&nbsp;??Per Stock: <span style="color: #059669;">${(riskData.max_position_size.per_stock * 100).toFixed(0)}%</span><br/>`;
-                        html += `&nbsp;&nbsp;??Total Equity: <span style="color: #059669;">${(riskData.max_position_size.total_equity * 100).toFixed(0)}%</span></div>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>📏 Position Limits:</strong><br/>`;
+                        html += `&nbsp;&nbsp;• Per Stock: <span style="color: #059669;">${(riskData.max_position_size.per_stock * 100).toFixed(0)}%</span><br/>`;
+                        html += `&nbsp;&nbsp;• Total Equity: <span style="color: #059669;">${(riskData.max_position_size.total_equity * 100).toFixed(0)}%</span></div>`;
                     }
                     
                     // Safe Stocks
                     if (riskData.safe_stocks && riskData.safe_stocks.length > 0) {
-                        html += `<div style="margin-bottom: 12px;"><strong>??Safe Stocks:</strong> <span style="color: #059669;">${riskData.safe_stocks.length} stocks</span>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>✅ Safe Stocks:</strong> <span style="color: #059669;">${riskData.safe_stocks.length} stocks</span>`;
                         html += `<div style="margin-top: 4px; padding: 8px; background: #f0fdf4; border-radius: 4px; font-size: 12px;">`;
                         html += riskData.safe_stocks.slice(0, 20).join(', ');
                         if (riskData.safe_stocks.length > 20) {
@@ -3968,7 +4070,7 @@
                     
                     // High Risk Stocks
                     if (riskData.high_risk_stocks && riskData.high_risk_stocks.length > 0) {
-                        html += `<div style="margin-bottom: 12px;"><strong>?? High Risk Stocks:</strong> <span style="color: #dc2626;">${riskData.high_risk_stocks.length} stocks</span>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>⚠️ High Risk Stocks:</strong> <span style="color: #dc2626;">${riskData.high_risk_stocks.length} stocks</span>`;
                         html += `<div style="margin-top: 4px; padding: 8px; background: #fef2f2; border-radius: 4px; font-size: 12px; color: #dc2626;">`;
                         html += riskData.high_risk_stocks.join(', ');
                         html += `</div></div>`;
@@ -3976,7 +4078,7 @@
                     
                     // Risk Warnings
                     if (riskData.risk_warnings && riskData.risk_warnings.length > 0) {
-                        html += `<div style="margin-bottom: 12px;"><strong>?? Warnings:</strong>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>⚠️ Warnings:</strong>`;
                         riskData.risk_warnings.forEach(warning => {
                             html += `<div style="margin-top: 4px; padding: 6px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 12px;">${escapeHtml(String(warning))}</div>`;
                         });
@@ -3985,18 +4087,18 @@
                     
                     // Diversification Advice
                     if (riskData.diversification_advice) {
-                        html += `<div style="margin-bottom: 12px;"><strong>? Diversification:</strong> <span style="color: #6b7280;">${escapeHtml(riskData.diversification_advice)}</span></div>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>💡 Diversification:</strong> <span style="color: #6b7280;">${escapeHtml(riskData.diversification_advice)}</span></div>`;
                     }
                     
                     // Current Position Risk
                     if (riskData.current_position_risk) {
                         const posRisk = riskData.current_position_risk;
-                        html += `<div style="margin-bottom: 12px;"><strong>?? Current Position:</strong>`;
+                        html += `<div style="margin-bottom: 12px;"><strong>📊 Current Position:</strong>`;
                         html += `<div style="margin-top: 4px; padding: 8px; background: #f9fafb; border-radius: 4px; font-size: 12px;">`;
-                        html += `&nbsp;&nbsp;??Concentration: <span style="color: #6b7280;">${(posRisk.position_concentration * 100).toFixed(1)}%</span><br/>`;
-                        html += `&nbsp;&nbsp;??Overall Exposure: <span style="color: #6b7280;">${(posRisk.overall_exposure * 100).toFixed(1)}%</span>`;
+                        html += `&nbsp;&nbsp;• Concentration: <span style="color: #6b7280;">${(posRisk.position_concentration * 100).toFixed(1)}%</span><br/>`;
+                        html += `&nbsp;&nbsp;• Overall Exposure: <span style="color: #6b7280;">${(posRisk.overall_exposure * 100).toFixed(1)}%</span>`;
                         if (posRisk.recommended_adjustments && posRisk.recommended_adjustments.length > 0) {
-                            html += `<br/>&nbsp;&nbsp;??Adjustments: <span style="color: #f59e0b;">${posRisk.recommended_adjustments.join(', ')}</span>`;
+                            html += `<br/>&nbsp;&nbsp;• Adjustments: <span style="color: #f59e0b;">${posRisk.recommended_adjustments.join(', ')}</span>`;
                         }
                         html += `</div></div>`;
                     }
@@ -4004,12 +4106,13 @@
                     html += '</div>';
                     return html;
                 } catch (e) {
-                    // 憒?閫??憭梯揖嚗?交蝷箏?憪?摰?                    console.warn('Failed to parse risk report JSON:', e);
+                    // 如果解析失败，直接显示原始内容
+                    console.warn('Failed to parse risk report JSON:', e);
                     return escapeHtml(String(content));
                 }
             }
             
-            // ?嗡?蝐餃????摮??曄內
+            // 其他类型先简化数字再显示
             const escaped = escapeHtml(String(content));
             return simplifyNumbers(escaped);
         }
@@ -4030,7 +4133,7 @@
             const valueUp = totalValue >= initialValue;
             const valuePct = initialValue > 0 ? ((totalValue - initialValue) / initialValue * 100) : 0;
 
-            // 蝖桐? totalValue 甇?＆霈∠?嚗??+ ?∠巨隞瑕潘?
+            // 确保 totalValue 正确计算（现金 + 股票价值）
             if (totalValue === 0 && cash !== undefined && equityValue !== undefined) {
                 totalValue = cash + equityValue;
             }
@@ -4044,7 +4147,7 @@
                     <div class="card-subtitle" style="margin-top: 4px;">Initial: ${formatCurrency(initialValue)}</div>
                 </div>
                 <div class="card" style="border: 2px solid rgba(34, 211, 238, 0.5); box-shadow: 0 0 30px rgba(34, 211, 238, 0.3);">
-                    <div class="card-label">? Available Cash</div>
+                    <div class="card-label">💵 Available Cash</div>
                     <div class="card-value" style="font-size: 32px;">${formatCurrency(cash)}</div>
                     <div class="card-subtitle" style="color: #22d3ee; font-weight: 600;">${cashPercent}% of portfolio</div>
                 </div>
@@ -4069,7 +4172,7 @@
             const container = document.getElementById('summaryCards');
             if (!container) return;
             
-            // 暺恕?潘?憒? API 憭梯揖?嗡蝙?剁?
+            // 默认值（如果 API 失败时使用）
             let vixLevel = 0;
             let vix3m = 0;
             let ratio = 0;
@@ -4082,7 +4185,7 @@
             let fgLabel = 'N/A';
             let fgColor = '#6b7280';
             
-            // 撠??瑕? VIX ?唳
+            // 尝试获取 VIX 数据
             try {
                 const vixResponse = await fetch(`${API_BASE}/api/vix/term`);
                 if (vixResponse.ok) {
@@ -4099,30 +4202,31 @@
                 console.warn('[VIX] Failed to fetch VIX data:', err);
             }
             
-            // 撠??瑕? Fear & Greed ?唳
+            // 尝试获取 Fear & Greed 数据
             try {
                 const fgResponse = await fetch(`${API_BASE}/api/fear-greed`);
                 let fg = null;
                 
-                // Check if there are pending orders before executing
-            try {
+                // 尝试解析响应（无论状态码如何）
+                try {
                     fg = await fgResponse.json();
                 } catch (parseErr) {
                     console.warn('[F&G] Failed to parse JSON response:', parseErr);
                 }
                 
                 if (fg) {
-                    // ?舀?憭??唳?澆?
+                    // 支持多种数据格式
                     let fgData = fg.fear_greed || fg;
                     
-                    // 憒? fgData ?舀蝏??洵銝銝芸?蝝?                    if (Array.isArray(fgData)) {
+                    // 如果 fgData 是数组，取第一个元素
+                    if (Array.isArray(fgData)) {
                         fgData = fgData[0] || {};
                     }
                     
                     fgValue = fgData.value || fgData.index || 0;
                     fgLabel = fgData.label || fgData.classification || '';
                     
-                    // ?寞?潛＆摰??脣??倌
+                    // 根据值确定颜色和标签
                     if (fgValue > 0 && fgValue <= 100) {
                         if (fgValue >= 75) {
                             fgColor = '#ef4444';
@@ -4141,7 +4245,8 @@
                             if (!fgLabel) fgLabel = 'Extreme Fear';
                         }
                     } else if (fgValue === 0 && fgLabel === 'N/A') {
-                        // 雿輻暺恕??                        fgLabel = 'N/A';
+                        // 使用默认值
+                        fgLabel = 'N/A';
                         fgColor = '#6b7280';
                     }
                     
@@ -4153,14 +4258,14 @@
                 console.warn('[F&G] Failed to fetch Fear & Greed data:', err);
             }
             
-            // 憪??曄內 VIX & FGI 蝏??Ｘ
+            // 始终显示 VIX & FGI 组合面板
             const vixFGICard = `
                 <div class="card" style="grid-column: span 2; border: 1px solid ${riskColor};">
-                    <div class="card-label">?? Market Sentiment Dashboard</div>
+                    <div class="card-label">📊 Market Sentiment Dashboard</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-top: 10px;">
                         <div style="text-align: center; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;">
                             <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">VIX</div>
-                            <div style="font-size: 24px; font-weight: 700; color: #22d3ee;">${vixLevel > 0 ? vixLevel.toFixed(1) : '??}</div>
+                            <div style="font-size: 24px; font-weight: 700; color: #22d3ee;">${vixLevel > 0 ? vixLevel.toFixed(1) : '—'}</div>
                         </div>
                         <div style="text-align: center; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;">
                             <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">TERM STRUCTURE</div>
@@ -4173,21 +4278,22 @@
                         </div>
                         <div style="text-align: center; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;">
                             <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">RISK SCORE</div>
-                            <div style="font-size: 24px; font-weight: 700; color: ${riskColor};">${riskScore > 0 ? riskScore.toFixed(1) : '??}</div>
+                            <div style="font-size: 24px; font-weight: 700; color: ${riskColor};">${riskScore > 0 ? riskScore.toFixed(1) : '—'}</div>
                         </div>
                     </div>
                     <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid rgba(245, 158, 11, 0.2);">
                         <div style="color: #94a3b8; font-size: 12px; font-weight: 600;">
-                            ${ratio > 0 ? `Ratio: ${ratio.toFixed(3)}` : '??}${fgValue > 0 ? ` | F&G: ${fgValue}` : ''}
+                            ${ratio > 0 ? `Ratio: ${ratio.toFixed(3)}` : '—'}${fgValue > 0 ? ` | F&G: ${fgValue}` : ''}
                         </div>
                         <div style="background: ${riskColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-                            ${riskScore > 0 ? `Risk: ${riskScore.toFixed(1)}/10` : 'Risk: ??}
+                            ${riskScore > 0 ? `Risk: ${riskScore.toFixed(1)}/10` : 'Risk: —'}
                         </div>
                     </div>
                 </div>
             `;
             
-            // 璉?交?血歇蝏???VIX & FGI ?Ｘ嚗??憭溶??            const existingCard = container.querySelector('.card[style*="Market Sentiment Dashboard"]');
+            // 检查是否已经存在 VIX & FGI 面板，避免重复添加
+            const existingCard = container.querySelector('.card[style*="Market Sentiment Dashboard"]');
             if (existingCard) {
                 existingCard.outerHTML = vixFGICard;
             } else {
@@ -4218,13 +4324,13 @@
         // Render Equity Curve Chart
         async function renderEquityChart() {
             try {
-                // 雿輻?典???equityHistory ?唳嚗??瓷????瑕?
+                // 使用全局的 equityHistory 数据，如果没有则重新获取
                 let equityData = equityHistory;
                 if (!equityData || equityData.length === 0) {
                     console.log('[Chart] No cached equity history, fetching...');
                     equityData = await fetchEquityHistory();
                     if (equityData && equityData.length > 0) {
-                        equityHistory = equityData; // ?湔?典???
+                        equityHistory = equityData; // 更新全局变量
                     }
                 }
                 
@@ -4352,7 +4458,8 @@
                 const positionsArray = Object.entries(positions);
                 const cash = portfolio.cash || 0;
                 
-                // 憒?瘝⊥???銋瓷????曄內蝛箇??                if (positionsArray.length === 0 && (!cash || cash === 0)) {
+                // 如果没有持仓也没有现金，显示空状态
+                if (positionsArray.length === 0 && (!cash || cash === 0)) {
                     console.log('[Chart] No positions or cash for distribution chart');
                     document.getElementById('pieChartInfo').textContent = 'No positions yet';
                     if (distributionChart) {
@@ -4362,24 +4469,26 @@
                     return;
                 }
                 
-                // 憒????瘝⊥???嚗?閬蝷箏?擖澆
+                // 如果有现金但没有持仓，也要显示圆饼图
                 console.log('[Chart] Rendering distribution chart:', { cash, positionsCount: positionsArray.length });
                 
-                // Prepare data - ??圈???隞?                const labels = [];
+                // Prepare data - 包含现金和持仓
+                const labels = [];
                 const data = [];
                 const colors = [
-                    '#9ca3af', // ?圈?憸嚗?莎?
+                    '#9ca3af', // 现金颜色（灰色）
                     '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe',
                     '#1e40af', '#2563eb', '#3b82f6', '#60a5fa',
                     '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0',
                 ];
                 
-                // 瘛餃??圈?嚗???嚗?                if (cash > 0) {
+                // 添加现金（如果有）
+                if (cash > 0) {
                     labels.push('CASH');
                     data.push(cash);
                 }
                 
-                // 瘛餃???
+                // 添加持仓
                 positionsArray.forEach(([symbol, pos]) => {
                     const marketValue = pos.market_value || 0;
                     if (marketValue > 0) {
@@ -4391,7 +4500,7 @@
                 const totalValue = data.reduce((sum, val) => sum + val, 0);
                 
                 document.getElementById('pieChartInfo').textContent = 
-                    `${labels.length} items (${cash > 0 ? '1 cash, ' : ''}${positionsArray.length} positions) ??Total: ${formatCurrency(totalValue)}`;
+                    `${labels.length} items (${cash > 0 ? '1 cash, ' : ''}${positionsArray.length} positions) • Total: ${formatCurrency(totalValue)}`;
                 
                 // Destroy existing chart
                 if (distributionChart) {
@@ -4458,7 +4567,8 @@
         function renderPositions(portfolio) {
             const positions = portfolio.positions || {};
             const positionsPnL = portfolio.positions_pnl || {};
-            // 蝖桐? total_value 甇?＆霈∠?嚗???蝡航???霂荔?雿輻 cash + equity_value嚗?            let totalValue = portfolio.total_value || 0;
+            // 确保 total_value 正确计算（如果后端返回错误，使用 cash + equity_value）
+            let totalValue = portfolio.total_value || 0;
             if (totalValue === 0 && portfolio.cash && portfolio.equity_value) {
                 totalValue = portfolio.cash + portfolio.equity_value;
                 console.warn('[Frontend] Fixed total_value calculation:', totalValue);
@@ -4483,10 +4593,11 @@
             let totalUnrealizedPnL = 0;
 
             tbody.innerHTML = positionsArray.map(([symbol, pos]) => {
-                // ?瑕?P&L?唳嚗???蝡舀瓷??靘?隞?蝡航恣蝞?                let pnl = positionsPnL[symbol];
+                // 获取P&L数据，如果后端没有提供，从前端计算
+                let pnl = positionsPnL[symbol];
                 if (!pnl || typeof pnl.unrealized_pnl !== 'number') {
-                    // 憒??垢瘝⊥???P&L?唳嚗??垢霈∠?
-                    // 隡?雿輻total_cost嚗????剁?嚗?蝙?牢ost_basis嚗??蝙?災vg_cost * quantity
+                    // 如果后端没有提供P&L数据，从前端计算
+                    // 优先使用total_cost（如果存在），否则使用cost_basis，最后使用avg_cost * quantity
                     const costBasis = pos.total_cost || pos.cost_basis || ((pos.avg_cost || 0) * (pos.quantity || 0));
                     const marketValue = pos.market_value || 0;
                     const unrealizedPnl = marketValue - costBasis;
@@ -4498,7 +4609,8 @@
                     console.warn(`[Frontend] Calculating P&L for ${symbol}: cost_basis=${costBasis} (total_cost=${pos.total_cost}, cost_basis=${pos.cost_basis}), market_value=${marketValue}, unrealized_pnl=${unrealizedPnl}`);
                 }
                 
-                // 蝖桐?P&L?潭???銝?烤aN?nfinity嚗?                if (isNaN(pnl.unrealized_pnl) || !isFinite(pnl.unrealized_pnl)) {
+                // 确保P&L值有效（不能是NaN或Infinity）
+                if (isNaN(pnl.unrealized_pnl) || !isFinite(pnl.unrealized_pnl)) {
                     pnl.unrealized_pnl = 0;
                 }
                 if (isNaN(pnl.unrealized_pnl_pct) || !isFinite(pnl.unrealized_pnl_pct)) {
@@ -4764,7 +4876,7 @@
                 const data = await resp.json();
                 return data.ok ? (data.trades || []) : [];
             } catch (e) {
-                // ??憭??秤嚗??嗅?芷
+                // 静默处理错误，避免控制台噪音
                 if (e.name !== 'AbortError') {
                     console.warn('Failed to fetch trades:', e.message);
                 }
@@ -4775,13 +4887,14 @@
         function renderTrades(trades) {
             const tbody = document.getElementById('tradesBody');
             
-            // ?垢?駁?嚗?憭??歹?- 銝?韏imestamp嚗?銝箏?賭蛹蝛?            const seen = new Set();
+            // 前端去重（额外保护）- 不依赖timestamp，因为可能为空
+            const seen = new Set();
             const uniqueTrades = trades.filter(t => {
                 const sym = t.symbol || '';
                 const side = (t.side || t.action || '').toUpperCase();
                 const qty = parseInt(t.quantity || 0);
                 const price = parseFloat(t.price || t.fill_price || 0);
-                // 隞瑟敶???靽?2雿??堆?隞仿?筑?寞蝎曉漲?桅?
+                // 价格归一化（保留2位小数）以避免浮点数精度问题
                 const priceNormalized = Math.round(price * 100) / 100;
                 const key = `${sym}|${side}|${qty}|${priceNormalized}`;
                 if (seen.has(key)) {
@@ -4843,7 +4956,8 @@
             const countEl = document.getElementById('executionCount');
             if (!tbody) return;
             
-            // ?駁?嚗蝙??symbol|side|quantity|price 雿蛹?臭???            const seen = new Set();
+            // 去重：使用 symbol|side|quantity|price 作为唯一键
+            const seen = new Set();
             const uniqueTrades = [];
             
             for (const trade of trades) {
@@ -4851,7 +4965,8 @@
                 const side = (trade.side || trade.action || '').toUpperCase();
                 const qty = parseInt(trade.quantity || 0);
                 const price = parseFloat(trade.price || trade.fill_price || 0);
-                const priceNormalized = Math.round(price * 100) / 100; // 靽?2雿???                const key = `${sym}|${side}|${qty}|${priceNormalized}`;
+                const priceNormalized = Math.round(price * 100) / 100; // 保留2位小数
+                const key = `${sym}|${side}|${qty}|${priceNormalized}`;
                 
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -4859,7 +4974,7 @@
                 }
             }
             
-            // ???蝏?FILLED ??PENDING嚗??祆??交???
+            // 按状态分组：FILLED 和 PENDING（包括明日挂单）
             const filledTrades = uniqueTrades.filter(t => {
                 const status = (t.status || '').toUpperCase();
                 return status === 'FILLED' || status === 'SUCCESS';
@@ -4869,14 +4984,16 @@
                 return status === 'PENDING' || status === 'ASK';
             });
             
-            // 璉?交?行????嚗rder_date?舀?憭拍??交?嚗?            const today = new Date().toISOString().split('T')[0];
+            // 检查是否有明日挂单（order_date是明天的日期）
+            const today = new Date().toISOString().split('T')[0];
             const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             const tomorrowOrders = pendingTrades.filter(t => {
                 const orderDate = t.order_date || t.date || '';
                 return orderDate && orderDate >= tomorrow;
             });
             
-            // ??湔?摨???啁??典?嚗?            const sortByTime = (a, b) => {
+            // 按时间排序（最新的在前）
+            const sortByTime = (a, b) => {
                 const timeA = a.timestamp || a.filled_at || a.placed_at || a.time || a.date || '';
                 const timeB = b.timestamp || b.filled_at || b.placed_at || b.time || b.date || '';
                 return timeB.localeCompare(timeA);
@@ -4885,25 +5002,26 @@
             filledTrades.sort(sortByTime);
             pendingTrades.sort(sortByTime);
             
-            // ?餉?嚗???FILLED霈Ｗ?嚗?曄內FILLED嚗?蝷摺ENDING嚗??祆??交???
+            // 逻辑：如果有FILLED订单，只显示FILLED；否则显示PENDING（包括明日挂单）
             let displayTrades = [];
             if (filledTrades.length > 0) {
-                // ?ILLED霈Ｗ??塚??芣蝷慚ILLED
+                // 有FILLED订单时，只显示FILLED
                 displayTrades = filledTrades;
             } else {
-                // 瘝⊥?FILLED霈Ｗ??塚??曄內PENDING嚗??蝷箸??交???
+                // 没有FILLED订单时，显示PENDING（优先显示明日挂单）
                 displayTrades = [...tomorrowOrders, ...pendingTrades.filter(t => !tomorrowOrders.includes(t))];
             }
             
-            // ?湔霈⊥嚗蝷慚ILLED?ENDING?圈?嚗?            const totalCount = filledTrades.length + pendingTrades.length;
+            // 更新计数（显示FILLED和PENDING数量）
+            const totalCount = filledTrades.length + pendingTrades.length;
             const filledCount = filledTrades.length;
             const pendingCount = pendingTrades.length;
             const displayCount = displayTrades.length;
             
-            // ?湔霈⊥?曄內
+            // 更新计数显示
             if (countEl) {
                 if (filledCount > 0) {
-                    // ?ILLED?塚??芣蝷慚ILLED?圈?
+                    // 有FILLED时，只显示FILLED数量
                     countEl.textContent = `${displayCount} trades (${filledCount} filled)`;
                 } else if (tomorrowOrders.length > 0) {
                     countEl.textContent = `${displayCount} trades (${pendingCount - tomorrowOrders.length} pending, ${tomorrowOrders.length} tomorrow)`;
@@ -4919,19 +5037,19 @@
                 return;
             }
             
-            // ?曄內?餈?霈Ｗ?嚗?憭?5?∴?
+            // 显示最近的订单（最多15条）
             const recentTrades = displayTrades.slice(0, 15);
             
             tbody.innerHTML = recentTrades.map(t => {
                 const side = (t.side || t.action || '').toUpperCase();
                 const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
-                // 隡?雿輻filled_at嚗?鈭斗?湛?嚗甈∩蝙?私laced_at嚗???湛?嚗??蝙?系imestamp
+                // 优先使用filled_at（成交时间），其次使用placed_at（挂单时间），最后使用timestamp
                 const ts = t.filled_at || t.placed_at || t.timestamp || '';
                 let timeDisplay = '-';
                 if (ts) {
                     try {
                         const dateObj = new Date(ts);
-                        // ?曄內?交???湛?MM/DD HH:MM:SS
+                        // 显示日期和时间：MM/DD HH:MM:SS
                         timeDisplay = dateObj.toLocaleString('en-US', {
                             month: '2-digit',
                             day: '2-digit',
@@ -4941,7 +5059,7 @@
                             hour12: false
                         });
                     } catch (e) {
-                        timeDisplay = ts; // 憒?閫??憭梯揖嚗?交蝷箏?憪?蝚虫葡
+                        timeDisplay = ts; // 如果解析失败，直接显示原始字符串
                     }
                 }
                 const fillPrice = t.fill_price || t.price || null;
@@ -4949,7 +5067,7 @@
                 const status = (t.status || 'UNKNOWN').toUpperCase();
                 const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
                 
-                // 璉?交?行???
+                // 检查是否是明日挂单
                 const orderDate = t.order_date || t.date || '';
                 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 const isTomorrowOrder = orderDate && orderDate >= tomorrow;
@@ -4985,11 +5103,13 @@
 
         // Main refresh function
         async function refreshData(showLoading = false, skipHealthCheck = false) {
-            // 憒?甇??扯?鈭斗?嚗歲餈摨瑟??伐??踹??冽銵??湔蝷?connection error嚗?            if (!skipHealthCheck) {
-                // 擐?璉?亙?蝡舀?血?剁?雿輻?游捐?曄?蝑嚗?                let backendAvailable = false;
+            // 如果正在执行交易，跳过健康检查（避免在执行期间显示 connection error）
+            if (!skipHealthCheck) {
+                // 首先检查后端是否可用（使用更宽松的策略）
+                let backendAvailable = false;
                 let healthCheckFailed = false;
                 
-                // 撠?憭葵蝡舐嚗閬?銝銝芣??停霈支蛹?垢?舐
+                // 尝试多个端点，只要有一个成功就认为后端可用
                 const healthCheckEndpoints = [
                     `${API_BASE}/`,
                     `${API_BASE}/api/market/is-open`,
@@ -4999,35 +5119,40 @@
                     try {
                         const healthCheck = await fetch(endpoint, {
                             method: 'GET',
-                            signal: AbortSignal.timeout(5000)  // 憓???蝘???                        });
+                            signal: AbortSignal.timeout(5000)  // 增加到5秒超时
+                        });
                         if (healthCheck.ok) {
                             backendAvailable = true;
                             break;
                         }
                     } catch (e) {
-                        // 蝏抒賒撠?銝?銝芰垢??                        healthCheckFailed = true;
+                        // 继续尝试下一个端点
+                        healthCheckFailed = true;
                         continue;
                     }
                 }
                 
-                // 憒???摨瑟??仿憭梯揖嚗?霂?銝芣蝞??璉?伐?銝蝷粹?霂舫△?ｇ?
+                // 如果所有健康检查都失败，尝试一个更简单的检查（不显示错误页面）
                 if (!backendAvailable && healthCheckFailed) {
-                    // 銝??單蝷粹?霂舫△?ｇ??蝏抒賒撠??瑕??唳
-                    // 憒??賒?唳?瑕?銋仃韐伐??蝷粹?霂?                    // ?亙熒璉?亙仃韐亙?賣??冽迤?典??窈瘙?餈甇?虜??                    console.debug('[Refresh] Health check failed (server may be busy), continuing to try fetching data...');
+                    // 不立即显示错误页面，而是继续尝试获取数据
+                    // 如果后续数据获取也失败，再显示错误
+                    // 健康检查失败可能是服务器正在处理请求，这是正常的
+                    console.debug('[Refresh] Health check failed (server may be busy), continuing to try fetching data...');
                     updateConnectionStatus(false);
                 } else if (backendAvailable) {
                     updateConnectionStatus(true);
                 }
             } else {
-                // 頝唾??亙熒璉?交嚗?霈曇??交迤撣賂?銝?啁???踹??冽銵??湔蝷粹?霂荔?
+                // 跳过健康检查时，假设连接正常（不更新状态，避免在执行期间显示错误）
                 console.log('[Refresh] Skipping health check (trading in progress)');
             }
             
-            // 璉?亙??箸?血???- ?漱?畾萎??曄內撖寡??捆嚗?銝?啣??嗆??            let isMarketOpen = true;
-            let marketStatusSource = 'api'; // 餈質葵?嗆皞?'api' ??'fallback'
+            // 检查市场是否开盘 - 非交易时段仍显示对话内容，但不更新实时数据
+            let isMarketOpen = true;
+            let marketStatusSource = 'api'; // 追踪状态来源：'api' 或 'fallback'
             try {
                 const marketCheck = await fetch(`${API_BASE}/api/market/is-open`, {
-                    signal: AbortSignal.timeout(5000)  // 憓???蝘?蝏??∪?游????園
+                    signal: AbortSignal.timeout(5000)  // 增加到5秒，给服务器更多响应时间
                 });
                 if (marketCheck.ok) {
                     const marketData = await marketCheck.json();
@@ -5036,31 +5161,34 @@
                         marketStatusSource = 'api';
                         if (!isMarketOpen) {
                             console.log('[Refresh] Market is closed (from API), will show conversations but skip real-time data');
-                            // ?曄內?內靽⊥
+                            // 显示提示信息
                             const refreshBtn = document.getElementById('refreshBtn');
                             if (refreshBtn) {
                                 refreshBtn.disabled = false;
-                                refreshBtn.textContent = '?? Refresh (Market Closed)';
+                                refreshBtn.textContent = '🔄 Refresh (Market Closed)';
                             }
                         } else {
                             console.debug('[Refresh] Market is open (from API)');
                         }
                     }
                 } else {
-                    // API餈?鈭?霂舐??嚗蝙?狄allback
+                    // API返回了错误状态码，使用fallback
                     throw new Error(`API returned status ${marketCheck.status}`);
                 }
             } catch (e) {
-                // 憒?璉?亙仃韐伐??寞敶??園?箄?斗嚗allback?餉?嚗?                const now = new Date();
+                // 如果检查失败，根据当前时间智能判断（fallback逻辑）
+                const now = new Date();
                 const hour = now.getHours();
                 const minute = now.getMinutes();
                 const day = now.getDay();
-                // ?其??啣鈭?9:30-16:00 銝箔漱???                const isWeekday = day >= 1 && day <= 5;
+                // 周一到周五，9:30-16:00 为交易时间
+                const isWeekday = day >= 1 && day <= 5;
                 const isTradingHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
                 isMarketOpen = isWeekday && isTradingHours;
                 marketStatusSource = 'fallback';
-                // ?芸??暺芋撘??曄內霅血?嚗??芸?瑟?嗡漣??憭敹?
-                // 憒??秤?航??嗆?餈?蔭嚗?賣??冽迤?典??窈瘙?餈甇?虜??                const isTimeoutOrReset = e.message && (e.message.includes('timeout') || e.message.includes('reset') || e.message.includes('aborted'));
+                // 只在非静默模式下显示警告（避免在自动刷新时产生过多日志）
+                // 如果错误是超时或连接重置，可能是服务器正在处理请求，这是正常的
+                const isTimeoutOrReset = e.message && (e.message.includes('timeout') || e.message.includes('reset') || e.message.includes('aborted'));
                 if (showLoading && !isTimeoutOrReset) {
                     console.warn(`[Refresh] API check failed (${e.message || 'network error'}), using time-based fallback: ${isMarketOpen ? 'open' : 'closed'}`);
                 } else if (showLoading) {
@@ -5070,7 +5198,8 @@
                 }
             }
             
-            // 霂瑟??駁?嚗??迤?典?堆???銋??窈瘙?            if (isRefreshing) {
+            // 请求去重：如果正在刷新，取消之前的请求
+            if (isRefreshing) {
                 if (refreshAbortController) {
                     refreshAbortController.abort();
                 }
@@ -5089,20 +5218,22 @@
                 errorState.style.display = 'none';
                 mainContent.style.display = 'none';
                 refreshBtn.disabled = true;
-                refreshBtn.textContent = '?? Refreshing...';
+                refreshBtn.textContent = '🔄 Refreshing...';
             }
 
             try {
                 // Measure response time
                 const startTime = performance.now();
 
-                // Fetch all data in parallel (雿輻Promise.allSettled嚗??銝芸仃韐亙紡?湔雿仃韐?
+                // Fetch all data in parallel (使用Promise.allSettled，避免单个失败导致整体失败)
                 const fetchOptions = { signal: refreshAbortController.signal };
                 
-                // ?漱?畾蛛??芾?笆霂?霈Ｗ??唳嚗??湔摰?唳
-                // 鈭斗??嗆挾嚗?????                const fetchPromises = [];
+                // 非交易时段：只获取对话和订单数据，不更新实时数据
+                // 交易时段：获取所有数据
+                const fetchPromises = [];
                 if (isMarketOpen) {
-                    // 鈭斗??嗆挾嚗?????                    fetchPromises.push(
+                    // 交易时段：获取所有数据
+                    fetchPromises.push(
                         fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })),
                         fetchEquityHistory(fetchOptions).catch(() => []),
                         fetchBackendStatus(fetchOptions).catch(() => null),
@@ -5113,33 +5244,38 @@
                         fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
                     );
                 } else {
-                    // ?漱?畾蛛??瑕???唳嚗??澆銵剁??笆霂恥???                    fetchPromises.push(
+                    // 非交易时段：获取历史数据（净值图表）和对话订单数据
+                    fetchPromises.push(
                         Promise.resolve(null), // portfolio placeholder
-                        fetchEquityHistory(fetchOptions).catch(() => []), // ??靽桀?嚗?鈭斗??嗆挾銋??瑕???唳?其??曇”?曄內
+                        fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),
                         fetchToolsList(fetchOptions).catch(() => []),
                         fetchSystemInfo(fetchOptions).catch(() => null),
                         fetchConversations(CONVERSATIONS_LIMIT, fetchOptions).catch(() => ({ conversations: [], total: 0, has_more: false })),
-                        fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => []) // ????
+                        fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => []) // 包括明日挂单
                     );
                 }
                 
-                // 雿輻Promise.allSettled嚗雿踵?鈭窈瘙仃韐乩??賜誧蝏剜蝷箏隞??                const results = await Promise.allSettled(fetchPromises);
+                // 使用Promise.allSettled，即使某些请求失败也能继续显示其他数据
+                const results = await Promise.allSettled(fetchPromises);
                 
-                // ??蝏?嚗???霂?                let portfolio = null;
+                // 提取结果，处理错误
+                let portfolio = null;
                 if (results[0].status === 'fulfilled') {
                     const portfolioValue = results[0].value;
-                    // 璉?交?行?秤??嚗? error 摮挾銝瓷????殷?
+                    // 检查是否是错误响应（有 error 字段且没有有效数据）
                     if (portfolioValue && !portfolioValue.error && (portfolioValue.total_value !== undefined || portfolioValue.cash !== undefined)) {
                         portfolio = portfolioValue;
                     } else if (portfolioValue?.error) {
-                        // ?芣??函?甇?仃韐交?扇敶??漱?畾萎?霈啣?嚗?                        if (isMarketOpen) {
+                        // 只有在真正失败时才记录（非交易时段不记录）
+                        if (isMarketOpen) {
                             console.debug('[Refresh] Portfolio fetch returned error:', portfolioValue.error);
                         }
                     }
                 } else if (results[0].status === 'rejected') {
-                    // Promise 鋡急?蝏?                    if (isMarketOpen) {
+                    // Promise 被拒绝
+                    if (isMarketOpen) {
                         console.debug('[Refresh] Portfolio fetch rejected:', results[0].reason);
                     }
                 }
@@ -5152,21 +5288,25 @@
                 const convData = results[6].status === 'fulfilled' ? results[6].value : { conversations: [], total: 0, has_more: false };
                 const tradesData = results[7].status === 'fulfilled' ? results[7].value : [];
                 
-                // 靽??啣撅??嚗?霈Ｗ??嗆?蝙??                window.lastTradesData = tradesData;
+                // 保存到全局变量，供订单状态卡片使用
+                window.lastTradesData = tradesData;
                 
-                // ?湔?典? equityHistory ??嚗鈭銵冽蝷綽?
+                // 更新全局 equityHistory 变量（用于图表显示）
                 if (history && history.length > 0) {
                     equityHistory = history;
                     console.log(`[Refresh] Updated equity history: ${history.length} records`);
                 }
                 
-                // ?漱?畾蛛?憒??ortfolio?唳撠梁嚗瓷??銝????憭?嚗?                if (!isMarketOpen && !portfolio) {
-                    // Refresh portfolio during trading hours, this is normal, no need to record嚗??舀迤撣貊?嚗??閬扇敶?                } else if (isMarketOpen && !portfolio) {
-                    // 鈭斗??嗆挾雿?仃韐伐??芸靚?璅∪?銝扇敶?銝蝷箄郎??                    // ?蛹?航?舐?蝏??園憸??嗡??唳?航隞?舐
+                // 非交易时段：如果有portfolio数据就用，没有也不报错（静默处理）
+                if (!isMarketOpen && !portfolio) {
+                    // 非交易时段不获取 portfolio，这是正常的，不需要记录
+                } else if (isMarketOpen && !portfolio) {
+                    // 交易时段但获取失败：只在调试模式下记录，不显示警告
+                    // 因为可能是网络暂时问题，其他数据可能仍然可用
                     console.debug('[Refresh] Portfolio data not available (may use cached data)');
                 }
                 
-                // 璉?交?行?隞颱??唳???瑕?
+                // 检查是否有任何数据成功获取
                 const hasAnyData = portfolio || 
                                   (history && history.length > 0) || 
                                   (convData && convData.conversations && convData.conversations.length > 0) ||
@@ -5174,7 +5314,8 @@
                                   backendStatus ||
                                   (agentStatus && Object.keys(agentStatus).length > 0);
                 
-                // 憒?隞颱??唳?瑕???嚗???霂舫△?Ｗ僎?湔餈?嗆?                if (hasAnyData) {
+                // 如果任何数据获取成功，隐藏错误页面并更新连接状态
+                if (hasAnyData) {
                     updateConnectionStatus(true);
                     const errorState = document.getElementById('errorState');
                     const mainContent = document.getElementById('mainContent');
@@ -5182,12 +5323,13 @@
                     if (mainContent) mainContent.style.display = 'block';
                 }
                 
-                // 憒????桅?瑕?憭梯揖嚗??曄內?秤憿菟嚗??芸?冽銝餃?瑟?嗆蝷綽?
+                // 如果所有数据都获取失败，才显示错误页面（且只在用户主动刷新时显示）
                 const allDataFailed = !hasAnyData;
                 
                 if (allDataFailed && !skipHealthCheck && showLoading) {
-                    // ?芣??函?瑚蜓?典?唬????桅憭梯揖?嗆??曄內?秤憿菟
-                    // ?芸?瑟?嗡??曄內?秤憿菟嚗?僕?啁??                    updateConnectionStatus(false);
+                    // 只有在用户主动刷新且所有数据都失败时才显示错误页面
+                    // 自动刷新时不显示错误页面，避免干扰用户
+                    updateConnectionStatus(false);
                     const loadingState = document.getElementById('loadingState');
                     const errorState = document.getElementById('errorState');
                     const mainContent = document.getElementById('mainContent');
@@ -5205,7 +5347,7 @@
                     }
                     if (refreshBtn) {
                         refreshBtn.disabled = false;
-                        refreshBtn.textContent = '?? Retry';
+                        refreshBtn.textContent = '🔄 Retry';
                     }
                     isRefreshing = false;
                     return;
@@ -5213,7 +5355,7 @@
                 
                 const responseTime = ((performance.now() - startTime) / 1000).toFixed(2);
 
-                // ?斗敶? Scenario
+                // 判断当前 Scenario
                 let currentScenario = 'Unknown';
                 const hasPositions = portfolio && Object.keys(portfolio.positions || {}).length > 0;
                 if (isMarketOpen) {
@@ -5223,7 +5365,7 @@
                 }
                 console.log(`[Refresh] Current Scenario: ${currentScenario}`);
                 
-                // Update UI嚗＆靽?憿箏??湔嚗?隞??????唳???隞塚?
+                // Update UI（确保按顺序更新，持仓变化会反映到所有组件）
                 if (portfolio) {
                     console.log('[Refresh] Portfolio data:', {
                         total_value: portfolio.total_value,
@@ -5234,28 +5376,39 @@
                     });
                 }
                 
-                // ?漱?畾蛛??曄內??唳???翰?改?銝?啣??嗆??                if (isMarketOpen && portfolio) {
-                    // 鈭斗??嗆挾嚗??嗆?唳????                    console.log('[Refresh] Market open - updating all data');
-                    renderSummaryCards(portfolio);  // ?湔?餉?鈭扼&L???隞遠??                    renderPositions(portfolio);     // ?湔??銵冽
-                    renderSummaryCards(portfolio);
-                    renderPositions(portfolio);
-                    await renderEquityChart();
-                    renderDistributionChart(portfolio);
+                // 非交易时段：显示历史数据和最后快照，不更新实时数据
+                if (isMarketOpen && portfolio) {
+                    // 交易时段：实时更新所有数据
+                    console.log('[Refresh] Market open - updating all data');
+                    renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
+                    renderPositions(portfolio);     // 更新持仓表格
+                    await renderEquityChart();      // 更新净值曲线图（使用已获取的history数据）
+                    renderDistributionChart(portfolio); // 更新持仓圆饼图
                 } else {
-                    // Market closed - show last snapshot
+                    // 非交易时段：显示历史数据和最后快照
                     if (portfolio) {
+                        // 如果有portfolio数据，显示最后快照
                         console.log('[Refresh] Market closed - showing last snapshot');
-                        renderSummaryCards(portfolio);
-                        renderPositions(portfolio);
-                        renderDistributionChart(portfolio);
-                        await renderEquityChart();
+                        renderSummaryCards(portfolio);  // 显示最后的总资产、P&L等
+                        renderPositions(portfolio);     // 显示最后的持仓
+                        renderDistributionChart(portfolio); // 更新持仓圆饼图
+                        await renderEquityChart();      // 显示历史净值曲线
                     } else {
+                        // 如果没有portfolio数据，显示市场状态提示
+                        const summaryCards = document.getElementById('summaryCards');
+                        if (summaryCards && summaryCards.children.length === 0) {
+                            const marketStatusCard = document.createElement('div');
+                            marketStatusCard.className = 'card';
+                            marketStatusCard.style.cssText = `
+                                background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
+                                border: 2px solid rgba(245, 158, 11, 0.4);
+                                box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2), inset 0 0 30px rgba(245, 158, 11, 0.05);
                                 position: relative;
                                 overflow: hidden;
                             `;
                             marketStatusCard.innerHTML = `
                                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <div style="font-size: 32px; line-height: 1;">??</div>
+                                    <div style="font-size: 32px; line-height: 1;">🌙</div>
                                     <div>
                                         <div class="card-label" style="font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.8;">Market Status</div>
                                         <div class="card-value" style="color: #f59e0b; font-size: 24px; margin: 4px 0 0 0; text-shadow: 0 0 15px rgba(245, 158, 11, 0.5); display: flex; align-items: center; gap: 8px;">
@@ -5265,17 +5418,20 @@
                                     </div>
                                 </div>
                                 <div class="card-subtitle" style="font-size: 13px; line-height: 1.6; color: #cbd5e1; padding-top: 8px; border-top: 1px solid rgba(245, 158, 11, 0.2);">
-                                    ?? Showing conversation history and tomorrow's orders
+                                    📋 Showing conversation history and tomorrow's orders
                                 </div>
                             `;
                             summaryCards.appendChild(marketStatusCard);
                         }
                     }
-                    // Render equity chart regardless of market status
-                    await renderEquityChart();
+                    // ✅ 非交易时段也显示净值历史图表（显示历史趋势）
+                    await renderEquityChart();  // 显示历史净值趋势
                 }
+                renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
+                renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
+                renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）
                 
-                // 憒?敶??汽rade History憿菟嚗??湔鈭斗??唳
+                // 如果当前在Trade History页面，也更新交易数据
                 const tradesPage = document.getElementById('tradesPage');
                 if (tradesPage && tradesPage.style.display !== 'none') {
                     renderTrades(tradesData || []);
@@ -5289,9 +5445,9 @@
                 const startBtn = document.getElementById('startTradeBtn');
                 if (startBtn && !startBtn.disabled) {
                     if (isMarketOpen) {
-                        startBtn.textContent = '?塚? Start Trading';
+                        startBtn.textContent = '▶️ Start Trading';
                     } else {
-                        startBtn.textContent = '?? Plan Tomorrow';
+                        startBtn.textContent = '📋 Plan Tomorrow';
                     }
                 }
                 
@@ -5336,12 +5492,13 @@
                 errorState.style.display = 'none';
                 mainContent.style.display = 'block';
                 refreshBtn.disabled = false;
-                refreshBtn.textContent = '?? Refresh';
+                refreshBtn.textContent = '🔄 Refresh';
                 
                 isRefreshing = false;
 
             } catch (error) {
-                // 憒??臬?瘨窈瘙?銝蝷粹?霂?                if (error.name === 'AbortError') {
+                // 如果是取消请求，不显示错误
+                if (error.name === 'AbortError') {
                     console.log('[Refresh] Request cancelled');
                     isRefreshing = false;
                     return;
@@ -5350,7 +5507,7 @@
                 
                 updateConnectionStatus(false);
                 
-                // Check if there are pending orders before executing
+                // 即使portfolio失败，也尝试显示后端状态
                 try {
                     const [backendStatus, agentStatus, toolsList, systemInfo] = await Promise.allSettled([
                         fetchBackendStatus(),
@@ -5368,15 +5525,16 @@
                 }
                 
                 loadingState.style.display = 'none';
-                mainContent.style.display = 'block'; // ?喃蝙?粹?銋蝷箇???                errorState.style.display = 'block';
+                mainContent.style.display = 'block'; // 即使出错也显示状态部分
+                errorState.style.display = 'block';
                 // Error message handling
                 const errorMsg = error.message || 'Unknown error';
-                const displayError = errorMsg.includes('timeout') || errorMsg.includes('頞') 
+                const displayError = errorMsg.includes('timeout') || errorMsg.includes('超时') 
                     ? 'Request timeout, please check your network connection or ensure the backend API is running' 
                     : errorMsg;
                 document.getElementById('errorMessage').textContent = displayError;
                 refreshBtn.disabled = false;
-                refreshBtn.textContent = '?? Refresh';
+                refreshBtn.textContent = '🔄 Refresh';
                 isRefreshing = false;
             }
         }
@@ -5398,10 +5556,11 @@
             }
         }
 
-        // 霂瑟??駁?嚗甇Ｗ僎??憭窈瘙?        let isRefreshing = false;
+        // 请求去重：防止并发重复请求
+        let isRefreshing = false;
         let refreshAbortController = null;
         
-        // 璉?亙僎蝏?pending霈Ｗ?嚗漱?畾蛛?
+        // 检查并结算pending订单（交易时段）
         async function checkPendingOrders() {
             try {
                 console.log('[Order Check] Calling /api/trading/check-pending-orders...');
@@ -5416,8 +5575,9 @@
                     const data = await response.json();
                     console.log('[Order Check] Response:', data);
                     if (data.ok && data.settled_count > 0) {
-                        console.log(`[Order Check] ??${data.settled_count} orders filled, ${data.pending_count} still pending`);
-                        // 憒??恥??鈭歹?蝡?瑟?唳隞交?啣???                        if (!isRefreshing) {
+                        console.log(`[Order Check] ✅ ${data.settled_count} orders filled, ${data.pending_count} still pending`);
+                        // 如果有订单成交，立即刷新数据以更新净值
+                        if (!isRefreshing) {
                             refreshData(false, true);
                         }
                     } else if (data.ok) {
@@ -5431,9 +5591,9 @@
                     console.warn('[Order Check] Error response:', errorText);
                 }
             } catch (err) {
-                // ?曄內?秤隞乩噶靚?
+                // 显示错误以便调试
                 if (err.name !== 'AbortError') {
-                    console.error('[Order Check] ??Error calling check-pending-orders:', err.message);
+                    console.error('[Order Check] ❌ Error calling check-pending-orders:', err.message);
                     console.error('[Order Check] Full error:', err);
                 }
             }
@@ -5442,7 +5602,8 @@
         function startOrderCheck() {
             stopOrderCheck();
             console.log(`[Order Check] Starting order check timer (every ${ORDER_CHECK_INTERVAL/1000} seconds)`);
-            // ?芸鈭斗??嗆挾璉?亥恥??            orderCheckTimer = setInterval(async () => {
+            // 只在交易时段检查订单
+            orderCheckTimer = setInterval(async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/market/is-open`);
                     if (response.ok) {
@@ -5459,7 +5620,7 @@
                 }
             }, ORDER_CHECK_INTERVAL);
             
-            // 蝡?扯?銝甈⊥??伐?憒?撣撘??
+            // 立即执行一次检查（如果市场开盘）
             (async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/market/is-open`);
@@ -5471,7 +5632,7 @@
                         }
                     }
                 } catch (err) {
-                    // ??憭?
+                    // 静默处理
                 }
             })();
         }
@@ -5487,14 +5648,16 @@
             stopAutoRefresh();
             refreshTimer = setInterval(() => {
                 if (!isRefreshing) {
-                    // ?芸?瑟?嗉歲餈摨瑟??伐??踹?憸??曄內?秤瘨
+                    // 自动刷新时跳过健康检查，避免频繁显示错误消息
                     refreshData(false, true);  // skipHealthCheck = true
                 }
             }, REFRESH_INTERVAL);
             
-            // ?臬霈Ｗ?璉?伐?鈭斗??嗆挾嚗?            startOrderCheck();
+            // 启动订单检查（交易时段）
+            startOrderCheck();
             
-            // Auto Trade ?批嚗?1???扯?鈭斗?敺芰嚗?            const autoTradeChk = document.getElementById('autoTrade');
+            // Auto Trade 控制（每1分钟执行交易循环）
+            const autoTradeChk = document.getElementById('autoTrade');
             if (autoTradeChk && autoTradeChk.checked) {
                 startAutoTrade();
             } else {
@@ -5505,14 +5668,15 @@
             startAgentStatusCheck();
         }
 
-        // ?嗆??亙??賢歇?蝳嚗?瘜其?撖寡??曄內
+        // 状态检查功能已暂时禁用，专注于对话显示
         async function checkAgentStatus() {
-            // 撌脩??剁?銝釣鈭笆霂蝷?        }
+            // 已禁用，专注于对话显示
+        }
 
         function startAgentStatusCheck() {
             if (agentStatusTimer) clearInterval(agentStatusTimer);
             checkAgentStatus(); // Check immediately
-            // ?嗆??亙歇?蝳
+            // 状态检查已暂时禁用
             agentStatusTimer = setInterval(() => {
                 checkAgentStatus();
             }, AGENT_STATUS_INTERVAL);
@@ -5555,29 +5719,35 @@
             }
         }
 
-        // ??臬鈭斗?敺芰嚗?瑞?餅??格嚗?        // ?鈭???銝泅cenario嚗?        // - Scenario 1-2: 撣撘???扯?摰鈭斗?
-        // - Scenario 3-4: 撣?喲嚗???憭拍?鈭斗?
-        // - Scenario 5: 憭予璅⊥?嚗?格?憭拍?撣?嗆銵?        async function startTradingCycle() {
-            // 璉?交??格?血歇蝳嚗甇ａ?憭?鳴?
+        // 手动启动交易循环（用户点击按钮时）
+        // 适用于所有5个scenario：
+        // - Scenario 1-2: 市场开盘，执行实时交易
+        // - Scenario 3-4: 市场关闭，规划明天的交易
+        // - Scenario 5: 多天模拟，根据每天的市场状态执行
+        async function startTradingCycle() {
+            // 检查按钮是否已禁用（防止重复点击）
             const btn = document.getElementById('startTradeBtn');
             if (btn && btn.disabled) {
                 console.log('[Manual] Trading cycle already running, please wait...');
                 return;
             }
             
-            // 璉?亙??箇?誑?湔??嚗??其??曄內嚗?            let marketStatus = 'unknown';
+            // 检查市场状态以更新按钮文本（仅用于显示）
+            let marketStatus = 'unknown';
             try {
                 const isOpen = await isMarketOpen();
                 marketStatus = isOpen ? 'open' : 'closed';
             } catch (e) {
                 console.warn('[Manual] Failed to check market status, proceeding anyway:', e);
-                marketStatus = 'closed';  // 暺恕?挽撣?喲嚗摰嚗?            }
+                marketStatus = 'closed';  // 默认假设市场关闭（更安全）
+            }
             
             if (btn && !btn.disabled) {
-                // ??嗆??牠xecuteTradeCycle銝剜??                if (marketStatus === 'closed') {
-                    btn.textContent = '?? Planning...';
+                // 按钮状态会在executeTradeCycle中更新
+                if (marketStatus === 'closed') {
+                    btn.textContent = '📋 Planning...';
                 } else {
-                    btn.textContent = '??Trading...';
+                    btn.textContent = '⏳ Trading...';
                 }
             }
             
@@ -5585,36 +5755,40 @@
                 console.log('[Manual] Executing trading cycle manually...');
                 await executeTradeCycle();
                 
-                // 憒? Auto Trade 憭?撌脤葉嚗?刻?其漱??                const autoTradeChk = document.getElementById('autoTrade');
+                // 如果 Auto Trade 复选框已选中，启动自动交易
+                const autoTradeChk = document.getElementById('autoTrade');
                 if (autoTradeChk && autoTradeChk.checked) {
                     startAutoTrade();
                 }
             } catch (e) {
                 console.error('[Manual] Error:', e);
-                // ?秤憭??牠xecuteTradeCycle銝剖歇摰?
+                // 错误处理在executeTradeCycle中已完成
             }
-            // ??嗆憭executeTradeCycle?inally銝剖???        }
+            // 按钮状态恢复在executeTradeCycle的finally中处理
+        }
         
-        // 皜豢??函??
+        // 游标动画变量
         let cursorGlow = null;
         let cursorActive = false;
         
         function initCursorGlow() {
-            // ?遣皜豢?????
+            // 创建游标光晕元素
             cursorGlow = document.createElement('div');
             cursorGlow.className = 'cursor-glow';
             document.body.appendChild(cursorGlow);
             
-            // 璉瘚?蝝?虫蛹瘚?
+            // 检测元素是否为浅色背景
             function isLightBackground(element) {
                 if (!element) return false;
                 
-                // 璉?亦摰掩??                const lightClasses = ['trades-section', 'status-section', 'status-item', 'api-url'];
+                // 检查特定类名
+                const lightClasses = ['trades-section', 'status-section', 'status-item', 'api-url'];
                 if (lightClasses.some(cls => element.classList.contains(cls))) {
                     return true;
                 }
                 
-                // 璉?亥恣蝞撘?                const style = window.getComputedStyle(element);
+                // 检查计算样式
+                const style = window.getComputedStyle(element);
                 const bg = style.backgroundColor;
                 if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
                     const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
@@ -5627,7 +5801,7 @@
                     }
                 }
                 
-                // 璉?亦??
+                // 检查父元素
                 if (element.parentElement) {
                     return isLightBackground(element.parentElement);
                 }
@@ -5635,27 +5809,30 @@
                 return false;
             }
             
-            // 頝葵曌?蝘餃
+            // 跟踪鼠标移动
             document.addEventListener('mousemove', (e) => {
                 if (cursorGlow) {
                     cursorGlow.style.left = e.clientX + 'px';
                     cursorGlow.style.top = e.clientY + 'px';
                     
-                    // 璉瘚????寧???
+                    // 检测鼠标下方的元素
                     const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
                     if (elementBelow && !document.body.classList.contains('light-theme')) {
-                        // ?芸瘛梯銝駁?銝?瘚?                        if (isLightBackground(elementBelow)) {
+                        // 只在深色主题下检测
+                        if (isLightBackground(elementBelow)) {
                             cursorGlow.classList.add('on-white');
                         } else {
                             cursorGlow.classList.remove('on-white');
                         }
                     } else if (document.body.classList.contains('light-theme')) {
-                        // 瘚銝駁?銝宏??on-white 蝐鳴??蛹?港葵??賣瘚嚗?                        cursorGlow.classList.remove('on-white');
+                        // 浅色主题下移除 on-white 类（因为整个背景都是浅色）
+                        cursorGlow.classList.remove('on-white');
                     }
                 }
             });
             
-            // 曌?餈?舐?餃?蝝瞈瘣?            const interactiveElements = ['button', 'a', 'input', 'select', 'textarea', '.nav-btn', '.refresh-btn', '.card', '.conversation-item'];
+            // 鼠标进入可点击元素时激活
+            const interactiveElements = ['button', 'a', 'input', 'select', 'textarea', '.nav-btn', '.refresh-btn', '.card', '.conversation-item'];
             interactiveElements.forEach(selector => {
                 document.addEventListener('mouseover', (e) => {
                     if (e.target.matches(selector) || e.target.closest(selector)) {
@@ -5676,7 +5853,8 @@
                 }, true);
             });
             
-            // ?孵?嗥??撘箏???            document.addEventListener('mousedown', () => {
+            // 点击时短暂增强光晕
+            document.addEventListener('mousedown', () => {
                 if (cursorGlow) {
                     cursorGlow.style.transform = 'translate(-50%, -50%) scale(1.2)';
                 }
@@ -5691,15 +5869,17 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            // ???虜???            initCursorGlow();
+            // 初始化游标动画
+            initCursorGlow();
             
             // Load saved theme first
             loadSavedTheme();
             setupAutoRefresh();
             
-            // ?芸?唳?殷?銝?冽銵漱?儐??            console.log('[Init] Page loaded, refreshing data...');
+            // 只刷新数据，不自动执行交易循环
+            console.log('[Init] Page loaded, refreshing data...');
             
-            // 蝑?1蝘??瑟?唳
+            // 等待1秒后刷新数据
             setTimeout(() => {
                 refreshData(true);
             }, 1000);
@@ -5724,7 +5904,8 @@
             }
         });
         
-        // 憿菟?貉蝸?嗆???        window.addEventListener('beforeunload', () => {
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
             stopAutoTrade();
         });
 
@@ -5732,9 +5913,9 @@
         window.scrollToSection = function(sectionId, event) {
             if (event) event.preventDefault();
             
-            // ?寞?憭?嚗rade History 憿菟?
+            // 特殊处理：Trade History 页面切换
             if (sectionId === 'trade-history-section') {
-                // ???Trade History 憿菟
+                // 切换到 Trade History 页面
                 const dashboardPage = document.getElementById('dashboardPage');
                 const tradesPage = document.getElementById('tradesPage');
                 const allocationPage = document.getElementById('allocationPage');
@@ -5743,7 +5924,7 @@
                 if (allocationPage) allocationPage.style.display = 'none';
                 if (tradesPage) {
                     tradesPage.style.display = 'block';
-                    // ?蝸鈭斗??唳
+                    // 加载交易数据
                     fetchTrades(TRADES_LIMIT).then(trades => {
                         renderTrades(trades);
                     }).catch(err => {
@@ -5762,7 +5943,8 @@
                 return;
             }
             
-            // ?嗡?section嚗dashboardPage銝剜???            const dashboardPage = document.getElementById('dashboardPage');
+            // 其他section：在dashboardPage中滚动
+            const dashboardPage = document.getElementById('dashboardPage');
             if (dashboardPage) {
                 dashboardPage.style.display = 'block';
             }
@@ -5802,4 +5984,3 @@
     </script>
 </body>
 </html>
-

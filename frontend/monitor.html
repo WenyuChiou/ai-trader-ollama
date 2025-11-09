@@ -5719,11 +5719,57 @@
             cursorGlow.className = 'cursor-glow';
             document.body.appendChild(cursorGlow);
             
+            // 检测元素是否为浅色背景
+            function isLightBackground(element) {
+                if (!element) return false;
+                
+                // 检查特定类名
+                const lightClasses = ['trades-section', 'status-section', 'status-item', 'api-url'];
+                if (lightClasses.some(cls => element.classList.contains(cls))) {
+                    return true;
+                }
+                
+                // 检查计算样式
+                const style = window.getComputedStyle(element);
+                const bg = style.backgroundColor;
+                if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                    const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+                    if (match) {
+                        const r = parseInt(match[1]);
+                        const g = parseInt(match[2]);
+                        const b = parseInt(match[3]);
+                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                        if (brightness > 200) return true;
+                    }
+                }
+                
+                // 检查父元素
+                if (element.parentElement) {
+                    return isLightBackground(element.parentElement);
+                }
+                
+                return false;
+            }
+            
             // 跟踪鼠标移动
             document.addEventListener('mousemove', (e) => {
                 if (cursorGlow) {
                     cursorGlow.style.left = e.clientX + 'px';
                     cursorGlow.style.top = e.clientY + 'px';
+                    
+                    // 检测鼠标下方的元素
+                    const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+                    if (elementBelow && !document.body.classList.contains('light-theme')) {
+                        // 只在深色主题下检测
+                        if (isLightBackground(elementBelow)) {
+                            cursorGlow.classList.add('on-white');
+                        } else {
+                            cursorGlow.classList.remove('on-white');
+                        }
+                    } else if (document.body.classList.contains('light-theme')) {
+                        // 浅色主题下移除 on-white 类（因为整个背景都是浅色）
+                        cursorGlow.classList.remove('on-white');
+                    }
                 }
             });
             
@@ -5805,13 +5851,8 @@
             stopAutoTrade();
         });
 
-        // Manual refresh button
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            refreshData(true);
-        });
-
         // Scroll to section and update active nav button
-        function scrollToSection(sectionId, event) {
+        window.scrollToSection = function(sectionId, event) {
             if (event) event.preventDefault();
             
             // 特殊处理：Trade History 页面切换

@@ -1746,7 +1746,8 @@
         // Fetch portfolio data
         async function fetchPortfolio(options = {}) {
             try {
-                // 憓?頞?園??5蝘??踹?甇?虜?瑟?嗉???                const controller = new AbortController();
+                // Create abort controller for timeout
+                const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
                 try {
@@ -1766,11 +1767,13 @@
 
                     const data = await response.json();
                     
-                    // 撉??唳摰??                    if (!data.ok || data.error) {
+                    // Check if response is ok
+                    if (!data.ok || data.error) {
                         throw new Error(data.error || 'Failed to load portfolio');
                     }
                     
-                    // 蝖桐?positions_pnl摮銝???                    if (!data.positions_pnl || typeof data.positions_pnl !== 'object') {
+                    // Check positions_pnl field
+                    if (!data.positions_pnl || typeof data.positions_pnl !== 'object') {
                         console.warn('[Frontend] Backend did not return positions_pnl, will calculate from positions');
                         data.positions_pnl = {};
                     }

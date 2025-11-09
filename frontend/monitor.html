@@ -2880,7 +2880,7 @@
                     ${conversations.map((conv) => {
                         const date = conv.date || conv.timestamp || '';
                         const agent = conv.agent || conv.agent_name || 'Unknown';
-                        const content = conv.content || conv.message || conv.reasoning || JSON.stringify(conv, null, 2);
+                        const content = conv.content || conv.message || conv.reasoning || '';
                         const round = conv.round || conv.turn || '';
                         
                         // Agent 专属图标映射
@@ -3957,6 +3957,58 @@
 
         function formatConversationContent(content, entryType) {
             if (!content) return '';
+            
+            // 尝试检测并格式化 JSON/dict 内容（适用于所有类型）
+            if (typeof content === 'string') {
+                // 尝试提取 JSON 对象
+                const jsonMatch = content.match(/\{[\s\S]{20,}\}/);
+                if (jsonMatch) {
+                    try {
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        // 如果是对象，使用 formatToolResultAsTable 格式化
+                        if (typeof parsed === 'object' && parsed !== null) {
+                            // 对于对话内容中的 JSON，使用简化格式
+                            const entries = Object.entries(parsed);
+                            if (entries.length > 0 && entries.length <= 15) {
+                                // 使用卡片式布局
+                                let cardHtml = `
+                                    <div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #22d3ee;">
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
+                                            ${entries.map(([key, value]) => {
+                                                let displayValue = '';
+                                                if (value === null || value === undefined) {
+                                                    displayValue = '<span style="color: #94a3b8; font-style: italic;">-</span>';
+                                                } else if (typeof value === 'object') {
+                                                    if (Array.isArray(value)) {
+                                                        displayValue = `<span style="color: #818cf8; font-weight: 600;">[${value.length} items]</span>`;
+                                                    } else {
+                                                        const keys = Object.keys(value);
+                                                        displayValue = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys}</span>`;
+                                                    }
+                                                } else if (typeof value === 'number') {
+                                                    const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2);
+                                                    displayValue = `<span style="color: #10b981; font-weight: 700;">${formatted}</span>`;
+                                                } else {
+                                                    displayValue = escapeHtml(String(value));
+                                                }
+                                                return `
+                                                    <div style="padding: 8px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;">
+                                                        <div style="font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 4px;">${escapeHtml(String(key))}</div>
+                                                        <div style="font-size: 13px; color: #e2e8f0; font-weight: 500;">${displayValue}</div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                                return cardHtml;
+                            }
+                        }
+                    } catch (e) {
+                        // JSON 解析失败，继续正常处理
+                    }
+                }
+            }
             
             // 如果是 risk_analysis 类型，尝试解析 JSON 并美化显示
             if (entryType === 'risk_analysis') {

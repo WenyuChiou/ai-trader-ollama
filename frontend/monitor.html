@@ -3581,7 +3581,13 @@
                                             if (value === null || value === undefined) {
                                                 displayValue = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                             } else if (typeof value === 'object') {
-                                                displayValue = `<pre style="margin: 0; font-size: 11px; color: #818cf8; white-space: pre-wrap;">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+                                                // 不要显示 JSON 格式，改为易读格式
+                                                if (Array.isArray(value)) {
+                                                    displayValue = `<span style="color: #818cf8; font-weight: 600;">[${value.length} items]</span>`;
+                                                } else {
+                                                    const keys = Object.keys(value);
+                                                    displayValue = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                }
                                             } else if (typeof value === 'number') {
                                                 const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2);
                                                 displayValue = `<span style="color: #10b981; font-weight: 500;">${formatted}</span>`;

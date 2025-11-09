@@ -2786,11 +2786,16 @@
                                 
                                 // 对于 discussion 条目，查找对应的 tool 条目来显示工具结果
                                 if (entry_type === 'discussion') {
-                                    const agentNormalized = agent.replace(/\s+/g, ''); // 移除空格，匹配 "SentimentAnalyst" 和 "Sentiment Analyst"
-                                    const toolEntries = dayConvs.filter(c => 
-                                        c.type === 'tool' && 
-                                        (c.agent === agent || c.agent === agentNormalized || agentNormalized.includes(c.agent.replace(/\s+/g, '')) || c.agent.replace(/\s+/g, '').includes(agentNormalized))
-                                    );
+                                    // 标准化 agent 名称：移除空格，统一格式
+                                    const agentNormalized = agent.replace(/\s+/g, ''); // "Sentiment Analyst" -> "SentimentAnalyst"
+                                    const toolEntries = dayConvs.filter(c => {
+                                        if (c.type !== 'tool') return false;
+                                        // 标准化 tool 条目的 agent 名称
+                                        const toolAgentNormalized = (c.agent || '').replace(/\s+/g, '');
+                                        // 匹配：完全匹配或包含匹配
+                                        return agentNormalized === toolAgentNormalized || 
+                                               agentNormalized.toLowerCase() === toolAgentNormalized.toLowerCase();
+                                    });
                                     
                                     if (toolEntries.length > 0) {
                                         const toolResultsHtml = toolEntries.map(toolEntry => {
@@ -3119,12 +3124,21 @@
                             
                             // 对于 discussion 条目，查找对应的 tool 条目来显示工具结果
                             if (entry_type === 'discussion') {
-                                const agentNormalized = agent.replace(/\s+/g, '');
-                                const toolEntries = conversations.filter(conv => 
-                                    conv.type === 'tool' && 
-                                    (conv.agent === agent || conv.agent === agentNormalized || agentNormalized.includes(conv.agent.replace(/\s+/g, '')) || conv.agent.replace(/\s+/g, '').includes(agentNormalized)) &&
-                                    (conv.date === c.date || conv.timestamp?.split('T')[0] === c.date || conv.timestamp?.split('T')[0] === c.timestamp?.split('T')[0])
-                                );
+                                // 标准化 agent 名称：移除空格，统一格式
+                                const agentNormalized = agent.replace(/\s+/g, ''); // "Sentiment Analyst" -> "SentimentAnalyst"
+                                const discussionDate = c.date || c.timestamp?.split('T')[0];
+                                const toolEntries = conversations.filter(conv => {
+                                    if (conv.type !== 'tool') return false;
+                                    // 标准化 tool 条目的 agent 名称
+                                    const toolAgentNormalized = (conv.agent || '').replace(/\s+/g, '');
+                                    // 匹配 agent 名称
+                                    const agentMatch = agentNormalized === toolAgentNormalized || 
+                                                      agentNormalized.toLowerCase() === toolAgentNormalized.toLowerCase();
+                                    // 匹配日期
+                                    const toolDate = conv.date || conv.timestamp?.split('T')[0];
+                                    const dateMatch = discussionDate && toolDate && (discussionDate === toolDate);
+                                    return agentMatch && dateMatch;
+                                });
                                 
                                 if (toolEntries.length > 0) {
                                     const toolResultsHtml = toolEntries.map(toolEntry => {

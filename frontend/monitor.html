@@ -2831,12 +2831,13 @@
                                                 try {
                                                     const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
                                                     if (jsonMatch) {
-                                                        const parsed = JSON.parse(jsonMatch[0]);
+                                                        let parsed = JSON.parse(jsonMatch[0]);
                                                         const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
-                                                        // 如果解析后的对象有 "ok" 和 "result" 字段，提取 result 字段
+                                                        // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+                                                        // 递归提取 result 字段，直到找到实际数据
                                                         let resultData = parsed;
-                                                        if (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
-                                                            resultData = parsed.result;
+                                                        while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                                            resultData = resultData.result;
                                                         }
                                                         const tableHtml = formatToolResultAsTable(resultData, toolName);
                                                         return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
@@ -3173,12 +3174,13 @@
                                             try {
                                                 const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
                                                 if (jsonMatch) {
-                                                    const parsed = JSON.parse(jsonMatch[0]);
+                                                    let parsed = JSON.parse(jsonMatch[0]);
                                                     const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
-                                                    // 如果解析后的对象有 "ok" 和 "result" 字段，提取 result 字段
+                                                    // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+                                                    // 递归提取 result 字段，直到找到实际数据
                                                     let resultData = parsed;
-                                                    if (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
-                                                        resultData = parsed.result;
+                                                    while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                                        resultData = resultData.result;
                                                     }
                                                     const tableHtml = formatToolResultAsTable(resultData, toolName);
                                                     return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">

@@ -38,7 +38,7 @@
             pointer-events: none;
             z-index: 9999;
             transform: translate(-50%, -50%);
-            transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+            transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
             box-shadow: 0 0 20px rgba(34, 211, 238, 0.6), 0 0 40px rgba(34, 211, 238, 0.4);
             mix-blend-mode: screen;
         }
@@ -48,6 +48,20 @@
             height: 40px;
             background: radial-gradient(circle, rgba(34, 211, 238, 1) 0%, rgba(34, 211, 238, 0.6) 50%, transparent 100%);
             box-shadow: 0 0 30px rgba(34, 211, 238, 0.8), 0 0 60px rgba(34, 211, 238, 0.6);
+        }
+        
+        /* 深色主题下，在白色背景元素上使用深色游标 */
+        .cursor-glow.on-white {
+            background: radial-gradient(circle, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 40%, rgba(8, 145, 178, 0.4) 70%, transparent 100%);
+            box-shadow: 0 0 15px rgba(15, 23, 42, 0.8), 0 0 30px rgba(8, 145, 178, 0.6), 0 0 50px rgba(8, 145, 178, 0.3);
+            mix-blend-mode: normal;
+            border: 2px solid rgba(8, 145, 178, 0.8);
+        }
+        
+        .cursor-glow.on-white.active {
+            background: radial-gradient(circle, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.8) 40%, rgba(8, 145, 178, 0.6) 70%, transparent 100%);
+            box-shadow: 0 0 25px rgba(15, 23, 42, 1), 0 0 50px rgba(8, 145, 178, 0.8), 0 0 80px rgba(8, 145, 178, 0.5);
+            border: 3px solid rgba(8, 145, 178, 1);
         }
         
         /* Light theme 游标 - 使用深色以确保在白色背景上可见 */

@@ -5434,11 +5434,71 @@
             cursorGlow.className = 'cursor-glow';
             document.body.appendChild(cursorGlow);
             
+            // 检测元素背景是否为白色/浅色
+            function isLightBackground(element) {
+                if (!element) return false;
+                
+                // 获取计算后的样式
+                const style = window.getComputedStyle(element);
+                const bgColor = style.backgroundColor;
+                
+                // 检查背景色
+                if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                    // 解析 rgba 或 rgb
+                    const match = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+                    if (match) {
+                        const r = parseInt(match[1]);
+                        const g = parseInt(match[2]);
+                        const b = parseInt(match[3]);
+                        // 计算亮度 (0-255)
+                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                        // 如果亮度 > 200，认为是浅色背景
+                        if (brightness > 200) return true;
+                    }
+                }
+                
+                // 检查是否有白色背景的类名
+                if (element.classList) {
+                    if (element.classList.contains('loading') || 
+                        element.classList.contains('error') || 
+                        element.classList.contains('no-data') ||
+                        (element.classList.contains('card') && !document.body.classList.contains('light-theme'))) {
+                        // 在深色主题下，card 可能是白色背景
+                        const cardStyle = window.getComputedStyle(element);
+                        const cardBg = cardStyle.backgroundColor;
+                        const cardMatch = cardBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+                        if (cardMatch) {
+                            const r = parseInt(cardMatch[1]);
+                            const g = parseInt(cardMatch[2]);
+                            const b = parseInt(cardMatch[3]);
+                            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                            if (brightness > 200) return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            
             // 跟踪鼠标移动
             document.addEventListener('mousemove', (e) => {
                 if (cursorGlow) {
                     cursorGlow.style.left = e.clientX + 'px';
                     cursorGlow.style.top = e.clientY + 'px';
+                    
+                    // 检测鼠标下方的元素
+                    const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+                    if (elementBelow && !document.body.classList.contains('light-theme')) {
+                        // 只在深色主题下检测
+                        if (isLightBackground(elementBelow)) {
+                            cursorGlow.classList.add('on-white');
+                        } else {
+                            cursorGlow.classList.remove('on-white');
+                        }
+                    } else if (document.body.classList.contains('light-theme')) {
+                        // 浅色主题下移除 on-white 类（因为整个背景都是浅色）
+                        cursorGlow.classList.remove('on-white');
+                    }
                 }
             });
             

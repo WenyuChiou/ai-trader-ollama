@@ -391,12 +391,10 @@ async def execute_trade_direct():
         from src.data.order_manager import OrderManager
         from datetime import time as dt_time, timedelta
         
-        # 检查市场是否开盘
+        # 检查市场是否开盘（排除周末和节假日）
+        from src.utils.trading_days import is_market_open as check_market_open
         now = datetime.now()
-        is_weekday = now.weekday() < 5
-        market_open_time = dt_time(9, 30)  # 9:30 AM
-        market_close_time = dt_time(16, 0)  # 4:00 PM
-        is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
+        is_market_open = check_market_open(now)
         
         # 从 config.json 读取配置
         config = load_trading_config()
@@ -406,13 +404,12 @@ async def execute_trade_direct():
         
         log_print(f"[TRADING CYCLE] Tool budget: {tool_budget}, Rounds: {rounds}")
         
-        # 非交易时段：检查是否已有明日订单计划
+        # 非交易时段：检查是否已有下一个交易日的订单计划
         if not is_market_open:
-            # 计算明天的日期（下一个交易日）
-            tomorrow = date.today() + timedelta(days=1)
-            while tomorrow.weekday() >= 5:
-                tomorrow += timedelta(days=1)
-            tomorrow_str = tomorrow.isoformat()
+            # 计算下一个交易日的日期（排除周末和节假日）
+            from src.utils.trading_days import get_next_trading_day
+            next_trading_day = get_next_trading_day(date.today(), days_ahead=1)
+            tomorrow_str = next_trading_day.isoformat()
             
             order_manager = OrderManager(root="data/logs")
             existing_orders = order_manager.load_pending_orders(order_date=tomorrow_str)
@@ -889,12 +886,10 @@ async def get_real_time_portfolio():
         from datetime import time as dt_time
         # Path 已经在文件顶部导入，不需要重新导入
         
-        # 检查市场是否开盘 - 非交易时段不更新数据
+        # 检查市场是否开盘 - 非交易时段不更新数据（排除周末和节假日）
+        from src.utils.trading_days import is_market_open as check_market_open
         now = datetime.now()
-        is_weekday = now.weekday() < 5
-        market_open_time = dt_time(9, 30)  # 9:30 AM
-        market_close_time = dt_time(16, 0)  # 4:00 PM
-        is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
+        is_market_open = check_market_open(now)
         
         # Load portfolio state
         state_file = Path("data/logs/portfolio_state.json")
@@ -1602,12 +1597,10 @@ async def get_agent_conversations(
 
 @app.get("/api/market/is-open")
 async def is_market_open():
-    """Simple market hour check: Mon-Fri, 09:00-16:00 local time."""
+    """Market hour check: Trading days (Mon-Fri excluding holidays), 09:30-16:00 local time."""
+    from src.utils.trading_days import is_market_open as check_market_open
     now = datetime.now()
-    is_weekday = now.weekday() < 5
-    start = dt_time(9, 0)
-    end = dt_time(16, 0)
-    open_now = is_weekday and (start <= now.time() <= end)
+    open_now = check_market_open(now)
     return {"ok": True, "open": open_now, "now": now.isoformat()}
 
 
@@ -1777,12 +1770,10 @@ async def system_init():
 @app.post("/api/trading/run-loop")
 async def run_trading_loop():
     """Kick one trading cycle, but block if already executed today or market is closed."""
-    # Check if market is open first
+    # Check if market is open first (excluding weekends and holidays)
+    from src.utils.trading_days import is_market_open as check_market_open
     now = datetime.now()
-    is_weekday = now.weekday() < 5
-    start = dt_time(9, 30)  # Market opens at 9:30 AM
-    end = dt_time(16, 0)     # Market closes at 4:00 PM
-    is_open = is_weekday and (start <= now.time() <= end)
+    is_open = check_market_open(now)
     
     if not is_open:
         return {

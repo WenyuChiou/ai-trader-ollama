@@ -5756,7 +5756,7 @@
         });
 
         // Scroll to section and update active nav button
-        function scrollToSection(sectionId, event) {
+        window.scrollToSection = function(sectionId, event) {
             if (event) event.preventDefault();
             
             // 特殊处理：Trade History 页面切换
@@ -5816,7 +5816,17 @@
                     if (navBtn) navBtn.classList.add('active');
                 }
             }
-        }
+        };
+        
+        // Manual refresh button (moved after scrollToSection to ensure it's defined)
+        document.addEventListener('DOMContentLoaded', () => {
+            const refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    refreshData(true);
+                });
+            }
+        });
     </script>
 </body>
 </html>

@@ -2662,7 +2662,7 @@
                         ${dayConvs.map(conv => {
                             const date = conv.date || conv.timestamp || 'Unknown date';
                             const agent = conv.agent || conv.agent_name || 'Unknown';
-                            const content_text = conv.content || conv.message || conv.reasoning || JSON.stringify(conv, null, 2);
+                            const content_text = conv.content || conv.message || conv.reasoning || '';
                             const round = conv.round || conv.turn || '';
                             const entry_type = conv.type || 'discussion';
                             const timestamp = conv.timestamp || date;
@@ -3260,7 +3260,13 @@
                         }
                     });
                     
-                    if (allKeys.size === 0) return escapeHtml(JSON.stringify(data, null, 2));
+                    if (allKeys.size === 0) {
+                        // 如果数组元素不是对象，显示为简单列表
+                        return `<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px;">
+                            <div style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">Array (${data.length} items)</div>
+                            <div style="color: #e2e8f0; font-size: 13px; line-height: 1.8;">${data.map(item => escapeHtml(String(item))).join(', ')}</div>
+                        </div>`;
+                    }
                     
                     const keys = Array.from(allKeys);
                     let tableHtml = `

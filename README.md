@@ -1240,98 +1240,78 @@ LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
 
 ## 🧪 Testing
 
+### Comprehensive Testing Framework
+
+The system includes a comprehensive 4-round testing framework:
+
+#### Round 1: Backend API Testing ✅
+```bash
+cd backend
+python test_comprehensive.py
+```
+- Tests all API endpoints
+- Validates data formats
+- Checks file consistency
+- **Result**: 9/9 tests passed (100%)
+
+#### Round 2: Frontend Functionality Testing ✅
+```bash
+cd backend
+python test_frontend_comprehensive.py
+```
+- Tests all button functionality
+- Validates data display
+- Checks error handling
+- Tests UI/UX features
+- **Result**: 22/22 tests passed (100%)
+
+#### Round 3: Data Recording Scenarios (Next)
+- Tests initialization data recording
+- Tests trading cycle data recording
+- Validates equity history updates
+- Checks conversation logging
+
+#### Round 4: Frontend-Backend Integration
+- End-to-end workflow testing
+- Real-time data synchronization
+- Order execution flow
+- Portfolio updates
+
 ### Quick Tests
 
 **1. Tool Test (No LLM Required)**
 ```bash
 cd backend
 python test_agent_tools.py
-
-# Tests:
-# - All 23 tools callable
-# - FRED API working
-# - VIX, Fear & Greed functional
-# - News scan operational
 ```
 
-**2. Multi-Analyst Test (Requires Ollama)**
+**2. Scenario-Based Testing**
 ```bash
 cd backend
-python test_multi_analyst_system.py
-
-# Tests:
-# - All 4 analysts run
-# - Tools are used
-# - Consensus is formed
-# - Output format correct
+# Run all scenarios (1-12)
+python test_scenarios.py --scenario 1 --auto
+python test_scenarios.py --scenario 2 --auto
+# ... see TEST_COMMANDS.md for full list
 ```
 
-**3. Complete Trading Cycle Test**
+**3. Manual Testing via API**
 ```bash
-cd backend
-python test_complete_agent_loop.py
+# Initialize system
+curl -X POST http://localhost:8000/api/system/init
 
-# Tests:
-# - Full cycle from market data to orders
-# - Risk Analyst integration
-# - Portfolio updates
-# - Memory snapshots
-```
-
----
-
-### Scenario-Based Testing
-
-**Test Script: `backend/test_scenarios.py`**
-
-```bash
-# Run all scenarios
-python test_scenarios.py
-
-# Individual scenarios
-python test_scenarios.py --scenario 1  # Market open, no holdings
-python test_scenarios.py --scenario 2  # Market open, with holdings
-python test_scenarios.py --scenario 3  # Market closed, no holdings
-python test_scenarios.py --scenario 4  # Market closed, with holdings
-```
-
----
-
-### Manual Testing via API
-
-```bash
-# 1. Initialize system
-curl -X POST http://localhost:8000/api/portfolio/initialize
-
-# 2. Execute trading cycle
+# Execute trading cycle
 curl -X POST http://localhost:8000/api/trading/execute-trade
 
-# 3. Check portfolio
+# Check portfolio
 curl http://localhost:8000/api/portfolio/real-time
-
-# 4. Check conversations
-curl http://localhost:8000/api/conversations
-
-# 5. Check pending orders
-curl http://localhost:8000/api/orders/pending
-
-# 6. Execute pending orders (if market open)
-curl -X POST http://localhost:8000/api/orders/check-fills
 ```
 
----
+### Test Documentation
 
-### Test Coverage
-
-| Component | Test File | Status |
-|-----------|-----------|--------|
-| Tools (23) | `test_agent_tools.py` | ✅ Complete |
-| Multi-Analyst | `test_multi_analyst_system.py` | ✅ Complete |
-| Full Trading Cycle | `test_complete_agent_loop.py` | ✅ Complete |
-| Scenarios (4) | `test_scenarios.py` | 🔄 To be created |
-| Portfolio Management | `test_portfolio.py` | ✅ Exists |
-| Order Management | `test_order_manager.py` | ✅ Exists |
-| Risk Analyst | `test_risk_analyst.py` | ✅ Exists |
+- **Test Commands**: `backend/TEST_COMMANDS.md` - All test commands
+- **Testing Guide**: `backend/COMPREHENSIVE_TESTING_GUIDE.md` - Complete testing guide
+- **Round 1 Report**: `backend/TEST_ROUND_1_REPORT.md` - Backend API test results
+- **Round 2 Report**: `backend/TEST_ROUND_2_REPORT.md` - Frontend test results
 
 ---
 

@@ -259,27 +259,62 @@ For complete tool list, see: [Available Tools](../README.md#-available-tools)
 
 ## 🧪 Testing Guide
 
-### Running Tests
+### Comprehensive Testing Framework
+
+The backend includes a comprehensive 4-round testing framework:
+
+#### Round 1: Backend API Testing ✅
+```bash
+python test_comprehensive.py
+```
+- Tests all API endpoints
+- Validates data formats
+- Checks file consistency
+- **Result**: 9/9 tests passed (100%)
+
+#### Round 2: Frontend Functionality Testing ✅
+```bash
+python test_frontend_comprehensive.py
+```
+- Tests all button functionality
+- Validates data display
+- Checks error handling
+- **Result**: 22/22 tests passed (100%)
+
+#### Round 3: Data Recording Scenarios (Next)
+- Tests initialization data recording
+- Tests trading cycle data recording
+- Validates equity history updates
+
+#### Round 4: Frontend-Backend Integration
+- End-to-end workflow testing
+- Real-time data synchronization
+
+### Scenario-Based Testing
 
 ```bash
-cd backend
-
-# Run all tests
-python tests/run_all.py
-
-# Run specific tests
-python test_full_workflow.py
-python test_october_simulation_full.py
+# Run all scenarios (1-12)
+python test_scenarios.py --scenario 1 --auto
+python test_scenarios.py --scenario 2 --auto
+# ... see TEST_COMMANDS.md for full list
 ```
 
 ### Test File Descriptions
 
 | Test File | Description |
 |-----------|-------------|
-| `test_full_workflow.py` | Complete workflow test (market data, Agent analysis, trading decisions) |
-| `test_october_simulation_full.py` | Complete October simulation test |
+| `test_comprehensive.py` | Round 1: Backend API comprehensive tests |
+| `test_frontend_comprehensive.py` | Round 2: Frontend functionality tests |
+| `test_scenarios.py` | Scenario-based testing (12 scenarios) |
+| `test_full_workflow.py` | Complete workflow test |
 | `test_frontend_integration.py` | Frontend integration test |
-| `test_api_portfolio_endpoint.py` | API endpoint test |
+
+### Test Documentation
+
+- **Test Commands**: `TEST_COMMANDS.md` - All test commands
+- **Testing Guide**: `COMPREHENSIVE_TESTING_GUIDE.md` - Complete testing guide
+- **Round 1 Report**: `TEST_ROUND_1_REPORT.md` - Backend API test results
+- **Round 2 Report**: `TEST_ROUND_2_REPORT.md` - Frontend test results
 
 ---
 

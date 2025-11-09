@@ -252,6 +252,157 @@ const TRADES_LIMIT = 30;          // Display max 30 trades
 
 ---
 
+## 🧪 Testing
+
+### Comprehensive Testing Status
+
+- ✅ **Round 1**: Backend API Testing (9/9 passed)
+- ✅ **Round 2**: Frontend Functionality Testing (22/22 passed)
+- ⏭️ **Round 3**: Data Recording Scenarios (Next)
+- ⏭️ **Round 4**: Frontend-Backend Integration
+
+### Testing Scenarios (Scenario 6-12)
+
+### Scenario 6: Rapid Consecutive Clicks (Duplicate Prevention)
+**Test**: Simulate rapid consecutive execution requests  
+**Expected**: 
+- First execution: Normal execution
+- Subsequent executions: Blocked (429 Too Many Requests)
+- Backend executes only once
+- Orders created only once
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 6 --auto
+```
+
+### Scenario 7: Network Timeout/Interruption
+**Test**: Simulate timeout scenario  
+**Expected**:
+- Frontend shows timeout message
+- Backend continues execution
+- Data refresh shows results after completion
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 7 --auto
+```
+
+### Scenario 8: Partial Order Fills
+**Test**: Multiple pending orders, some can be filled, some cannot  
+**Expected**:
+- Check all pending orders
+- Filled orders: Status changed to FILLED, portfolio updated
+- Unfilled orders: Remain PENDING
+- Portfolio correctly updated
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 8 --auto
+```
+
+### Scenario 9: Order Conflicts
+**Test**: Same stock has multiple pending orders  
+**Expected**:
+- System detects conflicts
+- No duplicate orders created
+- Warning message returned
+- Existing orders preserved
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 9 --auto
+```
+
+### Scenario 10: Auto-Trade + Manual Execution Conflict
+**Test**: Auto-trade running, user manually clicks "Start Trading"  
+**Expected**:
+- Check if execution is already in progress
+- Block duplicate execution
+- Shared execution flag between auto and manual
+- Only one execution occurs
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 10 --auto
+```
+
+### Scenario 11: Initialize Then Immediately Execute
+**Test**: User clicks "Initialize" then immediately clicks "Start Trading"  
+**Expected**:
+- Initialization completes
+- Trading cycle executes normally
+- New orders created
+- Initial equity recorded
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 11 --auto
+```
+
+### Scenario 12: Market Status Switch (Open → Closed)
+**Test**: Execute trading during market hours, then after market closes  
+**Expected**:
+- Button text automatically switches to "Plan Tomorrow"
+- Clicking executes planning cycle
+- Creates tomorrow's orders
+- Does not create today's orders
+
+**Run Test**:
+```bash
+cd backend
+python test_scenarios.py --scenario 12 --auto
+```
+
+### Run All Extended Scenarios (6-12)
+```bash
+cd backend
+python test_scenarios.py --scenario 6 --auto
+python test_scenarios.py --scenario 7 --auto
+python test_scenarios.py --scenario 8 --auto
+python test_scenarios.py --scenario 9 --auto
+python test_scenarios.py --scenario 10 --auto
+python test_scenarios.py --scenario 11 --auto
+python test_scenarios.py --scenario 12 --auto
+```
+
+**Note**: For detailed scenario descriptions, see [SCENARIO_TESTING.md](../backend/SCENARIO_TESTING.md)
+
+### 测试问题排查
+
+如果测试时遇到 "No trading decisions generated" 警告：
+
+1. **检查 signal_score**：
+   - 查看后端日志中的 `Debug: Top 10 stocks by signal_score`
+   - 如果所有股票的 signal_score 都很低（< 0.5），这是正常的
+   - 系统会自动使用 top 10 股票（即使 signal_score 很低）
+
+2. **检查推荐股票**：
+   - 查看 `Debug: enriched_market has X recommended_stocks`
+   - 如果为 0，系统会使用 fallback 逻辑选择股票
+
+3. **检查仓位限制**：
+   - 如果已达到 `max_positions` 限制，可能不会生成新的买入订单
+   - 检查 `[OPTIMIZATION] Position limits` 日志
+
+4. **检查市场状态**：
+   - 如果市场收盘且没有持仓，可能不会生成订单（这是正常的）
+   - 查看 `[TRADING CYCLE]` 日志了解详细原因
+
+### 测试文档
+
+- [测试命令清单](../backend/TEST_COMMANDS.md) - 逐个测试的命令
+- [测试总结与修复报告](../backend/TESTING_SUMMARY.md) - 问题分析与修复详情
+- [问题分析详情](../backend/TESTING_ANALYSIS.md) - 详细的问题分析
+
+---
+
 ## 📚 Related Documentation
 
 - [Backend README](../backend/README.md)

@@ -18,6 +18,27 @@ from datetime import time as dt_time
 import uuid
 import sys
 import os
+import io
+import logging
+
+# Fix Windows console encoding for Unicode output
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+# Configure logging to ensure print statements are visible in uvicorn
+# Uvicorn will show stderr output, so we'll use logging which goes to stderr
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[logging.StreamHandler(sys.stderr)]  # Use stderr so uvicorn shows it
+)
+logger = logging.getLogger(__name__)
+
+# Helper function to print to stderr (visible in uvicorn)
+def log_print(message):
+    """Print to stderr so it's visible in uvicorn output"""
+    print(message, file=sys.stderr, flush=True)
 
 from src.core.event_bus import EventBus, AgentEvent
 
@@ -28,12 +49,16 @@ app = FastAPI(
 )
 
 # CORS for frontend
+# Handle null origin (file:// protocol) by allowing all origins
+# When allow_credentials=False, we can use allow_origins=["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allow all origins including null
+    allow_credentials=False,  # Must be False when using wildcard origins
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Global event bus
@@ -41,6 +66,39 @@ event_bus = EventBus.get_instance()
 
 # Active WebSocket connections
 active_connections: List[WebSocket] = []
+
+# Trading cycle execution lock (prevent concurrent execution)
+_trading_cycle_lock = asyncio.Lock()
+_trading_cycle_executing = False
+
+
+def load_trading_config():
+    """从 config.json 读取交易配置"""
+    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+    universe = None
+    tool_budget = 15  # 默认值：15个工具调用（足够4个analyst各用3-4个工具）
+    rounds = 3
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+                if "universe" in config_data and isinstance(config_data["universe"], list):
+                    universe = config_data["universe"]
+                # 读取工具预算（优先使用 discussion_tool_budget，如果没有则使用默认值）
+                tool_budget = config_data.get("discussion_tool_budget", config_data.get("tool_budget", 15))
+                # 确保至少为8，否则工具调用太少
+                if tool_budget < 8:
+                    tool_budget = 15
+                rounds = config_data.get("discussion_rounds", 3)
+        except Exception as e:
+            log_print(f"[Config] Failed to read config.json, using defaults: {e}")
+    
+    return {
+        "universe": universe,
+        "tool_budget": tool_budget,
+        "rounds": rounds
+    }
 
 
 def broadcast_event(event: AgentEvent):
@@ -99,7 +157,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         active_connections.remove(websocket)
     except Exception as e:
-        print(f"[WebSocket] Error: {e}")
+        log_print(f"[WebSocket] Error: {e}")
         if websocket in active_connections:
             active_connections.remove(websocket)
 
@@ -135,12 +193,12 @@ async def get_agents_status():
                         agents = {}
                         for agent_name in agent_dict.keys():
                             agents[agent_name] = {"status": "idle", "last_activity": None}
-                        print(f"[API] Loaded {len(agents)} agents from agents.yaml")
+                        log_print(f"[API] Loaded {len(agents)} agents from agents.yaml")
                         return agents
         
         return status
     except Exception as e:
-        print(f"[API] Error getting agents status: {e}")
+        log_print(f"[API] Error getting agents status: {e}")
         return {}
 
 
@@ -183,18 +241,15 @@ async def execute_trading_cycle():
     """Trigger a new trading cycle"""
     from src.orchestrator.trading_cycle import execute_daily_trade
     
-    # 从 config.json 读取股票清单
-    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
-    universe = None  # None 会使用 execute_daily_trade 的默认值
-    if config_path.exists():
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-                if "universe" in config_data and isinstance(config_data["universe"], list):
-                    universe = config_data["universe"]
-                    print(f"[Trading Cycle] 使用 config.json 中的股票清单: {len(universe)} 只股票")
-        except Exception as e:
-            print(f"[Trading Cycle] 读取 config.json 失败，使用默认清单: {e}")
+    # 从 config.json 读取配置
+    config = load_trading_config()
+    universe = config["universe"]
+    tool_budget = config["tool_budget"]
+    rounds = config["rounds"]
+    
+    if universe:
+        log_print(f"[Trading Cycle] Using {len(universe)} stocks from config.json")
+    log_print(f"[Trading Cycle] Tool budget: {tool_budget}, Rounds: {rounds}")
     
     session_id = str(uuid.uuid4())
     
@@ -211,9 +266,9 @@ async def execute_trading_cycle():
     try:
         # Execute trading cycle
         result = execute_daily_trade(
-            rounds=3,
+            rounds=rounds,
             auto_tools=True,
-            tool_budget=3,
+            tool_budget=tool_budget,
             universe=universe  # 使用从 config.json 读取的股票清单（如果存在）
         )
         
@@ -247,94 +302,211 @@ async def execute_trading_cycle():
         )
 
 
+@app.options("/api/trading/execute-trade")
+async def execute_trade_options():
+    """Handle CORS preflight for execute-trade endpoint"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 @app.post("/api/trading/execute-trade")
 async def execute_trade_direct():
     """直接执行交易循环，支持非交易时段规划明日交易"""
-    from src.orchestrator.trading_cycle import execute_daily_trade
-    from src.data.order_manager import OrderManager
-    from datetime import time as dt_time, timedelta
+    global _trading_cycle_executing
     
-    # 检查市场是否开盘
-    now = datetime.now()
-    is_weekday = now.weekday() < 5
-    market_open_time = dt_time(9, 30)  # 9:30 AM
-    market_close_time = dt_time(16, 0)  # 4:00 PM
-    is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
-    
-    # 从 config.json 读取股票清单
-    config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
-    universe = None
-    if config_path.exists():
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-                if "universe" in config_data and isinstance(config_data["universe"], list):
-                    universe = config_data["universe"]
-        except Exception:
-            pass
-    
-    # 非交易时段：检查是否已有明日订单计划
-    if not is_market_open:
-        # 计算明天的日期（下一个交易日）
-        tomorrow = date.today() + timedelta(days=1)
-        while tomorrow.weekday() >= 5:
-            tomorrow += timedelta(days=1)
-        tomorrow_str = tomorrow.isoformat()
-        
-        order_manager = OrderManager(root="data/logs")
-        existing_orders = order_manager.load_pending_orders(order_date=tomorrow_str)
-        
-        if existing_orders:
-            return {
-                "ok": True,
-                "message": f"Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.",
-                "result": {
-                    "placed_orders": [],
-                    "conversations_count": 0,
-                    "is_planning": True,
-                    "order_date": tomorrow_str
-                }
-            }
-        
-        # 非交易时段：规划明日交易
-        print(f"[TRADING CYCLE] Market closed. Planning trades for tomorrow ({tomorrow_str})")
-        try:
-            result = execute_daily_trade(
-                rounds=3,
-                auto_tools=True,
-                tool_budget=3,
-                universe=universe
-            )
-            
-            return {
-                "ok": True,
-                "message": f"Planning completed for tomorrow ({tomorrow_str})",
-                "result": result
-            }
-        except Exception as e:
-            return JSONResponse(
-                status_code=500,
-                content={"ok": False, "error": str(e)}
-            )
-    
-    # 交易时段：正常执行交易
-    try:
-        result = execute_daily_trade(
-            rounds=3,
-            auto_tools=True,
-            tool_budget=3,
-            universe=universe
-        )
-        
-        return {
-            "ok": True,
-            "result": result
-        }
-    except Exception as e:
+    # 检查是否已有交易循环在执行（防重复执行）
+    if _trading_cycle_executing:
+        log_print("[TRADING CYCLE] Another trading cycle is already executing, rejecting request")
         return JSONResponse(
-            status_code=500,
-            content={"ok": False, "error": str(e)}
+            status_code=429,  # Too Many Requests
+            content={
+                "ok": False,
+                "error": "Trading cycle is already executing. Please wait for the current cycle to complete.",
+                "message": "Another trading cycle is in progress. Please try again later."
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
         )
+    
+    # 获取锁并设置执行标志
+    async with _trading_cycle_lock:
+        if _trading_cycle_executing:
+            # 双重检查（另一个请求可能已经获取锁）
+            log_print("[TRADING CYCLE] Another trading cycle started while waiting for lock, rejecting request")
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "ok": False,
+                    "error": "Trading cycle is already executing.",
+                    "message": "Another trading cycle is in progress. Please try again later."
+                },
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
+        
+        _trading_cycle_executing = True
+        log_print("[TRADING CYCLE] Starting trading cycle execution (lock acquired)")
+    
+    try:
+        from src.orchestrator.trading_cycle import execute_daily_trade
+        from src.data.order_manager import OrderManager
+        from datetime import time as dt_time, timedelta
+        
+        # 检查市场是否开盘
+        now = datetime.now()
+        is_weekday = now.weekday() < 5
+        market_open_time = dt_time(9, 30)  # 9:30 AM
+        market_close_time = dt_time(16, 0)  # 4:00 PM
+        is_market_open = is_weekday and (market_open_time <= now.time() <= market_close_time)
+        
+        # 从 config.json 读取配置
+        config = load_trading_config()
+        universe = config["universe"]
+        tool_budget = config["tool_budget"]
+        rounds = config["rounds"]
+        
+        log_print(f"[TRADING CYCLE] Tool budget: {tool_budget}, Rounds: {rounds}")
+        
+        # 非交易时段：检查是否已有明日订单计划
+        if not is_market_open:
+            # 计算明天的日期（下一个交易日）
+            tomorrow = date.today() + timedelta(days=1)
+            while tomorrow.weekday() >= 5:
+                tomorrow += timedelta(days=1)
+            tomorrow_str = tomorrow.isoformat()
+            
+            order_manager = OrderManager(root="data/logs")
+            existing_orders = order_manager.load_pending_orders(order_date=tomorrow_str)
+            
+            if existing_orders:
+                response = JSONResponse(
+                    status_code=200,
+                    content={
+                        "ok": True,
+                        "message": f"Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.",
+                        "result": {
+                            "placed_orders": [],
+                            "conversations_count": 0,
+                            "is_planning": True,
+                            "order_date": tomorrow_str
+                        }
+                    },
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                    }
+                )
+                return response
+            
+            # 非交易时段：规划明日交易
+            log_print(f"[TRADING CYCLE] Market closed. Planning trades for tomorrow ({tomorrow_str})")
+            try:
+                result = execute_daily_trade(
+                    rounds=rounds,
+                    auto_tools=True,
+                    tool_budget=tool_budget,
+                    universe=universe
+                )
+                
+                response = JSONResponse(
+                    status_code=200,
+                    content={
+                        "ok": True,
+                        "message": f"Planning completed for tomorrow ({tomorrow_str})",
+                        "result": result
+                    },
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                    }
+                )
+                return response
+            except Exception as e:
+                # 安全处理错误信息，移除emoji字符以避免Windows cp950编码问题
+                import traceback
+                error_msg = str(e)
+                # 移除emoji字符（Unicode范围）
+                import re
+                error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)  # 移除emoji
+                error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)  # 移除扩展emoji
+                
+                # 打印详细错误信息到服务器日志
+                log_print(f"[TRADING CYCLE] Error: {error_msg}")
+                log_print(f"[TRADING CYCLE] Traceback: {traceback.format_exc()}")
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={"ok": False, "error": error_msg},
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                    }
+                )
+        else:
+            # 交易时段：正常执行交易
+            log_print(f"[TRADING CYCLE] Market is open. Executing trading cycle...")
+            try:
+                result = execute_daily_trade(
+                    rounds=rounds,
+                    auto_tools=True,
+                    tool_budget=tool_budget,
+                    universe=universe
+                )
+                
+                response = JSONResponse(
+                    status_code=200,
+                    content={
+                        "ok": True,
+                        "result": result
+                    },
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                    }
+                )
+                return response
+            except Exception as e:
+                # 安全处理错误信息，移除emoji字符以避免Windows cp950编码问题
+                import traceback
+                error_msg = str(e)
+                # 移除emoji字符（Unicode范围）
+                import re
+                error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)  # 移除emoji
+                error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)  # 移除扩展emoji
+                
+                # 打印详细错误信息到服务器日志
+                log_print(f"[TRADING CYCLE] Error: {error_msg}")
+                log_print(f"[TRADING CYCLE] Traceback: {traceback.format_exc()}")
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={"ok": False, "error": error_msg},
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Methods": "POST, OPTIONS",
+                        "Access-Control-Allow-Headers": "*",
+                    }
+                )
+    finally:
+        # 无论成功失败，都要释放执行标志
+        _trading_cycle_executing = False
+        log_print("[TRADING CYCLE] Trading cycle execution completed (lock released)")
 
 
 @app.get("/api/portfolio/equity-history")
@@ -394,6 +566,288 @@ async def get_current_portfolio():
                 "message": "No portfolio data available",
             }
     except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )
+
+
+@app.post("/api/trading/check-pending-orders")
+async def check_pending_orders():
+    """检查并结算今天的pending订单（交易时段使用）"""
+    try:
+        from src.data.order_manager import OrderManager
+        from src.data.portfolio import Portfolio
+        from datetime import date
+        from pathlib import Path
+        import json
+        
+        order_manager = OrderManager(root="data/logs")
+        
+        # 检查市场是否开盘
+        is_market_open = order_manager._is_market_open()
+        if not is_market_open:
+            return {
+                "ok": True,
+                "message": "Market is closed, no order checking needed",
+                "settled_count": 0
+            }
+        
+        # 获取今天的pending订单
+        today = date.today().isoformat()
+        pending_orders = order_manager.load_pending_orders(order_date=today)
+        
+        # 加载当前portfolio状态
+        portfolio_file = Path("data/logs/portfolio_state.json")
+        if not portfolio_file.exists():
+            return {
+                "ok": False,
+                "error": "Portfolio state file not found"
+            }
+        
+        with portfolio_file.open("r", encoding="utf-8") as f:
+            state = json.load(f)
+        
+        # 创建Portfolio对象
+        current_portfolio = Portfolio(
+            cash=float(state.get("cash", 10000.0)),
+            initial_value=float(state.get("initial_value", 10000.0)),
+        )
+        
+        # 恢复持仓
+        from src.data.portfolio import Position
+        for symbol, pos_info in state.get("positions", {}).items():
+            if isinstance(pos_info, dict):
+                qty = int(pos_info.get("quantity", 0))
+                avg_cost = float(pos_info.get("avg_cost", 0))
+                total_cost = float(pos_info.get("total_cost", 0))
+                if total_cost <= 0:
+                    total_cost = avg_cost * qty
+                if qty > 0:
+                    current_portfolio._positions[symbol] = Position(
+                        symbol=symbol,
+                        quantity=qty,
+                        avg_cost=avg_cost,
+                        total_cost=total_cost
+                    )
+        
+        # 如果portfolio中没有持仓，但filled_orders中有今天的订单，重新执行它们来恢复portfolio状态
+        if len(current_portfolio._positions) == 0:
+            filled_file = Path("data/logs/filled_orders.jsonl")
+            if filled_file.exists():
+                try:
+                    with filled_file.open("r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip():
+                                filled_order = json.loads(line)
+                                if filled_order.get("order_date") == today and filled_order.get("status") == "FILLED":
+                                    symbol = filled_order.get("symbol")
+                                    action = filled_order.get("action", "").upper()
+                                    quantity = filled_order.get("quantity", 0)
+                                    fill_price = filled_order.get("fill_price")
+                                    if symbol and action and quantity > 0 and fill_price:
+                                        log_print(f"[Check Pending Orders] Re-executing filled order: {action} {quantity} {symbol} @ ${fill_price:.2f}")
+                                        if action == "BUY":
+                                            current_portfolio.buy(symbol, quantity, fill_price)
+                                        elif action == "SELL":
+                                            current_portfolio.sell(symbol, quantity, fill_price)
+                    # 如果有重新执行的订单，保存portfolio状态
+                    if len(current_portfolio._positions) > 0:
+                        portfolio_state = {
+                            "cash": current_portfolio.cash,
+                            "initial_value": current_portfolio.initial_value,
+                            "positions": {},
+                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+                        }
+                        for symbol, pos in current_portfolio._positions.items():
+                            portfolio_state["positions"][symbol] = {
+                                "quantity": pos.quantity,
+                                "avg_cost": pos.avg_cost,
+                                "total_cost": pos.total_cost,
+                            }
+                        portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
+                        log_print(f"[Check Pending Orders] Restored {len(current_portfolio._positions)} positions from filled orders")
+                except Exception as e:
+                    log_print(f"[Check Pending Orders] Warning: Failed to restore positions from filled orders: {e}")
+        
+        # 检查并结算订单
+        settled_count = 0
+        
+        if not pending_orders:
+            # 即使没有pending订单，也检查是否需要恢复持仓
+            log_print(f"\n[Check Pending Orders] No pending orders for today ({today}), checking if portfolio needs restoration...")
+        else:
+            log_print(f"\n[Check Pending Orders] Checking {len(pending_orders)} pending orders for today ({today})...")
+        
+        for order in pending_orders:
+            symbol = order.get("symbol")
+            action = order.get("action", "").upper()
+            quantity = order.get("quantity", 0)
+            limit_price = order.get("limit_price", 0)
+            order_id = order.get("order_id", "unknown")
+            
+            try:
+                # 使用实时价格检查订单
+                fill_result = order_manager.check_order_fill(order, today, use_realtime=True)
+                
+                # 如果订单已成交，执行交易
+                if fill_result.get("filled", False):
+                    fill_price = fill_result.get("fill_price")
+                    if fill_price:
+                        log_print(f"[Check Pending Orders] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
+                        if action == "BUY":
+                            current_portfolio.buy(symbol, quantity, fill_price)
+                        elif action == "SELL":
+                            current_portfolio.sell(symbol, quantity, fill_price)
+                        
+                        # 标记订单为已成交
+                        order_manager.mark_order_filled(order, fill_result)
+                        settled_count += 1
+                        log_print(f"[Check Pending Orders] Order {order_id} executed successfully")
+            except Exception as e:
+                log_print(f"[Check Pending Orders] Error processing order {order_id}: {e}")
+                import traceback
+                traceback.print_exc()
+                pass
+        
+        if settled_count > 0:
+            # 保存更新后的portfolio状态
+            portfolio_state = {
+                "cash": current_portfolio.cash,
+                "initial_value": current_portfolio.initial_value,
+                "positions": {},
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+            }
+            
+            # 使用 _positions 来获取完整的 Position 对象
+            for symbol, pos in current_portfolio._positions.items():
+                portfolio_state["positions"][symbol] = {
+                    "quantity": pos.quantity,
+                    "avg_cost": pos.avg_cost,
+                    "total_cost": pos.total_cost,
+                }
+            
+            portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
+            log_print(f"[Check Pending Orders] Settled {settled_count} orders, portfolio updated")
+            
+            # 更新当天的净值记录和每日记忆（如果有订单成交）
+            try:
+                from src.data.equity_tracker import EquityTracker
+                from src.data.memory_manager import MemoryManager
+                import yfinance as yf
+                
+                # 获取当前价格（优先使用实时价格，如果获取失败则使用平均成本价作为后备）
+                last_prices = {}
+                missing_prices = []
+                for symbol in current_portfolio.positions.keys():
+                    try:
+                        ticker = yf.Ticker(symbol)
+                        info = ticker.fast_info
+                        price = info.get("lastPrice") or info.get("regularMarketPrice")
+                        if price:
+                            last_prices[symbol] = float(price)
+                        else:
+                            # 如果获取不到实时价格，使用平均成本价（但记录警告）
+                            pos = current_portfolio._positions.get(symbol)
+                            if pos:
+                                last_prices[symbol] = pos.avg_cost
+                                missing_prices.append(symbol)
+                    except Exception as e:
+                        # 如果获取失败，使用平均成本价
+                        pos = current_portfolio._positions.get(symbol)
+                        if pos:
+                            last_prices[symbol] = pos.avg_cost
+                            missing_prices.append(symbol)
+                
+                if missing_prices:
+                    log_print(f"[Check Pending Orders] Warning: Could not fetch real-time prices for {len(missing_prices)} symbols, using avg_cost: {missing_prices}")
+                
+                # 计算净值
+                equity_value = sum(
+                    pos.quantity * last_prices.get(symbol, pos.avg_cost)
+                    for symbol, pos in current_portfolio._positions.items()
+                )
+                total_value = current_portfolio.cash + equity_value
+                total_pnl = total_value - current_portfolio.initial_value
+                total_pnl_pct = (total_pnl / current_portfolio.initial_value * 100) if current_portfolio.initial_value > 0 else 0.0
+                
+                # 计算持仓P&L
+                positions_pnl = {}
+                positions_detail = {}
+                for symbol, pos in current_portfolio._positions.items():
+                    current_price = last_prices.get(symbol, pos.avg_cost)
+                    market_value = pos.quantity * current_price
+                    unrealized_pnl = market_value - pos.total_cost
+                    unrealized_pnl_pct = (unrealized_pnl / pos.total_cost * 100) if pos.total_cost > 0 else 0.0
+                    
+                    positions_pnl[symbol] = {
+                        "unrealized_pnl": round(unrealized_pnl, 2),
+                        "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
+                    }
+                    positions_detail[symbol] = {
+                        "quantity": pos.quantity,
+                        "avg_cost": pos.avg_cost,
+                        "current_price": current_price,
+                        "market_value": market_value,
+                        "unrealized_pnl": unrealized_pnl,
+                        "unrealized_pnl_pct": unrealized_pnl_pct,
+                    }
+                
+                # 更新净值记录
+                equity_tracker = EquityTracker(root="data/logs")
+                portfolio_snapshot = {
+                    "cash": current_portfolio.cash,
+                    "equity_value": equity_value,
+                    "total_value": total_value,
+                    "total_pnl": total_pnl,
+                    "total_pnl_pct": total_pnl_pct,
+                    "positions_detail": positions_detail,
+                }
+                equity_tracker.record_daily_equity(today, portfolio_snapshot)
+                
+                # 更新每日记忆（如果存在）
+                memory_manager = MemoryManager(root="data/logs")
+                daily_memory = memory_manager.load_daily_memory(today)
+                if daily_memory:
+                    # 获取已成交的订单（从filled_orders.jsonl读取）
+                    filled_orders = []
+                    filled_file = Path("data/logs/filled_orders.jsonl")
+                    if filled_file.exists():
+                        try:
+                            with filled_file.open("r", encoding="utf-8") as f:
+                                for line in f:
+                                    if line.strip():
+                                        order = json.loads(line)
+                                        if order.get("order_date") == today and order.get("status") == "FILLED":
+                                            filled_orders.append(order)
+                        except Exception:
+                            pass
+                    
+                    # 更新每日记忆中的成交明细和portfolio快照
+                    daily_memory["executed_trades"] = filled_orders
+                    daily_memory["portfolio_snapshot"] = portfolio_snapshot
+                    daily_memory["executed_trades_count"] = len(filled_orders)
+                    
+                    # 重新保存
+                    memory_file = memory_manager.daily_dir / f"{today}.json"
+                    with memory_file.open("w", encoding="utf-8") as f:
+                        json.dump(daily_memory, f, ensure_ascii=False, indent=2)
+                    
+                    log_print(f"[Check Pending Orders] Updated daily memory and equity record for {today}")
+            except Exception as e:
+                log_print(f"[Check Pending Orders] Warning: Failed to update daily records: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        return {
+            "ok": True,
+            "message": f"Checked {len(pending_orders)} pending orders, {settled_count} filled",
+            "settled_count": settled_count,
+            "pending_count": len(pending_orders) - settled_count
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={"ok": False, "error": str(e)}
@@ -643,6 +1097,58 @@ async def get_vix_term():
         )
 
 
+@app.get("/api/fear-greed")
+async def get_fear_greed():
+    """Get Fear & Greed Index data"""
+    try:
+        from src.tools.sentiment_tools import fetch_fear_greed
+        fg_data = fetch_fear_greed()
+        
+        # fetch_fear_greed 返回的格式可能是：
+        # 1. {"fear_greed": {...}} (如果已经包装)
+        # 2. {"value": ..., "label": ..., ...} (如果直接返回)
+        # 统一转换为 {"fear_greed": {...}} 格式
+        
+        if fg_data:
+            # 如果已经有 fear_greed 字段，直接返回
+            if "fear_greed" in fg_data:
+                return fg_data
+            # 如果直接返回了 value/label 等字段，包装成 fear_greed
+            elif "value" in fg_data or "label" in fg_data:
+                return {
+                    "fear_greed": fg_data
+                }
+            else:
+                # 空数据，返回默认值
+                return {
+                    "fear_greed": {
+                        "value": 0,
+                        "label": "N/A",
+                        "source": "unknown"
+                    }
+                }
+        else:
+            # 返回空数据而不是 404，让前端可以显示默认值
+            return {
+                "fear_greed": {
+                    "value": 0,
+                    "label": "N/A",
+                    "source": "unknown"
+                }
+            }
+    except Exception as e:
+        # 即使出错也返回默认值，而不是 500 错误
+        print(f"[API] Error fetching Fear & Greed: {e}")
+        return {
+            "fear_greed": {
+                "value": 0,
+                "label": "N/A",
+                "source": "error",
+                "error": str(e)
+            }
+        }
+
+
 @app.get("/api/tools/list")
 async def list_tools():
     """List all available tools from ToolBox"""
@@ -657,12 +1163,12 @@ async def list_tools():
         from src.agents.toolbox import ToolBox
         toolbox = ToolBox()
         tools = toolbox.list()
-        print(f"[API] Tools list: {len(tools)} tools found")
+        log_print(f"[API] Tools list: {len(tools)} tools found")
         return {"ok": True, "tools": tools}
     except Exception as e:
         import traceback
-        print(f"[API] Error listing tools: {e}")
-        print(f"[API] Traceback: {traceback.format_exc()}")
+        log_print(f"[API] Error listing tools: {e}")
+        log_print(f"[API] Traceback: {traceback.format_exc()}")
         return {"ok": True, "tools": []}
 
 
@@ -1018,7 +1524,7 @@ async def get_agent_conversations(
                                 })
                                 memory_count += 1
         except Exception as e:
-            print(f"[WARN] Failed to load from memory: {e}")
+            log_print(f"[WARN] Failed to load from memory: {e}")
 
         # Sort by date (newest first)
         conversations.sort(
@@ -1057,6 +1563,19 @@ async def is_market_open():
     return {"ok": True, "open": open_now, "now": now.isoformat()}
 
 
+@app.options("/api/system/init")
+async def system_init_options():
+    """Handle CORS preflight for system init"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 @app.post("/api/system/init")
 async def system_init():
     """Reset logs and initialize portfolio to defaults, then seed minimal data.
@@ -1094,8 +1613,44 @@ async def system_init():
                 memory_file.unlink()
             except Exception:
                 pass
+        
+        # Clear daily memory directory
+        daily_memory_dir = memory_dir / "memory" / "daily"
+        if daily_memory_dir.exists():
+            for daily_file in daily_memory_dir.glob("*.json"):
+                try:
+                    daily_file.unlink()
+                except Exception:
+                    pass
+        
+        # Clear weekly memory directory
+        weekly_memory_dir = memory_dir / "memory" / "weekly"
+        if weekly_memory_dir.exists():
+            for weekly_file in weekly_memory_dir.glob("*.json"):
+                try:
+                    weekly_file.unlink()
+                except Exception:
+                    pass
+        
+        # Clear monthly memory directory
+        monthly_memory_dir = memory_dir / "memory" / "monthly"
+        if monthly_memory_dir.exists():
+            for monthly_file in monthly_memory_dir.glob("*.json"):
+                try:
+                    monthly_file.unlink()
+                except Exception:
+                    pass
     except Exception:
         pass
+    
+    # Clear equity history (EquityTracker uses equity_history.jsonl)
+    # This is already in files_to_clear, but ensure it's cleared
+    equity_file = logs_dir / "equity_history.jsonl"
+    if equity_file.exists():
+        try:
+            equity_file.unlink()
+        except Exception:
+            pass
     
     # Clear key log files
     for name in files_to_clear:
@@ -1113,29 +1668,29 @@ async def system_init():
     state = {
         "cash": 10000.0,
         "initial_value": 10000.0,
+        "total_value": 10000.0,  # Add total_value for consistency
         "positions": {},
     }
     with (logs_dir / "portfolio_state.json").open("w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
-    # Seed a couple of conversations so UI is not empty
-    # Do not seed demo conversations here to ensure only real conversations are shown
-    # Build a minimal snapshot matching current state
+    # Record initial equity history entry (for chart display)
     snapshot = {
-        "ok": True,
-        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-        "initial_value": 10000.0,
+        "cash": 10000.0,
+        "equity_value": 0.0,
         "total_value": 10000.0,
         "total_pnl": 0.0,
         "total_pnl_pct": 0.0,
-        "cash": 10000.0,
-        "equity_value": 0.0,
-        "positions": {},
-        "positions_pnl": {},
-        "source": "init",
+        "positions_detail": {},
     }
-    with (logs_dir / "real_time_snapshots.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
+    try:
+        from src.data.equity_tracker import EquityTracker
+        equity_tracker = EquityTracker(root="data/logs")
+        equity_tracker.record_daily_equity(date.today().isoformat(), snapshot)
+    except Exception as e:
+        log_print(f"[Init] Warning: Failed to record initial equity: {e}")
+    
     # If市場開盤且今日尚未交易，自動執行一次交易循環
+    result = None
     try:
         start = dt_time(9, 0)
         end = dt_time(16, 0)
@@ -1144,16 +1699,31 @@ async def system_init():
         flag = logs_dir / "last_trade_date.txt"
         today = now.strftime("%Y-%m-%d")
         traded_today = flag.exists() and flag.read_text(encoding="utf-8").strip() == today
-        result = None
         if is_open and not traded_today:
             result = await execute_trading_cycle()
             try:
                 flag.write_text(today, encoding="utf-8")
             except Exception:
                 pass
-        return {"ok": True, "snapshot": snapshot, "auto_ran": bool(result is not None), "result": result}
-    except Exception:
-        return {"ok": True, "snapshot": snapshot, "auto_ran": False}
+    except Exception as e:
+        log_print(f"[Init] Warning: Failed to execute trading cycle: {e}")
+        result = None
+    
+    # Return with CORS headers
+    return JSONResponse(
+        status_code=200,
+        content={
+            "ok": True, 
+            "snapshot": snapshot, 
+            "auto_ran": bool(result is not None), 
+            "result": result
+        },
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 
 @app.post("/api/trading/run-loop")
@@ -1206,7 +1776,7 @@ async def run_trading_loop():
         try:
             flag.write_text(today, encoding="utf-8")
         except Exception as e:
-            print(f"[WARN] Failed to write last_trade_date.txt: {e}")
+            log_print(f"[WARN] Failed to write last_trade_date.txt: {e}")
         
         return {"ok": True, "result": res, "date": today}
     except Exception as e:
@@ -1267,13 +1837,13 @@ def run_october_simulation_background():
                     config_data = json.load(f)
                     if "universe" in config_data and isinstance(config_data["universe"], list):
                         universe = config_data["universe"]
-                        print(f"[Simulation] 使用 config.json 中的股票清单: {len(universe)} 只股票")
+                        log_print(f"[Simulation] Using {len(universe)} stocks from config.json")
                     else:
-                        print(f"[Simulation] config.json 中没有 universe，使用默认清单: {len(universe)} 只股票")
+                        log_print(f"[Simulation] No universe in config.json, using default: {len(universe)} stocks")
             except Exception as e:
-                print(f"[Simulation] 读取 config.json 失败，使用默认清单: {e}")
+                log_print(f"[Simulation] Failed to read config.json, using default: {e}")
         else:
-            print(f"[Simulation] config.json 不存在，使用默认清单: {len(universe)} 只股票")
+            log_print(f"[Simulation] config.json not found, using default: {len(universe)} stocks")
         
         _simulation_status["running"] = True
         _simulation_status["started_at"] = datetime.now(timezone.utc).isoformat()
@@ -1348,24 +1918,47 @@ def run_october_simulation_background():
                         portfolio.positions[symbol] = {"quantity": qty, "avg_cost": avg_cost}
             
             settled_count = 0
+            log_print(f"\n[Settle Orders] Checking {len(pending_orders)} pending orders for {settle_date}...")
             for order in pending_orders:
                 symbol = order.get("symbol")
                 action = order.get("action", "").upper()
                 quantity = order.get("quantity", 0)
+                limit_price = order.get("limit_price", 0)
+                order_id = order.get("order_id", "unknown")
                 
                 try:
-                    # 检查订单是否成交（这会检查市场是否开盘）
-                    fill_result = order_manager.check_order_fill(order, settle_date)
+                    # 检查订单是否成交
+                    # 如果市场开盘且是今天，使用实时价格；否则使用历史数据
+                    from datetime import date
+                    is_today = settle_date == date.today().isoformat()
+                    is_market_open = order_manager._is_market_open()
+                    use_realtime = is_today and is_market_open
+                    
+                    log_print(f"[Settle Orders] Processing order {order_id}: {action} {quantity} {symbol} @ limit ${limit_price:.2f} (realtime={use_realtime})")
+                    fill_result = order_manager.check_order_fill(order, settle_date, use_realtime=use_realtime)
+                    
+                    # 输出检查结果
+                    current_price = fill_result.get("current_price")
+                    if current_price:
+                        log_print(f"[Settle Orders] Order {order_id}: current price=${current_price:.2f}, limit=${limit_price:.2f}, filled={fill_result.get('filled', False)}")
+                    else:
+                        daily_high = fill_result.get("daily_high")
+                        daily_low = fill_result.get("daily_low")
+                        if daily_high and daily_low:
+                            log_print(f"[Settle Orders] Order {order_id}: daily High=${daily_high:.2f}, Low=${daily_low:.2f}, limit=${limit_price:.2f}, filled={fill_result.get('filled', False)}")
                     
                     # 如果市场未开盘或订单未成交，跳过
                     if not fill_result.get("filled", False):
+                        log_print(f"[Settle Orders] Order {order_id} not filled: {fill_result.get('fill_reason', 'Unknown reason')}")
                         continue
                     
                     # 订单已成交，执行交易
                     fill_price = fill_result.get("fill_price")
                     if fill_price is None:
+                        log_print(f"[Settle Orders] Order {order_id} filled but no fill_price, skipping")
                         continue
                     
+                    log_print(f"[Settle Orders] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
                     if action == "BUY":
                         portfolio.buy(symbol, quantity, fill_price)
                     elif action == "SELL":
@@ -1374,9 +1967,14 @@ def run_october_simulation_background():
                     # 标记订单为已成交
                     order_manager.mark_order_filled(order, fill_result)
                     settled_count += 1
+                    log_print(f"[Settle Orders] Order {order_id} executed successfully")
                 except Exception as e:
-                    print(f"[Settle Orders] Error processing order {order.get('order_id')}: {e}")
+                    log_print(f"[Settle Orders] Error processing order {order_id}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     pass
+            
+            log_print(f"[Settle Orders] Completed: {settled_count} orders filled out of {len(pending_orders)} pending orders\n")
             
             portfolio_state = {
                 "cash": portfolio.cash,
@@ -1430,7 +2028,7 @@ def run_october_simulation_background():
                 _simulation_status["last_update"] = datetime.now(timezone.utc).isoformat()
                 
             except Exception as e:
-                print(f"[Simulation] Error on {trade_date_str}: {e}")
+                log_print(f"[Simulation] Error on {trade_date_str}: {e}")
                 if "No data" not in str(e) and "YFPricesMissingError" not in str(e):
                     _simulation_status["error"] = str(e)
                     break

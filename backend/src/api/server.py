@@ -194,12 +194,26 @@ async def get_agents_status():
                         for agent_name in agent_dict.keys():
                             agents[agent_name] = {"status": "idle", "last_activity": None}
                         log_print(f"[API] Loaded {len(agents)} agents from agents.yaml")
-                        return agents
+                        return JSONResponse(
+                            status_code=200,
+                            content=agents,
+                            headers={"Access-Control-Allow-Origin": "*"}
+                        )
         
-        return status
+        return JSONResponse(
+            status_code=200,
+            content=status,
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
     except Exception as e:
         log_print(f"[API] Error getting agents status: {e}")
-        return {}
+        import traceback
+        log_print(f"[API] Traceback: {traceback.format_exc()}")
+        return JSONResponse(
+            status_code=200,
+            content={},
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
 
 @app.get("/api/agents/{agent_name}/status")
@@ -1164,12 +1178,20 @@ async def list_tools():
         toolbox = ToolBox()
         tools = toolbox.list()
         log_print(f"[API] Tools list: {len(tools)} tools found")
-        return {"ok": True, "tools": tools}
+        return JSONResponse(
+            status_code=200,
+            content={"ok": True, "tools": tools},
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
     except Exception as e:
         import traceback
         log_print(f"[API] Error listing tools: {e}")
         log_print(f"[API] Traceback: {traceback.format_exc()}")
-        return {"ok": True, "tools": []}
+        return JSONResponse(
+            status_code=200,
+            content={"ok": True, "tools": []},
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
 
 @app.get("/api/demo/real-time")

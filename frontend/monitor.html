@@ -3476,7 +3476,13 @@
                                                                     if (val === null || val === undefined) {
                                                                         displayVal = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                                                     } else if (typeof val === 'object') {
-                                                                        displayVal = `<span style="color: #818cf8;">${escapeHtml(JSON.stringify(val))}</span>`;
+                                                                        // 不要显示 JSON 格式，改为易读格式
+                                                                        if (Array.isArray(val)) {
+                                                                            displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
+                                                                        } else {
+                                                                            const keys = Object.keys(val);
+                                                                            displayVal = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                                        }
                                                                     } else if (typeof val === 'number') {
                                                                         // 数字格式化：保留适当的小数位
                                                                         const formatted = val % 1 === 0 ? val.toString() : val.toFixed(2);

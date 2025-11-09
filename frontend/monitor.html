@@ -5499,8 +5499,65 @@
             // 按钮状态恢复在executeTradeCycle的finally中处理
         }
         
+        // 游标动画变量
+        let cursorGlow = null;
+        let cursorActive = false;
+        
+        function initCursorGlow() {
+            // 创建游标光晕元素
+            cursorGlow = document.createElement('div');
+            cursorGlow.className = 'cursor-glow';
+            document.body.appendChild(cursorGlow);
+            
+            // 跟踪鼠标移动
+            document.addEventListener('mousemove', (e) => {
+                if (cursorGlow) {
+                    cursorGlow.style.left = e.clientX + 'px';
+                    cursorGlow.style.top = e.clientY + 'px';
+                }
+            });
+            
+            // 鼠标进入可点击元素时激活
+            const interactiveElements = ['button', 'a', 'input', 'select', 'textarea', '.nav-btn', '.refresh-btn', '.card', '.conversation-item'];
+            interactiveElements.forEach(selector => {
+                document.addEventListener('mouseover', (e) => {
+                    if (e.target.matches(selector) || e.target.closest(selector)) {
+                        if (cursorGlow) {
+                            cursorGlow.classList.add('active');
+                            cursorActive = true;
+                        }
+                    }
+                }, true);
+                
+                document.addEventListener('mouseout', (e) => {
+                    if (!e.target.matches(selector) && !e.target.closest(selector)) {
+                        if (cursorGlow) {
+                            cursorGlow.classList.remove('active');
+                            cursorActive = false;
+                        }
+                    }
+                }, true);
+            });
+            
+            // 点击时短暂增强光晕
+            document.addEventListener('mousedown', () => {
+                if (cursorGlow) {
+                    cursorGlow.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                }
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (cursorGlow) {
+                    cursorGlow.style.transform = 'translate(-50%, -50%) scale(1)';
+                }
+            });
+        }
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            // 初始化游标动画
+            initCursorGlow();
+            
             // Load saved theme first
             loadSavedTheme();
             setupAutoRefresh();

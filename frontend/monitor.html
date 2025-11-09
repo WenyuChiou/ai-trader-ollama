@@ -5352,7 +5352,7 @@
                 updateConnectionStatus(false);
                 
                 // Check if there are pending orders before executing
-            try {
+                try {
                     const [backendStatus, agentStatus, toolsList, systemInfo] = await Promise.allSettled([
                         fetchBackendStatus(),
                         fetchAgentStatus(),

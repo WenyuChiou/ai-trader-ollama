@@ -2042,9 +2042,22 @@
             
             // 更新按钮状态
             const btn = document.getElementById('startTradeBtn');
+            let progressInterval = null;
             if (btn) {
                 btn.disabled = true;
                 btn.textContent = marketStatus === 'open' ? '⏳ Trading...' : '⏳ Planning...';
+                
+                // 添加进度提示（每5秒更新一次）
+                let progressSeconds = 0;
+                progressInterval = setInterval(() => {
+                    progressSeconds += 5;
+                    const minutes = Math.floor(progressSeconds / 60);
+                    const seconds = progressSeconds % 60;
+                    const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                    btn.textContent = marketStatus === 'open' 
+                        ? `⏳ Trading... (${timeStr})` 
+                        : `⏳ Planning... (${timeStr})`;
+                }, 5000);
             }
             
             try {

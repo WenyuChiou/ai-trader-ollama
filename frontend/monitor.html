@@ -194,6 +194,48 @@
             border-top: 1px solid rgba(245, 158, 11, 0.15) !important;
         }
 
+        /* Light theme - ensure all text is black */
+        body.light-theme .conversation-content,
+        body.light-theme .conversation-tool-result,
+        body.light-theme .conversation-meta,
+        body.light-theme .conversation-item,
+        body.light-theme .conversation-header,
+        body.light-theme .conversation-agent,
+        body.light-theme .conversation-date,
+        body.light-theme table td,
+        body.light-theme table th,
+        body.light-theme pre,
+        body.light-theme code,
+        body.light-theme .status-item-value,
+        body.light-theme .status-item-label {
+            color: #000000 !important;
+        }
+
+        body.light-theme .conversation-content *,
+        body.light-theme .conversation-tool-result *,
+        body.light-theme table td *,
+        body.light-theme table th * {
+            color: #000000 !important;
+        }
+
+        /* Light theme - table styles */
+        body.light-theme table {
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #000000 !important;
+        }
+
+        body.light-theme table thead tr {
+            background: rgba(8, 145, 178, 0.1) !important;
+        }
+
+        body.light-theme table tbody tr {
+            background: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        body.light-theme table tbody tr:nth-child(even) {
+            background: rgba(241, 245, 249, 0.9) !important;
+        }
+
         /* Business style (applied in Allocation page) */
         body.business {
             background: #f5f7fb;
@@ -3476,7 +3518,7 @@
                                                                         displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                     } else {
                                                                         const keys = Object.keys(val);
-                                                                        displayVal = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                                        displayVal = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''})</span>`;
                                                                     }
                                                                 } else if (typeof val === 'number') {
                                                                     const formatted = val % 1 === 0 ? val.toString() : val.toFixed(2);
@@ -3666,7 +3708,7 @@
                                                                         displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                     } else {
                                                                         const keys = Object.keys(val);
-                                                                        displayVal = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                                        displayVal = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''})</span>`;
                                                                     }
                                                                 } else if (typeof val === 'number') {
                                                                     const formatted = val % 1 === 0 ? val.toString() : val.toFixed(2);
@@ -3802,7 +3844,7 @@
                                                     displayValue = `<span style="color: #818cf8; font-weight: 600;">[${value.length} items]</span>`;
                                                 } else {
                                                     const keys = Object.keys(value);
-                                                    displayValue = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                    displayValue = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''})</span>`;
                                                 }
                                             } else if (typeof value === 'number') {
                                                 const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2);
@@ -3837,11 +3879,58 @@
                     }
                 }
                 
-                // 如果无法转换为表格，返回格式化的JSON
-                return `<pre style="margin: 0; font-size: 11px; color: #cbd5e1; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+                // 如果无法转换为表格，使用键值对表格格式
+                const entries = Object.entries(data);
+                if (entries.length > 0) {
+                    let tableHtml = `
+                        <div style="overflow-x: auto; margin-top: 8px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+                                <thead>
+                                    <tr style="background: rgba(245, 158, 11, 0.25);">
+                                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(245, 158, 11, 0.4); color: #fbbf24; font-weight: 700; width: 30%;">KEY</th>
+                                        <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(245, 158, 11, 0.4); color: #fbbf24; font-weight: 700;">VALUE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${entries.map(([key, value], idx) => {
+                                        let displayValue = '';
+                                        if (value === null || value === undefined) {
+                                            displayValue = '<span style="color: #94a3b8; font-style: italic;">-</span>';
+                                        } else if (typeof value === 'object') {
+                                            if (Array.isArray(value)) {
+                                                displayValue = `<span style="color: #818cf8; font-weight: 600;">Array (${value.length} items)</span>`;
+                                            } else {
+                                                const keys = Object.keys(value);
+                                                displayValue = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''})</span>`;
+                                            }
+                                        } else if (typeof value === 'number') {
+                                            const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2);
+                                            displayValue = `<span style="color: #10b981; font-weight: 700;">${formatted}</span>`;
+                                        } else {
+                                            displayValue = escapeHtml(String(value));
+                                        }
+                                        const isEven = idx % 2 === 0;
+                                        return `
+                                            <tr style="border-bottom: 1px solid rgba(245, 158, 11, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
+                                                <td style="padding: 8px 12px; color: #fbbf24; font-weight: 700;">${escapeHtml(String(key))}</td>
+                                                <td style="padding: 8px 12px; color: #f1f5f9; font-weight: 600;">${displayValue}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    return tableHtml;
+                }
+                return '<div style="color: #94a3b8; font-style: italic;">No data</div>';
             } catch (e) {
-                // 如果解析失败，返回原文本
-                return `<div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(String(resultText))}</div>`;
+                // 如果解析失败，尝试提取文本内容，不显示原始JSON
+                const textContent = String(resultText).replace(/\{[\s\S]*\}/g, '').trim();
+                if (textContent.length > 0) {
+                    return `<div style="padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; color: #e2e8f0; font-size: 13px; line-height: 1.6;">${escapeHtml(textContent)}</div>`;
+                }
+                return '<div style="color: #94a3b8; font-style: italic;">Unable to parse result</div>';
             }
         }
 
@@ -3986,10 +4075,10 @@
                                                     displayValue = '<span style="color: #94a3b8; font-style: italic;">-</span>';
                                                 } else if (typeof value === 'object') {
                                                     if (Array.isArray(value)) {
-                                                        displayValue = `<span style="color: #818cf8; font-weight: 600;">[${value.length} items]</span>`;
+                                                        displayValue = `<span style="color: #818cf8; font-weight: 600;">Array (${value.length} items)</span>`;
                                                     } else {
                                                         const keys = Object.keys(value);
-                                                        displayValue = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys}</span>`;
+                                                        displayValue = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields)</span>`;
                                                     }
                                                 } else if (typeof value === 'number') {
                                                     const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2);

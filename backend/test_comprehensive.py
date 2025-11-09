@@ -107,8 +107,8 @@ class ComprehensiveTester:
                 self.log_test("Portfolio State File", "fail", str(e))
                 self.log_issue(f"Cannot read portfolio state: {e}", "high")
         else:
-            # 文件不存在，但检查API是否有fallback机制
-            self.log_test("Portfolio State File", "warning", "File does not exist (may be after initialization)")
+            # 文件不存在，先检查API是否有fallback机制，再决定是否显示警告
+            pass  # 暂时不显示警告，等API检查结果
         
         # 检查 API
         result = self.test_api_endpoint("/api/portfolio/real-time")
@@ -120,9 +120,15 @@ class ComprehensiveTester:
                     self.log_test("Portfolio State File", "pass", "File not exists but API has fallback (OK)")
                 self.log_test("Portfolio API", "pass", f"Cash: ${data.get('cash', 0):.2f}, Total: ${data.get('total_value', 0):.2f}")
             else:
+                # API不正常，如果文件也不存在，才显示警告
+                if not portfolio_file.exists():
+                    self.log_test("Portfolio State File", "warning", "File does not exist and API missing required fields")
                 self.log_test("Portfolio API", "fail", "Missing required fields")
                 self.log_issue("Portfolio API missing required fields", "high")
         else:
+            # API调用失败，如果文件也不存在，才显示警告
+            if not portfolio_file.exists():
+                self.log_test("Portfolio State File", "warning", "File does not exist and API unavailable")
             self.log_test("Portfolio API", "fail", result.get("error", "Unknown error"))
             self.log_issue(f"Portfolio API error: {result.get('error')}", "critical")
     

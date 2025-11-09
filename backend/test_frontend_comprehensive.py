@@ -282,17 +282,33 @@ class FrontendComprehensiveTester:
         
         # 测试VIX和FGI数据
         # 这些数据应该总是可用（即使市场关闭）
-        vix_result = self.test_api_endpoint("/api/market/vix")
+        vix_result = self.test_api_endpoint("/api/vix/term", timeout=15)
         if vix_result["ok"]:
-            self.log_test("VIX Data Display", "pass", "VIX data available")
+            data = vix_result["data"]
+            if "vix" in data or "error" not in data:
+                self.log_test("VIX Data Display", "pass", "VIX data available")
+            else:
+                self.log_test("VIX Data Display", "warning", "VIX data not available")
         else:
-            self.log_test("VIX Data Display", "warning", "VIX data not available")
+            error = vix_result.get("error", "Unknown error")
+            if vix_result.get("timeout"):
+                self.log_test("VIX Data Display", "warning", "Request timeout (may be processing)")
+            else:
+                self.log_test("VIX Data Display", "warning", f"VIX data not available: {error}")
         
-        fgi_result = self.test_api_endpoint("/api/market/fear-greed")
+        fgi_result = self.test_api_endpoint("/api/fear-greed", timeout=15)
         if fgi_result["ok"]:
-            self.log_test("Fear & Greed Index Display", "pass", "F&G Index data available")
+            data = fgi_result["data"]
+            if "fear_greed" in data or "error" not in data:
+                self.log_test("Fear & Greed Index Display", "pass", "F&G Index data available")
+            else:
+                self.log_test("Fear & Greed Index Display", "warning", "F&G Index data not available")
         else:
-            self.log_test("Fear & Greed Index Display", "warning", "F&G Index data not available")
+            error = fgi_result.get("error", "Unknown error")
+            if fgi_result.get("timeout"):
+                self.log_test("Fear & Greed Index Display", "warning", "Request timeout (may be processing)")
+            else:
+                self.log_test("Fear & Greed Index Display", "warning", f"F&G Index data not available: {error}")
         
         # 测试错误处理
         # 测试不存在的端点

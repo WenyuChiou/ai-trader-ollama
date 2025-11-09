@@ -2177,6 +2177,12 @@
                     }
                 }
             } finally {
+                // 清除进度提示
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                
                 isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
                 // Update conversation status back to Idle (agents状态灯)
                 updateConversationStatus(false);

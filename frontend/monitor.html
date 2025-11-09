@@ -5152,7 +5152,7 @@
             let marketStatusSource = 'api'; // 追踪状态来源：'api' 或 'fallback'
             try {
                 const marketCheck = await fetch(`${API_BASE}/api/market/is-open`, {
-                    signal: AbortSignal.timeout(5000)  // 增加到5秒，给服务器更多响应时间
+                    signal: AbortSignal.timeout(3000)  // 3秒超时，快速fallback到时间判断
                 });
                 if (marketCheck.ok) {
                     const marketData = await marketCheck.json();

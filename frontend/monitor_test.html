@@ -3278,7 +3278,7 @@
                                                                             displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                         } else {
                                                                             const keys = Object.keys(val);
-                                                                            displayVal = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                                            displayVal = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''})</span>`;
                                                                         }
                                                                     } else if (typeof val === 'number') {
                                                                         // 数字格式化：保留适当的小数位
@@ -3377,7 +3377,7 @@
                                                                             displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
                                                                         } else {
                                                                             const keys = Object.keys(val);
-                                                                            displayVal = `<span style="color: #818cf8; font-weight: 600;">{${keys.length} keys: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''}}</span>`;
+                                                                            displayVal = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields: ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? '...' : ''})</span>`;
                                                                         }
                                                                 } else if (typeof val === 'number') {
                                                                     const formatted = val % 1 === 0 ? val.toString() : val.toFixed(2);

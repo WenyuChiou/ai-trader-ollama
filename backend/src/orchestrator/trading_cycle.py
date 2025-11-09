@@ -431,12 +431,11 @@ def execute_daily_trade(
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         is_market_open_for_simulation = True
     else:
-        # 收盘后：订单日期是明天的日期（规划明天的交易）
-        tomorrow = date.today() + timedelta(days=1)
-        # 如果明天是周末，找到下一个交易日
-        while tomorrow.weekday() >= 5:
-            tomorrow += timedelta(days=1)
-        today = tomorrow.isoformat()
+        # 收盘后：订单日期是下一个交易日的日期（规划下一个交易日的交易）
+        # 使用交易日检查工具，排除周末和节假日
+        from src.utils.trading_days import get_next_trading_day
+        next_trading_day = get_next_trading_day(date.today(), days_ahead=1)
+        today = next_trading_day.isoformat()
         
         # 检查是否已经有明天的订单计划
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)

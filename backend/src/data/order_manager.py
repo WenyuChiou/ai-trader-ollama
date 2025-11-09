@@ -84,7 +84,7 @@ class OrderManager:
     
     def _is_market_open(self, check_datetime: Optional[datetime] = None) -> bool:
         """
-        检查市场是否开盘（美股：周一至周五 9:30 AM - 4:00 PM EST）
+        检查市场是否开盘（美股：周一至周五 9:30 AM - 4:00 PM EST，排除节假日）
         
         参数:
         - check_datetime: 要检查的日期时间（如果为None，使用当前时间）
@@ -92,20 +92,9 @@ class OrderManager:
         返回:
         - True if market is open, False otherwise
         """
-        if check_datetime is None:
-            check_datetime = datetime.now()
-        
-        # 检查是否为工作日（周一=0, 周五=4）
-        is_weekday = check_datetime.weekday() < 5
-        if not is_weekday:
-            return False
-        
-        # 检查时间（使用本地时间，假设服务器在EST时区或用户配置的时区）
-        market_open = dt_time(9, 30)  # 9:30 AM
-        market_close = dt_time(16, 0)  # 4:00 PM
-        current_time = check_datetime.time()
-        
-        return market_open <= current_time <= market_close
+        # 使用交易日检查工具（排除周末和节假日）
+        from src.utils.trading_days import is_market_open as check_market_open
+        return check_market_open(check_datetime)
     
     def check_order_fill(
         self,

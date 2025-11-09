@@ -1948,7 +1948,8 @@
                 return;
             }
             
-            // ??璉?交?行?敺???霈Ｗ?嚗??箸?蝷?            try {
+            // Check if there are pending orders before executing
+            try {
                 const tradesResponse = await fetch(`${API_BASE}/api/trades/recent?limit=10`);
                 if (tradesResponse.ok) {
                     const tradesData = await tradesResponse.json();
@@ -2112,7 +2113,8 @@
                     } else if (marketStatus === 'closed') {
                         btn.textContent = '?? Plan Tomorrow';
                     } else {
-                        // 憒??嗆?伐??璉??                        try {
+                        // Check if there are pending orders before executing
+            try {
                             const isOpen = await isMarketOpen();
                             btn.textContent = isOpen ? '?塚? Start Trading' : '?? Plan Tomorrow';
                         } catch {
@@ -2229,7 +2231,8 @@
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
-                    // 憒???璉?亙??箇???挽撣撘?僎撠??扯?嚗?銝剖?霂亥?扯?嚗?                    try {
+                    // Check if there are pending orders before executing
+            try {
                         console.log('[Auto Trade] Market status check failed, attempting trade cycle anyway...');
                         await executeTradeCycle();
                     } catch (tradeErr) {
@@ -3767,7 +3770,8 @@
             const toolName = toolText.substring(0, colonIndex).trim();
             let toolResult = toolText.substring(colonIndex + 1).trim();
             
-            // 撠?閫?? JSON ?澆?????            try {
+            // Check if there are pending orders before executing
+            try {
                 const jsonMatch = toolResult.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
                     toolResult = JSON.parse(jsonMatch[0]);
@@ -3782,7 +3786,8 @@
                 indicators = toolResult;
             } else if (toolName === 'news_scan' && toolResult) {
                 // 閫???圈?急?蝏?嚗?0 hits, queries=['AAPL'], samples=[...]
-                // 撠?閫??撟嗆???憸?銵?                try {
+                // Check if there are pending orders before executing
+            try {
                     // 憒??titles摮挾嚗??僎?澆???                    if (toolResult.includes('titles=')) {
                         const titlesMatch = toolResult.match(/titles=\[(.*?)\]/s);
                         if (titlesMatch) {
@@ -4094,7 +4099,8 @@
                 const fgResponse = await fetch(`${API_BASE}/api/fear-greed`);
                 let fg = null;
                 
-                // 撠?閫????嚗?霈箇??憒?嚗?                try {
+                // Check if there are pending orders before executing
+            try {
                     fg = await fgResponse.json();
                 } catch (parseErr) {
                     console.warn('[F&G] Failed to parse JSON response:', parseErr);
@@ -5340,7 +5346,8 @@
                 
                 updateConnectionStatus(false);
                 
-                // ?喃蝙portfolio憭梯揖嚗?撠??曄內?垢?嗆?                try {
+                // Check if there are pending orders before executing
+            try {
                     const [backendStatus, agentStatus, toolsList, systemInfo] = await Promise.allSettled([
                         fetchBackendStatus(),
                         fetchAgentStatus(),

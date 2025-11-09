@@ -1689,6 +1689,19 @@ MIT License - see `LICENSE` file for details
 
 ---
 
+## 📊 Testing Status
+
+### Current Status: Round 2 Complete ✅
+
+- **Round 1**: Backend API Testing - ✅ 9/9 passed (100%)
+- **Round 2**: Frontend Functionality Testing - ✅ 22/22 passed (100%)
+- **Round 3**: Data Recording Scenarios - ⏭️ Next
+- **Round 4**: Frontend-Backend Integration - ⏭️ Pending
+
+See `backend/TESTING_STATUS.md` for detailed testing information.
+
+---
+
 **Built with ❤️ by the AI-Trader Team**
 
 *Empowering traders with AI-driven insights and autonomous decision-making*

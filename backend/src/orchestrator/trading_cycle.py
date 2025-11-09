@@ -369,14 +369,26 @@ def execute_daily_trade(
             agent_name = agent_name_map.get(analyst_name.lower(), analyst_name)
             
             # 格式化工具結果
+            # 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+            # 递归提取实际的 result 数据
+            actual_result = tool_result
             if isinstance(tool_result, dict):
-                if "error" in tool_result:
-                    result_text = f"Error: {tool_result.get('error', 'Unknown error')}"
+                while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                    actual_result = actual_result["result"]
+            
+            if isinstance(actual_result, dict):
+                if "error" in actual_result:
+                    result_text = f"Error: {actual_result.get('error', 'Unknown error')}"
                 else:
-                    # 提取關鍵信息
-                    result_text = json.dumps(tool_result, ensure_ascii=False, indent=2)[:500]
+                    # 提取關鍵信息（增加长度限制，避免截断重要数据）
+                    result_text = json.dumps(actual_result, ensure_ascii=False, indent=2)
+                    # 如果太长，只保留前2000字符（而不是500）
+                    if len(result_text) > 2000:
+                        result_text = result_text[:2000] + "\n... (truncated)"
             else:
-                result_text = str(tool_result)[:500]
+                result_text = str(actual_result)
+                if len(result_text) > 2000:
+                    result_text = result_text[:2000] + "... (truncated)"
             
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),

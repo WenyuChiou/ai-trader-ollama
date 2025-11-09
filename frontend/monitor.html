@@ -2780,8 +2780,53 @@
                             
                             // Display tools used if available
                             let toolsUsedHtml = '';
+                            let discussionToolResultsHtml = '';
                             if (conv.tools_used && Array.isArray(conv.tools_used) && conv.tools_used.length > 0) {
                                 toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${conv.tools_used.join(', ')}</div>`;
+                                
+                                // 对于 discussion 条目，查找对应的 tool 条目来显示工具结果
+                                if (entry_type === 'discussion') {
+                                    const agentNormalized = agent.replace(/\s+/g, ''); // 移除空格，匹配 "SentimentAnalyst" 和 "Sentiment Analyst"
+                                    const toolEntries = dayConvs.filter(c => 
+                                        c.type === 'tool' && 
+                                        (c.agent === agent || c.agent === agentNormalized || agentNormalized.includes(c.agent.replace(/\s+/g, '')) || c.agent.replace(/\s+/g, '').includes(agentNormalized))
+                                    );
+                                    
+                                    if (toolEntries.length > 0) {
+                                        const toolResultsHtml = toolEntries.map(toolEntry => {
+                                            const toolContent = toolEntry.content || '';
+                                            const toolInfo = parseToolInfo(toolContent);
+                                            if (toolInfo && toolInfo.result) {
+                                                const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
+                                                return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                                    <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolInfo.name)} Result:</strong>
+                                                    ${tableHtml}
+                                                </div>`;
+                                            } else {
+                                                // 尝试直接解析 JSON
+                                                try {
+                                                    const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
+                                                    if (jsonMatch) {
+                                                        const parsed = JSON.parse(jsonMatch[0]);
+                                                        const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
+                                                        const tableHtml = formatToolResultAsTable(parsed, toolName);
+                                                        return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolName)} Result:</strong>
+                                                            ${tableHtml}
+                                                        </div>`;
+                                                    }
+                                                } catch (e) {
+                                                    // 解析失败，跳过
+                                                }
+                                            }
+                                            return '';
+                                        }).filter(html => html.length > 0).join('');
+                                        
+                                        if (toolResultsHtml) {
+                                            discussionToolResultsHtml = toolResultsHtml;
+                                        }
+                                    }
+                                }
                             }
                             
                             // For discussion entries, extract and display full text
@@ -2879,6 +2924,7 @@
                                     ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
                                     ${stanceHtml}
                                     ${toolsUsedHtml}
+                                    ${discussionToolResultsHtml}
                                     ${toolHtml}
                                     ${toolResultHtml}
                                     ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">
@@ -3062,8 +3108,53 @@
                         
                         // Display tools used if available
                         let toolsUsedHtml = '';
+                        let discussionToolResultsHtml = '';
                         if (c.tools_used && Array.isArray(c.tools_used) && c.tools_used.length > 0) {
                             toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${c.tools_used.join(', ')}</div>`;
+                            
+                            // 对于 discussion 条目，查找对应的 tool 条目来显示工具结果
+                            if (entry_type === 'discussion') {
+                                const agentNormalized = agent.replace(/\s+/g, '');
+                                const toolEntries = conversations.filter(conv => 
+                                    conv.type === 'tool' && 
+                                    (conv.agent === agent || conv.agent === agentNormalized || agentNormalized.includes(conv.agent.replace(/\s+/g, '')) || conv.agent.replace(/\s+/g, '').includes(agentNormalized)) &&
+                                    (conv.date === c.date || conv.timestamp?.split('T')[0] === c.date || conv.timestamp?.split('T')[0] === c.timestamp?.split('T')[0])
+                                );
+                                
+                                if (toolEntries.length > 0) {
+                                    const toolResultsHtml = toolEntries.map(toolEntry => {
+                                        const toolContent = toolEntry.content || '';
+                                        const toolInfo = parseToolInfo(toolContent);
+                                        if (toolInfo && toolInfo.result) {
+                                            const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
+                                            return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                                <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolInfo.name)} Result:</strong>
+                                                ${tableHtml}
+                                            </div>`;
+                                        } else {
+                                            try {
+                                                const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
+                                                if (jsonMatch) {
+                                                    const parsed = JSON.parse(jsonMatch[0]);
+                                                    const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
+                                                    const tableHtml = formatToolResultAsTable(parsed, toolName);
+                                                    return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                                        <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolName)} Result:</strong>
+                                                        ${tableHtml}
+                                                    </div>`;
+                                                }
+                                            } catch (e) {
+                                                // 解析失败，跳过
+                                            }
+                                        }
+                                        return '';
+                                    }).filter(html => html.length > 0).join('');
+                                    
+                                    if (toolResultsHtml) {
+                                        discussionToolResultsHtml = toolResultsHtml;
+                                    }
+                                }
+                            }
                         }
                         
                         // For discussion entries, extract and display full text
@@ -3130,6 +3221,7 @@
                                 ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
                                 ${stanceHtml}
                                 ${toolsUsedHtml}
+                                ${discussionToolResultsHtml}
                                 ${toolHtml}
                                 ${toolResultHtml}
                                 ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">

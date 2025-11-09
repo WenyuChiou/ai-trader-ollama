@@ -5237,19 +5237,19 @@
                 // ?漱?畾蛛??曄內??唳???翰?改?銝?啣??嗆??                if (isMarketOpen && portfolio) {
                     // 鈭斗??嗆挾嚗??嗆?唳????                    console.log('[Refresh] Market open - updating all data');
                     renderSummaryCards(portfolio);  // ?湔?餉?鈭扼&L???隞遠??                    renderPositions(portfolio);     // ?湔??銵冽
-                    await renderEquityChart();      // ?湔??潭蝥踹嚗蝙?典歇?瑕??istory?唳嚗?                    renderDistributionChart(portfolio); // ?湔???未??                } else {
-                    // ?漱?畾蛛??曄內??唳???翰??                    if (portfolio) {
-                        // 憒??ortfolio?唳嚗蝷箸??翰??                        console.log('[Refresh] Market closed - showing last snapshot');
-                        renderSummaryCards(portfolio);  // ?曄內????餉?鈭扼&L蝑?                        renderPositions(portfolio);     // ?曄內?????
-                        renderDistributionChart(portfolio); // ?湔???未??                        await renderEquityChart();      // ?曄內???潭蝥?                    } else {
-                        // 憒?瘝⊥?portfolio?唳嚗蝷箏??箇??蝷?                        const summaryCards = document.getElementById('summaryCards');
-                        if (summaryCards && summaryCards.children.length === 0) {
-                            const marketStatusCard = document.createElement('div');
-                            marketStatusCard.className = 'card';
-                            marketStatusCard.style.cssText = `
-                                background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
-                                border: 2px solid rgba(245, 158, 11, 0.4);
-                                box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2), inset 0 0 30px rgba(245, 158, 11, 0.05);
+                    renderSummaryCards(portfolio);
+                    renderPositions(portfolio);
+                    await renderEquityChart();
+                    renderDistributionChart(portfolio);
+                } else {
+                    // Market closed - show last snapshot
+                    if (portfolio) {
+                        console.log('[Refresh] Market closed - showing last snapshot');
+                        renderSummaryCards(portfolio);
+                        renderPositions(portfolio);
+                        renderDistributionChart(portfolio);
+                        await renderEquityChart();
+                    } else {
                                 position: relative;
                                 overflow: hidden;
                             `;

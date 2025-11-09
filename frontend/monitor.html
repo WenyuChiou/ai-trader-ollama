@@ -2809,7 +2809,12 @@
                                                     if (jsonMatch) {
                                                         const parsed = JSON.parse(jsonMatch[0]);
                                                         const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
-                                                        const tableHtml = formatToolResultAsTable(parsed, toolName);
+                                                        // 如果解析后的对象有 "ok" 和 "result" 字段，提取 result 字段
+                                                        let resultData = parsed;
+                                                        if (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
+                                                            resultData = parsed.result;
+                                                        }
+                                                        const tableHtml = formatToolResultAsTable(resultData, toolName);
                                                         return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                                             <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolName)} Result:</strong>
                                                             ${tableHtml}
@@ -3137,7 +3142,12 @@
                                                 if (jsonMatch) {
                                                     const parsed = JSON.parse(jsonMatch[0]);
                                                     const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
-                                                    const tableHtml = formatToolResultAsTable(parsed, toolName);
+                                                    // 如果解析后的对象有 "ok" 和 "result" 字段，提取 result 字段
+                                                    let resultData = parsed;
+                                                    if (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
+                                                        resultData = parsed.result;
+                                                    }
+                                                    const tableHtml = formatToolResultAsTable(resultData, toolName);
                                                     return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                                         <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolName)} Result:</strong>
                                                         ${tableHtml}
@@ -4048,7 +4058,13 @@
             try {
                 const jsonMatch = toolResult.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                    toolResult = JSON.parse(jsonMatch[0]);
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    // 如果解析后的对象有 "ok" 和 "result" 字段，提取 result 字段
+                    if (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
+                        toolResult = parsed.result;  // 提取嵌套的 result 字段
+                    } else {
+                        toolResult = parsed;
+                    }
                 }
             } catch (e) {
                 // 如果解析失败，保持原样

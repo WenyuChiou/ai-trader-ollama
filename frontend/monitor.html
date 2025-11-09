@@ -1789,7 +1789,7 @@
                 if (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message.includes('timeout')) {
                     throw new Error('Request timeout, please check your network connection');
                 }
-                // ??憭??嗡??秤嚗??嗅?芷
+                // Log error if not aborted
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch portfolio:', err.message);
                 }

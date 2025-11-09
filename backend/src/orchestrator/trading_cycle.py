@@ -308,14 +308,19 @@ def execute_daily_trade(
             analysis = entry_data.get("analysis", "No analysis provided")
             tools_used = entry_data.get("tools_used", [])
             
-            # 標準化agent名稱
+            # 標準化agent名稱（處理有空格和無空格的情況）
             agent_name_map = {
                 "market": "MarketAnalyst",
+                "market analyst": "MarketAnalyst",
                 "technical": "TechnicalAnalyst",
+                "technical analyst": "TechnicalAnalyst",
                 "fundamental": "FundamentalAnalyst",
+                "fundamental analyst": "FundamentalAnalyst",
                 "sentiment": "SentimentAnalyst",
+                "sentiment analyst": "SentimentAnalyst",
             }
-            agent_name = agent_name_map.get(analyst_name.lower(), analyst_name)
+            # 先嘗試完整匹配，再嘗試小寫匹配
+            agent_name = agent_name_map.get(analyst_name, agent_name_map.get(analyst_name.lower(), analyst_name))
             
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),

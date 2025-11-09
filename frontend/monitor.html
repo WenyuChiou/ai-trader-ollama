@@ -4099,13 +4099,45 @@
             try {
                 const jsonMatch = toolResult.match(/\{[\s\S]*\}/);
                 if (jsonMatch) {
-                    let parsed = JSON.parse(jsonMatch[0]);
-                    // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
-                    // 递归提取 result 字段，直到找到实际数据
-                    while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
-                        parsed = parsed.result;
+                    let jsonStr = jsonMatch[0];
+                    // 如果 JSON 可能被截断，尝试修复
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(jsonStr);
+                    } catch (parseError) {
+                        // 尝试找到最后一个完整的对象
+                        let braceCount = 0;
+                        let lastValidPos = -1;
+                        for (let i = 0; i < jsonStr.length; i++) {
+                            if (jsonStr[i] === '{') braceCount++;
+                            else if (jsonStr[i] === '}') {
+                                braceCount--;
+                                if (braceCount === 0) {
+                                    lastValidPos = i;
+                                    break;
+                                }
+                            }
+                        }
+                        if (lastValidPos > 0) {
+                            try {
+                                parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
+                            } catch (e2) {
+                                // 如果还是失败，保持原样
+                                parsed = null;
+                            }
+                        } else {
+                            parsed = null;
+                        }
                     }
-                    toolResult = parsed;
+                    
+                    if (parsed) {
+                        // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+                        // 递归提取 result 字段，直到找到实际数据
+                        while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
+                            parsed = parsed.result;
+                        }
+                        toolResult = parsed;
+                    }
                 }
             } catch (e) {
                 // 如果解析失败，保持原样

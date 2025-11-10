@@ -36,6 +36,14 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Important**: The market_view contains data for a large universe of stocks (typically 100+ stocks). You will see:
+  - stocks_count: Total number of stocks in the universe
+  - symbols: Complete list of all stock symbols
+  - sample_stocks_data: Sample data for the first 10 stocks (to understand data format)
+  - market_stats: Overall market statistics including top signal scores
+  - Use tools (get_company_fundamentals, get_earnings_history, get_financial_statements) with specific symbols to analyze individual stocks
+  - Focus on stocks with high signal scores, recommended stocks, or those mentioned in previous discussion
+  
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings
   - Agree or disagree with their stance (with reasoning)
@@ -59,7 +67,7 @@ user: |
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",
-    "analysis": "<your fundamental analysis>",
+    "analysis": "<your comprehensive fundamental analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (company fundamentals, earnings history, financial statements, valuation metrics, etc.), (2) **MANDATORY**: If you used news_scan or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to fundamental analysis, (c) Impact assessment on company fundamentals. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your fundamental stance based on the data and news, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for fundamental analysis.>",
     "valuations": {
       "<symbol>": {"pe": X, "forward_pe": Y, "assessment": "overvalued/undervalued/fair"}
     },

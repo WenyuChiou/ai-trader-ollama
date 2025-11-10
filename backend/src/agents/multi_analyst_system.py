@@ -15,6 +15,7 @@ def run_multi_analyst_discussion(
     market_view: Dict[str, Any],
     use_tools: bool = True,
     tool_budget: int = 15,
+    order_status: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     运行多Analyst讨论系统
@@ -42,6 +43,42 @@ def run_multi_analyst_discussion(
     tools_str = f"Available: {', '.join(toolbox.list())}" if use_tools else "No tools"
     market_summary = _summarize_market(market_view)
     
+    # 准备订单状态信息（如果有）
+    order_status_text = ""
+    if order_status:
+        pending_count = order_status.get("pending_count", 0)
+        filled_count = order_status.get("filled_count", 0)
+        order_date = order_status.get("order_date", "")
+        pending_orders = order_status.get("pending_orders", [])
+        filled_orders = order_status.get("filled_orders", [])
+        
+        if pending_count > 0 or filled_count > 0:
+            order_status_text = f"\n\n**⚠️ IMPORTANT: Current Order Status for {order_date}**\n"
+            order_status_text += f"- Pending Orders: {pending_count}\n"
+            order_status_text += f"- Filled Orders: {filled_count}\n"
+            
+            if pending_orders:
+                order_status_text += "\n**Pending Orders (Not Yet Filled):**\n"
+                for order in pending_orders[:10]:  # 限制显示前10个
+                    symbol = order.get("symbol", "?")
+                    action = order.get("action", "?")
+                    quantity = order.get("quantity", 0)
+                    limit_price = order.get("limit_price", 0)
+                    order_status_text += f"  - {action} {quantity} {symbol} @ limit ${limit_price:.2f}\n"
+                if len(pending_orders) > 10:
+                    order_status_text += f"  ... and {len(pending_orders) - 10} more pending orders\n"
+            
+            if filled_orders:
+                order_status_text += "\n**Recently Filled Orders:**\n"
+                for order in filled_orders[-5:]:  # 显示最近5个
+                    symbol = order.get("symbol", "?")
+                    action = order.get("action", "?")
+                    quantity = order.get("quantity", 0)
+                    fill_price = order.get("fill_price", 0)
+                    order_status_text += f"  - {action} {quantity} {symbol} @ ${fill_price:.2f} (FILLED)\n"
+            
+            order_status_text += "\n**⚠️ Please consider these existing orders in your analysis. If there are pending orders, evaluate whether they should be adjusted, cancelled, or kept as-is based on current market conditions.**\n"
+    
     # 用于记录所有工具调用
     all_tool_calls = []
     tool_calls_count = 0
@@ -53,7 +90,7 @@ def run_multi_analyst_discussion(
     discussion_history = []
     
     print("\n" + "="*80)
-    print("🤖 多Analyst分析系统启动")
+    print("[MULTI-ANALYST] Multi-Analyst discussion system started")
     print("="*80)
     
     # ===== 1. Market Analyst =====
@@ -66,6 +103,7 @@ def run_multi_analyst_discussion(
                 "market_view": json.dumps(market_summary, indent=2),
                 "previous_discussion": "",
                 "tools_context": tools_str,
+                "order_status": order_status_text,  # 添加订单状态
             }
             
             # 格式化之前的对话历史
@@ -99,12 +137,14 @@ def run_multi_analyst_discussion(
             tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   🔧 Tools requested: {len(tool_calls_list)}")
-                for tool_call in tool_calls_list[:3]:  # 最多3个工具
+                # 增加每个analyst的工具使用限制：从3个增加到5个
+                max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
+                for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
                     print(f"   🔧 Executing: {tool_name}")
-                    tool_result = _execute_tool(toolbox, tool_call)
+                    tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "MarketAnalyst",
@@ -164,6 +204,7 @@ def run_multi_analyst_discussion(
                 "market_view": json.dumps(market_summary, indent=2),
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
+                "order_status": order_status_text,  # 添加订单状态
             }
             
             technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
@@ -217,12 +258,14 @@ def run_multi_analyst_discussion(
             tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   🔧 Tools requested: {len(tool_calls_list)}")
-                for tool_call in tool_calls_list[:3]:  # 最多3个工具
+                # 增加每个analyst的工具使用限制：从3个增加到5个
+                max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
+                for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
                     print(f"   🔧 Executing: {tool_name}")
-                    tool_result = _execute_tool(toolbox, tool_call)
+                    tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "TechnicalAnalyst",
@@ -275,6 +318,7 @@ def run_multi_analyst_discussion(
                 "market_view": json.dumps(market_summary, indent=2),
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
+                "order_status": order_status_text,  # 添加订单状态
             }
             
             fundamental_response = fundamental_analyst.run(fundamental_prompt_vars, expect_json=True)
@@ -321,12 +365,14 @@ def run_multi_analyst_discussion(
             tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   🔧 Tools requested: {len(tool_calls_list)}")
-                for tool_call in tool_calls_list[:3]:  # 最多3个工具
+                # 增加每个analyst的工具使用限制：从3个增加到5个
+                max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
+                for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
                     print(f"   🔧 Executing: {tool_name}")
-                    tool_result = _execute_tool(toolbox, tool_call)
+                    tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "FundamentalAnalyst",
@@ -379,6 +425,7 @@ def run_multi_analyst_discussion(
                 "market_view": json.dumps(market_summary, indent=2),
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
+                "order_status": order_status_text,  # 添加订单状态
             }
             
             sentiment_response = sentiment_analyst.run(sentiment_prompt_vars, expect_json=True)
@@ -401,12 +448,14 @@ def run_multi_analyst_discussion(
             tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   🔧 Tools requested: {len(tool_calls_list)}")
-                for tool_call in tool_calls_list[:3]:  # 最多3个工具
+                # 增加每个analyst的工具使用限制：从3个增加到5个
+                max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
+                for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
                     print(f"   🔧 Executing: {tool_name}")
-                    tool_result = _execute_tool(toolbox, tool_call)
+                    tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
                             "analyst": "SentimentAnalyst",
@@ -618,14 +667,53 @@ def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
 
 
 def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
-    """简化市场数据用于prompt"""
+    """简化市场数据用于prompt - 优化以支持100+股票"""
     stocks = market_view.get("stocks", {})
+    symbols_list = list(stocks.keys())
+    
+    # 为了支持100+股票，只传递股票的摘要信息，而不是完整数据
+    # 提取前10个股票的简要信息作为样本（显示更多样本以便agent了解数据格式）
+    sample_stocks_data = {}
+    for symbol in symbols_list[:10]:
+        stock_data = stocks.get(symbol, {})
+        # 只提取关键字段，避免prompt过长
+        sample_stocks_data[symbol] = {
+            "price": stock_data.get("price"),
+            "change_pct": stock_data.get("change_pct"),
+            "rsi14": stock_data.get("rsi14"),
+            "signal_score": stock_data.get("signal_score"),
+        }
+    
+    # 计算整体市场统计
+    all_prices = [float(s.get("price", 0)) for s in stocks.values() if s.get("price")]
+    all_changes = [float(s.get("change_pct", 0)) for s in stocks.values() if s.get("change_pct")]
+    all_scores = [float(s.get("signal_score", 0)) for s in stocks.values() if s.get("signal_score")]
+    
+    market_stats = {}
+    if all_prices:
+        market_stats["avg_price"] = sum(all_prices) / len(all_prices)
+        market_stats["price_range"] = {"min": min(all_prices), "max": max(all_prices)}
+    if all_changes:
+        market_stats["avg_change_pct"] = sum(all_changes) / len(all_changes)
+        market_stats["positive_count"] = sum(1 for c in all_changes if c > 0)
+        market_stats["negative_count"] = sum(1 for c in all_changes if c < 0)
+    if all_scores:
+        market_stats["avg_signal_score"] = sum(all_scores) / len(all_scores)
+        # 找出信号分数最高的前5个
+        top_signals = sorted([(sym, stocks[sym].get("signal_score", 0)) for sym in symbols_list if stocks[sym].get("signal_score")], 
+                             key=lambda x: x[1], reverse=True)[:5]
+        market_stats["top_signals"] = [{"symbol": sym, "score": score} for sym, score in top_signals]
+    
     return {
         "stocks_count": len(stocks),
-        "sample_stocks": list(stocks.keys())[:5],
+        "symbols": symbols_list,  # 所有symbols，用于news_scan等工具和agent了解完整universe
+        "sample_stocks": symbols_list[:10],  # 增加到10个作为样本
+        "sample_stocks_data": sample_stocks_data,  # 前10个股票的简要数据
+        "market_stats": market_stats,  # 整体市场统计
         "vix": market_view.get("vix"),
         "vix_term": market_view.get("vix_term"),
         "fear_greed": market_view.get("fear_greed"),
+        "note": f"Full universe contains {len(stocks)} stocks. Use tools to get detailed data for specific stocks when needed.",
     }
 
 
@@ -636,9 +724,10 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
         # 检查是否是单个tool_call对象（只有name/args/why字段）
         if "name" in response and "args" in response and "stance" not in response and "analysis" not in response:
             # 这是一个单独的tool_call，需要包装成完整的分析结果
+            # 不生成 "Requested tool" 占位文本，而是返回空分析，让后续的 _generate_analysis_from_tools 生成实际分析
             return {
                 "stance": "neutral",
-                "analysis": f"Requested tool: {response.get('name', 'unknown')} - {response.get('why', 'No reason provided')}",
+                "analysis": "",  # 留空，让工具结果生成实际分析
                 "tool_calls": [response],  # 将单个tool_call包装成列表
             }
         # 检查是否缺少必需字段
@@ -759,8 +848,25 @@ def _generate_analysis_from_tools(
     analyst_name: str
 ) -> None:
     """基于工具结果生成分析"""
-    if not tool_results_summary or result_dict.get("analysis", "").strip():
+    # 如果已有完整的分析内容（至少 200 字符且不是占位文本），则不重新生成
+    # 注意：100-150字约等于 400-600 字符（中英文混合），200 字符作为最低阈值
+    current_analysis = result_dict.get("analysis", "").strip()
+    if current_analysis and not current_analysis.startswith("Requested tool:") and len(current_analysis) >= 200:
+        # 确保分析文本是完整的自然语言，而不是 JSON 或其他格式
+        if not current_analysis.startswith("{") and not current_analysis.startswith("```"):
+            # 检查是否已经接近150字（约600字符）
+            if len(current_analysis) >= 600:
+                return  # 已经有足够长的分析，不需要重新生成
+    
+    # 如果没有工具结果，也不生成
+    if not tool_results_summary:
+        # 如果没有工具结果但有工具调用，至少生成一个简单的说明
+        tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
+        if tools_used:
+            result_dict["analysis"] = f"Analyzed using tools: {', '.join(tools_used)}. Waiting for tool results to generate detailed analysis."
         return
+    
+    # 强制生成完整的分析（即使已有简短的分析）
     
     print(f"   🔄 Generating analysis based on tool results...")
     tool_results_text = "\n".join(tool_results_summary)
@@ -795,15 +901,53 @@ def _generate_analysis_from_tools(
 4. News sentiment trends
 5. Contrarian signals"""
     
-    analysis_prompt = f"""Based on the tool results below, provide a comprehensive {analyst_type} analysis.
+    # 检查工具结果中是否包含新闻数据
+    has_news_data = "news_scan" in tool_results_text.lower() or "news" in tool_results_text.lower()
+    
+    # 构建新闻分析要求
+    news_analysis_requirement = ""
+    if has_news_data:
+        news_analysis_requirement = """
+
+**CRITICAL: News Analysis Requirement (if news data is present in tool results):**
+- You MUST explicitly mention and analyze news content in your summary
+- For each relevant news article you select (choose the most important 2-3 articles, not random ones):
+  1. **Title**: State the news article title
+  2. **Summary**: Provide a 50-100 word summary of the article's key points
+  3. **Relevance**: Explain why this news is relevant to your {analyst_type} analysis
+  4. **Impact**: Assess how this news might impact market sentiment or your analysis
+- Format: "News Analysis: [Title] - [50-100 word summary explaining key points and relevance to {analyst_type} analysis]"
+- You must SELECT the most relevant news articles yourself, not just mention any random article
+- If multiple news articles are available, prioritize those most relevant to your {analyst_type} perspective"""
+
+    analysis_prompt = f"""Based on the tool results below, provide a comprehensive {analyst_type} analysis in natural language format (NOT JSON, just plain text).
 
 **Tool Results:**
 {tool_results_text}
 
 **Your Task:**
 {task_desc}
+{news_analysis_requirement}
 
-Output a detailed analysis (at least 200 words) based on the actual data from the tools."""
+**Important Requirements:**
+1. Write a comprehensive analysis in natural language, approximately 100-150 words in length (aim for 100-150 words)
+2. Synthesize all tool results you've gathered (technical indicators, fundamental data, sentiment metrics, news content, etc.)
+3. **MANDATORY**: If news data is present in tool results, you MUST explicitly mention and analyze news content with titles and 50-100 word summaries for selected articles
+4. Start directly with your analysis - do NOT include "Analysis:" prefix or JSON format
+5. Provide specific insights based on the actual tool data
+6. Include concrete numbers and observations from the tools
+7. Provide a clear, coherent narrative that explains your {analyst_type} stance based on the data
+8. End with a clear conclusion about the {analyst_type} outlook
+9. Write in a clear, professional style suitable for financial analysis
+
+**Example Format (approximately 100-150 words):**
+"Fundamental analysis shows strong earnings growth potential across the technology sector. AAPL has solid cash reserves of $165 billion and consistent revenue growth of 8% YoY. MSFT's cloud division continues to expand, with Azure showing 25% YoY growth. NVDA benefits from AI chip demand, with forward P/E ratios of 45.67 suggesting continued growth expectations.
+
+News Analysis: 'Tech Giants Report Record Earnings' - This article highlights that major tech companies exceeded earnings expectations, driven by strong cloud and AI demand. The news reinforces the fundamental strength observed in financial metrics, suggesting continued bullish momentum for tech stocks. This is particularly relevant as it validates the positive earnings trends identified in our analysis.
+
+Overall, the fundamentals support a bullish outlook for tech stocks, with particular strength in AI-related companies."
+
+Now provide your comprehensive 100-150 word analysis:"""
     
     try:
         analysis_response = analyst.run(
@@ -811,14 +955,47 @@ Output a detailed analysis (at least 200 words) based on the actual data from th
             expect_json=False
         )
         if isinstance(analysis_response, str):
-            result_dict["analysis"] = analysis_response[:1000]
+            # 清理响应：移除可能的 JSON 标记、前缀等
+            cleaned_analysis = analysis_response.strip()
+            # 移除 "Analysis:" 前缀
+            if cleaned_analysis.startswith("Analysis:"):
+                cleaned_analysis = cleaned_analysis[10:].strip()
+            # 移除 JSON 代码块标记
+            cleaned_analysis = cleaned_analysis.replace("```json", "").replace("```", "").strip()
+            # 移除可能的 JSON 结构
+            if cleaned_analysis.startswith("{") and cleaned_analysis.endswith("}"):
+                try:
+                    import json
+                    parsed = json.loads(cleaned_analysis)
+                    if "analysis" in parsed:
+                        cleaned_analysis = parsed["analysis"]
+                    elif "content" in parsed:
+                        cleaned_analysis = parsed["content"]
+                except:
+                    pass
+            
+            # 确保分析文本足够长（至少 200 字符，约50字）
+            # 目标：100-150字约等于 400-600 字符
+            if len(cleaned_analysis) < 200:
+                # 如果太短，添加基于工具结果的补充
+                tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
+                cleaned_analysis += f" Based on comprehensive analysis of {', '.join(tools_used)}, the {analyst_type} outlook is assessed with detailed insights from tool results."
+            
+            # 限制最大长度为 800 字符（约200字），确保不会过长
+            if len(cleaned_analysis) > 800:
+                cleaned_analysis = cleaned_analysis[:800] + "..."
+            result_dict["analysis"] = cleaned_analysis
         else:
-            result_dict["analysis"] = str(analysis_response)[:1000]
-        print(f"   ✅ Analysis generated from tool results")
+            result_dict["analysis"] = str(analysis_response)[:800] if len(str(analysis_response)) > 800 else str(analysis_response)
+        print(f"   ✅ Analysis generated from tool results ({len(result_dict['analysis'])} chars)")
     except Exception as e:
         print(f"   ⚠️  Failed to generate analysis from tool results: {e}")
+        # 即使失败，也生成一个基于工具结果的描述性分析
         tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
-        result_dict["analysis"] = f"Analysis based on tools: {', '.join(tools_used)}"
+        if tool_results_summary:
+            result_dict["analysis"] = f"Based on analysis using {', '.join(tools_used)}, the {analyst_type} perspective indicates: {tool_results_text[:500]}. Further detailed analysis is being processed."
+        else:
+            result_dict["analysis"] = f"Analysis using tools: {', '.join(tools_used)}. Tool results are being processed to generate comprehensive {analyst_type} insights."
 
 
 def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
@@ -859,7 +1036,7 @@ def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
     return str(tool_result)[:200]
 
 
-def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
     """执行工具调用，确保工具能正常工作"""
     tool_name = tool_call.get("name", "")
     tool_args = tool_call.get("args", {})
@@ -867,6 +1044,51 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any]) -> Optional[Dict[
     if not tool_name:
         print(f"   ⚠️  Tool call missing name")
         return None
+    
+    # 确保 tool_args 是字典类型
+    if not isinstance(tool_args, dict):
+        tool_args = {}
+        print(f"   ℹ️  Tool args was not a dict, resetting to empty dict")
+    
+    # 检查需要 symbol 的工具，如果没有提供则从 market_summary 中提取
+    symbol_required_tools = ["get_advanced_indicators", "get_support_resistance", "get_company_fundamentals", 
+                             "get_earnings_history", "get_financial_statements"]
+    if tool_name in symbol_required_tools:
+        # 检查 symbol 是否存在且有效
+        symbol = tool_args.get("symbol", "")
+        if not symbol or not isinstance(symbol, str) or len(symbol.strip()) == 0:
+            if market_summary and market_summary.get("sample_stocks"):
+                # 使用第一个样本股票作为默认 symbol
+                default_symbol = market_summary["sample_stocks"][0]
+                tool_args["symbol"] = default_symbol
+                print(f"   ℹ️  Auto-added symbol={default_symbol} to {tool_name}")
+            else:
+                # 如果没有可用的 symbol，返回错误
+                return {"ok": False, "error": "symbol is required"}
+    
+    # 处理 news_scan 工具：确保有 keywords
+    if tool_name == "news_scan":
+        # 检查是否有任何形式的关键词（keywords, tickers, queries, symbols）
+        has_keywords = bool(
+            tool_args.get("keywords") or 
+            tool_args.get("tickers") or 
+            tool_args.get("queries") or 
+            tool_args.get("symbols")
+        )
+        if not has_keywords:
+            # 从 market_summary 中提取 symbols
+            keywords = []
+            if market_summary:
+                # 尝试从多个可能的字段获取 symbols
+                symbols = market_summary.get("symbols") or market_summary.get("sample_stocks") or []
+                if symbols:
+                    # 对于100+股票，使用更多symbols作为keywords（最多10个）
+                    keywords = [str(s) for s in symbols[:10] if s]  # 增加到10个symbols
+            # 如果还是没有，使用默认关键词
+            if not keywords:
+                keywords = ["market", "AI", "tariff", "stocks", "economy"]
+            tool_args["keywords"] = keywords
+            print(f"   ℹ️  Auto-added keywords={keywords} to news_scan")
     
     # 检查工具是否存在
     if tool_name not in toolbox.list():
@@ -1032,8 +1254,8 @@ def _extract_summary_from_text(
     
     # 模式1: 如果文本以 "Based on..." 或类似开头，直接使用整个响应
     if text_response.lower().startswith(('based on', 'the market', 'considering', 'after reviewing')):
-        # 使用整个响应作为summary（限制长度）
-        summary = text_response[:500].strip()
+        # 使用整个响应作为summary（限制长度到800字符，约150字）
+        summary = text_response[:800].strip()
     else:
         # 模式2: 查找第一个有意义的段落（排除工具列表）
         paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
@@ -1047,26 +1269,29 @@ def _extract_summary_from_text(
             # 跳过太短或看起来像列表的段落
             if len(para) < 100 or para.count('*') > 3 or para.count('-') > 3:
                 continue
-            summary = para[:500]
+            summary = para[:800]  # 增加到800字符
             break
         
         # 如果没找到合适的段落，使用整个响应
         if not summary:
-            summary = text_response[:500].strip()
+            summary = text_response[:800].strip()
     
     # 清理summary（移除多余的空白和换行）
-    summary = re.sub(r'\s+', ' ', summary).strip()[:500]
+    summary = re.sub(r'\s+', ' ', summary).strip()
+    # 限制到800字符（约150字），但如果太短（少于200字符），保留更多内容
+    if len(summary) > 800:
+        summary = summary[:800]
     
     # 如果summary仍然为空或太短，使用fallback
-    if len(summary) < 50:
+    if len(summary) < 200:  # 提高最小长度要求到200字符（约50字）
         # 基于analyst reports生成summary
         summary_parts = []
         for analyst_type, report in analyst_reports.items():
             if "error" not in report:
                 analysis = report.get("analysis", "")
                 if analysis:
-                    summary_parts.append(f"{analyst_type.capitalize()} Analyst: {analysis[:150]}")
-        summary = " | ".join(summary_parts[:3])[:500] if summary_parts else "Coordinator synthesized all analyst perspectives."
+                    summary_parts.append(f"{analyst_type.capitalize()} Analyst: {analysis[:200]}")
+        summary = " | ".join(summary_parts[:3])[:800] if summary_parts else "Coordinator synthesized all analyst perspectives. The analysis integrates technical indicators, fundamental data, sentiment metrics, and news content to provide a comprehensive market outlook."
     
     # 尝试提取关键点（列表格式）
     key_points_match = re.search(r'key_points?["\']?\s*:\s*\[(.*?)\]', text_response, re.IGNORECASE | re.DOTALL)
@@ -1136,18 +1361,27 @@ def _run_discussion_coordinator(
 {_summarize_market(market_view)}
 
 **Your Task:**
-Review all analyst perspectives above and provide a natural language summary that:
-1. Synthesizes the key insights from each analyst
-2. Identifies areas of consensus and any disagreements
-3. Provides a unified market stance (bullish, bearish, or neutral)
-4. Highlights critical points that need attention
-5. Offers actionable recommendations
+Review all analyst perspectives above and provide a comprehensive natural language summary that:
+1. Synthesizes the key insights from each analyst, including their tool results and data findings
+2. Incorporates relevant news content and market narratives mentioned in the analyst reports
+3. Identifies areas of consensus and any disagreements
+4. Provides a unified market stance (bullish, bearish, or neutral)
+5. Highlights critical points that need attention
+6. Offers actionable recommendations
 
 **Output Format:**
-Write a clear, concise paragraph (200-300 words) that integrates all perspectives. Start with your overall stance, then provide the synthesis. Use natural language - no need for JSON or structured format.
+Write a comprehensive summary, approximately 100-150 words in length, that integrates all perspectives, tool results, and news content. Start with your overall stance, then provide a detailed synthesis. Use natural language - no need for JSON or structured format.
+
+**Important Requirements:**
+- Your summary should be approximately 100-150 words (aim for 100-150 words, not 500 words)
+- Synthesize all tool results mentioned by analysts (technical indicators, fundamental data, sentiment metrics, news content, etc.)
+- **MANDATORY**: If any analyst used news_scan or mentioned news content, you MUST explicitly mention and analyze news content in your summary. Use phrases like "news analysis", "recent news", "market news", "news reports", or "news articles" to make it clear you're discussing news.
+- Incorporate key news themes and narratives from news_scan or other news tools
+- Provide a clear, coherent narrative that explains the unified stance based on all available data
+- Write in a clear, professional style suitable for financial analysis
 
 Example format:
-"Based on the analysis from all analysts, the market stance is [bullish/bearish/neutral]. [Your comprehensive summary integrating all perspectives, highlighting consensus and disagreements, key insights, and recommendations.]"
+"Based on the analysis from all analysts, the market stance is [bullish/bearish/neutral]. [Your comprehensive 100-150 word summary integrating all perspectives, tool results, news content, highlighting consensus and disagreements, key insights, and recommendations. If news was analyzed, explicitly mention 'news analysis' or 'recent news' in your summary.]"
 """
     
     try:

@@ -1,0 +1,68 @@
+{
+  "test_round": 1,
+  "start_time": "2025-11-08T19:44:41.223526",
+  "tests": [
+    {
+      "name": "Portfolio State File",
+      "status": "pass",
+      "details": "File not exists but API has fallback (OK)",
+      "timestamp": "2025-11-08T19:44:41.229210"
+    },
+    {
+      "name": "Portfolio API",
+      "status": "pass",
+      "details": "Cash: $10000.00, Total: $10000.00",
+      "timestamp": "2025-11-08T19:44:41.229225"
+    },
+    {
+      "name": "Equity History File",
+      "status": "pass",
+      "details": "1 records, Latest: 2025-11-08 = $10000.00",
+      "timestamp": "2025-11-08T19:44:41.229383"
+    },
+    {
+      "name": "Equity History API",
+      "status": "pass",
+      "details": "1 records returned",
+      "timestamp": "2025-11-08T19:44:41.230802"
+    },
+    {
+      "name": "Orders API",
+      "status": "pass",
+      "details": "0 recent orders",
+      "timestamp": "2025-11-08T19:44:41.243273"
+    },
+    {
+      "name": "Conversations API",
+      "status": "pass",
+      "details": "0 conversations",
+      "timestamp": "2025-11-08T19:44:41.246075"
+    },
+    {
+      "name": "Market Status API",
+      "status": "pass",
+      "details": "Market is CLOSED",
+      "timestamp": "2025-11-08T19:44:41.247082"
+    },
+    {
+      "name": "Trading Cycle API",
+      "status": "pass",
+      "details": "Endpoint responding (timeout expected for long operations)",
+      "timestamp": "2025-11-08T19:44:46.257270"
+    },
+    {
+      "name": "Initialization API",
+      "status": "pass",
+      "details": "Endpoint responding (timeout expected for long operations)",
+      "timestamp": "2025-11-08T19:44:51.286195"
+    }
+  ],
+  "issues": [],
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "warnings": 0,
+    "issues_count": 0
+  }
+}

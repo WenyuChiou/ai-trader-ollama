@@ -5,9 +5,10 @@ Provides WebSocket for real-time updates and REST API for historical data.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 from typing import List, Dict, Any
 import random
 from pathlib import Path
@@ -26,6 +27,12 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
+# Ensure backend directory is in Python path (for uvicorn imports)
+# This allows the server to be started from any directory
+_backend_dir = Path(__file__).resolve().parent.parent.parent  # Go up from src/api/server.py to backend/
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
+
 # Configure logging to ensure print statements are visible in uvicorn
 # Uvicorn will show stderr output, so we'll use logging which goes to stderr
 logging.basicConfig(
@@ -42,22 +49,120 @@ def log_print(message):
 
 from src.core.event_bus import EventBus, AgentEvent
 
+# Create FastAPI app
 app = FastAPI(
     title="AI Trader API",
     description="Real-time agent monitoring and trading cycle API",
     version="1.0.0"
 )
 
-# CORS for frontend
+# Define CORS headers as a constant to ensure consistency
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+    "Access-Control-Expose-Headers": "*",
+}
+
+# CORS for frontend - MUST be added FIRST (outermost middleware)
 # Handle null origin (file:// protocol) by allowing all origins
-# When allow_credentials=False, we can use allow_origins=["*"]
+# Note: allow_credentials must be False when using allow_origins=["*"]
+# If you need credentials, specify exact origins instead of "*"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins including null
-    allow_credentials=False,  # Must be False when using wildcard origins
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_origins=["*"],  # Allow all origins including null (file:// protocol)
+    allow_credentials=False,  # Must be False when using wildcard origins (True would cause error)
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicit methods list
+    allow_headers=["*"],  # Allow all headers (FastAPI CORSMiddleware supports "*")
+    expose_headers=["*"],  # Expose all headers (FastAPI CORSMiddleware supports "*")
+    max_age=3600,
+)
+
+# Response middleware to ensure CORS headers are ALWAYS present
+# IMPORTANT: FastAPI middleware executes in REVERSE order (last registered = first executed)
+# So this middleware (registered after CORS) runs FIRST and adds CORS headers to ALL responses
+# This ensures CORS headers are present even if CORSMiddleware fails or is bypassed
+@app.middleware("http")
+async def add_cors_headers_middleware(request: Request, call_next):
+    """Middleware to ensure CORS headers are always present in all responses"""
+    try:
+        response = await call_next(request)
+        # Always add CORS headers to response (works for all response types)
+        # Force set headers (don't use setdefault, always overwrite)
+        if hasattr(response, 'headers'):
+            for key, value in CORS_HEADERS.items():
+                response.headers[key] = value
+        return response
+    except Exception as e:
+        # If an exception occurs, return a response with CORS headers
+        import traceback
+        error_msg = str(e)
+        # Remove emoji characters to avoid encoding issues
+        import re
+        error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)
+        error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)
+        
+        log_print(f"[MIDDLEWARE EXCEPTION] Error: {error_msg}")
+        log_print(f"[MIDDLEWARE EXCEPTION] Traceback: {traceback.format_exc()}")
+        
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": error_msg,
+                "message": "An internal server error occurred. Please check the server logs for details."
+            },
+            headers=CORS_HEADERS.copy()
+        )
+
+# Exception handlers to ensure CORS headers are always present
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with CORS headers"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "ok": False,
+            "error": exc.detail,
+            "message": f"HTTP {exc.status_code}: {exc.detail}"
+        },
+        headers=CORS_HEADERS.copy()
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc):
+    """Global exception handler to ensure CORS headers are always present"""
+    import traceback
+    error_msg = str(exc)
+    # Remove emoji characters to avoid encoding issues
+    import re
+    error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)
+    error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)
+    
+    log_print(f"[GLOBAL EXCEPTION HANDLER] Error: {error_msg}")
+    log_print(f"[GLOBAL EXCEPTION HANDLER] Traceback: {traceback.format_exc()}")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "ok": False,
+            "error": error_msg,
+            "message": "An internal server error occurred. Please check the server logs for details."
+        },
+        headers=CORS_HEADERS.copy()
+    )
+
+# CORS for frontend - MUST be added AFTER the custom middleware
+# Handle null origin (file:// protocol) by allowing all origins
+# Note: allow_credentials must be False when using allow_origins=["*"]
+# If you need credentials, specify exact origins instead of "*"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins including null (file:// protocol)
+    allow_credentials=False,  # Must be False when using wildcard origins (True would cause error)
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],  # Explicit methods list
+    allow_headers=["*"],  # Allow all headers (FastAPI CORSMiddleware supports "*")
+    expose_headers=["*"],  # Expose all headers (FastAPI CORSMiddleware supports "*")
     max_age=3600,
 )
 
@@ -178,45 +283,54 @@ async def agents_status_options():
 @app.get("/api/agents/status")
 async def get_agents_status():
     """Get current status of all agents"""
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
     try:
         # Get status from event bus
         status = event_bus.get_all_agents_status()
         
         # If empty, load from agents.yaml to show registered agents
         if not status:
-            from pathlib import Path
-            import yaml
-            import sys
-            
-            # Ensure we're in the backend directory
-            backend_dir = Path(__file__).parent.parent.parent
-            agents_file = backend_dir / "config" / "agents.yaml"
-            
-            if agents_file.exists():
-                with agents_file.open("r", encoding="utf-8") as f:
-                    agents_config = yaml.safe_load(f)
-                    # agents.yaml structure: direct dict of agent_name -> config
-                    # OR nested under "agents" key
-                    agent_dict = agents_config
-                    if isinstance(agents_config, dict) and "agents" in agents_config:
-                        agent_dict = agents_config["agents"]
-                    
-                    if agent_dict and isinstance(agent_dict, dict):
-                        # Return agent names as keys with "idle" status
-                        agents = {}
-                        for agent_name in agent_dict.keys():
-                            agents[agent_name] = {"status": "idle", "last_activity": None}
-                        log_print(f"[API] Loaded {len(agents)} agents from agents.yaml")
-                        return JSONResponse(
-                            status_code=200,
-                            content=agents,
-                            headers={"Access-Control-Allow-Origin": "*"}
-                        )
+            try:
+                from pathlib import Path
+                import yaml
+                import sys
+                
+                # Ensure we're in the backend directory
+                backend_dir = Path(__file__).parent.parent.parent
+                agents_file = backend_dir / "config" / "agents.yaml"
+                
+                if agents_file.exists():
+                    with agents_file.open("r", encoding="utf-8") as f:
+                        agents_config = yaml.safe_load(f)
+                        # agents.yaml structure: direct dict of agent_name -> config
+                        # OR nested under "agents" key
+                        agent_dict = agents_config
+                        if isinstance(agents_config, dict) and "agents" in agents_config:
+                            agent_dict = agents_config["agents"]
+                        
+                        if agent_dict and isinstance(agent_dict, dict):
+                            # Return agent names as keys with "idle" status
+                            agents = {}
+                            for agent_name in agent_dict.keys():
+                                agents[agent_name] = {"status": "idle", "last_activity": None}
+                            log_print(f"[API] Loaded {len(agents)} agents from agents.yaml")
+                            return JSONResponse(
+                                status_code=200,
+                                content=agents,
+                                headers=cors_headers
+                            )
+            except Exception as yaml_error:
+                log_print(f"[API] Error loading agents.yaml: {yaml_error}")
+                # Continue with empty status
         
         return JSONResponse(
             status_code=200,
-            content=status,
-            headers={"Access-Control-Allow-Origin": "*"}
+            content=status if status else {},
+            headers=cors_headers
         )
     except Exception as e:
         log_print(f"[API] Error getting agents status: {e}")
@@ -225,7 +339,7 @@ async def get_agents_status():
         return JSONResponse(
             status_code=200,
             content={},
-            headers={"Access-Control-Allow-Origin": "*"}
+            headers=cors_headers
         )
 
 
@@ -1106,16 +1220,22 @@ async def get_vix_term():
                 else:
                     vix_data["term_structure"] = "Flat"
             
-            return vix_data
+            return JSONResponse(
+                status_code=200,
+                content=vix_data,
+                headers=CORS_HEADERS.copy()
+            )
         else:
             return JSONResponse(
                 status_code=404,
-                content={"error": "VIX data not available"}
+                content={"error": "VIX data not available"},
+                headers=CORS_HEADERS.copy()
             )
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)}
+            content={"error": str(e)},
+            headers=CORS_HEADERS.copy()
         )
 
 
@@ -1131,18 +1251,19 @@ async def get_fear_greed():
         # 2. {"value": ..., "label": ..., ...} (如果直接返回)
         # 统一转换为 {"fear_greed": {...}} 格式
         
+        result = {}
         if fg_data:
-            # 如果已经有 fear_greed 字段，直接返回
+            # 如果已经有 fear_greed 字段，直接使用
             if "fear_greed" in fg_data:
-                return fg_data
+                result = fg_data
             # 如果直接返回了 value/label 等字段，包装成 fear_greed
             elif "value" in fg_data or "label" in fg_data:
-                return {
+                result = {
                     "fear_greed": fg_data
                 }
             else:
                 # 空数据，返回默认值
-                return {
+                result = {
                     "fear_greed": {
                         "value": 0,
                         "label": "N/A",
@@ -1151,24 +1272,34 @@ async def get_fear_greed():
                 }
         else:
             # 返回空数据而不是 404，让前端可以显示默认值
-            return {
+            result = {
                 "fear_greed": {
                     "value": 0,
                     "label": "N/A",
                     "source": "unknown"
                 }
             }
+        
+        return JSONResponse(
+            status_code=200,
+            content=result,
+            headers=CORS_HEADERS.copy()
+        )
     except Exception as e:
         # 即使出错也返回默认值，而不是 500 错误
-        print(f"[API] Error fetching Fear & Greed: {e}")
-        return {
-            "fear_greed": {
-                "value": 0,
-                "label": "N/A",
-                "source": "error",
-                "error": str(e)
-            }
-        }
+        log_print(f"[API] Error fetching Fear & Greed: {e}")
+        return JSONResponse(
+            status_code=200,
+            content={
+                "fear_greed": {
+                    "value": 0,
+                    "label": "N/A",
+                    "source": "error",
+                    "error": str(e)
+                }
+            },
+            headers=CORS_HEADERS.copy()
+        )
 
 
 @app.options("/api/tools/list")
@@ -1187,6 +1318,11 @@ async def tools_list_options():
 @app.get("/api/tools/list")
 async def list_tools():
     """List all available tools from ToolBox"""
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
     try:
         import sys
         from pathlib import Path
@@ -1202,16 +1338,21 @@ async def list_tools():
         return JSONResponse(
             status_code=200,
             content={"ok": True, "tools": tools},
-            headers={"Access-Control-Allow-Origin": "*"}
+            headers=cors_headers
         )
     except Exception as e:
         import traceback
-        log_print(f"[API] Error listing tools: {e}")
+        error_msg = str(e)
+        # Remove emoji characters to avoid encoding issues
+        import re
+        error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)
+        error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)
+        log_print(f"[API] Error listing tools: {error_msg}")
         log_print(f"[API] Traceback: {traceback.format_exc()}")
         return JSONResponse(
             status_code=200,
-            content={"ok": True, "tools": []},
-            headers={"Access-Control-Allow-Origin": "*"}
+            content={"ok": True, "tools": [], "error": error_msg},
+            headers=cors_headers
         )
 
 
@@ -1598,10 +1739,22 @@ async def get_agent_conversations(
 @app.get("/api/market/is-open")
 async def is_market_open():
     """Market hour check: Trading days (Mon-Fri excluding holidays), 09:30-16:00 local time."""
-    from src.utils.trading_days import is_market_open as check_market_open
-    now = datetime.now()
-    open_now = check_market_open(now)
-    return {"ok": True, "open": open_now, "now": now.isoformat()}
+    try:
+        from src.utils.trading_days import is_market_open as check_market_open
+        now = datetime.now()
+        open_now = check_market_open(now)
+        return JSONResponse(
+            status_code=200,
+            content={"ok": True, "open": open_now, "now": now.isoformat()},
+            headers=CORS_HEADERS.copy()
+        )
+    except Exception as e:
+        log_print(f"[API] Error checking market status: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)},
+            headers=CORS_HEADERS.copy()
+        )
 
 
 @app.options("/api/system/init")
@@ -2147,18 +2300,22 @@ async def stop_simulation():
 @app.get("/")
 async def root():
     """API root endpoint"""
-    return {
-        "message": "AI Trader API",
-        "version": "1.0.0",
-        "endpoints": {
-            "websocket": "/ws",
-            "agent_status": "/api/agents/status",
-            "history": "/api/history",
-            "execute": "/api/trading/execute",
-            "market_open": "/api/market/is-open",
-            "system_init": "/api/system/init",
-            "run_loop": "/api/trading/run-loop",
-            "seed_conversations": "/api/demo/seed-conversations"
-        }
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": "AI Trader API",
+            "version": "1.0.0",
+            "endpoints": {
+                "websocket": "/ws",
+                "agent_status": "/api/agents/status",
+                "history": "/api/history",
+                "execute": "/api/trading/execute",
+                "market_open": "/api/market/is-open",
+                "system_init": "/api/system/init",
+                "run_loop": "/api/trading/run-loop",
+                "seed_conversations": "/api/demo/seed-conversations"
+            }
+        },
+        headers=CORS_HEADERS.copy()
+    )
 

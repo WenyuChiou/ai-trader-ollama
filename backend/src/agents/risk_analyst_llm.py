@@ -123,45 +123,84 @@ def _default_position_control(
     """生成默认的仓位控管报告"""
     stocks = market_json.get("stocks", {})
     
+    # Load max_positions from config
+    from src.utils.config_loader import load_config
+    config = load_config()
+    MAX_POSITIONS = config.get("max_positions", 10)
+    
     position_control = {
         "max_position_per_stock": 0.15,
         "max_total_position": 0.85,
+        "max_positions": MAX_POSITIONS,  # Add max_positions to control report
         "recommended_position_sizes": {},
         "position_limit_checks": [],
     }
     
     if current_positions and portfolio_value and portfolio_value > 0:
-        for symbol, pos_info in current_positions.items():
-            if isinstance(pos_info, dict):
-                qty = pos_info.get("quantity", 0)
-                current_price = pos_info.get("current_price", pos_info.get("avg_cost", 0.0))
-            else:
-                qty = pos_info if isinstance(pos_info, (int, float)) else 0
-                current_price = stocks.get(symbol, {}).get("price", 0.0)
-            
-            position_value = qty * current_price
-            exposure = (position_value / portfolio_value) if portfolio_value > 0 else 0.0
-            
-            # 添加推荐仓位大小
-            position_control["recommended_position_sizes"][symbol] = {
-                "current_pct": round(exposure, 4),
-                "max_pct": 0.15,
-                "adjustment": "HOLD" if exposure <= 0.15 else "REDUCE",
-            }
-            
-            # 添加仓位限制检查
-            if exposure > 0.15:
+        current_position_count = len(current_positions)
+        
+        # Check if total position count exceeds limit
+        if current_position_count > MAX_POSITIONS:
+            # Mark all positions as over_limit to trigger selling
+            for symbol, pos_info in current_positions.items():
+                if isinstance(pos_info, dict):
+                    qty = pos_info.get("quantity", 0)
+                    current_price = pos_info.get("current_price", pos_info.get("avg_cost", 0.0))
+                else:
+                    qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                    current_price = stocks.get(symbol, {}).get("price", 0.0)
+                
+                position_value = qty * current_price
+                exposure = (position_value / portfolio_value) if portfolio_value > 0 else 0.0
+                
+                # Add recommended position size
+                position_control["recommended_position_sizes"][symbol] = {
+                    "current_pct": round(exposure, 4),
+                    "max_pct": 0.15,
+                    "adjustment": "REDUCE",  # Force reduce when over max_positions
+                }
+                
+                # Mark as over_limit to trigger selling
                 position_control["position_limit_checks"].append({
                     "symbol": symbol,
-                    "status": "WARNING",
-                    "message": f"Position exceeds 15% limit ({exposure*100:.1f}%)",
+                    "status": "over_limit",
+                    "limit": 0.15,
+                    "message": f"Position count exceeds max ({current_position_count}/{MAX_POSITIONS}), recommend reducing {symbol}",
                 })
-            else:
-                position_control["position_limit_checks"].append({
-                    "symbol": symbol,
-                    "status": "OK",
-                    "message": f"Within limits ({exposure*100:.1f}%)",
-                })
+        else:
+            # Normal position limit checks (per-stock exposure)
+            for symbol, pos_info in current_positions.items():
+                if isinstance(pos_info, dict):
+                    qty = pos_info.get("quantity", 0)
+                    current_price = pos_info.get("current_price", pos_info.get("avg_cost", 0.0))
+                else:
+                    qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                    current_price = stocks.get(symbol, {}).get("price", 0.0)
+                
+                position_value = qty * current_price
+                exposure = (position_value / portfolio_value) if portfolio_value > 0 else 0.0
+                
+                # Add recommended position size
+                position_control["recommended_position_sizes"][symbol] = {
+                    "current_pct": round(exposure, 4),
+                    "max_pct": 0.15,
+                    "adjustment": "HOLD" if exposure <= 0.15 else "REDUCE",
+                }
+                
+                # Add position limit check
+                if exposure > 0.15:
+                    position_control["position_limit_checks"].append({
+                        "symbol": symbol,
+                        "status": "over_limit",
+                        "limit": 0.15,
+                        "message": f"Position exceeds 15% limit ({exposure*100:.1f}%)",
+                    })
+                else:
+                    position_control["position_limit_checks"].append({
+                        "symbol": symbol,
+                        "status": "OK",
+                        "message": f"Within limits ({exposure*100:.1f}%)",
+                    })
     
     return position_control
 

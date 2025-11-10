@@ -340,6 +340,10 @@ def execute_daily_trade(
             if isinstance(coordinator_summary, dict):
                 stance = coordinator_summary.get("stance", "neutral")
                 summary = coordinator_summary.get("summary", "No summary provided")
+                # 确保 summary 不为空
+                if not summary or summary.strip() == "":
+                    summary = "Coordinator synthesized all analyst perspectives."
+                
                 entry = {
                     "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                     "date": trade_date_str,
@@ -348,6 +352,7 @@ def execute_daily_trade(
                     "content": f"Stance: {stance}\n\nSummary: {summary}",
                     "type": "discussion",
                     "stance": stance,
+                    "analysis": summary,  # 添加 analysis 字段，方便前端提取
                 }
                 with convo_file.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")

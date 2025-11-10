@@ -13,7 +13,9 @@
     "NXPI", "DDOG", "AXON", "ROST", "IDXX", "EA", "PCAR", "FAST", "EXC", "TTWO",
     "XEL", "ZS", "PAYX", "WBD", "BKR", "CPRT", "CCEP", "FANG", "TEAM", "CHTR",
     "KDP", "MCHP", "GEHC", "VRSK", "CTSH", "CSGP", "KHC", "ODFL", "DXCM", "TTD",
-    "ON", "BIIB", "LULU", "CDW", "GFS"
+    "ON", "BIIB", "LULU", "CDW", "GFS",
+    "SQQQ", "SPXU", "SH", "PSQ", "SDS", "DOG", "SOXS",
+    "TQQQ", "SPXL", "UPRO"
   ],
   
   "crypto": [
@@ -38,10 +40,10 @@
   },
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
-  "discussion_tool_budget": 2,
+  "discussion_tool_budget": 15,
   
   "llm": {
-    "default_model": "llama3.1",
+    "default_model": "deepseek-r1",
     "ollama_host": "http://localhost:11434",
     "auto_pull": true,
     "timeout_seconds": 8.0

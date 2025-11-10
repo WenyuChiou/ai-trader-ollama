@@ -1501,10 +1501,8 @@
             </div>
 
 
-            <!-- Live Chat and Execution Details Side by Side -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-                <!-- Live Chat (Left) -->
-                <div id="conversations-section">
+            <!-- Live Chat -->
+            <div id="conversations-section" style="margin-top: 20px;">
                 <div class="trades-section" id="conversationsOverviewSection">
                     <div class="section-header">
                         <h2>
@@ -1514,10 +1512,10 @@
                     </div>
                     <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
                 </div>
-                </div>
+            </div>
 
-                <!-- Execution Details (Right) -->
-                <div id="execution-section">
+            <!-- Execution Details (Below Chat) -->
+            <div id="execution-section" style="margin-top: 20px;">
                 <div class="trades-section" id="executionDetailsSection">
                     <div class="section-header">
                         <h2>📋 Execution Details</h2>
@@ -1539,7 +1537,6 @@
                             <tbody id="executionDetailsBody"></tbody>
                         </table>
                     </div>
-                </div>
                 </div>
             </div>
 
@@ -1664,7 +1661,506 @@
         }
 
         // Format number
+        // 从截断的 JSON 字符串中提取部分数据
+        function extractPartialJson(jsonStr) {
+            if (!jsonStr || typeof jsonStr !== 'string') return null;
+            
+            try {
+                const result = {};
+                let pos = 0;
+                const len = jsonStr.length;
+                
+                // 跳过开头的空白和第一个 {
+                while (pos < len && (jsonStr[pos] === ' ' || jsonStr[pos] === '\n' || jsonStr[pos] === '\t' || jsonStr[pos] === '{')) {
+                    if (jsonStr[pos] === '{') {
+                        pos++;
+                        break;
+                    }
+                    pos++;
+                }
+                
+                // 逐字符解析，提取键值对
+                while (pos < len) {
+                    // 跳过空白和逗号
+                    while (pos < len && (jsonStr[pos] === ' ' || jsonStr[pos] === '\n' || jsonStr[pos] === '\t' || jsonStr[pos] === ',' || jsonStr[pos] === '\r')) {
+                        pos++;
+                    }
+                    
+                    if (pos >= len || jsonStr[pos] === '}') break;
+                    
+                    // 提取键名（"key"）
+                    if (jsonStr[pos] !== '"') {
+                        // 如果不是引号开头，尝试跳过到下一个可能的键
+                        const nextQuote = jsonStr.indexOf('"', pos);
+                        if (nextQuote === -1) break;
+                        pos = nextQuote;
+                    }
+                    
+                    const keyStart = pos + 1;
+                    let keyEnd = keyStart;
+                    let escaped = false;
+                    
+                    // 处理转义的引号
+                    while (keyEnd < len) {
+                        if (escaped) {
+                            escaped = false;
+                            keyEnd++;
+                            continue;
+                        }
+                        if (jsonStr[keyEnd] === '\\') {
+                            escaped = true;
+                            keyEnd++;
+                            continue;
+                        }
+                        if (jsonStr[keyEnd] === '"') {
+                            break;
+                        }
+                        keyEnd++;
+                    }
+                    
+                    if (keyEnd >= len) break;
+                    
+                    const key = jsonStr.substring(keyStart, keyEnd);
+                    
+                    // 跳过键名后的空白和冒号
+                    pos = keyEnd + 1;
+                    while (pos < len && (jsonStr[pos] === ' ' || jsonStr[pos] === '\n' || jsonStr[pos] === '\t' || jsonStr[pos] === ':')) {
+                        pos++;
+                    }
+                    
+                    if (pos >= len) break;
+                    
+                    // 提取值（改进版：更好地处理嵌套结构）
+                    let value = null;
+                    let valueEnd = pos;
+                    
+                    if (jsonStr[pos] === '"') {
+                        // 字符串值（可能被截断，处理转义字符）
+                        const strStart = pos + 1;
+                        let strEnd = strStart;
+                        escaped = false;
+                        
+                        while (strEnd < len) {
+                            if (escaped) {
+                                escaped = false;
+                                strEnd++;
+                                continue;
+                            }
+                            if (jsonStr[strEnd] === '\\') {
+                                escaped = true;
+                                strEnd++;
+                                continue;
+                            }
+                            if (jsonStr[strEnd] === '"') {
+                                value = jsonStr.substring(strStart, strEnd);
+                                valueEnd = strEnd + 1;
+                                break;
+                            }
+                            strEnd++;
+                        }
+                        
+                        // 如果字符串被截断（没有找到结束引号），使用到末尾的内容
+                        if (value === null && strEnd >= len) {
+                            value = jsonStr.substring(strStart, len);
+                            valueEnd = len;
+                        }
+                    } else if (jsonStr[pos] === '{') {
+                        // 对象值（可能被截断，需要处理嵌套）
+                        let braceCount = 1;
+                        let objEnd = pos + 1;
+                        let inString = false;
+                        escaped = false;
+                        
+                        while (objEnd < len && braceCount > 0) {
+                            if (escaped) {
+                                escaped = false;
+                                objEnd++;
+                                continue;
+                            }
+                            if (jsonStr[objEnd] === '\\') {
+                                escaped = true;
+                                objEnd++;
+                                continue;
+                            }
+                            if (jsonStr[objEnd] === '"') {
+                                inString = !inString;
+                                objEnd++;
+                                continue;
+                            }
+                            if (!inString) {
+                                if (jsonStr[objEnd] === '{') braceCount++;
+                                else if (jsonStr[objEnd] === '}') braceCount--;
+                            }
+                            objEnd++;
+                        }
+                        
+                        const objStr = jsonStr.substring(pos, objEnd);
+                        try {
+                            value = JSON.parse(objStr);
+                        } catch (e) {
+                            // 如果解析失败，尝试递归提取部分数据
+                            value = extractPartialJson(objStr);
+                            if (!value) {
+                                // 如果还是失败，尝试添加缺失的 }
+                                const openBraces = (objStr.match(/\{/g) || []).length;
+                                const closeBraces = (objStr.match(/\}/g) || []).length;
+                                if (openBraces > closeBraces) {
+                                    let testStr = objStr;
+                                    // 移除末尾的逗号（如果有）
+                                    let lastChar = testStr.length - 1;
+                                    while (lastChar >= 0 && (testStr[lastChar] === ' ' || testStr[lastChar] === '\n' || testStr[lastChar] === '\t' || testStr[lastChar] === '\r')) {
+                                        lastChar--;
+                                    }
+                                    if (lastChar >= 0 && testStr[lastChar] === ',') {
+                                        testStr = testStr.substring(0, lastChar);
+                                    }
+                                    
+                                    for (let i = 0; i < (openBraces - closeBraces); i++) {
+                                        testStr += '}';
+                                    }
+                                    try {
+                                        value = JSON.parse(testStr);
+                                    } catch (e2) {
+                                        value = extractPartialJson(objStr);
+                                    }
+                                }
+                            }
+                        }
+                        valueEnd = objEnd;
+                    } else if (jsonStr[pos] === '[') {
+                        // 数组值（可能被截断，需要处理嵌套对象和数组）
+                        let bracketCount = 1;
+                        let arrEnd = pos + 1;
+                        let inString = false;
+                        escaped = false;
+                        
+                        while (arrEnd < len && bracketCount > 0) {
+                            if (escaped) {
+                                escaped = false;
+                                arrEnd++;
+                                continue;
+                            }
+                            if (jsonStr[arrEnd] === '\\') {
+                                escaped = true;
+                                arrEnd++;
+                                continue;
+                            }
+                            if (jsonStr[arrEnd] === '"') {
+                                inString = !inString;
+                                arrEnd++;
+                                continue;
+                            }
+                            if (!inString) {
+                                if (jsonStr[arrEnd] === '[') bracketCount++;
+                                else if (jsonStr[arrEnd] === ']') bracketCount--;
+                            }
+                            arrEnd++;
+                        }
+                        
+                        const arrStr = jsonStr.substring(pos, arrEnd);
+                        try {
+                            value = JSON.parse(arrStr);
+                        } catch (e) {
+                            // 如果解析失败，尝试提取部分数组元素
+                            value = [];
+                            let elemPos = 1; // 跳过开头的 [
+                            while (elemPos < arrStr.length - 1) {
+                                // 跳过空白和逗号
+                                while (elemPos < arrStr.length && (arrStr[elemPos] === ' ' || arrStr[elemPos] === '\n' || arrStr[elemPos] === '\t' || arrStr[elemPos] === ',' || arrStr[elemPos] === '\r')) {
+                                    elemPos++;
+                                }
+                                if (elemPos >= arrStr.length - 1) break;
+                                
+                                // 尝试解析单个元素
+                                if (arrStr[elemPos] === '{') {
+                                    const elemEnd = arrStr.indexOf('}', elemPos);
+                                    if (elemEnd > elemPos) {
+                                        try {
+                                            const elemStr = arrStr.substring(elemPos, elemEnd + 1);
+                                            value.push(JSON.parse(elemStr));
+                                            elemPos = elemEnd + 1;
+                                        } catch (e2) {
+                                            break;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                        valueEnd = arrEnd;
+                    } else {
+                        // 数字、布尔值或 null
+                        let numEnd = pos;
+                        while (numEnd < len && jsonStr[numEnd] !== ',' && jsonStr[numEnd] !== '}' && jsonStr[numEnd] !== ']' && jsonStr[numEnd] !== ' ' && jsonStr[numEnd] !== '\n' && jsonStr[numEnd] !== '\t' && jsonStr[numEnd] !== '\r') {
+                            numEnd++;
+                        }
+                        const numStr = jsonStr.substring(pos, numEnd).trim();
+                        if (numStr === 'true') value = true;
+                        else if (numStr === 'false') value = false;
+                        else if (numStr === 'null') value = null;
+                        else {
+                            const num = parseFloat(numStr);
+                            if (!isNaN(num)) value = num;
+                        }
+                        valueEnd = numEnd;
+                    }
+                    
+                    if (value !== null) {
+                        result[key] = value;
+                    }
+                    
+                    pos = valueEnd;
+                }
+                
+                return Object.keys(result).length > 0 ? result : null;
+            } catch (e) {
+                console.warn('[extractPartialJson] Error:', e);
+                return null;
+            }
+        }
+        
+        // 递归展开嵌套对象为扁平化的键值对
+        function flattenObject(obj, prefix = '', maxDepth = 3, currentDepth = 0) {
+            if (currentDepth >= maxDepth) {
+                return { [prefix || 'nested']: JSON.stringify(obj).substring(0, 100) + '...' };
+            }
+            
+            const flattened = {};
+            
+            for (const [key, value] of Object.entries(obj)) {
+                const newKey = prefix ? `${prefix}_${key}` : key;
+                
+                if (value === null || value === undefined) {
+                    flattened[newKey] = null;
+                } else if (Array.isArray(value)) {
+                    if (value.length === 0) {
+                        flattened[newKey] = '[]';
+                    } else if (value.length <= 5 && value.every(v => typeof v !== 'object' || v === null)) {
+                        // 如果数组元素都是简单类型，直接显示
+                        flattened[newKey] = `[${value.join(', ')}]`;
+                    } else {
+                        // 如果数组元素是对象，显示数组长度
+                        flattened[newKey] = `Array(${value.length})`;
+                    }
+                } else if (typeof value === 'object') {
+                    // 递归展开嵌套对象
+                    const nested = flattenObject(value, newKey, maxDepth, currentDepth + 1);
+                    Object.assign(flattened, nested);
+                } else {
+                    flattened[newKey] = value;
+                }
+            }
+            
+            return flattened;
+        }
+        
+        // 将基本面数据格式化为叙述形式
+        function formatFundamentalsAsNarrative(fundamentals, symbol) {
+            if (!fundamentals || typeof fundamentals !== 'object') {
+                return `<div style="color: #94a3b8; font-style: italic;">No fundamental data available for ${symbol}</div>`;
+            }
+            
+            let html = '';
+            const val = fundamentals.valuation || {};
+            const prof = fundamentals.profitability || {};
+            const growth = fundamentals.growth || {};
+            const health = fundamentals.financial_health || {};
+            
+            // 公司基本信息
+            const companyName = fundamentals.company_name || symbol;
+            const sector = fundamentals.sector || '';
+            const industry = fundamentals.industry || '';
+            html += `<div style="font-size: 14px; color: #22d3ee; font-weight: 700; margin-bottom: 8px;">${companyName}${sector ? ` (${sector}${industry ? ` - ${industry}` : ''})` : ''}</div>`;
+            
+            // 估值指标
+            const valItems = [];
+            if (val.pe_ratio !== undefined) valItems.push(`P/E: <strong style="color: #22d3ee;">${val.pe_ratio.toFixed(2)}</strong>`);
+            if (val.forward_pe !== undefined) valItems.push(`Forward P/E: <strong style="color: #22d3ee;">${val.forward_pe.toFixed(2)}</strong>`);
+            if (val.price_to_book !== undefined) valItems.push(`P/B: <strong style="color: #22d3ee;">${val.price_to_book.toFixed(2)}</strong>`);
+            if (val.price_to_sales !== undefined) valItems.push(`P/S: <strong style="color: #22d3ee;">${val.price_to_sales.toFixed(2)}</strong>`);
+            if (val.market_cap !== undefined) valItems.push(`Market Cap: <strong style="color: #10b981;">${formatNumber(val.market_cap)}</strong>`);
+            
+            // 盈利能力
+            const profItems = [];
+            if (prof.net_margin !== undefined) profItems.push(`Net Margin: <strong style="color: #10b981;">${prof.net_margin.toFixed(2)}%</strong>`);
+            else if (prof.profit_margins !== undefined) profItems.push(`Profit Margin: <strong style="color: #10b981;">${(prof.profit_margins * 100).toFixed(2)}%</strong>`);
+            if (prof.roe !== undefined) profItems.push(`ROE: <strong style="color: #10b981;">${prof.roe.toFixed(2)}%</strong>`);
+            else if (prof.return_on_equity !== undefined) profItems.push(`ROE: <strong style="color: #10b981;">${(prof.return_on_equity * 100).toFixed(2)}%</strong>`);
+            
+            // 成长性
+            const growthItems = [];
+            if (growth.revenue_growth !== undefined) growthItems.push(`Revenue Growth: <strong style="color: #10b981;">${growth.revenue_growth.toFixed(2)}%</strong>`);
+            if (growth.earnings_growth !== undefined) growthItems.push(`Earnings Growth: <strong style="color: ${growth.earnings_growth >= 0 ? '#10b981' : '#ef4444'};">${growth.earnings_growth.toFixed(2)}%</strong>`);
+            
+            // 财务健康
+            const healthItems = [];
+            if (health.current_ratio !== undefined) healthItems.push(`Current Ratio: <strong style="color: ${health.current_ratio >= 1 ? '#10b981' : '#ef4444'};">${health.current_ratio.toFixed(2)}</strong>`);
+            if (health.debt_to_equity !== undefined) healthItems.push(`Debt/Equity: <strong style="color: ${health.debt_to_equity <= 1 ? '#10b981' : '#ef4444'};">${health.debt_to_equity.toFixed(2)}</strong>`);
+            
+            // 组合所有信息
+            const allItems = [];
+            if (valItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Valuation:</span> ${valItems.join(' • ')}`);
+            if (profItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Profitability:</span> ${profItems.join(' • ')}`);
+            if (growthItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Growth:</span> ${growthItems.join(' • ')}`);
+            if (healthItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Financial Health:</span> ${healthItems.join(' • ')}`);
+            
+            if (allItems.length > 0) {
+                html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 1.8;">' + allItems.join('<br>') + '</div>';
+            } else {
+                html += '<div style="color: #94a3b8; font-style: italic;">Limited fundamental data available</div>';
+            }
+            
+            return html;
+        }
+        
+        // 从工具结果中提取简要文字内容
+        function extractToolSummary(toolName, resultData) {
+            if (!resultData || typeof resultData !== 'object') {
+                return null;
+            }
+            
+            // 处理嵌套的 ok/result 结构
+            let data = resultData;
+            let depth = 0;
+            while (data && typeof data === 'object' && 'ok' in data && 'result' in data && depth < 10) {
+                data = data.result;
+                depth++;
+            }
+            
+            // 根据工具类型提取简要信息
+            const summaries = [];
+            
+            // 技术指标
+            if (toolName.includes('indicators') || toolName.includes('technical')) {
+                if (data.indicators) {
+                    const ind = data.indicators;
+                    if (ind.rsi_14 !== undefined) summaries.push(`RSI: ${ind.rsi_14.toFixed(2)}`);
+                    if (ind.macd) {
+                        const macd = ind.macd;
+                        if (macd.macd !== undefined) summaries.push(`MACD: ${macd.macd.toFixed(2)}`);
+                    }
+                    if (ind.bollinger_bands) {
+                        const bb = ind.bollinger_bands;
+                        if (bb.upper !== undefined && bb.lower !== undefined) {
+                            summaries.push(`BB: ${bb.lower.toFixed(2)}-${bb.upper.toFixed(2)}`);
+                        }
+                    }
+                }
+                if (data.last_price !== undefined) summaries.push(`Price: $${data.last_price.toFixed(2)}`);
+            }
+            
+            // 基本面数据
+            if (toolName.includes('fundamentals') || toolName.includes('company')) {
+                if (data.fundamentals) {
+                    const fund = data.fundamentals;
+                    const val = fund.valuation || {};
+                    const prof = fund.profitability || {};
+                    if (val.pe_ratio !== undefined) summaries.push(`P/E: ${val.pe_ratio.toFixed(2)}`);
+                    if (val.market_cap !== undefined) summaries.push(`Market Cap: ${formatNumber(val.market_cap)}`);
+                    if (prof.net_margin !== undefined) summaries.push(`Net Margin: ${prof.net_margin.toFixed(2)}%`);
+                    else if (prof.profit_margins !== undefined) summaries.push(`Profit Margin: ${(prof.profit_margins * 100).toFixed(2)}%`);
+                }
+            }
+            
+            // 财务报表
+            if (toolName.includes('financial') || toolName.includes('statements')) {
+                if (data.balance_sheet) {
+                    const bs = data.balance_sheet;
+                    if (bs.total_assets !== undefined) summaries.push(`Assets: ${formatNumber(bs.total_assets)}`);
+                    if (bs.total_liabilities !== undefined) summaries.push(`Liabilities: ${formatNumber(bs.total_liabilities)}`);
+                }
+                if (data.cashflow) {
+                    const cf = data.cashflow;
+                    if (cf.free_cashflow !== undefined) summaries.push(`FCF: ${formatNumber(cf.free_cashflow)}`);
+                }
+            }
+            
+            // 收益历史
+            if (toolName.includes('earnings')) {
+                if (data.quarterly_earnings && Array.isArray(data.quarterly_earnings) && data.quarterly_earnings.length > 0) {
+                    const latest = data.quarterly_earnings[0];
+                    if (latest.revenue !== undefined) summaries.push(`Q Revenue: ${formatNumber(latest.revenue)}`);
+                    if (latest.earnings !== undefined) summaries.push(`Q Earnings: ${formatNumber(latest.earnings)}`);
+                }
+            }
+            
+            // VIX 和 Fear & Greed
+            if (toolName.includes('vix') || toolName.includes('term')) {
+                if (data.vix !== undefined) summaries.push(`VIX: ${data.vix.toFixed(1)}`);
+                if (data.ratio !== undefined) summaries.push(`Ratio: ${data.ratio.toFixed(3)}`);
+            }
+            if (toolName.includes('fear') || toolName.includes('greed')) {
+                const fg = data.value !== undefined ? data.value : (data.fear_greed && typeof data.fear_greed === 'object' ? data.fear_greed.value : null);
+                const label = data.label || (data.fear_greed && typeof data.fear_greed === 'object' ? data.fear_greed.label : null);
+                if (fg !== undefined && fg !== null) summaries.push(`F&G: ${fg}${label ? ` (${label})` : ''}`);
+            }
+            
+            // 新闻
+            if (toolName.includes('news')) {
+                if (data.hits && Array.isArray(data.hits)) {
+                    summaries.push(`${data.hits.length} articles`);
+                }
+                if (data.queries && Array.isArray(data.queries)) {
+                    summaries.push(`Queries: ${data.queries.join(', ')}`);
+                }
+            }
+            
+            // 市场数据
+            if (toolName.includes('market') || toolName.includes('indices')) {
+                if (data.indices && Array.isArray(data.indices)) {
+                    data.indices.slice(0, 2).forEach(idx => {
+                        if (idx.name && idx.price !== undefined) {
+                            summaries.push(`${idx.name}: ${idx.price.toFixed(2)}`);
+                        }
+                    });
+                }
+            }
+            
+            // 板块轮动
+            if (toolName.includes('sector') || toolName.includes('rotation')) {
+                if (data.sectors && Array.isArray(data.sectors)) {
+                    data.sectors.slice(0, 3).forEach(sec => {
+                        if (sec.sector && sec.return_pct !== undefined) {
+                            summaries.push(`${sec.sector}: ${sec.return_pct.toFixed(2)}%`);
+                        }
+                    });
+                }
+            }
+            
+            // 支撑阻力
+            if (toolName.includes('support') || toolName.includes('resistance')) {
+                if (data.current_price !== undefined) summaries.push(`Price: $${data.current_price.toFixed(2)}`);
+                if (data.nearest_resistance !== undefined) summaries.push(`Resistance: $${data.nearest_resistance.toFixed(2)}`);
+                if (data.nearest_support !== undefined) summaries.push(`Support: $${data.nearest_support.toFixed(2)}`);
+            }
+            
+            // 如果没有任何摘要，尝试提取一些通用字段
+            if (summaries.length === 0) {
+                if (data.symbol) summaries.push(`Symbol: ${data.symbol}`);
+                if (data.date) summaries.push(`Date: ${data.date}`);
+                if (data.value !== undefined && typeof data.value === 'number') summaries.push(`Value: ${data.value}`);
+            }
+            
+            return summaries.length > 0 ? summaries.join(' • ') : null;
+        }
+        
         function formatNumber(value, decimals = 2) {
+            if (typeof value !== 'number') return String(value);
+            
+            // 对于大数字（例如，大于100万），使用紧凑表示法
+            if (Math.abs(value) >= 1000000) {
+                return new Intl.NumberFormat('en-US', {
+                    notation: 'compact',
+                    compactDisplay: 'short',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2 // 最多保留两位小数
+                }).format(value);
+            }
+            
+            // 对于其他数字，使用固定小数位
             return new Intl.NumberFormat('en-US', {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
@@ -1796,6 +2292,7 @@
                 try {
                     const response = await fetch(`${API_BASE}/api/portfolio/real-time`, {
                         method: 'GET',
+                        mode: 'cors',  // 明确指定 CORS 模式
                         headers: {
                             'Content-Type': 'application/json',
                         },
@@ -1885,6 +2382,7 @@
             try {
                 const response = await fetch(`${API_BASE}/`, {
                     method: 'GET',
+                    mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -1919,7 +2417,10 @@
 
         async function isMarketOpen() {
             try {
-                const r = await fetch(`${API_BASE}/api/market/is-open`, { signal: AbortSignal.timeout(5000) });
+                const r = await fetch(`${API_BASE}/api/market/is-open`, { 
+                    mode: 'cors',  // 明确指定 CORS 模式
+                    signal: AbortSignal.timeout(5000) 
+                });
                 if (!r.ok) return false;
                 const j = await r.json();
                 return !!j.open;
@@ -2356,6 +2857,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/agents/status`, {
                     method: 'GET',
+                    mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -2383,6 +2885,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/tools/list`, {
                     method: 'GET',
+                    mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -2409,6 +2912,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/system/info`, {
                     method: 'GET',
+                    mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -2435,6 +2939,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/agents/conversations?limit=${limit}&include_demo=false`, {
                     method: 'GET',
+                    mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -2704,7 +3209,8 @@
             const sortedDates = Object.keys(byDate).sort().reverse(); // 最新的日期在前
             
             sortedDates.forEach(dateKey => {
-                const dayConvs = byDate[dateKey];
+                // 过滤掉 tool 类型的条目，只显示 discussion 条目
+                const dayConvs = byDate[dateKey].filter(c => (c.type || 'discussion') !== 'tool');
                 const dateDisplay = dateKey === 'Unknown' ? 'Unknown' : new Date(dateKey).toLocaleDateString('en-US', { 
                     weekday: 'short', 
                     year: 'numeric', 
@@ -2804,12 +3310,9 @@
                             }
                             
                             // Display tools used if available
-                            let toolsUsedHtml = '';
-                            let discussionToolResultsHtml = '';
+                            let toolsSummaryHtml = '';
                             if (conv.tools_used && Array.isArray(conv.tools_used) && conv.tools_used.length > 0) {
-                                toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${conv.tools_used.join(', ')}</div>`;
-                                
-                                // 对于 discussion 条目，查找对应的 tool 条目来显示工具结果
+                                // 对于 discussion 条目，查找对应的 tool 条目来显示工具摘要
                                 if (entry_type === 'discussion') {
                                     // 标准化 agent 名称：移除空格，统一格式
                                     const agentNormalized = agent.replace(/\s+/g, ''); // "Sentiment Analyst" -> "SentimentAnalyst"
@@ -2823,44 +3326,89 @@
                                     });
                                     
                                     if (toolEntries.length > 0) {
-                                        const toolResultsHtml = toolEntries.map(toolEntry => {
+                                        const toolSummaries = [];
+                                        
+                                        toolEntries.forEach(toolEntry => {
                                             const toolContent = toolEntry.content || '';
                                             const toolInfo = parseToolInfo(toolContent);
+                                            const entryToolName = toolEntry.tool_name || '';
+                                            
                                             if (toolInfo && toolInfo.result) {
-                                                const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
-                                                return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                                    <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolInfo.name)} Result:</strong>
-                                                    ${tableHtml}
-                                                </div>`;
+                                                // 提取简要信息
+                                                const displayToolName = toolInfo.name || entryToolName || 'Unknown';
+                                                const summary = extractToolSummary(displayToolName, toolInfo.result);
+                                                
+                                                if (summary) {
+                                                    toolSummaries.push({
+                                                        name: displayToolName,
+                                                        summary: summary
+                                                    });
+                                                }
                                             } else {
-                                                // 尝试直接解析 JSON
+                                                // 尝试从内容中提取 JSON
                                                 try {
-                                                    const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
-                                                    if (jsonMatch) {
-                                                        let parsed = JSON.parse(jsonMatch[0]);
-                                                        const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
-                                                        // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
-                                                        // 递归提取 result 字段，直到找到实际数据
-                                                        let resultData = parsed;
-                                                        while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
-                                                            resultData = resultData.result;
+                                                    let jsonStr = '';
+                                                    if (toolContent.trim().startsWith(', {')) {
+                                                        const firstBrace = toolContent.indexOf('{');
+                                                        if (firstBrace >= 0) jsonStr = toolContent.substring(firstBrace);
+                                                    } else if (toolContent.trim().startsWith('{')) {
+                                                        jsonStr = toolContent.trim();
+                                                    } else {
+                                                        const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
+                                                        if (jsonMatch) jsonStr = jsonMatch[0];
+                                                    }
+                                                    
+                                                    if (jsonStr) {
+                                                        let parsed;
+                                                        try {
+                                                            parsed = JSON.parse(jsonStr);
+                                                        } catch (e) {
+                                                            parsed = extractPartialJson(jsonStr);
                                                         }
-                                                        const tableHtml = formatToolResultAsTable(resultData, toolName);
-                                                        return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolName)} Result:</strong>
-                                                            ${tableHtml}
-                                                        </div>`;
+                                                        
+                                                        if (parsed) {
+                                                            let resultData = parsed;
+                                                            let depth = 0;
+                                                            while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData && depth < 10) {
+                                                                resultData = resultData.result;
+                                                                depth++;
+                                                            }
+                                                            
+                                                            const toolName = toolEntry.tool_name || parsed.tool || parsed.name || entryToolName || 'Unknown';
+                                                            const summary = extractToolSummary(toolName, resultData);
+                                                            
+                                                            if (summary) {
+                                                                toolSummaries.push({
+                                                                    name: toolName,
+                                                                    summary: summary
+                                                                });
+                                                            }
+                                                        }
                                                     }
                                                 } catch (e) {
                                                     // 解析失败，跳过
                                                 }
                                             }
-                                            return '';
-                                        }).filter(html => html.length > 0).join('');
+                                        });
                                         
-                                        if (toolResultsHtml) {
-                                            discussionToolResultsHtml = toolResultsHtml;
+                                        // 生成工具简要信息 HTML
+                                        if (toolSummaries.length > 0) {
+                                            const toolsList = toolSummaries.map(t => `<strong style="color: #f59e0b;">${escapeHtml(t.name)}</strong>: ${escapeHtml(t.summary)}`).join('<br>');
+                                            toolsSummaryHtml = `<div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 12px; line-height: 1.6;">
+                                                <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">🔧 Tools Used:</strong>
+                                                <div style="color: #cbd5e1;">${toolsList}</div>
+                                            </div>`;
+                                        } else {
+                                            // 如果没有找到工具结果，至少显示工具名称
+                                            toolsSummaryHtml = `<div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 12px;">
+                                                <strong style="color: #f59e0b;">🔧 Tools Used:</strong> ${conv.tools_used.join(', ')}
+                                            </div>`;
                                         }
+                                    } else {
+                                        // 如果没有找到对应的 tool 条目，只显示工具名称列表
+                                        toolsSummaryHtml = `<div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 12px;">
+                                            <strong style="color: #f59e0b;">🔧 Tools Used:</strong> ${conv.tools_used.join(', ')}
+                                        </div>`;
                                     }
                                 }
                             }
@@ -2959,15 +3507,13 @@
                                     </div>
                                     ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
                                     ${stanceHtml}
-                                    ${toolsUsedHtml}
-                                    ${discussionToolResultsHtml}
-                                    ${toolHtml}
-                                    ${toolResultHtml}
+                                    ${toolsSummaryHtml}
+                                    ${entry_type === 'tool' ? (toolHtml + toolResultHtml) : ''}
                                     ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">
                                         <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                         <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(analysisText)}</div>
                                     </div>` : ''}
-                                    ${entry_type === 'tool' ? '' : (!analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content_text, entry_type)}</div>` : '')}
+                                    ${entry_type === 'discussion' && !analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content_text, entry_type)}</div>` : ''}
                                 </div>
                             `;
                         }).join('')}
@@ -3056,14 +3602,16 @@
             const container = document.getElementById('conversationsOverview');
             const count = document.getElementById('convCount');
             if (!container) return;
-            if (count) count.textContent = `${conversations.length} items`;
-            if (conversations.length === 0) {
+            // 过滤掉 tool 类型的条目，只显示 discussion 条目
+            const filteredConversations = conversations.filter(c => (c.type || 'discussion') !== 'tool');
+            if (count) count.textContent = `${filteredConversations.length} items`;
+            if (filteredConversations.length === 0) {
                 container.innerHTML = `<div class="empty-conversations"><p>No conversations yet.</p></div>`;
                 return;
             }
             container.innerHTML = `
                 <div class="conversation-list">
-                    ${conversations.map((c) => {
+                    ${filteredConversations.map((c) => {
                         const date = c.date || c.timestamp || '';
                         const agent = c.agent || c.agent_name || 'Unknown';
                         const content = c.content || c.message || c.reasoning || '';
@@ -3114,16 +3662,68 @@
                             } else {
                                 // 如果不是标准格式，尝试直接解析 JSON
                                 try {
-                                    const jsonMatch = content.match(/\{[\s\S]*\}/);
-                                    if (jsonMatch) {
-                                        const parsed = JSON.parse(jsonMatch[0]);
-                                        const toolName = parsed.tool || parsed.name || 'Unknown';
-                                        toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
-                                        const tableHtml = formatToolResultAsTable(parsed, toolName);
-                                        toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
-                                            ${tableHtml}
-                                        </div>`;
+                                    // 尝试从内容中提取 JSON（可能被截断或以 ', {' 开头）
+                                    let jsonStr = '';
+                                    
+                                    // 如果内容以 ', {' 开头，找到第一个 {
+                                    if (content.trim().startsWith(', {')) {
+                                        const firstBrace = content.indexOf('{');
+                                        if (firstBrace >= 0) {
+                                            jsonStr = content.substring(firstBrace);
+                                        }
+                                    } else if (content.trim().startsWith('{')) {
+                                        jsonStr = content.trim();
+                                    } else {
+                                        // 尝试匹配 JSON 对象
+                                        const jsonMatch = content.match(/\{[\s\S]*\}/);
+                                        if (jsonMatch) {
+                                            jsonStr = jsonMatch[0];
+                                        }
+                                    }
+                                    
+                                    if (jsonStr) {
+                                        // 处理截断 JSON
+                                        let parsed;
+                                        try {
+                                            parsed = JSON.parse(jsonStr);
+                                        } catch (parseError) {
+                                            // 尝试找到最后一个完整的对象
+                                            let braceCount = 0;
+                                            let lastValidPos = -1;
+                                            for (let i = 0; i < jsonStr.length; i++) {
+                                                if (jsonStr[i] === '{') braceCount++;
+                                                else if (jsonStr[i] === '}') {
+                                                    braceCount--;
+                                                    if (braceCount === 0) {
+                                                        lastValidPos = i;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if (lastValidPos > 0) {
+                                                try {
+                                                    parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
+                                                } catch (e2) {
+                                                    parsed = null;
+                                                }
+                                            } else {
+                                                parsed = null;
+                                            }
+                                        }
+                                        if (parsed) {
+                                            const toolName = parsed.tool || parsed.name || c.tool_name || 'Unknown';
+                                            // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+                                            let resultData = parsed;
+                                            while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                                resultData = resultData.result;
+                                            }
+                                            toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
+                                            const tableHtml = formatToolResultAsTable(resultData, toolName);
+                                            toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                                <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 Tool Result:</strong>
+                                                ${tableHtml}
+                                            </div>`;
+                                        }
                                     }
                                 } catch (e) {
                                     // 如果解析失败，显示原始内容
@@ -3167,35 +3767,139 @@
                                 });
                                 
                                 if (toolEntries.length > 0) {
+                                    // 获取 discussion 条目使用的工具名称列表（小写，用于匹配）
+                                    const toolsUsedLower = c.tools_used.map(t => t.toLowerCase());
+                                    
                                     const toolResultsHtml = toolEntries.map(toolEntry => {
+                                        // 获取工具名称（从多个可能的字段）
+                                        const entryToolName = (toolEntry.tool_name || '').toLowerCase();
+                                        
+                                        // 检查这个工具是否在 discussion 的 tools_used 列表中
+                                        const isToolUsed = toolsUsedLower.some(usedTool => 
+                                            entryToolName === usedTool || 
+                                            entryToolName.includes(usedTool) || 
+                                            usedTool.includes(entryToolName)
+                                        );
+                                        
+                                        if (!isToolUsed) return ''; // 如果工具不在使用列表中，跳过
+                                        
                                         const toolContent = toolEntry.content || '';
                                         const toolInfo = parseToolInfo(toolContent);
+                                        
+                                        // 调试：检查 parseToolInfo 的返回值
+                                        if (!toolInfo) {
+                                            console.warn(`[Tool Display] parseToolInfo returned null for ${entryToolName}`, toolContent.substring(0, 100));
+                                        }
+                                        
                                         if (toolInfo && toolInfo.result) {
-                                            const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
+                                            // 确保 result 是对象，而不是字符串
+                                            let resultData = toolInfo.result;
+                                            if (typeof resultData === 'string') {
+                                                // 如果 result 是字符串，尝试解析
+                                                try {
+                                                    resultData = JSON.parse(resultData);
+                                                } catch (e) {
+                                                    // 如果直接解析失败，尝试使用 extractPartialJson
+                                                    const partial = extractPartialJson(resultData);
+                                                    if (partial) {
+                                                        resultData = partial;
+                                                    } else {
+                                                        console.warn(`[Tool Display] Failed to parse result string for ${entryToolName}`, e);
+                                                        return '';
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // 处理嵌套的 ok/result 结构
+                                            while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                                resultData = resultData.result;
+                                            }
+                                            
+                                            const tableHtml = formatToolResultAsTable(resultData, toolInfo.name);
                                             return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                                 <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolInfo.name)} Result:</strong>
                                                 ${tableHtml}
                                             </div>`;
                                         } else {
                                             try {
-                                                const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
-                                                if (jsonMatch) {
-                                                    let parsed = JSON.parse(jsonMatch[0]);
-                                                    const toolName = toolEntry.tool_name || parsed.tool || parsed.name || 'Unknown';
-                                                    // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
-                                                    // 递归提取 result 字段，直到找到实际数据
-                                                    let resultData = parsed;
-                                                    while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
-                                                        resultData = resultData.result;
+                                                // 尝试从内容中提取 JSON（可能被截断或以 ', {' 开头）
+                                                let jsonStr = '';
+                                                
+                                                // 如果内容以 ', {' 开头，找到第一个 {
+                                                if (toolContent.trim().startsWith(', {')) {
+                                                    const firstBrace = toolContent.indexOf('{');
+                                                    if (firstBrace >= 0) {
+                                                        jsonStr = toolContent.substring(firstBrace);
                                                     }
-                                                    const tableHtml = formatToolResultAsTable(resultData, toolName);
-                                                    return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                                        <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolName)} Result:</strong>
-                                                        ${tableHtml}
-                                                    </div>`;
+                                                } else if (toolContent.trim().startsWith('{')) {
+                                                    jsonStr = toolContent.trim();
+                                                } else {
+                                                    // 尝试匹配 JSON 对象
+                                                    const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
+                                                    if (jsonMatch) {
+                                                        jsonStr = jsonMatch[0];
+                                                    } else if (toolContent.includes('{')) {
+                                                        // 如果内容包含 {，尝试找到第一个 { 到最后一个 }
+                                                        const firstBrace = toolContent.indexOf('{');
+                                                        const lastBrace = toolContent.lastIndexOf('}');
+                                                        if (firstBrace >= 0 && lastBrace > firstBrace) {
+                                                            jsonStr = toolContent.substring(firstBrace, lastBrace + 1);
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                if (jsonStr) {
+                                                    // 处理截断 JSON
+                                                    let parsed;
+                                                    try {
+                                                        parsed = JSON.parse(jsonStr);
+                                                    } catch (parseError) {
+                                                        // 尝试找到最后一个完整的对象
+                                                        let braceCount = 0;
+                                                        let lastValidPos = -1;
+                                                        for (let i = 0; i < jsonStr.length; i++) {
+                                                            if (jsonStr[i] === '{') braceCount++;
+                                                            else if (jsonStr[i] === '}') {
+                                                                braceCount--;
+                                                                if (braceCount === 0) {
+                                                                    lastValidPos = i;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                        if (lastValidPos > 0) {
+                                                            try {
+                                                                parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
+                                                            } catch (e2) {
+                                                                // 如果还是失败，尝试使用 extractPartialJson
+                                                                parsed = extractPartialJson(jsonStr.substring(0, lastValidPos + 1));
+                                                                if (!parsed) {
+                                                                    // 最后尝试对整个字符串使用 extractPartialJson
+                                                                    parsed = extractPartialJson(jsonStr);
+                                                                }
+                                                            }
+                                                        } else {
+                                                            // 如果没有找到完整的对象，尝试使用 extractPartialJson
+                                                            parsed = extractPartialJson(jsonStr);
+                                                        }
+                                                    }
+                                                    
+                                                    if (parsed) {
+                                                        // 处理嵌套的 ok/result 结构
+                                                        while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
+                                                            parsed = parsed.result;
+                                                        }
+                                                        
+                                                        const tableHtml = formatToolResultAsTable(parsed, entryToolName);
+                                                        return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(entryToolName)} Result:</strong>
+                                                            ${tableHtml}
+                                                        </div>`;
+                                                    }
                                                 }
                                             } catch (e) {
-                                                // 解析失败，跳过
+                                                // 如果解析失败，返回空字符串
+                                                return '';
                                             }
                                         }
                                         return '';
@@ -3208,17 +3912,45 @@
                             }
                         }
                         
-                        // For discussion entries, extract and display full text
-                        let analysisText = '';
-                        if (entry_type === 'discussion' && content) {
-                            // 提取完整的分析文本，不限制长度
-                            const analysisMatch = content.match(/Analysis:\s*(.+)/is);
-                            if (analysisMatch) {
-                                analysisText = analysisMatch[1].trim();
-                            } else {
-                                // 如果没有"Analysis:"前缀，使用完整内容
-                                analysisText = content.trim();
-                            }
+                            // For discussion entries, extract and display full text
+                            let analysisText = '';
+                            if (entry_type === 'discussion' && content) {
+                                // 对于 Discussion Coordinator，特殊处理：提取 JSON 部分用于格式化
+                                const isCoordinator = agent.toLowerCase().includes('coordinator');
+                                
+                                if (isCoordinator) {
+                                    // Coordinator 的内容格式可能是 "Stance: neutral\n\nAnalysis: {...}" 或 "Stance: neutral\n\nSummary: {...}"
+                                    // 提取 JSON 部分，但不作为 analysisText，而是让 formatConversationContent 处理
+                                    const jsonMatch = content.match(/(?:Analysis|Summary):\s*(\{[\s\S]*\})/i);
+                                    if (jsonMatch) {
+                                        // 如果有 JSON，提取前面的文本作为 analysisText，JSON 部分留给 formatConversationContent
+                                        const jsonStart = content.indexOf(jsonMatch[1]);
+                                        const beforeJson = content.substring(0, jsonStart).trim();
+                                        // 移除 "Analysis:" 或 "Summary:" 前缀
+                                        analysisText = beforeJson.replace(/^(?:Analysis|Summary):\s*/i, '').trim();
+                                        // 如果 analysisText 太短，清空它，让 formatConversationContent 处理整个内容
+                                        if (analysisText.length < 50) {
+                                            analysisText = '';
+                                        }
+                                    } else {
+                                        // 如果没有找到 JSON，尝试提取分析文本
+                                        const analysisMatch = content.match(/Analysis:\s*(.+)/is);
+                                        if (analysisMatch) {
+                                            analysisText = analysisMatch[1].trim();
+                                        } else {
+                                            analysisText = content.trim();
+                                        }
+                                    }
+                                } else {
+                                    // 提取完整的分析文本，不限制长度
+                                    const analysisMatch = content.match(/Analysis:\s*(.+)/is);
+                                    if (analysisMatch) {
+                                        analysisText = analysisMatch[1].trim();
+                                    } else {
+                                        // 如果没有"Analysis:"前缀，使用完整内容
+                                        analysisText = content.trim();
+                                    }
+                                }
                             
                             // 清理杂讯：移除所有 "Requested tool:" 相关的占位文本
                             if (analysisText.includes('Requested tool:')) {
@@ -3234,14 +3966,17 @@
                             analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
                             
                             // 清理：移除 "Output:" 或 "Stance:" 等前缀后的 JSON 格式内容
-                            if (analysisText.includes('{') && analysisText.includes('"stance"')) {
-                                // 尝试提取 JSON 后的实际分析文本
-                                const jsonEnd = analysisText.lastIndexOf('}');
-                                if (jsonEnd > 0 && jsonEnd < analysisText.length - 50) {
-                                    // 如果 JSON 后面还有文本，使用后面的文本
-                                    const afterJson = analysisText.substring(jsonEnd + 1).trim();
-                                    if (afterJson.length > 50) {
-                                        analysisText = afterJson;
+                            // 但保留 Discussion Coordinator 的 JSON，因为它需要格式化显示
+                            if (!agent.toLowerCase().includes('coordinator')) {
+                                if (analysisText.includes('{') && analysisText.includes('"stance"')) {
+                                    // 尝试提取 JSON 后的实际分析文本
+                                    const jsonEnd = analysisText.lastIndexOf('}');
+                                    if (jsonEnd > 0 && jsonEnd < analysisText.length - 50) {
+                                        // 如果 JSON 后面还有文本，使用后面的文本
+                                        const afterJson = analysisText.substring(jsonEnd + 1).trim();
+                                        if (afterJson.length > 50) {
+                                            analysisText = afterJson;
+                                        }
                                     }
                                 }
                             }
@@ -3279,7 +4014,7 @@
                                     <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                     <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(analysisText)}</div>
                                 </div>` : ''}
-                                ${entry_type === 'tool' ? '' : (!analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content, entry_type)}</div>` : '')}
+                                ${entry_type === 'tool' ? '' : (!analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content, entry_type, agent)}</div>` : '')}
                             </div>`;
                     }).join('')}
                 </div>
@@ -3882,25 +4617,109 @@
                         }
                     }
                     
-                    // 特殊处理：get_company_fundamentals - 显示为卡片式布局
-                    if (toolName === 'get_company_fundamentals' && data.fundamentals) {
-                        const fund = data.fundamentals;
-                        const val = fund.valuation || {};
-                        const prof = fund.profitability || {};
-                        const growth = fund.growth || {};
-                        const health = fund.financial_health || {};
+                    // 基本面数据工具 - 叙述形式显示
+                    if (toolName === 'get_company_fundamentals') {
+                        // 基本面数据以叙述形式显示，便于处理多公司数据
+                        let html = '<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #22d3ee; line-height: 1.8;">';
                         
-                        return `
-                            <div style="margin-top: 8px; padding: 16px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #22d3ee;">
-                                <div style="font-weight: 700; color: #22d3ee; margin-bottom: 12px; font-size: 14px;">${data.company_name || data.symbol || 'Company'} - ${data.sector || ''}</div>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                    ${val.pe_ratio ? `<div style="padding: 10px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;"><div style="font-size: 11px; color: #94a3b8;">P/E Ratio</div><div style="font-size: 18px; font-weight: 700; color: #22d3ee;">${val.pe_ratio.toFixed(2)}</div></div>` : ''}
-                                    ${val.forward_pe ? `<div style="padding: 10px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;"><div style="font-size: 11px; color: #94a3b8;">Forward P/E</div><div style="font-size: 18px; font-weight: 700; color: #22d3ee;">${val.forward_pe.toFixed(2)}</div></div>` : ''}
-                                    ${prof.net_margin ? `<div style="padding: 10px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;"><div style="font-size: 11px; color: #94a3b8;">Net Margin</div><div style="font-size: 18px; font-weight: 700; color: #10b981;">${prof.net_margin.toFixed(2)}%</div></div>` : ''}
-                                    ${growth.revenue_growth ? `<div style="padding: 10px; background: rgba(34, 211, 238, 0.1); border-radius: 6px;"><div style="font-size: 11px; color: #94a3b8;">Revenue Growth</div><div style="font-size: 18px; font-weight: 700; color: #10b981;">${growth.revenue_growth.toFixed(2)}%</div></div>` : ''}
-                                </div>
-                            </div>
-                        `;
+                        // 处理单公司或多公司数据
+                        const fundamentals = data.fundamentals;
+                        if (Array.isArray(fundamentals)) {
+                            // 多公司数据
+                            fundamentals.forEach((fund, idx) => {
+                                if (idx > 0) html += '<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(34, 211, 238, 0.2);"></div>';
+                                html += formatFundamentalsAsNarrative(fund, data.symbol || `Company ${idx + 1}`);
+                            });
+                        } else if (fundamentals) {
+                            // 单公司数据
+                            html += formatFundamentalsAsNarrative(fundamentals, data.symbol || data.company_name || 'Company');
+                        } else {
+                            // 如果没有fundamentals字段，尝试直接使用data
+                            html += formatFundamentalsAsNarrative(data, data.symbol || data.company_name || 'Company');
+                        }
+                        
+                        html += '</div>';
+                        return html;
+                    }
+                    
+                    // 财务报表工具 - 叙述形式显示
+                    if (toolName === 'get_financial_statements') {
+                        const symbol = data.symbol || 'Company';
+                        let html = '<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #f59e0b; line-height: 1.8;">';
+                        html += `<div style="font-size: 14px; color: #f59e0b; font-weight: 700; margin-bottom: 12px;">${symbol} Financial Statements</div>`;
+                        
+                        // Balance Sheet - 叙述形式（使用 flattenObject 展开嵌套对象）
+                        if (data.balance_sheet && typeof data.balance_sheet === 'object') {
+                            const bs = flattenObject(data.balance_sheet, 'balance_sheet');
+                            html += '<div style="margin-bottom: 12px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">';
+                            html += '<div style="font-size: 12px; color: #fbbf24; font-weight: 600; margin-bottom: 6px;">Balance Sheet:</div>';
+                            const bsItems = [];
+                            if (bs.balance_sheet_total_assets !== undefined) bsItems.push(`Total Assets: <strong style="color: #10b981;">${formatNumber(bs.balance_sheet_total_assets)}</strong>`);
+                            if (bs.balance_sheet_total_liabilities !== undefined) bsItems.push(`Total Liabilities: <strong style="color: #ef4444;">${formatNumber(bs.balance_sheet_total_liabilities)}</strong>`);
+                            if (bs.balance_sheet_stockholders_equity !== undefined) bsItems.push(`Stockholders Equity: <strong style="color: #22d3ee;">${formatNumber(bs.balance_sheet_stockholders_equity)}</strong>`);
+                            if (bs.balance_sheet_cash_and_equivalents !== undefined) bsItems.push(`Cash & Equivalents: <strong style="color: #10b981;">${formatNumber(bs.balance_sheet_cash_and_equivalents)}</strong>`);
+                            html += '<div style="font-size: 13px; color: #e2e8f0;">' + bsItems.join(' • ') + '</div>';
+                            html += '</div>';
+                        }
+                        
+                        // Cash Flow - 叙述形式（使用 flattenObject 展开嵌套对象）
+                        if (data.cashflow && typeof data.cashflow === 'object') {
+                            const cf = flattenObject(data.cashflow, 'cashflow');
+                            html += '<div style="padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">';
+                            html += '<div style="font-size: 12px; color: #fbbf24; font-weight: 600; margin-bottom: 6px;">Cash Flow:</div>';
+                            const cfItems = [];
+                            if (cf.cashflow_operating_cashflow !== undefined) cfItems.push(`Operating: <strong style="color: #10b981;">${formatNumber(cf.cashflow_operating_cashflow)}</strong>`);
+                            if (cf.cashflow_investing_cashflow !== undefined) cfItems.push(`Investing: <strong style="color: ${cf.cashflow_investing_cashflow < 0 ? '#ef4444' : '#10b981'};">${formatNumber(cf.cashflow_investing_cashflow)}</strong>`);
+                            if (cf.cashflow_financing_cashflow !== undefined) cfItems.push(`Financing: <strong style="color: ${cf.cashflow_financing_cashflow < 0 ? '#ef4444' : '#10b981'};">${formatNumber(cf.cashflow_financing_cashflow)}</strong>`);
+                            if (cf.cashflow_free_cashflow !== undefined) cfItems.push(`Free Cash Flow: <strong style="color: #22d3ee;">${formatNumber(cf.cashflow_free_cashflow)}</strong>`);
+                            html += '<div style="font-size: 13px; color: #e2e8f0;">' + cfItems.join(' • ') + '</div>';
+                            html += '</div>';
+                        }
+                        
+                        html += '</div>';
+                        return html;
+                    }
+                    
+                    // 收益历史工具 - 叙述形式显示
+                    if (toolName === 'get_earnings_history') {
+                        const symbol = data.symbol || 'Company';
+                        let html = '<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #8b5cf6; line-height: 1.8;">';
+                        html += `<div style="font-size: 14px; color: #8b5cf6; font-weight: 700; margin-bottom: 12px;">${symbol} Earnings History</div>`;
+                        
+                        // Quarterly Earnings
+                        if (data.quarterly_earnings && Array.isArray(data.quarterly_earnings) && data.quarterly_earnings.length > 0) {
+                            html += '<div style="margin-bottom: 12px; padding: 10px; background: rgba(139, 92, 246, 0.1); border-radius: 6px;">';
+                            html += '<div style="font-size: 12px; color: #a78bfa; font-weight: 600; margin-bottom: 6px;">Quarterly Earnings:</div>';
+                            html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 1.8;">';
+                            data.quarterly_earnings.slice(0, 4).forEach(q => {
+                                const quarter = q.quarter || q.date || 'N/A';
+                                const revenue = q.revenue !== undefined ? formatNumber(q.revenue) : 'N/A';
+                                const earnings = q.earnings !== undefined ? formatNumber(q.earnings) : 'N/A';
+                                html += `<div>${quarter}: Revenue <strong style="color: #10b981;">${revenue}</strong>, Earnings <strong style="color: ${earnings >= 0 ? '#10b981' : '#ef4444'};">${earnings}</strong></div>`;
+                            });
+                            html += '</div></div>';
+                        } else {
+                            html += '<div style="color: #94a3b8; font-style: italic; margin-bottom: 12px;">No quarterly earnings data available</div>';
+                        }
+                        
+                        // Annual Earnings
+                        if (data.annual_earnings && Array.isArray(data.annual_earnings) && data.annual_earnings.length > 0) {
+                            html += '<div style="padding: 10px; background: rgba(139, 92, 246, 0.1); border-radius: 6px;">';
+                            html += '<div style="font-size: 12px; color: #a78bfa; font-weight: 600; margin-bottom: 6px;">Annual Earnings:</div>';
+                            html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 1.8;">';
+                            data.annual_earnings.slice(0, 3).forEach(a => {
+                                const year = a.year || a.date || 'N/A';
+                                const revenue = a.revenue !== undefined ? formatNumber(a.revenue) : 'N/A';
+                                const earnings = a.earnings !== undefined ? formatNumber(a.earnings) : 'N/A';
+                                html += `<div>${year}: Revenue <strong style="color: #10b981;">${revenue}</strong>, Earnings <strong style="color: ${earnings >= 0 ? '#10b981' : '#ef4444'};">${earnings}</strong></div>`;
+                            });
+                            html += '</div></div>';
+                        } else {
+                            html += '<div style="color: #94a3b8; font-style: italic;">No annual earnings data available</div>';
+                        }
+                        
+                        html += '</div>';
+                        return html;
                     }
                     
                     // 特殊处理：get_advanced_indicators - 显示为指标卡片
@@ -4077,9 +4896,66 @@
         // Parse tool information from content string
         function parseToolInfo(content) {
             if (!content || typeof content !== 'string') return null;
-            if (!content.startsWith('Tool used: ')) return null;
             
-            const toolText = content.substring('Tool used: '.length);
+            // 支持两种格式：
+            // 1. "Tool used: tool_name: {...}" (旧格式)
+            // 2. 直接 JSON 格式: "{...}" 或包含 JSON 的字符串
+            let toolText = '';
+            if (content.startsWith('Tool used: ')) {
+                toolText = content.substring('Tool used: '.length);
+            } else {
+                // 如果不是 "Tool used: " 格式，尝试直接解析 JSON
+                try {
+                    const jsonMatch = content.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        let jsonStr = jsonMatch[0];
+                        // 如果 JSON 可能被截断，尝试修复
+                        let parsed;
+                        try {
+                            parsed = JSON.parse(jsonStr);
+                        } catch (parseError) {
+                            // 尝试找到最后一个完整的对象
+                            let braceCount = 0;
+                            let lastValidPos = -1;
+                            for (let i = 0; i < jsonStr.length; i++) {
+                                if (jsonStr[i] === '{') braceCount++;
+                                else if (jsonStr[i] === '}') {
+                                    braceCount--;
+                                    if (braceCount === 0) {
+                                        lastValidPos = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (lastValidPos > 0) {
+                                try {
+                                    parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
+                                } catch (e2) {
+                                    parsed = null;
+                                }
+                            } else {
+                                parsed = null;
+                            }
+                        }
+                        
+                        if (parsed) {
+                            // 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
+                            // 递归提取 result 字段，直到找到实际数据
+                            while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
+                                parsed = parsed.result;
+                            }
+                            // 尝试从 parsed 中提取工具名
+                            const toolName = parsed.tool || parsed.name || parsed.tool_name || 'Unknown';
+                            return { name: toolName, result: parsed, full: content };
+                        }
+                    }
+                } catch (e) {
+                    // 如果解析失败，返回 null
+                    return null;
+                }
+                // 如果无法解析，返回 null
+                return null;
+            }
             
             // 解析工具信息，支持多种格式：
             // 1. "news_scan: 10 hits, queries=['AAPL'], samples=[...]"
@@ -4192,9 +5068,34 @@
                 indicators = '📈 FRED Indicator:\n' + toolResult;
             }
             
+            // 确保 result 是对象而不是字符串（如果可能）
+            let finalResult = toolResult;
+            if (typeof toolResult === 'string' && toolResult.trim().startsWith('{')) {
+                // 如果 toolResult 是 JSON 字符串，尝试解析
+                try {
+                    const parsed = JSON.parse(toolResult);
+                    // 处理嵌套的 ok/result 结构
+                    let resultData = parsed;
+                    while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                        resultData = resultData.result;
+                    }
+                    finalResult = resultData;
+                } catch (e) {
+                    // 如果解析失败，保持原样
+                    finalResult = toolResult;
+                }
+            } else if (typeof toolResult === 'object' && toolResult !== null) {
+                // 如果已经是对象，处理嵌套的 ok/result 结构
+                let resultData = toolResult;
+                while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                    resultData = resultData.result;
+                }
+                finalResult = resultData;
+            }
+            
             return { 
                 name: toolName, 
-                result: toolResult, 
+                result: finalResult, 
                 indicators: indicators,
                 full: toolText.trim()
             };
@@ -4228,16 +5129,67 @@
             });
         }
 
-        function formatConversationContent(content, entryType) {
+        function formatConversationContent(content, entryType, agentName = '') {
             if (!content) return '';
             
             // 尝试检测并格式化 JSON/dict 内容（适用于所有类型）
-            if (typeof content === 'string') {
+            // 检查是否是 Coordinator 或内容看起来像 JSON
+            const isCoordinator = agentName && agentName.toLowerCase().includes('coordinator');
+            const looksLikeJson = typeof content === 'string' && (content.trim().startsWith('{') || (content.includes('{') && content.includes('"') && content.includes(':')));
+            
+            if (typeof content === 'string' && (isCoordinator || looksLikeJson || content.match(/\{[\s\S]{20,}\}/))) {
                 // 尝试提取 JSON 对象
-                const jsonMatch = content.match(/\{[\s\S]{20,}\}/);
-                if (jsonMatch) {
+                let jsonStr = '';
+                
+                // 先尝试匹配 "Analysis: {...}" 或 "Summary: {...}" 格式
+                const analysisMatch = content.match(/(?:Analysis|Summary):\s*(\{[\s\S]*\})/i);
+                if (analysisMatch) {
+                    jsonStr = analysisMatch[1];
+                } else {
+                    // 否则尝试直接匹配 JSON
+                    const jsonMatch = content.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        jsonStr = jsonMatch[0];
+                    } else if (content.trim().startsWith('{')) {
+                        // 如果内容以 { 开头，尝试提取到最后一个可能的 }
+                        const lastBrace = content.lastIndexOf('}');
+                        if (lastBrace > 0) {
+                            jsonStr = content.substring(0, lastBrace + 1);
+                        }
+                    }
+                }
+                
+                if (jsonStr) {
                     try {
-                        const parsed = JSON.parse(jsonMatch[0]);
+                        // 处理截断 JSON
+                        let parsed;
+                        try {
+                            parsed = JSON.parse(jsonStr);
+                        } catch (parseError) {
+                            // 尝试找到最后一个完整的对象
+                            let braceCount = 0;
+                            let lastValidPos = -1;
+                            for (let i = 0; i < jsonStr.length; i++) {
+                                if (jsonStr[i] === '{') braceCount++;
+                                else if (jsonStr[i] === '}') {
+                                    braceCount--;
+                                    if (braceCount === 0) {
+                                        lastValidPos = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (lastValidPos > 0) {
+                                try {
+                                    parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
+                                } catch (e2) {
+                                    parsed = null;
+                                }
+                            } else {
+                                parsed = null;
+                            }
+                        }
+                        if (!parsed) return escapeHtml(content);
                         // 如果是对象，使用 formatToolResultAsTable 格式化
                         if (typeof parsed === 'object' && parsed !== null) {
                             // 对于对话内容中的 JSON，使用简化格式
@@ -5419,6 +6371,7 @@
             let marketStatusSource = 'api'; // 追踪状态来源：'api' 或 'fallback'
             try {
                 const marketCheck = await fetch(`${API_BASE}/api/market/is-open`, {
+                    mode: 'cors',  // 明确指定 CORS 模式
                     signal: AbortSignal.timeout(3000)  // 3秒超时，快速fallback到时间判断
                 });
                 if (marketCheck.ok) {
@@ -5871,7 +6824,9 @@
             // 只在交易时段检查订单
             orderCheckTimer = setInterval(async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/market/is-open`);
+                    const response = await fetch(`${API_BASE}/api/market/is-open`, {
+                        mode: 'cors'  // 明确指定 CORS 模式
+                    });
                     if (response.ok) {
                         const data = await response.json();
                         if (data.is_open) {
@@ -5889,7 +6844,9 @@
             // 立即执行一次检查（如果市场开盘）
             (async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/market/is-open`);
+                    const response = await fetch(`${API_BASE}/api/market/is-open`, {
+                        mode: 'cors'  // 明确指定 CORS 模式
+                    });
                     if (response.ok) {
                         const data = await response.json();
                         if (data.is_open) {

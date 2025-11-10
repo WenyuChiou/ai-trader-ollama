@@ -37,6 +37,14 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Important**: The market_view contains data for a large universe of stocks (typically 100+ stocks). You will see:
+  - stocks_count: Total number of stocks in the universe
+  - symbols: Complete list of all stock symbols
+  - sample_stocks_data: Sample data for the first 10 stocks (to understand data format)
+  - market_stats: Overall market statistics (averages, ranges, top signals)
+  - Use tools (get_market_indices, get_sector_rotation, get_market_breadth, etc.) to get comprehensive market-level data
+  - For specific stock analysis, use tools like get_advanced_indicators, get_company_fundamentals with specific symbols
+  
   **Note**: You are the first analyst in the discussion. If there is previous discussion, review it and build upon it. Otherwise, provide the initial market assessment.
   
   Your task as Market Analyst:
@@ -56,7 +64,7 @@ user: |
   Output format:
   {
     "stance": "risk_on" | "risk_off" | "neutral",
-    "analysis": "<your market analysis>",
+    "analysis": "<your comprehensive market analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (market indices, sector rotation, market breadth, economic indicators, etc.), (2) **MANDATORY**: If you used news_scan or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to market analysis, (c) Impact assessment. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your market stance based on the data, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for financial analysis.>",
     "market_regime": {
       "trend": "bull/bear/sideways",
       "volatility": "low/medium/high",

@@ -1340,6 +1340,10 @@ class ScenarioTester:
             portfolio_updated = True  # Portfolio file exists
             checks.append(("Portfolio state saved", portfolio_updated))
             
+            # Check 8.5: Summary length and quality (500 words requirement)
+            summary_checks = self.verify_summary_quality(discussion)
+            checks.extend(summary_checks)
+            
             # Check 9: Expected behavior for scenario
             scenario_num = scenario_info["scenario"]
             if scenario_num in [1, 3]:  # No initial holdings
@@ -1411,6 +1415,136 @@ class ScenarioTester:
         
         return passed == total
     
+    def verify_summary_quality(self, discussion):
+        """Verify summary quality: 100-150 words, tool results, news content"""
+        checks = []
+        print(f"\n📝 Summary Quality Verification:")
+        
+        # Get analyst reports
+        analyst_reports = discussion.get("analyst_reports", {})
+        coordinator_summary = discussion.get("coordinator_summary", {})
+        
+        all_summaries = []
+        
+        # Check each analyst's summary
+        for analyst_type, report in analyst_reports.items():
+            analysis = report.get("analysis", "")
+            if analysis:
+                all_summaries.append({
+                    "type": analyst_type,
+                    "text": analysis,
+                    "agent": f"{analyst_type.capitalize()} Analyst"
+                })
+        
+        # Check coordinator summary
+        if coordinator_summary:
+            summary_text = coordinator_summary.get("summary", "")
+            if summary_text:
+                all_summaries.append({
+                    "type": "coordinator",
+                    "text": summary_text,
+                    "agent": "Discussion Coordinator"
+                })
+        
+        # Also check discussion_actions.jsonl for latest entries
+        log_file = self.logs_dir / "discussion_actions.jsonl"
+        if log_file.exists():
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    # Get last 10 discussion entries
+                    for line in lines[-20:]:
+                        try:
+                            entry = json.loads(line.strip())
+                            if entry.get('type') == 'discussion':
+                                analysis = entry.get('analysis', '') or entry.get('content', '')
+                                if analysis and len(analysis) > 50:  # Only meaningful entries
+                                    agent = entry.get('agent', 'Unknown')
+                                    # Avoid duplicates
+                                    if not any(s['text'] == analysis for s in all_summaries):
+                                        all_summaries.append({
+                                            "type": "log_entry",
+                                            "text": analysis,
+                                            "agent": agent
+                                        })
+                        except (json.JSONDecodeError, KeyError):
+                            continue
+            except Exception as e:
+                print(f"   ⚠️  Could not read discussion_actions.jsonl: {e}")
+        
+        if not all_summaries:
+            print(f"   ⚠️  No summaries found to verify")
+            checks.append(("Summary quality check", False))
+            return checks
+        
+        print(f"   Found {len(all_summaries)} summaries to verify")
+        
+        # Verify each summary
+        total_words = 0
+        summaries_meeting_requirement = 0
+        summaries_with_tools = 0
+        summaries_with_news = 0
+        
+        for summary_info in all_summaries:
+            text = summary_info["text"]
+            agent = summary_info["agent"]
+            
+            # Calculate word count
+            word_count = len(text.split())
+            chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+            estimated_words = word_count + chinese_chars
+            char_count = len(text)
+            
+            total_words += estimated_words
+            
+            # Check if meets 100-150 words requirement
+            meets_requirement = 100 <= estimated_words <= 150
+            if meets_requirement:
+                summaries_meeting_requirement += 1
+            
+            # Check for tool results indicators
+            tool_indicators = [
+                "RSI", "MACD", "Bollinger", "support", "resistance",
+                "P/E", "P/B", "earnings", "revenue", "fundamentals",
+                "VIX", "Fear & Greed", "sentiment", "indicators"
+            ]
+            has_tools = any(indicator.lower() in text.lower() for indicator in tool_indicators)
+            if has_tools:
+                summaries_with_tools += 1
+            
+            # Check for news content indicators (more comprehensive)
+            news_indicators = [
+                "news", "article", "report", "announcement", "narrative",
+                "market sentiment", "headlines", "media", "headline",
+                "coverage", "story", "publication", "press", "journalism",
+                "breaking", "update", "developments", "events"
+            ]
+            has_news = any(indicator.lower() in text.lower() for indicator in news_indicators)
+            if has_news:
+                summaries_with_news += 1
+            
+            status = "✅" if meets_requirement else "⚠️"
+            print(f"   {status} {agent}: {estimated_words}字 ({char_count}字符) | "
+                  f"Tools: {'✅' if has_tools else '❌'} | News: {'✅' if has_news else '❌'}")
+        
+        # Overall checks
+        avg_words = total_words / len(all_summaries) if all_summaries else 0
+        pct_meeting_requirement = (summaries_meeting_requirement / len(all_summaries) * 100) if all_summaries else 0
+        
+        print(f"\n   Summary Statistics:")
+        print(f"   - Average words: {avg_words:.1f}")
+        print(f"   - Meeting 100-150 word requirement: {summaries_meeting_requirement}/{len(all_summaries)} ({pct_meeting_requirement:.1f}%)")
+        print(f"   - With tool results: {summaries_with_tools}/{len(all_summaries)}")
+        print(f"   - With news content: {summaries_with_news}/{len(all_summaries)}")
+        
+        # Add checks - relaxed requirements for 100-150 words
+        checks.append(("Summary average length (≥100 words)", avg_words >= 100))
+        checks.append(("Most summaries meet 100-150 word requirement (≥50%)", pct_meeting_requirement >= 50))
+        checks.append(("Summaries include tool results (≥50%)", (summaries_with_tools / len(all_summaries) * 100) >= 50))
+        checks.append(("Summaries include news content (≥30%)", (summaries_with_news / len(all_summaries) * 100) >= 30))
+        
+        return checks
+    
     def verify_multi_day_results(self, scenario_info, result):
         """Verify multi-day simulation results"""
         checks = []
@@ -1441,6 +1575,11 @@ class ScenarioTester:
                 discussion = day_result.get("discussion", {})
                 coordinator = discussion.get("coordinator_summary")
                 checks.append((f"Day {day_num}: Coordinator summary", coordinator is not None))
+                
+                # Summary quality check for each day
+                day_summary_checks = self.verify_summary_quality(discussion)
+                for check_name, check_result in day_summary_checks:
+                    checks.append((f"Day {day_num}: {check_name}", check_result))
                 
                 # Tool usage
                 tool_calls = discussion.get("tool_calls", [])

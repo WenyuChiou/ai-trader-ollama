@@ -127,7 +127,7 @@ def calculate_advanced_indicators(symbol: str, period: str = "3mo") -> Dict[str,
 
 def get_support_resistance(symbol: str, period: str = "6mo") -> Dict[str, Any]:
     """
-    计算支撑位和阻力位
+    计算支撑位和阻力位（不使用 scipy，使用纯 NumPy/pandas 实现）
     
     Args:
         symbol: 股票代码
@@ -147,14 +147,31 @@ def get_support_resistance(symbol: str, period: str = "6mo") -> Dict[str, Any]:
         low = df['Low']
         close = df['Close']
         
-        # 找到局部高点和低点
-        from scipy.signal import argrelextrema
+        # 使用纯 NumPy/pandas 方法找到局部高点和低点（不使用 scipy）
+        # 方法：使用滚动窗口找到局部极值
+        window = 5
         
-        high_idx = argrelextrema(high.values, np.greater, order=5)[0]
-        low_idx = argrelextrema(low.values, np.less, order=5)[0]
+        # 找到局部高点（阻力位）：使用滚动窗口，找到在窗口内是最大值的点
+        high_peaks = []
+        for i in range(window, len(high) - window):
+            window_data = high.iloc[i-window//2:i+window//2+1]
+            if high.iloc[i] == window_data.max() and high.iloc[i] == high.iloc[i]:
+                high_peaks.append((i, float(high.iloc[i])))
         
-        resistances = sorted([float(high.iloc[i]) for i in high_idx], reverse=True)[:3]
-        supports = sorted([float(low.iloc[i]) for i in low_idx], reverse=True)[:3]
+        # 找到局部低点（支撑位）：使用滚动窗口，找到在窗口内是最小值的点
+        low_peaks = []
+        for i in range(window, len(low) - window):
+            window_data = low.iloc[i-window//2:i+window//2+1]
+            if low.iloc[i] == window_data.min() and low.iloc[i] == low.iloc[i]:
+                low_peaks.append((i, float(low.iloc[i])))
+        
+        # 提取价格值并排序
+        resistances = sorted([price for _, price in high_peaks], reverse=True)[:5]
+        supports = sorted([price for _, price in low_peaks], reverse=False)[:5]
+        
+        # 去重并保留前3个
+        resistances = sorted(list(set(resistances)), reverse=True)[:3]
+        supports = sorted(list(set(supports)), reverse=False)[:3]
         
         current_price = float(close.iloc[-1])
         
@@ -164,7 +181,7 @@ def get_support_resistance(symbol: str, period: str = "6mo") -> Dict[str, Any]:
             "resistances": resistances,
             "supports": supports,
             "nearest_resistance": next((r for r in resistances if r > current_price), None),
-            "nearest_support": next((s for s in supports if s < current_price), None),
+            "nearest_support": next((s for s in reversed(supports) if s < current_price), None),
         }
         
     except Exception as e:

@@ -36,6 +36,14 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **Important**: The market_view contains data for a large universe of stocks (typically 100+ stocks). You will see:
+  - stocks_count: Total number of stocks in the universe
+  - symbols: Complete list of all stock symbols (use these for news_scan keywords)
+  - sample_stocks_data: Sample data for the first 10 stocks
+  - market_stats: Overall market statistics
+  - Use tools (fear_greed, vix_term, news_scan) to get comprehensive sentiment data
+  - For news_scan, you can use symbols from the universe as keywords (up to 5-10 symbols)
+  
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings
   - Agree or disagree with their stance (with reasoning)
@@ -60,7 +68,7 @@ user: |
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",
-    "analysis": "<your sentiment analysis>",
+    "analysis": "<your comprehensive sentiment analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (Fear & Greed Index, VIX data, news sentiment, market breadth, etc.), (2) **MANDATORY**: If you used news_scan, plan_and_scan_news, or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to sentiment analysis, (c) Sentiment impact assessment. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your sentiment stance based on the data and news, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for sentiment analysis.>",
     "fear_greed": {
       "value": 0-100,
       "label": "extreme_fear/fear/neutral/greed/extreme_greed",

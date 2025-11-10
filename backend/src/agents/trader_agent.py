@@ -111,6 +111,15 @@ def _calculate_position_size(
     # 计算数量（向下取整）
     quantity = floor(target_value / last_price)
     
+    # CRITICAL: 确保至少能买1股（如果价格合理且仓位百分比足够）
+    # 如果计算出的 quantity 为 0，但 remaining_position_pct 足够大，至少买1股
+    if quantity == 0 and remaining_position_pct > 0:
+        # 检查1股的价值是否在合理范围内（不超过目标仓位的150%）
+        one_share_value = last_price / portfolio_value if portfolio_value > 0 else 0
+        if one_share_value <= remaining_position_pct * 1.5:
+            quantity = 1
+            print(f"[TRADER] Ensuring minimum 1 share for {symbol} (position_pct={remaining_position_pct:.2%}, one_share_pct={one_share_value:.2%})")
+    
     # 确保不超过可用现金（如果有现金限制，这里可以进一步检查）
     # 但通常 portfolio_value 已经考虑了现金，所以这里不做额外检查
     
@@ -123,10 +132,12 @@ def _calculate_sell_size(
     portfolio_value: float,
     last_price: float,
     risk_report: Optional[Dict[str, Any]] = None,
+    current_positions: Optional[Dict[str, Any]] = None,
 ) -> int:
     """
     计算卖出数量（基于风险控管建议）
     - 如果超过限制，减少到目标仓位
+    - 如果仓位数量超过max_positions，卖出部分仓位
     """
     if current_qty <= 0 or last_price <= 0:
         return 0
@@ -135,7 +146,19 @@ def _calculate_sell_size(
     if risk_report:
         control_report = risk_report.get("position_control_report", {})
         limit_checks = control_report.get("position_limit_checks", [])
+        max_positions = control_report.get("max_positions", 10)
         
+        # Check if position count exceeds limit
+        if current_positions and len(current_positions) > max_positions:
+            # Calculate how many positions to sell to get back to limit
+            excess_positions = len(current_positions) - max_positions
+            # Sell a portion of this position (at least 1 share, but proportional to excess)
+            # If we have 11 positions and limit is 10, we need to reduce by 1 position
+            # So we should sell this entire position (or a significant portion)
+            sell_qty = max(1, floor(current_qty * (excess_positions / len(current_positions))))
+            return min(sell_qty, current_qty)
+        
+        # Check per-stock exposure limits
         for check in limit_checks:
             if check.get("symbol") == symbol and check.get("status") == "over_limit":
                 # 需要减仓
@@ -193,13 +216,14 @@ def run_trader(
     all_symbols = list(stocks.keys())
     
     # 从所有股票中筛选出信号良好的股票（不依赖 Market Analyst 的推荐）
+    # 降低阈值：从 2.0 降到 0.5，允许更多股票被考虑
     additional_buys = []
     for symbol, stock_data in stocks.items():
         if isinstance(stock_data, dict):
             try:
                 signal_score = float(stock_data.get("signal_score", 0))
-                # 更激进：signal_score > 2.0 就考虑买入（原来可能需要 uptrend + vix_risk <= 6.0）
-                if signal_score > 2.0 and symbol not in recs:
+                # 更激进：signal_score > 0.5 就考虑买入（降低阈值，提高交易频率）
+                if signal_score > 0.5 and symbol not in recs:
                     additional_buys.append(symbol)
             except Exception:
                 pass
@@ -207,6 +231,26 @@ def run_trader(
     # 合并推荐列表
     if additional_buys:
         recs = list(set(recs + additional_buys))  # 去重
+    
+    # 如果仍然没有推荐股票，使用 signal_score 最高的前10只股票（确保总是有一些交易机会）
+    # 即使 signal_score 很低，也至少选择一些股票（相对排名）
+    if not recs and stocks:
+        # 按 signal_score 排序，选择前10只（即使 signal_score 很低）
+        sorted_stocks = sorted(
+            stocks.items(),
+            key=lambda x: float(x[1].get("signal_score", 0)) if isinstance(x[1], dict) else 0,
+            reverse=True
+        )
+        # 至少选择前10只，即使 signal_score 为负或很低
+        recs = [symbol for symbol, _ in sorted_stocks[:10] if symbol in last_prices and last_prices.get(symbol, 0) > 0]
+        if recs:
+            print(f"[TRADER] No recommended stocks, using top {len(recs)} by signal_score: {recs[:5]}...")
+        else:
+            # 如果仍然没有，使用所有有价格的股票的前10只
+            available_stocks = [(s, d) for s, d in sorted_stocks if s in last_prices and last_prices.get(s, 0) > 0]
+            recs = [symbol for symbol, _ in available_stocks[:10]]
+            if recs:
+                print(f"[TRADER] Using top {len(recs)} available stocks (all have low signal_score): {recs[:5]}...")
     
     # 默认组合净值（如果没有提供）
     if portfolio_value is None:
@@ -284,6 +328,24 @@ def run_trader(
 
     # 生成买入订单（改进：支持同时买入多只股票，每只股票仓位更灵活）
     # 包括：普通股票、杠杆ETF（做多）、反向ETF（做空）
+    # CRITICAL: 即使 recs 为空或很少，在 neutral stance 时也应该生成一些订单
+    # 确保至少有一些交易决策，避免完全 HOLD
+    if not recs and stocks and portfolio_value > 0:
+        # Fallback: 如果仍然没有推荐股票，使用所有有价格的股票的前10只
+        available_stocks = [
+            (s, d) for s, d in stocks.items() 
+            if isinstance(d, dict) and s in last_prices and last_prices.get(s, 0) > 0
+        ]
+        if available_stocks:
+            # 按 signal_score 排序，选择前10只
+            sorted_available = sorted(
+                available_stocks,
+                key=lambda x: float(x[1].get("signal_score", 0)) if isinstance(x[1], dict) else 0,
+                reverse=True
+            )
+            recs = [symbol for symbol, _ in sorted_available[:10]]
+            print(f"[TRADER] Fallback: Using top {len(recs)} available stocks: {recs[:5]}...")
+    
     if recs and portfolio_value > 0:
         # 从配置中读取仓位限制参数
         if position_config:
@@ -386,7 +448,7 @@ def run_trader(
             
             if qty > 0 and symbol in last_prices:
                 sell_qty = _calculate_sell_size(
-                    symbol, qty, portfolio_value, last_prices[symbol], rview
+                    symbol, qty, portfolio_value, last_prices[symbol], rview, current_positions
                 )
                 if sell_qty > 0:
                     current_price = last_prices[symbol]

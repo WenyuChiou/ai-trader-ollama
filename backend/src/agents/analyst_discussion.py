@@ -267,14 +267,26 @@ def run_analyst_discussion(
                     kwargs.setdefault("max_articles", 10)
                     kwargs.setdefault("fetch_body_top", 0)
                     # keywords 至少要有東西；若模型沒給，退而求其次：從 market_view 裡取 symbols 或給常見詞彙
-                    if not kwargs.get("keywords"):
+                    # 检查是否有任何形式的关键词（keywords, tickers, queries, symbols）
+                    has_keywords = bool(
+                        kwargs.get("keywords") or 
+                        kwargs.get("tickers") or 
+                        kwargs.get("queries") or 
+                        kwargs.get("symbols")
+                    )
+                    if not has_keywords:
                         # 從輸入提取一些關鍵字
                         tickers = []
+                        # 先尝试从 market_view 的 inputs 中获取
                         mv_inputs = market_view.get("inputs") if isinstance(market_view, dict) else None
                         if isinstance(mv_inputs, dict):
                             tickers = mv_inputs.get("tickers") or mv_inputs.get("symbols") or []
+                        # 如果还没有，尝试从 market_view 的 symbols 中获取
+                        if not tickers:
+                            tickers = market_view.get("symbols") if isinstance(market_view, dict) else []
+                        # 如果还是没有，使用默认关键词
                         if tickers:
-                            kwargs["keywords"] = list({str(x) for x in tickers})
+                            kwargs["keywords"] = list({str(x) for x in tickers if x})
                         else:
                             kwargs["keywords"] = ["market", "AI", "tariff"]
                 

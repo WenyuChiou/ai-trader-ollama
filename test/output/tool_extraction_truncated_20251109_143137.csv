@@ -1,0 +1,13 @@
+﻿Agent,工具名称,内容长度,是否截断,截断类型,处理状态
+MarketAnalyst,get_market_indices,531,True,括号不匹配 (6 vs 2),⚠️ 仍为字符串
+MarketAnalyst,get_sector_rotation,532,True,括号不匹配 (6 vs 2),⚠️ 仍为字符串
+MarketAnalyst,get_market_breadth,296,False,,
+TechnicalAnalyst,get_advanced_indicators,536,True,括号不匹配 (6 vs 1),⚠️ 仍为字符串
+TechnicalAnalyst,get_support_resistance,126,False,,
+FundamentalAnalyst,get_company_fundamentals,537,True,括号不匹配 (5 vs 0),⚠️ 仍为字符串
+FundamentalAnalyst,get_earnings_history,218,False,,
+FundamentalAnalyst,get_financial_statements,537,True,括号不匹配 (5 vs 2),⚠️ 仍为字符串
+FundamentalAnalyst,get_sector_rotation,532,True,括号不匹配 (6 vs 2),⚠️ 仍为字符串
+SentimentAnalyst,fear_greed,338,False,,
+SentimentAnalyst,vix_term,219,False,,
+SentimentAnalyst,news_scan,140,False,,

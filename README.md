@@ -1621,6 +1621,34 @@ model: llama3.1:8b
 
 ---
 
+#### 7. **Restart Backend API (Windows PowerShell)**
+
+**Scenario**: Dashboard顯示 `Disconnected / Refreshing...`、或連不上 `http://127.0.0.1:8000`
+
+**Steps**:
+```powershell
+# 1) 進入專案根目錄
+cd "C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama"
+
+# 2) 啟用虛擬環境（若已啟用可略過）
+.\.venv\Scripts\Activate.ps1
+
+# 3) 停掉既有的 8000 埠行程（若有占用）
+netstat -ano | findstr 8000
+taskkill /PID <上一行顯示的 PID> /F
+
+# 4) 重新啟動 API（前景模式，可看到日誌）
+python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
+
+# 若要背景模式，將 stdout/stderr 轉到檔案：
+powershell -Command "Start-Process python -ArgumentList '-m','uvicorn','backend.src.api.server:app','--host','0.0.0.0','--port','8000' -WorkingDirectory 'C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama' -RedirectStandardOutput 'uvicorn.out.log' -RedirectStandardError 'uvicorn.err.log'"
+
+# 5) 追蹤最新日誌（可選）
+Get-Content .\uvicorn.err.log -Tail 50 -Wait
+```
+
+---
+
 ## 📖 Documentation
 
 ### Detailed Documentation Files

@@ -1508,7 +1508,12 @@
                         <h2>
                             💬 AI Agent Conversations (Live)
                         </h2>
-                        <span class="position-count" id="convCount">—</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="position-count" id="convCount">—</span>
+                            <button id="showNewsBtn" onclick="showNewsModal()" style="padding: 6px 12px; background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; border-radius: 6px; color: #6366f1; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                                📰 Show News
+                            </button>
+                        </div>
                     </div>
                     <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
                 </div>
@@ -1536,6 +1541,23 @@
                             </thead>
                             <tbody id="executionDetailsBody"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News Modal -->
+            <div id="newsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 10000; overflow-y: auto;">
+                <div style="position: relative; max-width: 900px; margin: 40px auto; background: #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: #ffffff; margin: 0; font-size: 20px;">📰 News Information</h2>
+                        <button onclick="closeNewsModal()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                            ✕ Close
+                        </button>
+                    </div>
+                    <div id="newsContent" style="max-height: 70vh; overflow-y: auto; color: #e2e8f0;">
+                        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <p>Loading news information...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3324,7 +3346,19 @@
                             // Display stance if available
                             let stanceHtml = '';
                             if (conv.stance) {
-                                const stanceColor = conv.stance === 'bullish' ? '#10b981' : conv.stance === 'bearish' ? '#ef4444' : '#6b7280';
+                                // risk_on = 红色（看涨/风险偏好开启）
+                                // risk_off = 绿色（看跌/风险偏好关闭）
+                                // neutral = 正常颜色（灰色）
+                                // bullish = 绿色，bearish = 红色（保持兼容）
+                                const stanceLower = (conv.stance || '').toLowerCase();
+                                let stanceColor = '#6b7280'; // 默认灰色（neutral）
+                                if (stanceLower === 'risk_on' || stanceLower === 'bullish') {
+                                    stanceColor = '#ef4444'; // 红色（risk_on/bullish）
+                                } else if (stanceLower === 'risk_off' || stanceLower === 'bearish') {
+                                    stanceColor = '#10b981'; // 绿色（risk_off/bearish）
+                                } else if (stanceLower === 'neutral') {
+                                    stanceColor = '#6b7280'; // 灰色（neutral）
+                                }
                                 stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">🎯 Stance: ${conv.stance.toUpperCase()}</div>`;
                             }
                             
@@ -3618,6 +3652,8 @@
 
         // Render conversations on Overview
         function renderConversationsOverview(conversations) {
+            // 保存conversations到全局变量，供新闻模态框使用
+            window.currentConversations = conversations || [];
             const container = document.getElementById('conversationsOverview');
             const count = document.getElementById('convCount');
             if (!container) return;
@@ -3757,269 +3793,58 @@
                         // Display stance if available
                         let stanceHtml = '';
                         if (c.stance) {
-                            const stanceColor = c.stance === 'bullish' ? '#10b981' : c.stance === 'bearish' ? '#ef4444' : '#6b7280';
+                            // risk_on = 红色（看涨/风险偏好开启）
+                            // risk_off = 绿色（看跌/风险偏好关闭）
+                            // neutral = 正常颜色（灰色）
+                            // bullish = 绿色，bearish = 红色（保持兼容）
+                            const stanceLower = (c.stance || '').toLowerCase();
+                            let stanceColor = '#6b7280'; // 默认灰色（neutral）
+                            if (stanceLower === 'risk_on' || stanceLower === 'bullish') {
+                                stanceColor = '#ef4444'; // 红色（risk_on/bullish）
+                            } else if (stanceLower === 'risk_off' || stanceLower === 'bearish') {
+                                stanceColor = '#10b981'; // 绿色（risk_off/bearish）
+                            } else if (stanceLower === 'neutral') {
+                                stanceColor = '#6b7280'; // 灰色（neutral）
+                            }
                             stanceHtml = `<div class="conversation-meta" style="color: ${stanceColor}; font-weight: 600;">🎯 Stance: ${c.stance.toUpperCase()}</div>`;
                         }
                         
-                        // Display tools used if available
-                        let toolsUsedHtml = '';
-                        let discussionToolResultsHtml = '';
-                        if (c.tools_used && Array.isArray(c.tools_used) && c.tools_used.length > 0) {
-                            toolsUsedHtml = `<div class="conversation-meta" style="color: #6366f1; font-weight: 500;">🔧 Tools Used: ${c.tools_used.join(', ')}</div>`;
-                            
-                            // 对于 discussion 条目，查找对应的 tool 条目来显示工具结果
-                            if (entry_type === 'discussion') {
-                                // 标准化 agent 名称：移除空格，统一格式
-                                const agentNormalized = agent.replace(/\s+/g, ''); // "Sentiment Analyst" -> "SentimentAnalyst"
-                                const discussionDate = c.date || c.timestamp?.split('T')[0];
-                                const toolEntries = conversations.filter(conv => {
-                                    if (conv.type !== 'tool') return false;
-                                    // 标准化 tool 条目的 agent 名称
-                                    const toolAgentNormalized = (conv.agent || '').replace(/\s+/g, '');
-                                    // 匹配 agent 名称
-                                    const agentMatch = agentNormalized === toolAgentNormalized || 
-                                                      agentNormalized.toLowerCase() === toolAgentNormalized.toLowerCase();
-                                    // 匹配日期
-                                    const toolDate = conv.date || conv.timestamp?.split('T')[0];
-                                    const dateMatch = discussionDate && toolDate && (discussionDate === toolDate);
-                                    return agentMatch && dateMatch;
-                                });
-                                
-                                if (toolEntries.length > 0) {
-                                    // 获取 discussion 条目使用的工具名称列表（小写，用于匹配）
-                                    const toolsUsedLower = c.tools_used.map(t => t.toLowerCase());
-                                    
-                                    const toolResultsHtml = toolEntries.map(toolEntry => {
-                                        // 获取工具名称（从多个可能的字段）
-                                        const entryToolName = (toolEntry.tool_name || '').toLowerCase();
-                                        
-                                        // 检查这个工具是否在 discussion 的 tools_used 列表中
-                                        const isToolUsed = toolsUsedLower.some(usedTool => 
-                                            entryToolName === usedTool || 
-                                            entryToolName.includes(usedTool) || 
-                                            usedTool.includes(entryToolName)
-                                        );
-                                        
-                                        if (!isToolUsed) return ''; // 如果工具不在使用列表中，跳过
-                                        
-                                        const toolContent = toolEntry.content || '';
-                                        const toolInfo = parseToolInfo(toolContent);
-                                        
-                                        // 调试：检查 parseToolInfo 的返回值
-                                        if (!toolInfo) {
-                                            console.warn(`[Tool Display] parseToolInfo returned null for ${entryToolName}`, toolContent.substring(0, 100));
-                                        }
-                                        
-                                        if (toolInfo && toolInfo.result) {
-                                            // 确保 result 是对象，而不是字符串
-                                            let resultData = toolInfo.result;
-                                            if (typeof resultData === 'string') {
-                                                // 检查字符串是否看起来像 JSON（以 { 或 [ 开头）
-                                                const trimmed = resultData.trim();
-                                                const looksLikeJson = trimmed.startsWith('{') || trimmed.startsWith('[');
-                                                
-                                                if (looksLikeJson) {
-                                                    // 如果看起来像 JSON，尝试解析
-                                                    try {
-                                                        resultData = JSON.parse(resultData);
-                                                    } catch (e) {
-                                                        // 如果直接解析失败，尝试使用 extractPartialJson
-                                                        const partial = extractPartialJson(resultData);
-                                                        if (partial) {
-                                                            resultData = partial;
-                                                        } else {
-                                                            // 如果完全无法解析为 JSON，将其作为纯文本处理
-                                                            console.warn(`[Tool Display] Failed to parse result string for ${entryToolName}, treating as plain text`, e);
-                                                            resultData = { raw_text: resultData, _is_plain_text: true };
-                                                        }
-                                                    }
-                                                } else {
-                                                    // 如果不像 JSON，直接作为纯文本处理
-                                                    resultData = { raw_text: resultData, _is_plain_text: true };
-                                                }
-                                            }
-                                            
-                                            // 处理嵌套的 ok/result 结构（但保留纯文本标记）
-                                            if (!resultData._is_plain_text) {
-                                                while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
-                                                    resultData = resultData.result;
-                                                }
-                                            }
-                                            
-                                            const tableHtml = formatToolResultAsTable(resultData, toolInfo.name);
-                                            return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                                <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(toolInfo.name)} Result:</strong>
-                                                ${tableHtml}
-                                            </div>`;
-                                        } else {
-                                            try {
-                                                // 尝试从内容中提取 JSON（可能被截断或以 ', {' 开头）
-                                                let jsonStr = '';
-                                                
-                                                // 如果内容以 ', {' 开头，找到第一个 {
-                                                if (toolContent.trim().startsWith(', {')) {
-                                                    const firstBrace = toolContent.indexOf('{');
-                                                    if (firstBrace >= 0) {
-                                                        jsonStr = toolContent.substring(firstBrace);
-                                                    }
-                                                } else if (toolContent.trim().startsWith('{')) {
-                                                    jsonStr = toolContent.trim();
-                                                } else {
-                                                    // 尝试匹配 JSON 对象
-                                                    const jsonMatch = toolContent.match(/\{[\s\S]*\}/);
-                                                    if (jsonMatch) {
-                                                        jsonStr = jsonMatch[0];
-                                                    } else if (toolContent.includes('{')) {
-                                                        // 如果内容包含 {，尝试找到第一个 { 到最后一个 }
-                                                        const firstBrace = toolContent.indexOf('{');
-                                                        const lastBrace = toolContent.lastIndexOf('}');
-                                                        if (firstBrace >= 0 && lastBrace > firstBrace) {
-                                                            jsonStr = toolContent.substring(firstBrace, lastBrace + 1);
-                                                        }
-                                                    }
-                                                }
-                                                
-                                                if (jsonStr) {
-                                                    // 处理截断 JSON
-                                                    let parsed;
-                                                    try {
-                                                        parsed = JSON.parse(jsonStr);
-                                                    } catch (parseError) {
-                                                        // 尝试找到最后一个完整的对象
-                                                        let braceCount = 0;
-                                                        let lastValidPos = -1;
-                                                        for (let i = 0; i < jsonStr.length; i++) {
-                                                            if (jsonStr[i] === '{') braceCount++;
-                                                            else if (jsonStr[i] === '}') {
-                                                                braceCount--;
-                                                                if (braceCount === 0) {
-                                                                    lastValidPos = i;
-                                                                    break;
-                                                                }
-                                                            }
-                                                        }
-                                                        if (lastValidPos > 0) {
-                                                            try {
-                                                                parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
-                                                            } catch (e2) {
-                                                                // 如果还是失败，尝试使用 extractPartialJson
-                                                                parsed = extractPartialJson(jsonStr.substring(0, lastValidPos + 1));
-                                                                if (!parsed) {
-                                                                    // 最后尝试对整个字符串使用 extractPartialJson
-                                                                    parsed = extractPartialJson(jsonStr);
-                                                                }
-                                                            }
-                                                        } else {
-                                                            // 如果没有找到完整的对象，尝试使用 extractPartialJson
-                                                            parsed = extractPartialJson(jsonStr);
-                                                        }
-                                                    }
-                                                    
-                                                    if (parsed) {
-                                                        // 处理嵌套的 ok/result 结构
-                                                        while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
-                                                            parsed = parsed.result;
-                                                        }
-                                                        
-                                                        const tableHtml = formatToolResultAsTable(parsed, entryToolName);
-                                                        return `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                                            <strong style="color: #f59e0b; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">📊 ${escapeHtml(entryToolName)} Result:</strong>
-                                                            ${tableHtml}
-                                                        </div>`;
-                                                    }
-                                                }
-                                            } catch (e) {
-                                                // 如果解析失败，返回空字符串
-                                                return '';
-                                            }
-                                        }
-                                        return '';
-                                    }).filter(html => html.length > 0).join('');
-                                    
-                                    if (toolResultsHtml) {
-                                        discussionToolResultsHtml = toolResultsHtml;
-                                    }
+                        // For discussion entries, extract and display only the summary/analysis text
+                        let analysisText = '';
+                        if (entry_type === 'discussion' && content) {
+                            // 提取完整的分析文本（summary），去掉Stance前缀
+                            const analysisMatch = content.match(/Analysis:\s*(.+)/is);
+                            if (analysisMatch) {
+                                analysisText = analysisMatch[1].trim();
+                            } else {
+                                // 如果没有"Analysis:"前缀，尝试提取Stance后面的内容
+                                const stanceMatch = content.match(/Stance:\s*\w+\s*\n\s*(.+)/is);
+                                if (stanceMatch) {
+                                    analysisText = stanceMatch[1].trim();
+                                } else {
+                                    // 如果都没有，使用完整内容但去掉Stance行
+                                    analysisText = content.replace(/^Stance:\s*\w+.*$/im, '').trim();
                                 }
                             }
-                        }
-                        
-                            // For discussion entries, extract and display full text
-                            let analysisText = '';
-                            if (entry_type === 'discussion' && content) {
-                                // 对于 Discussion Coordinator，特殊处理：提取 JSON 部分用于格式化
-                                const isCoordinator = agent.toLowerCase().includes('coordinator');
-                                
-                                if (isCoordinator) {
-                                    // Coordinator 的内容格式可能是 "Stance: neutral\n\nAnalysis: {...}" 或 "Stance: neutral\n\nSummary: {...}"
-                                    // 提取 JSON 部分，但不作为 analysisText，而是让 formatConversationContent 处理
-                                    const jsonMatch = content.match(/(?:Analysis|Summary):\s*(\{[\s\S]*\})/i);
-                                    if (jsonMatch) {
-                                        // 如果有 JSON，提取前面的文本作为 analysisText，JSON 部分留给 formatConversationContent
-                                        const jsonStart = content.indexOf(jsonMatch[1]);
-                                        const beforeJson = content.substring(0, jsonStart).trim();
-                                        // 移除 "Analysis:" 或 "Summary:" 前缀
-                                        analysisText = beforeJson.replace(/^(?:Analysis|Summary):\s*/i, '').trim();
-                                        // 如果 analysisText 太短，清空它，让 formatConversationContent 处理整个内容
-                                        if (analysisText.length < 50) {
-                                            analysisText = '';
-                                        }
-                                    } else {
-                                        // 如果没有找到 JSON，尝试提取分析文本
-                                        const analysisMatch = content.match(/Analysis:\s*(.+)/is);
-                                        if (analysisMatch) {
-                                            analysisText = analysisMatch[1].trim();
-                                        } else {
-                                            analysisText = content.trim();
-                                        }
-                                    }
-                                } else {
-                                    // 提取完整的分析文本，不限制长度
-                                    const analysisMatch = content.match(/Analysis:\s*(.+)/is);
-                                    if (analysisMatch) {
-                                        analysisText = analysisMatch[1].trim();
-                                    } else {
-                                        // 如果没有"Analysis:"前缀，使用完整内容
-                                        analysisText = content.trim();
-                                    }
-                                }
                             
-                            // 清理杂讯：移除所有 "Requested tool:" 相关的占位文本
-                            if (analysisText.includes('Requested tool:')) {
-                                // 移除 "Requested tool: xxx - description" 格式的文本
-                                analysisText = analysisText.replace(/Requested tool:\s*[^-]+(?:\s*-\s*[^\n]*)?/gi, '').trim();
-                                // 如果清理后只剩下 "Requested tool:" 或类似内容，清空
-                                if (analysisText.match(/^(Requested tool|Tool|Analysis using tools):?\s*$/i)) {
-                                    analysisText = '';
-                                }
+                            // 清理杂讯：移除 "Requested tool:" 开头的占位文本
+                            if (analysisText.startsWith('Requested tool:')) {
+                                analysisText = '';
                             }
                             
                             // 清理：移除 JSON 代码块标记和多余的格式
                             analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
                             
-                            // 清理：移除 "Output:" 或 "Stance:" 等前缀后的 JSON 格式内容
-                            // 但保留 Discussion Coordinator 的 JSON，因为它需要格式化显示
-                            if (!agent.toLowerCase().includes('coordinator')) {
-                                if (analysisText.includes('{') && analysisText.includes('"stance"')) {
-                                    // 尝试提取 JSON 后的实际分析文本
-                                    const jsonEnd = analysisText.lastIndexOf('}');
-                                    if (jsonEnd > 0 && jsonEnd < analysisText.length - 50) {
-                                        // 如果 JSON 后面还有文本，使用后面的文本
-                                        const afterJson = analysisText.substring(jsonEnd + 1).trim();
-                                        if (afterJson.length > 50) {
-                                            analysisText = afterJson;
-                                        }
+                            // 清理：移除 JSON 格式内容（如果存在）
+                            if (analysisText.includes('{') && analysisText.includes('"stance"')) {
+                                // 尝试提取 JSON 后的实际分析文本
+                                const jsonEnd = analysisText.lastIndexOf('}');
+                                if (jsonEnd > 0 && jsonEnd < analysisText.length - 50) {
+                                    // 如果 JSON 后面还有文本，使用后面的文本
+                                    const afterJson = analysisText.substring(jsonEnd + 1).trim();
+                                    if (afterJson.length > 50) {
+                                        analysisText = afterJson;
                                     }
-                                }
-                            }
-                            
-                            // 清理：移除 "Stance: xxx" 单独行（如果后面还有其他内容）
-                            analysisText = analysisText.replace(/^Stance:\s*\w+\s*$/mi, '').trim();
-                            
-                            // 清理：移除 "Summary:" 后的简短列表项（如果后面还有其他内容）
-                            if (analysisText.includes('Summary:') && analysisText.length > 200) {
-                                const summaryMatch = analysisText.match(/Summary:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|\n[A-Z]|$)/i);
-                                if (summaryMatch && summaryMatch[1].length < 100) {
-                                    analysisText = analysisText.replace(/Summary:\s*[^\n]+(?:\n[^\n]+)*?/i, '').trim();
                                 }
                             }
                             
@@ -4029,23 +3854,34 @@
                             }
                         }
                         
+                        // 只显示discussion类型的entry，并且只显示summary，不显示工具结果
+                        if (entry_type !== 'discussion' || !analysisText) {
+                            return ''; // 跳过非discussion或没有analysis的entry
+                        }
+                        
+                        // 获取工具名称（如果有），每个工具分开显示
+                        const toolsUsed = c.tools_used && Array.isArray(c.tools_used) && c.tools_used.length > 0 
+                            ? c.tools_used 
+                            : [];
+                        // 每个工具一个独立的badge，而不是用逗号连接
+                        const toolsBadges = toolsUsed.map(tool => 
+                            `<span style="font-size: 11px; color: #6366f1; background: rgba(99, 102, 241, 0.15); padding: 2px 8px; border-radius: 12px; font-weight: 500; margin-left: 4px;">🔧 ${escapeHtml(tool)}</span>`
+                        ).join('');
+                        
                         return `
-                            <div class="conversation-item" style="${entry_type === 'tool' ? 'border-left-color: #f59e0b;' : ''}">
-                                <div class="conversation-header">
-                                    <span class="conversation-agent">${agentIcon} ${agent}${entry_type === 'tool' ? ' 🔧' : ''}</span>
-                                    <span class="conversation-date">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
+                            <div class="conversation-item">
+                                <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <span class="conversation-agent">${agentIcon} ${agent}</span>
+                                        ${toolsBadges}
+                                    </div>
+                                    <span class="conversation-date" style="font-size: 11px; color: #94a3b8;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
                                 </div>
-                                ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
+                                ${round ? `<div class="conversation-meta" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Round ${round}</div>` : ''}
                                 ${stanceHtml}
-                                ${toolsUsedHtml}
-                                ${discussionToolResultsHtml}
-                                ${toolHtml}
-                                ${toolResultHtml}
                                 ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">
-                                    <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
-                                    <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(analysisText)}</div>
+                                    <div style="color: #ffffff; white-space: pre-wrap; word-wrap: break-word; font-weight: 400;">${escapeHtml(analysisText)}</div>
                                 </div>` : ''}
-                                ${entry_type === 'tool' ? '' : (!analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto;">${formatConversationContent(content, entry_type, agent)}</div>` : '')}
                             </div>`;
                     }).join('')}
                 </div>
@@ -5631,7 +5467,12 @@
                 // Prepare chart data
                 const labels = equityData.map(item => {
                     const date = new Date(item.date || item.timestamp);
-                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    // 格式化：包含日期、小时和分钟
+                    const month = date.toLocaleDateString('en-US', { month: 'short' });
+                    const day = date.getDate();
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${month} ${day} ${hours}:${minutes}`;
                 });
                 
                 const values = equityData.map(item => item.value || item.total_value || item.equity || 0);
@@ -5684,6 +5525,19 @@
                                 padding: 12,
                                 displayColors: false,
                                 callbacks: {
+                                    title: function(context) {
+                                        // 在 tooltip 中显示完整的时间（包括秒）
+                                        const index = context[0].dataIndex;
+                                        const item = equityData[index];
+                                        const date = new Date(item.date || item.timestamp);
+                                        const month = date.toLocaleDateString('en-US', { month: 'short' });
+                                        const day = date.getDate();
+                                        const year = date.getFullYear();
+                                        const hours = String(date.getHours()).padStart(2, '0');
+                                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                                        return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds}`;
+                                    },
                                     label: function(context) {
                                         return 'Value: $' + formatNumber(context.parsed.y, 2);
                                     }
@@ -5700,6 +5554,10 @@
                                     font: {
                                         size: 11,
                                     },
+                                    maxRotation: 45,  // 允许标签旋转45度，避免重叠
+                                    minRotation: 0,
+                                    autoSkip: true,  // 自动跳过一些标签，避免过于拥挤
+                                    maxTicksLimit: 20,  // 最多显示20个标签
                                 },
                             },
                             y: {
@@ -7296,6 +7154,230 @@
         // 页面卸载时清理
         window.addEventListener('beforeunload', () => {
             stopAutoTrade();
+        });
+
+        // 收集所有新闻信息
+        function collectNewsData(conversations) {
+            const newsData = [];
+            
+            // 从所有conversations中提取新闻工具的结果
+            for (const conv of conversations) {
+                if (conv.type === 'tool') {
+                    const toolName = conv.tool_name || '';
+                    const content = conv.content || '';
+                    
+                    // 检查是否是新闻相关的工具
+                    if (toolName.includes('news') || toolName.includes('plan_and_scan')) {
+                        try {
+                            // 尝试解析工具结果
+                            let result = null;
+                            const toolInfo = parseToolInfo(content);
+                            if (toolInfo && toolInfo.result) {
+                                result = toolInfo.result;
+                            } else {
+                                // 如果 parseToolInfo 失败，尝试直接从 content 中提取 JSON
+                                // 查找 "Tool used: news_scan: {" 之后的内容
+                                const jsonStart = content.indexOf('{');
+                                if (jsonStart > 0) {
+                                    let jsonStr = content.substring(jsonStart);
+                                    // 尝试解析完整的 JSON
+                                    try {
+                                        result = JSON.parse(jsonStr);
+                                    } catch (e1) {
+                                        // 如果失败，尝试提取部分 JSON（特别是 hits 数组）
+                                        try {
+                                            // 查找 "hits": [ 开始的位置
+                                            const hitsStart = jsonStr.indexOf('"hits":');
+                                            if (hitsStart > 0) {
+                                                // 找到 hits 数组的开始
+                                                const arrayStart = jsonStr.indexOf('[', hitsStart);
+                                                if (arrayStart > 0) {
+                                                    // 尝试找到完整的数组（即使 JSON 被截断）
+                                                    let bracketCount = 0;
+                                                    let arrayEnd = -1;
+                                                    let inString = false;
+                                                    let escapeNext = false;
+                                                    
+                                                    for (let i = arrayStart; i < jsonStr.length; i++) {
+                                                        const char = jsonStr[i];
+                                                        if (escapeNext) {
+                                                            escapeNext = false;
+                                                            continue;
+                                                        }
+                                                        if (char === '\\') {
+                                                            escapeNext = true;
+                                                            continue;
+                                                        }
+                                                        if (char === '"') {
+                                                            inString = !inString;
+                                                            continue;
+                                                        }
+                                                        if (!inString) {
+                                                            if (char === '[') bracketCount++;
+                                                            else if (char === ']') {
+                                                                bracketCount--;
+                                                                if (bracketCount === 0) {
+                                                                    arrayEnd = i;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    if (arrayEnd > 0) {
+                                                        // 提取完整的 hits 数组
+                                                        const hitsArrayStr = jsonStr.substring(arrayStart, arrayEnd + 1);
+                                                        const hitsArray = JSON.parse(hitsArrayStr);
+                                                        
+                                                        // 尝试提取 queries
+                                                        let queries = [];
+                                                        const queriesMatch = jsonStr.match(/"queries":\s*\[[^\]]*\]/);
+                                                        if (queriesMatch) {
+                                                            try {
+                                                                const queriesStart = queriesMatch[0].indexOf('[');
+                                                                const queriesStr = queriesMatch[0].substring(queriesStart);
+                                                                queries = JSON.parse(queriesStr);
+                                                            } catch (e) {}
+                                                        }
+                                                        
+                                                        result = { hits: hitsArray, queries: queries };
+                                                    }
+                                                }
+                                            }
+                                        } catch (e2) {
+                                            console.warn('[News] Failed to extract partial JSON:', e2);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 提取新闻数据
+                            if (result && result.hits && Array.isArray(result.hits)) {
+                                for (const hit of result.hits) {
+                                    if (hit && (hit.title || hit.link)) {
+                                        newsData.push({
+                                            title: hit.title || 'No title',
+                                            link: hit.link || '',
+                                            source: hit.source || 'Unknown',
+                                            published: hit.published || hit.published_timestamp || '',
+                                            timestamp: conv.timestamp || conv.date || '',
+                                            agent: conv.agent || 'Unknown',
+                                            tool: toolName
+                                        });
+                                    }
+                                }
+                            }
+                            
+                            // 如果有queries信息，也保存
+                            if (result && result.queries && Array.isArray(result.queries)) {
+                                // 可以用于显示搜索关键词
+                            }
+                        } catch (e) {
+                            console.warn('[News] Failed to parse news tool result:', e, content.substring(0, 200));
+                        }
+                    }
+                }
+            }
+            
+            // 去重（基于title和link）
+            const seen = new Set();
+            const uniqueNews = [];
+            for (const news of newsData) {
+                const key = `${news.title}|${news.link}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueNews.push(news);
+                }
+            }
+            
+            return uniqueNews;
+        }
+
+        // 显示新闻模态框
+        function showNewsModal() {
+            const modal = document.getElementById('newsModal');
+            const newsContent = document.getElementById('newsContent');
+            
+            if (!modal || !newsContent) return;
+            
+            // 获取当前conversations数据
+            const conversations = window.currentConversations || [];
+            
+            // 收集新闻数据
+            const newsData = collectNewsData(conversations);
+            
+            if (newsData.length === 0) {
+                newsContent.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <p style="font-size: 16px; margin-bottom: 8px;">📰 No news data available</p>
+                        <p style="font-size: 14px;">News tools (news_scan, plan_and_scan_news) have not been used yet.</p>
+                    </div>
+                `;
+            } else {
+                // 按时间排序（最新的在前）
+                newsData.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    return timeB - timeA;
+                });
+                
+                // 按来源分组
+                const newsBySource = {};
+                for (const news of newsData) {
+                    const source = news.source || 'Unknown';
+                    if (!newsBySource[source]) {
+                        newsBySource[source] = [];
+                    }
+                    newsBySource[source].push(news);
+                }
+                
+                let html = `<div style="margin-bottom: 24px;">
+                    <div style="color: #22d3ee; font-size: 14px; font-weight: 600; margin-bottom: 8px;">Total: ${newsData.length} articles from ${Object.keys(newsBySource).length} sources</div>
+                </div>`;
+                
+                // 按来源显示
+                for (const [source, articles] of Object.entries(newsBySource)) {
+                    html += `<div style="margin-bottom: 24px; padding: 16px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee;">
+                        <div style="color: #22d3ee; font-size: 16px; font-weight: 600; margin-bottom: 12px;">📰 ${escapeHtml(source)} (${articles.length} articles)</div>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">`;
+                    
+                    for (const article of articles) {
+                        html += `<div style="padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 6px;">
+                            <div style="font-weight: 600; color: #ffffff; margin-bottom: 6px; font-size: 14px;">
+                                ${escapeHtml(article.title)}
+                            </div>
+                            <div style="display: flex; gap: 12px; font-size: 12px; color: #94a3b8; margin-top: 8px;">
+                                ${article.link ? `<a href="${escapeHtml(article.link)}" target="_blank" style="color: #6366f1; text-decoration: none;">🔗 Open Link</a>` : ''}
+                                <span>Agent: ${escapeHtml(article.agent)}</span>
+                                <span>Tool: ${escapeHtml(article.tool)}</span>
+                                ${article.timestamp ? `<span>${new Date(article.timestamp).toLocaleString()}</span>` : ''}
+                            </div>
+                        </div>`;
+                    }
+                    
+                    html += `</div></div>`;
+                }
+                
+                newsContent.innerHTML = html;
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        // 关闭新闻模态框
+        function closeNewsModal() {
+            const modal = document.getElementById('newsModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // 点击模态框外部关闭
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('newsModal');
+            if (modal && e.target === modal) {
+                closeNewsModal();
+            }
         });
 
         // Scroll to section and update active nav button

@@ -1073,6 +1073,27 @@ def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
         elif tool_name == "vix_term":
             vix = tool_result.get("vix", {})
             return f"VIX: {vix.get('vix', 'N/A')}, Term structure: {vix.get('term_structure', 'N/A')}"
+        elif tool_name in ["news_scan", "plan_and_scan_news"]:
+            # 格式化新闻结果：提取文章标题、来源和链接，让agent能够分析
+            hits = tool_result.get("hits", [])
+            if hits:
+                news_items = []
+                for hit in hits[:10]:  # 最多显示10篇新闻
+                    title = hit.get("title", "No title")
+                    source = hit.get("source", "Unknown")
+                    link = hit.get("link", "")
+                    published = hit.get("published", hit.get("published_timestamp", ""))
+                    # 格式化：标题 (来源) [链接]
+                    news_str = f"{title} (Source: {source})"
+                    if link:
+                        news_str += f" [Link: {link}]"
+                    if published:
+                        news_str += f" [Published: {published}]"
+                    news_items.append(news_str)
+                return f"News articles ({len(hits)} total):\n" + "\n".join(news_items[:10])
+            else:
+                queries = tool_result.get("queries", [])
+                return f"No news found. Queries used: {', '.join(queries) if queries else 'N/A'}"
         else:
             # 通用格式化：提取前几个键值对
             items = list(tool_result.items())[:5]

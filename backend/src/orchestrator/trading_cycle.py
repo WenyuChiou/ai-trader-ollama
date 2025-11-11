@@ -358,8 +358,41 @@ def execute_daily_trade(
         
         # 寫入每個analyst的分析結果（從discussion_history中提取）
         discussion_history = convo.get("discussion_history", [])
+        coordinator_found_in_history = False
         for entry_data in discussion_history:
             analyst_name = entry_data.get("analyst", "Unknown")
+            
+            # 检查是否是 Discussion Coordinator
+            analyst_name_lower = analyst_name.lower().strip()
+            is_coordinator = (analyst_name_lower in ["discussion coordinator", "discussioncoordinator", "coordinator"] or
+                            "discussion" in analyst_name_lower and "coordinator" in analyst_name_lower or
+                            analyst_name_lower.startswith("discussion") and "coordinator" in analyst_name_lower)
+            
+            if is_coordinator:
+                # 如果找到 Coordinator，标记并写入（统一格式为 DiscussionCoordinator）
+                # 只写入第一个 Coordinator，避免重复
+                if not coordinator_found_in_history:
+                    coordinator_found_in_history = True
+                    stance = entry_data.get("stance", "neutral")
+                    analysis = entry_data.get("analysis", entry_data.get("summary", "No analysis provided"))
+                    
+                    entry = {
+                        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        "date": trade_date_str,
+                        "agent": "DiscussionCoordinator",  # 统一使用 DiscussionCoordinator
+                        "round": 0,
+                        "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
+                        "type": "discussion",
+                        "stance": stance,
+                        "tools_used": entry_data.get("tools_used", []),
+                    }
+                    with convo_file.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    print(f"[TRADING CYCLE] ✅ Wrote Coordinator from discussion_history (stance: {stance})")
+                else:
+                    print(f"[TRADING CYCLE] ⚠️  Skipped duplicate Coordinator in discussion_history: {analyst_name}")
+                continue  # 跳过，不重复处理
+            
             stance = entry_data.get("stance", "neutral")
             analysis = entry_data.get("analysis", "No analysis provided")
             tools_used = entry_data.get("tools_used", [])
@@ -392,9 +425,10 @@ def execute_daily_trade(
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         
-        # 寫入Coordinator統整結果
+        # 寫入Coordinator統整結果（只寫一次，避免重複）
+        # 如果 discussion_history 中已经有 Coordinator，就不再单独写入 coordinator_summary
         coordinator_summary = convo.get("coordinator_summary")
-        if coordinator_summary:
+        if coordinator_summary and not coordinator_found_in_history:
             if isinstance(coordinator_summary, dict):
                 stance = coordinator_summary.get("stance", "neutral")
                 summary = coordinator_summary.get("summary", "No summary provided")
@@ -407,13 +441,16 @@ def execute_daily_trade(
                     "date": trade_date_str,
                     "agent": "DiscussionCoordinator",
                     "round": 0,
-                    "content": f"Stance: {stance}\n\nSummary: {summary}",
+                    "content": f"Stance: {stance}\n\nAnalysis: {summary}",  # 使用 Analysis 而不是 Summary，保持一致性
                     "type": "discussion",
                     "stance": stance,
-                    "analysis": summary,  # 添加 analysis 字段，方便前端提取
+                    "tools_used": [],  # Coordinator 不使用工具
                 }
                 with convo_file.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                print(f"[TRADING CYCLE] ✅ Wrote Coordinator from coordinator_summary (stance: {stance})")
+        elif coordinator_summary and coordinator_found_in_history:
+            print(f"[TRADING CYCLE] ⚠️  Skipped writing coordinator_summary (Coordinator already exists in discussion_history)")
         
         # 寫入工具使用記錄（從tool_calls中提取）
         tool_calls = convo.get("tool_calls", [])
@@ -443,11 +480,34 @@ def execute_daily_trade(
                 if "error" in actual_result:
                     result_text = f"Error: {actual_result.get('error', 'Unknown error')}"
                 else:
-                    # 提取關鍵信息（增加长度限制，避免截断重要数据）
+                    # 提取關鍵信息
                     result_text = json.dumps(actual_result, ensure_ascii=False, indent=2)
-                    # 如果太长，只保留前2000字符（而不是500）
-                    if len(result_text) > 2000:
-                        result_text = result_text[:2000] + "\n... (truncated)"
+                    # 对于新闻工具，保留更多数据（不截断或只截断到5000字符）
+                    # 对于其他工具，限制在2000字符
+                    max_length = 5000 if tool_name in ["news_scan", "plan_and_scan_news"] else 2000
+                    if len(result_text) > max_length:
+                        # 对于新闻工具，尝试保留完整的 hits 数组（即使截断，也要确保 hits 数组是完整的）
+                        if tool_name in ["news_scan", "plan_and_scan_news"] and "hits" in actual_result:
+                            # 保留完整的 hits 数组，只截断其他部分
+                            hits_json = json.dumps(actual_result.get("hits", []), ensure_ascii=False, indent=2)
+                            queries_json = json.dumps(actual_result.get("queries", []), ensure_ascii=False)
+                            # 构建一个简化的结果，但保留完整的 hits
+                            simplified = {
+                                "hits": actual_result.get("hits", []),
+                                "queries": actual_result.get("queries", [])
+                            }
+                            result_text = json.dumps(simplified, ensure_ascii=False, indent=2)
+                            # 如果还是太长，至少保留前几个 hits
+                            if len(result_text) > max_length:
+                                # 保留前 N 个 hits，确保 JSON 完整
+                                hits = actual_result.get("hits", [])
+                                max_hits = min(len(hits), 10)  # 最多保留10个新闻
+                                simplified["hits"] = hits[:max_hits]
+                                result_text = json.dumps(simplified, ensure_ascii=False, indent=2)
+                                if len(result_text) > max_length:
+                                    result_text = result_text[:max_length] + "\n... (truncated, showing first " + str(max_hits) + " hits)"
+                        else:
+                            result_text = result_text[:max_length] + "\n... (truncated)"
             else:
                 result_text = str(actual_result)
                 if len(result_text) > 2000:
@@ -781,6 +841,15 @@ def execute_daily_trade(
         available_cash=available_cash_for_trading,  # 传入可用现金
     )
     
+    # 注意：Trader Agent 的 conversation entry 将在订单创建后写入，以便反映实际创建的订单数量
+    # 先保存 summary 和 stance，稍后更新
+    trader_summary_original = decision.get("summary", decision.get("rationale", ""))
+    trader_stance = decision.get("stance", "neutral")
+    
+    # 初始化实际订单计数器
+    actual_buy_orders_count = 0
+    actual_sell_orders_count = 0
+    
     # Debug: Log decision content
     buy_orders_count = len(decision.get("buy_orders", []))
     sell_orders_count = len(decision.get("sell_orders", []))
@@ -945,6 +1014,9 @@ def execute_daily_trade(
         total_orders_cost = available_for_trading - remaining_cash
         print(f"[CASH SUMMARY] Total orders cost: ${total_orders_cost:.2f}, Remaining cash: ${remaining_cash:.2f} (from ${available_for_trading:.2f} available)")
         
+        # 记录实际创建的买入订单数量（用于更新 Trader Agent summary）
+        actual_buy_orders_count = len(placed_orders)
+        
         # 执行卖出订单
         sell_orders = decision.get("sell_orders", [])
         for order in sell_orders:
@@ -995,6 +1067,51 @@ def execute_daily_trade(
                         reason=f"Execution failed: {e}",
                         rationale=decision.get("rationale"),
                     )
+        
+        # 记录实际创建的卖出订单数量
+        actual_sell_orders_count = len([o for o in placed_orders if o.get("action") == "SELL"])
+    
+    # 写入Trader Agent的conversation entry（在订单创建后，以便反映实际创建的订单数量）
+    try:
+        # 更新 summary 以反映实际创建的订单数量
+        trader_summary = trader_summary_original
+        if actual_buy_orders_count is not None:
+            # 检查 summary 中是否包含订单数量信息
+            import re
+            # 匹配 "generating X buy orders" 或 "X buy orders" 等模式
+            pattern = r'generating\s+(\d+)\s+buy\s+orders|(\d+)\s+buy\s+orders'
+            match = re.search(pattern, trader_summary, re.IGNORECASE)
+            if match:
+                # 找到提到的订单数量
+                mentioned_count = int(match.group(1) or match.group(2))
+                if mentioned_count != actual_buy_orders_count:
+                    # 替换为实际创建的订单数量
+                    trader_summary = re.sub(
+                        pattern,
+                        f'generating {actual_buy_orders_count} buy orders',
+                        trader_summary,
+                        count=1,
+                        flags=re.IGNORECASE
+                    )
+                    print(f"[TRADING CYCLE] ✅ Updated Trader Agent summary: {mentioned_count} -> {actual_buy_orders_count} buy orders")
+        
+        trader_entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": trade_date_str,
+            "agent": "TraderAgent",
+            "round": 0,
+            "content": f"Stance: {trader_stance}\n\nAnalysis: {trader_summary}",
+            "type": "discussion",
+            "stance": trader_stance,
+            "tools_used": [],  # Trader Agent不使用工具，它是基于其他agent的分析做决策
+        }
+        
+        with convo_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(trader_entry, ensure_ascii=False) + "\n")
+        
+        print(f"[TRADING CYCLE] ✅ Wrote Trader Agent conversation entry with summary (actual orders: {actual_buy_orders_count} buy, {actual_sell_orders_count} sell)")
+    except Exception as e:
+        print(f"[TRADING CYCLE] ⚠️  Failed to write Trader Agent conversation entry: {e}")
     
     # ---- (5b) 檢查並結算今天的 PENDING 訂單（如果市場開盤，或在多日模擬中）----
     # 在多日模拟中（end参数提供），也执行订单

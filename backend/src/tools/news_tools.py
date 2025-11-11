@@ -140,27 +140,84 @@ def business_rss(max_items: int = 40, max_age_hours: int = 48) -> List[Dict[str,
     
     return dedup[:max_items]
 
-def google_news_rss(query: str, lang: str = "en", region: str = "US", max_items: int = 20) -> List[Dict[str, Any]]:
+def google_news_rss(query: str, lang: str = "en", region: str = "US", max_items: int = 20, max_age_hours: int = 48) -> List[Dict[str, Any]]:
+    """
+    获取Google News RSS，只返回最新的新闻
+    
+    Args:
+        query: 搜索关键词
+        lang: 语言
+        region: 地区
+        max_items: 最大返回条目数
+        max_age_hours: 最大新闻年龄（小时），超过此时间的新闻将被过滤
+    """
     q = requests.utils.quote(query)
     url = f"https://news.google.com/rss/search?q={q}&hl={lang}-{region}&gl={region}&ceid={region}:{lang}"
     try:
         feed = feedparser.parse(url)
-        hits = [_norm_item(e) for e in feed.entries[:max_items]]
+        now = datetime.now(timezone.utc)
+        cutoff_time = now - timedelta(hours=max_age_hours)
+        
+        hits = []
+        for e in feed.entries[:max_items]:
+            item = _norm_item(e)
+            
+            # 过滤旧新闻：如果有日期信息，只保留最新的
+            if "published_timestamp" in item:
+                item_date = datetime.fromtimestamp(item["published_timestamp"], tz=timezone.utc)
+                if item_date < cutoff_time:
+                    continue  # 跳过过旧的新闻
+            else:
+                # 如果没有日期信息，跳过（可能是旧新闻）
+                continue
+            
+            hits.append(item)
+        
+        # 按日期排序（最新的在前）
+        hits.sort(key=lambda x: x.get("published_timestamp", 0), reverse=True)
         return hits
     except Exception:
         return []
 
-def fetch_rss(queries: List[str], include_business: bool = True, per_query: int = 10, cap: int = 60) -> Dict[str, Any]:
+def fetch_rss(queries: List[str], include_business: bool = True, per_query: int = 10, cap: int = 60, max_age_hours: int = 48) -> Dict[str, Any]:
+    """
+    获取RSS新闻，只返回最新的新闻
+    
+    Args:
+        queries: 搜索关键词列表
+        include_business: 是否包含商业新闻RSS
+        per_query: 每个查询返回的最大条目数
+        cap: 总返回条目数上限
+        max_age_hours: 最大新闻年龄（小时），超过此时间的新闻将被过滤
+    """
     hits: List[Dict[str, Any]] = []
     if include_business:
-        hits.extend(business_rss(max_items=per_query))
+        hits.extend(business_rss(max_items=per_query, max_age_hours=max_age_hours))
     for q in queries:
-        hits.extend(google_news_rss(q, max_items=per_query))
+        hits.extend(google_news_rss(q, max_items=per_query, max_age_hours=max_age_hours))
         time.sleep(0.2)  # 避免過快
+    
+    # 再次过滤：确保所有新闻都有日期信息，且不超过最大年龄
+    now = datetime.now(timezone.utc)
+    cutoff_time = now - timedelta(hours=max_age_hours)
+    filtered_hits = []
+    for h in hits:
+        # 必须有日期信息
+        if "published_timestamp" not in h:
+            continue
+        # 日期必须在范围内
+        item_date = datetime.fromtimestamp(h["published_timestamp"], tz=timezone.utc)
+        if item_date < cutoff_time:
+            continue
+        filtered_hits.append(h)
+    
+    # 按日期排序（最新的在前）
+    filtered_hits.sort(key=lambda x: x.get("published_timestamp", 0), reverse=True)
+    
     # 去重
     dedup = []
     seen = set()
-    for h in hits:
+    for h in filtered_hits:
         key = (h.get("title","").strip(), h.get("link","").strip())
         if key not in seen:
             seen.add(key)
@@ -240,6 +297,8 @@ def news_scan(
     """
     先用 RSS（business + google news）組合；若仍不足、且允許 domains=None，可再用 ddgs 搜尋補充。
     回傳 {"hits":[{title,link,source},...], "queries":[...]}。
+    
+    只返回最新的新闻（基于 recency_days 参数）。
     """
     # 排除的新闻源（过旧或不可用）
     EXCLUDED_SOURCES = {
@@ -249,19 +308,37 @@ def news_scan(
         "www.zerohedge.com", "zerohedge.com",  # Zero Hedge（RSS不可用）
     }
     
-    # RSS 先來一輪
-    rss = fetch_rss(keywords, include_business=True, per_query=10, cap=max_articles)
+    # 计算最大年龄（小时）：recency_days 转换为小时，但不超过48小时（确保只返回最新新闻）
+    max_age_hours = min(recency_days * 24, 48)  # 最多48小时（2天）
+    
+    # RSS 先來一輪（使用日期过滤）
+    rss = fetch_rss(keywords, include_business=True, per_query=10, cap=max_articles, max_age_hours=max_age_hours)
     hits = rss.get("hits", [])
     
-    # 过滤掉排除的新闻源
+    # 再次过滤：确保所有新闻都有日期信息，且不超过 recency_days
+    now = datetime.now(timezone.utc)
+    cutoff_time = now - timedelta(days=recency_days)
     filtered_hits = []
     for h in hits:
-        source = h.get("source", "").lower()
-        # 检查是否在排除列表中
+        # 过滤掉排除的新闻源
+        source = str(h.get("source", "") or "").lower()
         if any(excluded in source for excluded in EXCLUDED_SOURCES):
             continue
+        
+        # 必须有日期信息
+        if "published_timestamp" not in h:
+            continue
+        
+        # 日期必须在范围内
+        item_date = datetime.fromtimestamp(h["published_timestamp"], tz=timezone.utc)
+        if item_date < cutoff_time:
+            continue
+        
         filtered_hits.append(h)
     hits = filtered_hits
+    
+    # 按日期排序（最新的在前）
+    hits.sort(key=lambda x: x.get("published_timestamp", 0), reverse=True)
     
     # 若不足且允許放寬域名，嘗試 web 搜尋補充
     if len(hits) < max_articles:
@@ -270,14 +347,25 @@ def news_scan(
             h = {"title": r.get("title"), "link": r.get("link"), "source": r.get("source")}
             if h["title"] and h["link"]:
                 # 检查是否在排除列表中
-                source = h.get("source", "").lower()
+                source = str(h.get("source", "") or "").lower()
                 if any(excluded in source for excluded in EXCLUDED_SOURCES):
                     continue
+                
+                # 如果有日期信息，检查是否在范围内
+                if "published_timestamp" in r:
+                    item_date = datetime.fromtimestamp(r["published_timestamp"], tz=timezone.utc)
+                    if item_date < cutoff_time:
+                        continue
+                
                 # 去重
                 if not any((h["title"] == x.get("title") and h["link"] == x.get("link")) for x in hits):
                     hits.append(h)
             if len(hits) >= max_articles:
                 break
+    
+    # 最终排序（最新的在前）
+    hits.sort(key=lambda x: x.get("published_timestamp", 0), reverse=True)
+    
     return {"hits": hits[:max_articles], "queries": rss.get("queries", keywords[:6])}
 
 # ---------------------------
@@ -347,6 +435,8 @@ def plan_and_scan_news(
     """
     LLM 產 query → news_scan（先白名單，空則放寬）→（可選）fetch_url。
     回傳 {"queries":[...], "hits":[...], "articles":[...]}。
+    
+    只返回最新的新闻（基于 recency_days 参数，默认最多48小时）。
     """
     if preferred_domains is None:
         preferred_domains = [
@@ -364,19 +454,23 @@ def plan_and_scan_news(
 
     queries = _choose_queries_llm(tickers, mview)
 
+    # 确保 recency_days 不超过2天（48小时），强制只返回最新新闻
+    effective_recency_days = min(max(1, recency_days), 2)  # 最多2天（48小时）
+
     res = news_scan(
         keywords=queries,
         max_articles=max_articles,
-        recency_days=recency_days,
+        recency_days=effective_recency_days,  # 使用限制后的 recency_days
         domains=preferred_domains,
     )
     hits = (res.get("hits") or [])[:max_articles]
 
     if len(hits) == 0:
+        # 如果第一次搜索没有结果，放宽域名限制，但仍保持日期过滤
         res2 = news_scan(
             keywords=queries,
             max_articles=max_articles,
-            recency_days=max(10, recency_days),
+            recency_days=effective_recency_days,  # 仍然使用限制后的 recency_days
             domains=None,
         )
         hits = (res2.get("hits") or [])[:max_articles]

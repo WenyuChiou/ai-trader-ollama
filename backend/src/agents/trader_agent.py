@@ -409,6 +409,9 @@ def run_trader(
         current_total_position_pct = current_total_value / portfolio_value if portfolio_value > 0 else 0.0
         available_position_pct = max_total_position - current_total_position_pct
         
+        # CRITICAL: 跟踪累计使用的现金，确保总订单金额不超过可用现金
+        remaining_cash = available_cash if available_cash is not None else float('inf')
+        
         if available_position_pct <= 0:
             # 已达到总仓位上限，不买入新股票
             pass
@@ -428,6 +431,7 @@ def run_trader(
                 is_leveraged_etf = symbol in LEVERAGED_ETFS
                 
                 # 计算买入数量（使用改进后的函数）
+                # CRITICAL: 使用剩余现金，而不是初始可用现金
                 quantity = _calculate_position_size(
                     symbol, 
                     recs, 
@@ -438,7 +442,7 @@ def run_trader(
                     max_position_per_stock=max_position_per_stock,
                     max_total_position=max_total_position,
                     min_position_per_stock=min_position_per_stock,
-                    available_cash=available_cash,  # 传递可用现金
+                    available_cash=remaining_cash,  # 传递剩余现金，而不是初始可用现金
                 )
                 
                 if quantity > 0:
@@ -449,10 +453,22 @@ def run_trader(
                     buy_price = last_price * 1.002  # 默认使用当前价格+0.2%（平衡成交率和成本）
                     total_cost = buy_price * quantity
                     
-                    # 检查可用资金（这里检查现金是否足够）
-                    # 注意：portfolio_value 是总净值，需要检查现金部分
-                    # 但由于我们在 _calculate_position_size 中已经考虑了总仓位限制，
-                    # 这里主要检查单笔交易是否可行
+                    # CRITICAL: 再次检查剩余现金（双重保险）
+                    if available_cash is not None and total_cost > remaining_cash:
+                        # 如果总成本超过剩余现金，减少数量
+                        max_affordable_qty = floor(remaining_cash / buy_price)
+                        if max_affordable_qty > 0:
+                            quantity = max_affordable_qty
+                            total_cost = buy_price * quantity
+                            print(f"[TRADER] Reduced {symbol} quantity to {quantity} due to remaining cash limit (remaining: ${remaining_cash:.2f})")
+                        else:
+                            print(f"[TRADER] Skipping {symbol}: insufficient remaining cash (need ${total_cost:.2f}, remaining ${remaining_cash:.2f})")
+                            continue
+                    
+                    # CRITICAL: 扣除已使用的现金（在添加到订单列表前）
+                    if available_cash is not None:
+                        remaining_cash -= total_cost
+                        print(f"[TRADER] Order for {symbol}: cost=${total_cost:.2f}, remaining cash=${remaining_cash:.2f}")
                     
                     # 构建订单信息
                     order_info = {
@@ -591,6 +607,34 @@ def run_trader(
     else:
         rationale = base_rationale
 
+    # 生成Trader Agent的summary（讲述交易决策的想法）
+    trader_summary = ""
+    if buy_orders and len(buy_orders) > 0:
+        buy_symbols = [o["symbol"] for o in buy_orders[:5]]
+        buy_count = len(buy_orders)
+        total_buy_cost = sum(o.get("total_cost", 0.0) for o in buy_orders)
+        trader_summary = f"Based on market analysis and risk assessment, I'm generating {buy_count} buy orders for {', '.join(buy_symbols)}{'...' if buy_count > 5 else ''} with a total cost of ${total_buy_cost:,.2f}. "
+        trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
+        if coordinator_summary:
+            trader_summary += f"Key insights: {coordinator_summary[:150]}"
+        else:
+            trader_summary += "Decision is based on technical signals, market sentiment, and risk management constraints."
+    elif sell_orders and len(sell_orders) > 0:
+        sell_symbols = [o["symbol"] for o in sell_orders[:5]]
+        sell_count = len(sell_orders)
+        total_sell_proceeds = sum(o.get("total_proceeds", 0.0) for o in sell_orders)
+        trader_summary = f"Based on risk management and market conditions, I'm generating {sell_count} sell orders for {', '.join(sell_symbols)}{'...' if sell_count > 5 else ''} with expected proceeds of ${total_sell_proceeds:,.2f}. "
+        trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
+        if coordinator_summary:
+            trader_summary += f"Key insights: {coordinator_summary[:150]}"
+        else:
+            trader_summary += "Decision is based on risk reduction, position management, and market conditions."
+    else:
+        trader_summary = f"No trading orders generated. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
+        trader_summary += "Current market conditions and risk assessment suggest maintaining current positions or waiting for better entry points."
+        if coordinator_summary:
+            trader_summary += f" Analysis: {coordinator_summary[:150]}"
+    
     # 严格JSON格式输出（交易决策必须严格遵守JSON格式，因为交易系统根据这个判断）
     # 确保所有字段都是JSON可序列化的类型
     decision = {
@@ -619,6 +663,7 @@ def run_trader(
             for order in sell_orders
         ],
         "rationale": str(rationale),  # 确保是字符串
+        "summary": str(trader_summary),  # 新增：Trader Agent的summary
         "stance": str(final_stance),  # 确保是字符串
         "vix_risk": float(vix_risk),  # 确保是数字
         "risk_compliance": {
@@ -634,13 +679,14 @@ def run_trader(
         json.dumps(decision)
     except (TypeError, ValueError) as e:
         print(f"[TRADER] WARNING: Decision contains non-JSON-serializable data: {e}")
-        # 如果序列化失败，返回最小化版本
+        # 如果序列化失败，返回最小化版本（确保包含summary字段）
         decision = {
             "action": "HOLD",
             "targets": [],
             "buy_orders": [],
             "sell_orders": [],
             "rationale": f"Error: {str(e)}",
+            "summary": f"Error occurred during decision generation: {str(e)}. No trading orders generated.",
             "stance": "neutral",
             "vix_risk": 0.0,
             "risk_compliance": {"position_limits_ok": False, "diversification_ok": False, "warnings": [str(e)]},

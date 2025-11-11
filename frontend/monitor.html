@@ -1380,10 +1380,9 @@
                     <input type="checkbox" id="autoRefresh" checked>
                     <span>Auto Refresh (30s)</span>
                 </label>
-                <label class="auto-refresh-toggle">
-                    <input type="checkbox" id="autoTrade">
-                    <span>Auto Trade (5 min)</span>
-                </label>
+                <span style="color: #94a3b8; font-size: 12px; margin-left: 12px;">
+                    🔄 Auto Trade: <span id="autoTradeStatus">检测中...</span>
+                </span>
                 <button class="refresh-btn" id="startTradeBtn" onclick="startTradingCycle()">
                     ▶️ Start Trading
                 </button>
@@ -2521,7 +2520,7 @@
         // 直接执行交易循环（改进版：防重复执行、支持市场关闭时规划、适用于所有5个scenario）
         let tradeCheckTimer = null;
         let isTradingExecuting = false;  // ✅ 添加执行状态标志，防止重复执行
-        let hasPlannedToday = false;  // ✅ 标记今天是否已经规划过（用于Auto Trade优化）
+        // ✅ 已移除 hasPlannedToday，改为通过API返回的消息判断是否已规划
         
         async function executeTradeCycle() {
             // ✅ 防重复执行：如果上次交易还在执行，跳过本次
@@ -2825,16 +2824,18 @@
                 clearInterval(tradeCheckTimer);
             }
             
-            // ✅ 优化：智能调度，只在交易时段运行，减少资源消耗
-            // 交易时段：每5分钟执行一次
-            // 非交易时段：只在市场关闭后执行一次规划，然后停止
+            // ✅ 自动智能调度：根据市场状态自动管理
+            // 交易时段：每5分钟执行一次交易循环
+            // 非交易时段：检查是否已规划明天，如果没有就执行一次规划
             async function smartAutoTrade() {
                 try {
                     const isOpen = await isMarketOpen();
+                    updateAutoTradeStatus(isOpen ? '交易时段运行中' : '非交易时段检测中');
+                    
                     if (isOpen) {
                         // 交易时段：执行交易循环
                         console.log('[Auto Trade] Market is open, executing trade cycle...');
-                        hasPlannedToday = false;  // 重置标记，因为市场开盘了
+                        updateAutoTradeStatus('交易时段运行中');
                         try {
                             await executeTradeCycle();
                             console.log('[Auto Trade] Trade cycle completed successfully');
@@ -2843,28 +2844,65 @@
                             // 即使失败也继续，下次重试
                         }
                     } else {
-                        // 非交易时段：如果今天已经规划过，跳过
-                        if (hasPlannedToday) {
-                            console.log('[Auto Trade] Already planned today, skipping to save resources');
-                            return;
-                        }
+                        // 非交易时段：检查是否已规划明天
+                        console.log('[Auto Trade] Market is closed, checking if tomorrow is already planned...');
+                        updateAutoTradeStatus('检查明日规划状态');
                         
-                        // 非交易时段：执行一次规划
-                        console.log('[Auto Trade] Market is closed, planning tomorrow\'s trades...');
                         try {
-                            await executeTradeCycle();
-                            // 规划完成后，标记为已规划并停止自动交易
-                            hasPlannedToday = true;
-                            stopAutoTrade();
-                            console.log('[Auto Trade] Planning completed, auto trade stopped to save resources');
+                            // 调用API检查是否有明天的订单（API会自动检查并返回相应消息）
+                            const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
+                                method: 'POST',
+                                mode: 'cors',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                signal: AbortSignal.timeout(600000),  // 10分钟超时
+                            });
+                            
+                            let data;
+                            try {
+                                data = await response.json();
+                            } catch (parseErr) {
+                                console.error('[Auto Trade] Response parse failed:', parseErr);
+                                return;
+                            }
+                            
+                            if (response.ok && data.ok) {
+                                const message = data.message || '';
+                                const isPlanning = data.result?.is_planning || false;
+                                
+                                // 检查消息中是否包含"Already have"或"already planned"
+                                if (message.includes('Already have') || message.includes('already planned') || message.includes('No new planning needed')) {
+                                    console.log('[Auto Trade] Tomorrow is already planned, skipping:', message);
+                                    updateAutoTradeStatus('明日已规划，等待中');
+                                    // 停止自动交易，等待市场开盘
+                                    stopAutoTrade();
+                                    return;
+                                } else if (isPlanning) {
+                                    // 刚刚完成规划
+                                    console.log('[Auto Trade] Planning completed for tomorrow:', message);
+                                    updateAutoTradeStatus('明日规划完成');
+                                    // 停止自动交易，等待市场开盘
+                                    stopAutoTrade();
+                                    return;
+                                } else {
+                                    // 执行了交易（不应该在非交易时段发生，但处理一下）
+                                    console.log('[Auto Trade] Trade cycle executed:', message);
+                                    updateAutoTradeStatus('交易完成');
+                                }
+                            } else {
+                                console.error('[Auto Trade] API returned error:', data.error || 'Unknown error');
+                                updateAutoTradeStatus('执行出错');
+                            }
                         } catch (e) {
-                            console.error('[Auto Trade] Error during planning:', e);
-                            // 如果规划失败，不标记为已规划，下次可以重试
-                            // 不停止auto trade，让它在下次重试
+                            console.error('[Auto Trade] Error during planning check:', e);
+                            updateAutoTradeStatus('检查失败');
+                            // 如果检查失败，不停止，让它在下次重试
                         }
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
+                    updateAutoTradeStatus('状态检测失败');
                     // 如果无法检查市场状态，假设市场开盘并尝试执行（盘中应该能执行）
                     try {
                         console.log('[Auto Trade] Market status check failed, attempting trade cycle anyway...');
@@ -2878,10 +2916,26 @@
             // 交易时段：每5分钟执行一次
             const TRADING_INTERVAL = 5 * 60 * 1000;  // 5分钟
             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
-            console.log(`[Auto Trade] Smart auto trading started (every ${TRADING_INTERVAL / 1000} seconds during market hours)`);
-            console.log(`[Auto Trade] Will stop automatically after planning tomorrow's trades when market is closed`);
+            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 1000} seconds during market hours)`);
             // 立即执行一次
             smartAutoTrade();
+        }
+        
+        function updateAutoTradeStatus(status) {
+            const statusEl = document.getElementById('autoTradeStatus');
+            if (statusEl) {
+                statusEl.textContent = status;
+                // 根据状态设置颜色
+                if (status.includes('运行中') || status.includes('完成')) {
+                    statusEl.style.color = '#10b981'; // 绿色
+                } else if (status.includes('等待中') || status.includes('已规划')) {
+                    statusEl.style.color = '#94a3b8'; // 灰色
+                } else if (status.includes('失败') || status.includes('出错')) {
+                    statusEl.style.color = '#ef4444'; // 红色
+                } else {
+                    statusEl.style.color = '#f59e0b'; // 黄色
+                }
+            }
         }
         
         function stopAutoTrade() {
@@ -6875,29 +6929,49 @@
             // 启动订单检查（交易时段）
             startOrderCheck();
             
-            // Auto Trade 控制（每1分钟执行交易循环）
-            const autoTradeChk = document.getElementById('autoTrade');
-            if (autoTradeChk && autoTradeChk.checked) {
-                startAutoTrade();
-            } else {
-                stopAutoTrade();
+            // ✅ Auto Trade 自动管理：根据市场状态自动开启/关闭
+            // 不再依赖复选框，系统自动检测市场状态并管理
+            async function checkAndManageAutoTrade() {
+                try {
+                    const isOpen = await isMarketOpen();
+                    
+                    if (isOpen) {
+                        // 交易时段：如果 Auto Trade 未运行，启动它
+                        if (!tradeCheckTimer) {
+                            console.log('[Auto Refresh] Market is open, starting Auto Trade...');
+                            startAutoTrade();
+                        }
+                    } else {
+                        // 非交易时段：如果 Auto Trade 正在运行，停止它（会在下次检查时重新评估是否需要规划）
+                        if (tradeCheckTimer) {
+                            // 不立即停止，让 smartAutoTrade 自己处理（它会检查是否已规划）
+                            // 如果已规划，smartAutoTrade 会自己停止
+                        }
+                    }
+                    
+                    lastMarketStatus = isOpen;
+                } catch (e) {
+                    console.warn('[Auto Refresh] Error checking market status for Auto Trade:', e);
+                }
             }
             
-            // ✅ 新增：市场状态监控，用于自动重启 Auto Trade
-            // 每30秒检查一次市场状态，如果从关闭变为开盘，且 Auto Trade 已勾选，自动重启
+            // 立即检查一次
+            checkAndManageAutoTrade();
+            
+            // ✅ 市场状态监控：每30秒检查一次，自动管理 Auto Trade
             if (marketStatusMonitorTimer) {
                 clearInterval(marketStatusMonitorTimer);
             }
             marketStatusMonitorTimer = setInterval(async () => {
                 try {
                     const isOpen = await isMarketOpen();
-                    const autoTradeChk = document.getElementById('autoTrade');
                     
-                    // 如果市场从关闭变为开盘，且 Auto Trade 已勾选，但定时器不存在
-                    if (isOpen && lastMarketStatus === false && autoTradeChk && autoTradeChk.checked && !tradeCheckTimer) {
-                        console.log('[Auto Refresh] Market transitioned from closed to open, restarting Auto Trade...');
+                    // 如果市场从关闭变为开盘，且 Auto Trade 未运行，启动它
+                    if (isOpen && lastMarketStatus === false && !tradeCheckTimer) {
+                        console.log('[Auto Refresh] Market transitioned from closed to open, starting Auto Trade...');
                         startAutoTrade();
                     }
+                    // 如果市场从开盘变为关闭，让 smartAutoTrade 自己处理（检查是否已规划）
                     
                     lastMarketStatus = isOpen;
                 } catch (e) {
@@ -7002,11 +7076,7 @@
                 console.log('[Manual] Executing trading cycle manually...');
                 await executeTradeCycle();
                 
-                // 如果 Auto Trade 复选框已选中，启动自动交易
-                const autoTradeChk = document.getElementById('autoTrade');
-                if (autoTradeChk && autoTradeChk.checked) {
-                    startAutoTrade();
-                }
+                // ✅ Auto Trade 现在自动管理，不需要手动启动
             } catch (e) {
                 console.error('[Manual] Error:', e);
                 // 错误处理在executeTradeCycle中已完成
@@ -7132,16 +7202,7 @@
             }, 1000);
             
             // Setup auto trade checkbox
-            const autoTradeChk = document.getElementById('autoTrade');
-            if (autoTradeChk) {
-                autoTradeChk.addEventListener('change', () => {
-                    if (autoTradeChk.checked) {
-                        startAutoTrade();
-                    } else {
-                        stopAutoTrade();
-                    }
-                });
-            }
+            // ✅ Auto Trade 现在自动管理，不再需要复选框事件监听
             
             const demoChk = document.getElementById('autoDemoLoop');
             if (demoChk) {

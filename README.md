@@ -34,6 +34,24 @@
 
 ## 🆕 Latest Updates (January 2025)
 
+### 🔄 **Automatic Trading Management** (New Feature)
+
+**Intelligent Market Status Detection:**
+- ✅ **Automatic Market Detection**: System automatically detects trading hours and manages Auto Trade
+- ✅ **Trading Hours**: Auto Trade runs every 5 minutes during market hours
+- ✅ **Non-Trading Hours**: Automatically checks if tomorrow is already planned
+  - If already planned: Shows "Tomorrow Already Planned, Waiting" status
+  - If not planned: Executes one planning cycle, then stops
+- ✅ **Market Transition**: Automatically restarts Auto Trade when market transitions from closed to open
+- ✅ **Status Display**: Real-time status indicator showing current Auto Trade state
+  - 🟢 Green: Running / Completed
+  - ⚪ Gray: Waiting / Already Planned
+  - 🔴 Red: Error / Failed
+  - 🟡 Yellow: Detecting / Checking
+
+**Previous**: Manual checkbox to enable/disable Auto Trade  
+**Now**: Fully automatic - system manages itself based on market status
+
 ### 🤖 **Multi-Analyst System** (Major Enhancement)
 
 **All Analysts Now Real LLM Agents:**

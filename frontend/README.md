@@ -59,7 +59,10 @@ cd frontend
 ### Control Functions
 
 - ▶️ **Start Trading**: Manually trigger trading cycle
-- 🔄 **Auto Trade**: Automatically execute trading cycle every 5 minutes
+- 🔄 **Auto Trade**: Automatically managed by system based on market status
+  - **Trading Hours**: Runs every 5 minutes automatically
+  - **Non-Trading Hours**: Checks if tomorrow is planned, executes planning if needed
+  - **Status Display**: Real-time status indicator (🟢 Running / ⚪ Waiting / 🔴 Error)
 - 🔄 **Refresh**: Manually refresh data
 
 ### Data Updates
@@ -180,11 +183,21 @@ const TRADES_LIMIT = 30;          // Display max 30 trades
 3. Check if conversations and trade records are updated
 4. Check if portfolio is updated
 
-### 5. Auto Trading
+### 5. Auto Trading (Automatic Management)
 
-1. Check **"Auto Trade (5 min)"** checkbox
-2. System will automatically execute trading cycle every 5 minutes
-3. Uncheck to stop auto trading
+**System automatically manages Auto Trade - no manual checkbox needed:**
+
+- **Trading Hours**: Auto Trade automatically starts and runs every 5 minutes
+- **Non-Trading Hours**: System checks if tomorrow is already planned
+  - If not planned: Executes one planning cycle, then stops
+  - If already planned: Shows "Tomorrow Already Planned, Waiting" status
+- **Status Indicator**: Real-time status display showing current Auto Trade state
+  - 🟢 Green: Running / Completed
+  - ⚪ Gray: Waiting / Already Planned  
+  - 🔴 Red: Error / Failed
+  - 🟡 Yellow: Detecting / Checking
+
+**No manual intervention required** - the system intelligently manages itself based on market status!
 
 ### 6. Market Hours vs Non-Trading Hours
 

@@ -214,11 +214,57 @@ Tools available to Agents:
 - `fear_greed`: Get Fear & Greed Index
 
 ### News & Economic Data Tools
-- `news_scan`: Scan news articles
+
+#### News Tools (Updated 2025-11-10)
+
+**`news_scan`**: Scan latest news articles with intelligent filtering
+- **Features**:
+  - Automatically filters outdated news sources (WSJ, Reuters, FT, Zero Hedge)
+  - Only returns news from verified fresh sources (<6 hours old)
+  - Supports keyword-based search
+  - Date filtering (default: 10 days, configurable)
+- **News Sources** (10 verified fresh sources):
+  - **Core Financial News**: CNBC, MarketWatch, Seeking Alpha, Investing.com, Benzinga, Bloomberg
+  - **Community Sources**: Reddit (WSB, Investing, Stocks), Hacker News
+- **Usage**:
+  ```python
+  from src.tools.news_tools import news_scan
+  result = news_scan(keywords=["market", "AI"], max_articles=12, recency_days=7)
+  ```
+
+**`business_rss`**: Fetch business news from RSS feeds
+- **Features**:
+  - Date filtering (default: 48 hours, configurable via `max_age_hours`)
+  - Automatic sorting by date (newest first)
+  - All news entries include timestamp information
+- **Usage**:
+  ```python
+  from src.tools.news_tools import business_rss
+  # Get news from last 48 hours (default)
+  news = business_rss(max_items=40)
+  # Get only news from last 24 hours
+  fresh_news = business_rss(max_items=40, max_age_hours=24)
+  ```
+
+**Other News Tools**:
 - `fetch_jin10_news`: Get Jin10 financial news
 - `fetch_jin10_economic_data`: Get economic data
 - `web_search`: DuckDuckGo search
 - `fetch_url`: Get URL main content
+- `plan_and_scan_news`: LLM-powered news query planning and scanning
+
+**News Tool Verification**:
+```bash
+# Check news source freshness
+python check_news_recency.py
+
+# Quick test news tools
+python quick_test_news.py
+```
+
+**Documentation**:
+- `NEWS_TOOL_UPDATE.md` - News tool update summary
+- `NEWS_UPDATE_VERIFICATION.md` - Verification report
 
 ### Cryptocurrency Tools
 - `fetch_crypto_batch`: Batch fetch cryptocurrency data
@@ -239,6 +285,23 @@ For complete tool list, see: [Available Tools](../README.md#-available-tools)
 | `restart_api.ps1` | Restart API server |
 | `clear_test_data.py` | Clear all test data and records |
 | `simulate_october_history.py` | Run October historical simulation |
+| `run_full_workflow.py` | Run complete trading workflow test |
+
+### News Tools Scripts
+
+| Script | Description |
+|--------|-------------|
+| `check_news_recency.py` | Check freshness of all news sources |
+| `quick_test_news.py` | Quick test of news tools functionality |
+
+### Utility Scripts
+
+| Script | Description |
+|--------|-------------|
+| `check_cash_vs_orders.py` | Check if orders exceed available cash |
+| `check_holdings_vs_orders.py` | Compare portfolio holdings with filled orders |
+| `check_pending_orders_detail.py` | Detailed analysis of pending orders |
+| `analyze_all_orders.py` | Comprehensive analysis of all orders |
 
 ### Scheduling Scripts
 
@@ -342,14 +405,26 @@ For detailed troubleshooting, see: [Troubleshooting](../README.md#-troubleshooti
 
 ## 📚 Related Documentation
 
+### Core Documentation
 - [API Endpoints Documentation](../docs/archive/API_ENDPOINTS.md)
 - [Frontend-Backend Integration](../docs/archive/FRONTEND_BACKEND_INTEGRATION.md)
 - [Portfolio Update Flow](../docs/archive/PORTFOLIO_UPDATE_FLOW.md)
+- [Trading Hours Logic](docs/TRADING_HOURS_LOGIC.md)
+
+### Feature Documentation
+- [News Tool Update](NEWS_TOOL_UPDATE.md) - News tool enhancements and updates
+- [News Update Verification](NEWS_UPDATE_VERIFICATION.md) - News tool verification report
+- [Position Info Enhancement](POSITION_INFO_ENHANCEMENT.md) - Position information enhancements
+- [Workflow Optimization](WORKFLOW_OPTIMIZATION_SUMMARY.md) - Trading workflow optimizations
+- [Important Files](IMPORTANT_FILES.md) - Guide to important files and scripts
+
+### Strategy Guides
 - [Hedging Strategy Guide](../docs/archive/HEDGING_STRATEGY.md)
 - [Leveraged ETF Guide](../docs/archive/LEVERAGED_ETF_GUIDE.md)
 - [Market Indices Integration](../docs/archive/MARKET_INDICES_INTEGRATION.md)
+
+### Operational Guides
 - [Restart API Guide](../docs/archive/RESTART_API_GUIDE.md)
-- [Trading Hours Logic](docs/TRADING_HOURS_LOGIC.md)
 
 ---
 

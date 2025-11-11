@@ -44,8 +44,80 @@ def run_risk_analyst_llm(
     # 准备prompt变量
     tools_str = ", ".join(toolbox.list()) if use_tools else "No tools available"
     
-    # 格式化当前持仓信息
-    positions_str = json.dumps(current_positions, indent=2) if current_positions else "No positions"
+    # CRITICAL: 格式化当前持仓信息，包含损益和占比（用于prompt）
+    # 即使没有持仓，也要传递组合信息（现金、总净值等）
+    if current_positions and len(current_positions) > 0:
+        positions_formatted = []
+        total_position_value = 0.0
+        for symbol, pos_info in current_positions.items():
+            if isinstance(pos_info, dict):
+                quantity = pos_info.get("quantity", 0)
+                avg_cost = pos_info.get("avg_cost", 0.0)
+                current_price = pos_info.get("current_price", avg_cost)
+                market_value = pos_info.get("market_value", quantity * current_price)
+                unrealized_pnl = pos_info.get("unrealized_pnl", (current_price - avg_cost) * quantity)
+                unrealized_pnl_pct = pos_info.get("unrealized_pnl_pct", ((current_price - avg_cost) / avg_cost * 100.0) if avg_cost > 0 else 0.0)
+                position_pct = pos_info.get("position_pct", (market_value / portfolio_value * 100.0) if portfolio_value and portfolio_value > 0 else 0.0)
+                total_position_value += market_value
+                
+                positions_formatted.append({
+                    "symbol": symbol,
+                    "quantity": quantity,
+                    "avg_cost": avg_cost,
+                    "current_price": current_price,
+                    "market_value": market_value,
+                    "unrealized_pnl": unrealized_pnl,
+                    "unrealized_pnl_pct": unrealized_pnl_pct,
+                    "position_pct": position_pct,
+                })
+        
+        # 添加组合摘要
+        if portfolio_value and portfolio_value > 0:
+            cash = portfolio_value - total_position_value
+            cash_pct = (cash / portfolio_value * 100.0) if portfolio_value > 0 else 0.0
+            positions_str = f"""**CURRENT PORTFOLIO POSITIONS (with P&L and Position %):**
+
+{json.dumps(positions_formatted, indent=2)}
+
+**Portfolio Summary:**
+- Total Portfolio Value: ${portfolio_value:,.2f}
+- Cash: ${cash:,.2f} ({cash_pct:.1f}%)
+- Positions Value: ${total_position_value:,.2f} ({100.0 - cash_pct:.1f}%)
+- Number of Positions: {len(positions_formatted)}
+
+**⚠️ CRITICAL: You MUST analyze each position's P&L (unrealized_pnl, unrealized_pnl_pct) and position percentage (position_pct) when making risk assessments. Consider:**
+- Positions with large unrealized losses may need risk reduction
+- Positions exceeding position_pct limits (typically >15%) indicate concentration risk
+- High position_pct combined with negative unrealized_pnl_pct suggests high risk exposure
+"""
+        else:
+            positions_str = json.dumps(positions_formatted, indent=2)
+    else:
+        # CRITICAL: 即使没有持仓，也要传递组合信息
+        # 这样 Risk Analyst 可以分析"没有持仓"的状态，评估是否应该开始建仓
+        if portfolio_value and portfolio_value > 0:
+            # 假设全部是现金（因为没有持仓）
+            cash = portfolio_value
+            cash_pct = 100.0
+            positions_str = f"""**CURRENT PORTFOLIO STATUS:**
+
+**No positions currently held.**
+
+**Portfolio Summary:**
+- Total Portfolio Value: ${portfolio_value:,.2f}
+- Cash: ${cash:,.2f} ({cash_pct:.1f}%)
+- Positions Value: $0.00 (0.0%)
+- Number of Positions: 0
+
+**⚠️ CRITICAL: Even with no positions, you MUST analyze the portfolio status:**
+- Portfolio is 100% cash, indicating no market exposure
+- This is a low-risk state but also means no potential returns
+- Consider market conditions and risk tolerance when recommending whether to start building positions
+- Assess if current market conditions are suitable for initial position entry
+- Evaluate if cash should be deployed or kept in reserve based on market risk levels
+"""
+        else:
+            positions_str = "No positions and no portfolio value information available"
     
     # 格式化市场数据（简化）
     market_summary = {

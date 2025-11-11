@@ -59,15 +59,47 @@ class EquityTracker:
         - date_str: 日期 (YYYY-MM-DD)
         - portfolio_snapshot: Portfolio 快照（从 trading_cycle 返回的 portfolio 字段）
         """
+        current_value = float(portfolio_snapshot.get("total_value", 0.0))
+        current_cash = float(portfolio_snapshot.get("cash", 0.0))
+        current_equity = float(portfolio_snapshot.get("equity_value", 0.0))
+        positions = portfolio_snapshot.get("positions_detail", {})
+        
+        # CRITICAL: 检查净值是否异常下降（防止记录错误数据）
+        if self.equity_file.exists():
+            try:
+                # 读取最后一条记录
+                with self.equity_file.open("r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    if lines:
+                        last_record = json.loads(lines[-1].strip())
+                        last_value = float(last_record.get("total_value", 0))
+                        last_positions = last_record.get("positions", {})
+                        
+                        # 如果净值下降超过 50%，且当前是 10000.0，且之前有持仓，记录警告并跳过
+                        if (last_value > 0 and 
+                            current_value < last_value * 0.5 and 
+                            current_value == 10000.0 and 
+                            current_cash == 10000.0 and
+                            current_equity == 0.0 and
+                            len(last_positions) > 0 and
+                            len(positions) == 0):
+                            print(f"[EQUITY WARNING] ⚠️ Suspicious equity drop detected: ${last_value:.2f} -> ${current_value:.2f}")
+                            print(f"[EQUITY WARNING] Previous positions: {len(last_positions)}, Current positions: {len(positions)}")
+                            print(f"[EQUITY WARNING] Skipping recording to prevent data corruption (likely portfolio state not loaded correctly)")
+                            return  # 不记录异常数据
+            except Exception as e:
+                # 如果检查失败，继续记录（但记录警告）
+                print(f"[EQUITY WARNING] Failed to check previous equity: {e}, continuing with record")
+        
         record = {
             "date": date_str,
             "timestamp": datetime.now().isoformat(),
-            "cash": float(portfolio_snapshot.get("cash", 0.0)),
-            "equity_value": float(portfolio_snapshot.get("equity_value", 0.0)),
-            "total_value": float(portfolio_snapshot.get("total_value", 0.0)),
+            "cash": current_cash,
+            "equity_value": current_equity,
+            "total_value": current_value,
             "total_pnl": float(portfolio_snapshot.get("total_pnl", 0.0)),
             "total_pnl_pct": float(portfolio_snapshot.get("total_pnl_pct", 0.0)),
-            "positions": portfolio_snapshot.get("positions_detail", {}),
+            "positions": positions,
         }
         
         # 追加到 JSONL 文件

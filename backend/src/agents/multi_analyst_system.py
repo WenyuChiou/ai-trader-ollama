@@ -16,6 +16,9 @@ def run_multi_analyst_discussion(
     use_tools: bool = True,
     tool_budget: int = 15,
     order_status: Optional[Dict[str, Any]] = None,
+    current_positions: Optional[Dict[str, Any]] = None,  # 新增：当前仓位信息
+    portfolio_value: Optional[float] = None,  # 新增：组合净值
+    available_cash: Optional[float] = None,  # 新增：可用现金
 ) -> Dict[str, Any]:
     """
     运行多Analyst讨论系统
@@ -42,6 +45,44 @@ def run_multi_analyst_discussion(
     # 准备共享的上下文
     tools_str = f"Available: {', '.join(toolbox.list())}" if use_tools else "No tools"
     market_summary = _summarize_market(market_view)
+    
+    # 准备仓位信息（如果有）
+    positions_text = ""
+    if current_positions:
+        positions_text = "\n\n**📊 CURRENT PORTFOLIO POSITIONS**\n"
+        total_position_value = 0.0
+        for symbol, pos_info in current_positions.items():
+            if isinstance(pos_info, dict):
+                quantity = pos_info.get("quantity", 0)
+                avg_cost = pos_info.get("avg_cost", 0.0)
+                current_price = pos_info.get("current_price", avg_cost)
+                market_value = pos_info.get("market_value", quantity * current_price)
+                total_position_value += market_value
+                
+                if quantity > 0:
+                    unrealized_pnl = (current_price - avg_cost) * quantity
+                    unrealized_pnl_pct = ((current_price - avg_cost) / avg_cost * 100.0) if avg_cost > 0 else 0.0
+                    position_pct = (market_value / portfolio_value * 100.0) if portfolio_value and portfolio_value > 0 else 0.0
+                    
+                    positions_text += f"  - {symbol}: {quantity} shares @ avg ${avg_cost:.2f}, current ${current_price:.2f}\n"
+                    positions_text += f"    Market Value: ${market_value:.2f} ({position_pct:.1f}% of portfolio)\n"
+                    positions_text += f"    Unrealized P&L: ${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%)\n"
+        
+        if portfolio_value:
+            cash = portfolio_value - total_position_value
+            cash_pct = (cash / portfolio_value * 100.0) if portfolio_value > 0 else 0.0
+            positions_text += f"\n**Portfolio Summary:**\n"
+            positions_text += f"  - Total Portfolio Value: ${portfolio_value:.2f}\n"
+            positions_text += f"  - Cash: ${cash:.2f} ({cash_pct:.1f}%)\n"
+            positions_text += f"  - Positions Value: ${total_position_value:.2f} ({100.0 - cash_pct:.1f}%)\n"
+            if available_cash is not None:
+                positions_text += f"  - Available Cash (after reserve): ${available_cash:.2f}\n"
+        
+        positions_text += "\n**⚠️ CRITICAL: You MUST use position information (P&L and position %) when making recommendations:**\n"
+        positions_text += "- Check position_pct for each holding (avoid over-concentration >15%)\n"
+        positions_text += "- Consider unrealized_pnl_pct (large losses may need position reduction)\n"
+        positions_text += "- Respect position limits and diversification requirements\n"
+        positions_text += "- Use available_cash information to avoid creating orders exceeding cash limits\n"
     
     # 准备订单状态信息（如果有）
     order_status_text = ""
@@ -104,6 +145,7 @@ def run_multi_analyst_discussion(
                 "previous_discussion": "",
                 "tools_context": tools_str,
                 "order_status": order_status_text,  # 添加订单状态
+                "current_positions": positions_text,  # 添加仓位信息
             }
             
             # 格式化之前的对话历史
@@ -205,6 +247,7 @@ def run_multi_analyst_discussion(
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
                 "order_status": order_status_text,  # 添加订单状态
+                "current_positions": positions_text,  # 添加仓位信息
             }
             
             technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
@@ -319,6 +362,7 @@ def run_multi_analyst_discussion(
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
                 "order_status": order_status_text,  # 添加订单状态
+                "current_positions": positions_text,  # 添加仓位信息
             }
             
             fundamental_response = fundamental_analyst.run(fundamental_prompt_vars, expect_json=True)
@@ -426,6 +470,7 @@ def run_multi_analyst_discussion(
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
                 "order_status": order_status_text,  # 添加订单状态
+                "current_positions": positions_text,  # 添加仓位信息
             }
             
             sentiment_response = sentiment_analyst.run(sentiment_prompt_vars, expect_json=True)
@@ -1219,9 +1264,32 @@ def _extract_summary_from_text(
 ) -> Dict[str, Any]:
     """从自然语言文本响应中提取关键信息（stance和summary）"""
     import re
+    import json
     
     # 清理文本
     text_response = text_response.strip()
+    
+    # 首先移除 JSON 代码块（```json ... ```）
+    text_response = re.sub(r'```json\s*\n?([\s\S]*?)\n?```', '', text_response, flags=re.IGNORECASE)
+    text_response = re.sub(r'```\s*\n?([\s\S]*?)\n?```', '', text_response)
+    
+    # 尝试提取并移除 JSON 对象（如果存在）
+    json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+    json_matches = re.findall(json_pattern, text_response, re.DOTALL)
+    if json_matches:
+        # 移除 JSON 对象，保留其他文本
+        for json_match in json_matches:
+            try:
+                # 验证是否是有效的 JSON
+                json.loads(json_match)
+                # 如果是有效 JSON，从文本中移除
+                text_response = text_response.replace(json_match, '').strip()
+            except:
+                # 不是有效 JSON，保留
+                pass
+    
+    # 清理文本（移除多余的空白）
+    text_response = re.sub(r'\s+', ' ', text_response).strip()
     
     # 尝试提取stance（多种模式）
     stance = "neutral"  # 默认值
@@ -1253,9 +1321,9 @@ def _extract_summary_from_text(
     summary = ""
     
     # 模式1: 如果文本以 "Based on..." 或类似开头，直接使用整个响应
-    if text_response.lower().startswith(('based on', 'the market', 'considering', 'after reviewing')):
-        # 使用整个响应作为summary（限制长度到800字符，约150字）
-        summary = text_response[:800].strip()
+    if text_response.lower().startswith(('based on', 'the market', 'considering', 'after reviewing', 'after analyzing')):
+        # 使用整个响应作为summary（限制长度到300字符，约100-150字）
+        summary = text_response[:300].strip()
     else:
         # 模式2: 查找第一个有意义的段落（排除工具列表）
         paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
@@ -1269,29 +1337,40 @@ def _extract_summary_from_text(
             # 跳过太短或看起来像列表的段落
             if len(para) < 100 or para.count('*') > 3 or para.count('-') > 3:
                 continue
-            summary = para[:800]  # 增加到800字符
+            # 跳过 JSON 格式的段落
+            if para.strip().startswith('{') or para.strip().startswith('['):
+                continue
+            summary = para[:300]  # 限制到300字符（约100-150字）
             break
         
-        # 如果没找到合适的段落，使用整个响应
+        # 如果没找到合适的段落，使用整个响应（排除 JSON）
         if not summary:
-            summary = text_response[:800].strip()
+            # 移除 JSON 部分后使用
+            summary = text_response[:300].strip()
     
     # 清理summary（移除多余的空白和换行）
     summary = re.sub(r'\s+', ' ', summary).strip()
-    # 限制到800字符（约150字），但如果太短（少于200字符），保留更多内容
-    if len(summary) > 800:
-        summary = summary[:800]
+    # 限制到300字符（约100-150字），但如果太短（少于150字符），保留更多内容
+    if len(summary) > 300:
+        summary = summary[:300]
     
     # 如果summary仍然为空或太短，使用fallback
-    if len(summary) < 200:  # 提高最小长度要求到200字符（约50字）
+    if len(summary) < 200:  # 最小长度要求200字符（约50字）
         # 基于analyst reports生成summary
         summary_parts = []
         for analyst_type, report in analyst_reports.items():
             if "error" not in report:
                 analysis = report.get("analysis", "")
                 if analysis:
-                    summary_parts.append(f"{analyst_type.capitalize()} Analyst: {analysis[:200]}")
-        summary = " | ".join(summary_parts[:3])[:800] if summary_parts else "Coordinator synthesized all analyst perspectives. The analysis integrates technical indicators, fundamental data, sentiment metrics, and news content to provide a comprehensive market outlook."
+                    # 清理分析文本（移除 JSON 格式）
+                    clean_analysis = re.sub(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', '', analysis)
+                    clean_analysis = re.sub(r'\s+', ' ', clean_analysis).strip()
+                    if clean_analysis:
+                        summary_parts.append(f"{analyst_type.capitalize()} Analyst: {clean_analysis[:100]}")
+        if summary_parts:
+            summary = " | ".join(summary_parts[:3])[:300]
+        else:
+            summary = "Coordinator synthesized all analyst perspectives. The analysis integrates technical indicators, fundamental data, sentiment metrics, and news content to provide a comprehensive market outlook."
     
     # 尝试提取关键点（列表格式）
     key_points_match = re.search(r'key_points?["\']?\s*:\s*\[(.*?)\]', text_response, re.IGNORECASE | re.DOTALL)

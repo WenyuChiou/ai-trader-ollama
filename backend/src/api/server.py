@@ -868,6 +868,61 @@ async def check_pending_orders():
             portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
             log_print(f"[Check Pending Orders] Settled {settled_count} orders, portfolio updated")
             
+            # 写入对话记录，说明订单已成交
+            try:
+                convo_file = Path("data/logs/discussion_actions.jsonl")
+                convo_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                # 获取已成交的订单详情
+                filled_orders_detail = []
+                filled_file = Path("data/logs/filled_orders.jsonl")
+                if filled_file.exists():
+                    try:
+                        with filled_file.open("r", encoding="utf-8") as f:
+                            for line in f:
+                                if line.strip():
+                                    order = json.loads(line)
+                                    if order.get("order_date") == today and order.get("status") == "FILLED":
+                                        filled_orders_detail.append(order)
+                    except Exception:
+                        pass
+                
+                # 只记录最近的成交订单（避免对话记录过长）
+                recent_filled = filled_orders_detail[-settled_count:] if len(filled_orders_detail) >= settled_count else filled_orders_detail
+                
+                # 生成订单摘要
+                order_summary = []
+                for order in recent_filled:
+                    symbol = order.get("symbol", "")
+                    action = order.get("action", "").upper()
+                    quantity = order.get("quantity", 0)
+                    fill_price = order.get("fill_price", 0)
+                    if symbol and quantity > 0 and fill_price > 0:
+                        order_summary.append(f"{action} {quantity} {symbol} @ ${fill_price:.2f}")
+                
+                summary_text = f"Executed {settled_count} order(s): {', '.join(order_summary[:10])}"  # 最多显示10个
+                if len(order_summary) > 10:
+                    summary_text += f" and {len(order_summary) - 10} more"
+                
+                # 写入对话记录
+                entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "date": today,
+                    "agent": "OrderExecution",
+                    "round": 0,
+                    "content": summary_text,
+                    "type": "execution",
+                    "settled_count": settled_count,
+                }
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                
+                log_print(f"[Check Pending Orders] Wrote execution conversation entry: {settled_count} orders filled")
+            except Exception as e:
+                log_print(f"[Check Pending Orders] Warning: Failed to write execution conversation: {e}")
+                import traceback
+                traceback.print_exc()
+            
             # 更新当天的净值记录和每日记忆（如果有订单成交）
             try:
                 from src.data.equity_tracker import EquityTracker
@@ -1173,13 +1228,19 @@ async def get_real_time_portfolio():
                     "source": "simple",
                 }
         
-        return {"ok": True, **snapshot}
+        # 确保返回的数据包含 CORS 头
+        return JSONResponse(
+            status_code=200,
+            content={"ok": True, **snapshot},
+            headers=CORS_HEADERS.copy()
+        )
     except Exception as e:
         import traceback
         traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={"ok": False, "error": str(e)}
+            content={"ok": False, "error": str(e)},
+            headers=CORS_HEADERS.copy()
         )
 
 

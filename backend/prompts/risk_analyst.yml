@@ -70,6 +70,39 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **⚠️ CRITICAL: Current Positions Information**
+  The {current_positions} field contains detailed position information. **EVEN IF THERE ARE NO POSITIONS, you will still receive portfolio information (cash, total value, etc.).**
+  
+  **If positions exist**, each position includes:
+  - **quantity**: Number of shares held
+  - **avg_cost**: Average cost per share
+  - **current_price**: Current market price
+  - **market_value**: Current market value (quantity × current_price)
+  - **unrealized_pnl**: Unrealized profit/loss in dollars (positive = profit, negative = loss)
+  - **unrealized_pnl_pct**: Unrealized profit/loss percentage (positive = profit %, negative = loss %)
+  - **position_pct**: Position size as percentage of total portfolio value
+  
+  **If no positions exist**, you will see:
+  - Portfolio is 100% cash
+  - Total portfolio value
+  - Number of positions: 0
+  - You should assess whether current market conditions are suitable for starting positions
+  
+  **YOU MUST USE THIS INFORMATION IN YOUR RISK ANALYSIS (whether positions exist or not):**
+  1. **Analyze P&L for each position**: Check unrealized_pnl and unrealized_pnl_pct
+     - Large losses (unrealized_pnl_pct < -10%) indicate high risk
+     - Consider recommending stop-loss or position reduction for losing positions
+  2. **Check position concentration**: Review position_pct for each holding
+     - Positions with position_pct > 15% indicate concentration risk
+     - Recommend diversification if concentration is too high
+  3. **Assess overall portfolio health**: 
+     - Calculate total unrealized P&L across all positions
+     - Check if portfolio is over-leveraged (total position_pct > 85%)
+  4. **Make specific recommendations** based on P&L and position size:
+     - If position_pct > 15% AND unrealized_pnl_pct < -5%: Recommend reducing position
+     - If position_pct < 3% AND unrealized_pnl_pct > 10%: Consider if position should be increased
+     - If multiple positions have large losses: Recommend overall portfolio risk reduction
+  
   **Important**: The market_view contains data for a large universe of stocks (typically 100+ stocks). You will see:
   - stocks_count: Total number of stocks in the universe
   - symbols: Complete list of all stock symbols
@@ -80,9 +113,19 @@ user: |
   
   Your task:
   1. Analyze market risks (volatility, economic conditions, systemic risks)
-  2. Evaluate current position risks (concentration, exposure, correlation)
+  2. **MANDATORY**: Evaluate current position risks (or lack of positions):
+     - **If positions exist**: 
+       - For each position, analyze unrealized_pnl, unrealized_pnl_pct, and position_pct
+       - Identify positions with high concentration risk (position_pct > 15%)
+       - Identify positions with large losses (unrealized_pnl_pct < -10%)
+       - Assess correlation and diversification
+     - **If no positions exist**:
+       - Assess if portfolio should remain in cash (100% cash = no market risk but no returns)
+       - Evaluate if current market conditions are suitable for initial position entry
+       - Consider risk tolerance and market volatility when recommending whether to start building positions
+       - Provide guidance on position sizing for initial entries
   3. Use tools to gather additional risk-related data if needed
-  4. Provide position control report with specific recommendations
+  4. Provide position control report with specific recommendations based on P&L and position size
   5. Calculate risk-adjusted position sizes for each holding
   
   Risk Analysis Focus:

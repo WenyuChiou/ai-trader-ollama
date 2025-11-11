@@ -14,6 +14,7 @@ def _calculate_position_size(
     max_position_per_stock: float = 0.15,  # 单股最大仓位（可配置）
     max_total_position: float = 0.80,  # 总仓位上限（可配置）
     min_position_per_stock: float = 0.03,  # 单股最小仓位（新增：允许更小的仓位）
+    available_cash: Optional[float] = None,  # 新增：可用现金（如果提供，用于限制买入数量）
 ) -> int:
     """
     计算买入数量（改进版：支持多股票分散投资，更灵活的仓位分配）
@@ -108,6 +109,14 @@ def _calculate_position_size(
     # 计算目标市值（但不能超过可用现金）
     target_value = portfolio_value * remaining_position_pct
     
+    # CRITICAL: 如果提供了可用现金，确保不超过可用现金
+    if available_cash is not None and available_cash >= 0:
+        # 限制目标市值不超过可用现金
+        target_value = min(target_value, available_cash)
+        if target_value <= 0:
+            print(f"[TRADER] Skipping {symbol}: no available cash (available_cash=${available_cash:.2f})")
+            return 0
+    
     # 计算数量（向下取整）
     quantity = floor(target_value / last_price)
     
@@ -117,11 +126,21 @@ def _calculate_position_size(
         # 检查1股的价值是否在合理范围内（不超过目标仓位的150%）
         one_share_value = last_price / portfolio_value if portfolio_value > 0 else 0
         if one_share_value <= remaining_position_pct * 1.5:
-            quantity = 1
-            print(f"[TRADER] Ensuring minimum 1 share for {symbol} (position_pct={remaining_position_pct:.2%}, one_share_pct={one_share_value:.2%})")
+            # 如果提供了可用现金，确保1股的价格不超过可用现金
+            if available_cash is None or last_price <= available_cash:
+                quantity = 1
+                print(f"[TRADER] Ensuring minimum 1 share for {symbol} (position_pct={remaining_position_pct:.2%}, one_share_pct={one_share_value:.2%})")
     
-    # 确保不超过可用现金（如果有现金限制，这里可以进一步检查）
-    # 但通常 portfolio_value 已经考虑了现金，所以这里不做额外检查
+    # 最终检查：如果提供了可用现金，确保总成本不超过可用现金
+    if available_cash is not None and quantity > 0:
+        total_cost = quantity * last_price
+        if total_cost > available_cash:
+            # 减少数量以匹配可用现金
+            quantity = floor(available_cash / last_price)
+            if quantity <= 0:
+                print(f"[TRADER] Skipping {symbol}: insufficient cash (need ${total_cost:.2f}, available ${available_cash:.2f})")
+                return 0
+            print(f"[TRADER] Reduced {symbol} quantity to {quantity} due to cash limit (available ${available_cash:.2f})")
     
     return max(0, quantity)
 
@@ -183,6 +202,7 @@ def run_trader(
     current_positions: Optional[Dict[str, Any]] = None,
     portfolio_value: Optional[float] = None,
     position_config: Optional[Dict[str, float]] = None,  # 新增：仓位配置参数
+    available_cash: Optional[float] = None,  # 新增：可用现金（如果提供，用于限制买入）
 ) -> Dict[str, Any]:
     """
     Trader Agent: 决定是否买卖（包含买卖那些公司、部位、买进价格、卖出价格等）
@@ -358,19 +378,32 @@ def run_trader(
             max_total_position = 0.80  # 默认总仓位80%
             min_position_per_stock = 0.03  # 默认单股最小3%（允许更小的仓位）
         
-        # 计算当前总仓位（用于限制买入）
+        # CRITICAL: 计算当前总仓位（用于限制买入）
+        # current_positions 包含完整信息：quantity, avg_cost, current_price, market_value, unrealized_pnl, unrealized_pnl_pct, position_pct
         current_total_value = 0.0
         if current_positions:
             for sym, pos_info in current_positions.items():
                 if isinstance(pos_info, dict):
-                    qty = pos_info.get("quantity", 0)
-                    current_price = pos_info.get("current_price", last_prices.get(sym, 0.0))
+                    # 优先使用 market_value（如果存在），否则计算
+                    market_value = pos_info.get("market_value")
+                    if market_value is None or market_value == 0:
+                        qty = pos_info.get("quantity", 0)
+                        current_price = pos_info.get("current_price", last_prices.get(sym, 0.0))
+                        market_value = qty * current_price
+                    current_total_value += market_value
+                    
+                    # DEBUG: 打印持仓信息（包括损益和占比）
+                    unrealized_pnl = pos_info.get("unrealized_pnl", 0.0)
+                    unrealized_pnl_pct = pos_info.get("unrealized_pnl_pct", 0.0)
+                    position_pct = pos_info.get("position_pct", 0.0)
+                    if market_value > 0:
+                        print(f"[TRADER] Position {sym}: value=${market_value:.2f} ({position_pct:.1f}%), P&L=${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%)")
                 else:
+                    # 旧格式兼容
                     qty = pos_info if isinstance(pos_info, (int, float)) else 0
                     current_price = last_prices.get(sym, 0.0)
-                
-                if qty > 0 and current_price > 0:
-                    current_total_value += qty * current_price
+                    if qty > 0 and current_price > 0:
+                        current_total_value += qty * current_price
         
         # 计算可用资金（考虑总仓位限制）
         current_total_position_pct = current_total_value / portfolio_value if portfolio_value > 0 else 0.0
@@ -405,14 +438,15 @@ def run_trader(
                     max_position_per_stock=max_position_per_stock,
                     max_total_position=max_total_position,
                     min_position_per_stock=min_position_per_stock,
+                    available_cash=available_cash,  # 传递可用现金
                 )
                 
                 if quantity > 0:
-                    # 买入价格范围（更激进的限价策略，提高成交率）
-                    # 使用当前价格的 99%-100% 作为范围，限价设为 99.5%（提高成交率至50%以上）
-                    buy_price_max = last_price  # 最高买入价（不超过当前价格）
-                    buy_price_min = last_price * 0.995  # 最低买入价（仅比当前价格低0.5%，提高成交率）
-                    buy_price = buy_price_max  # 默认使用最高价（保守，确保能买到）
+                    # 买入价格范围（优化限价策略，提高成交率）
+                    # 使用当前价格的 99.5%-100.5% 作为范围，限价设为 100%（允许小幅溢价，提高成交率）
+                    buy_price_max = last_price * 1.005  # 最高买入价（允许0.5%溢价，提高成交率）
+                    buy_price_min = last_price * 0.995  # 最低买入价（比当前价格低0.5%）
+                    buy_price = last_price * 1.002  # 默认使用当前价格+0.2%（平衡成交率和成本）
                     total_cost = buy_price * quantity
                     
                     # 检查可用资金（这里检查现金是否足够）

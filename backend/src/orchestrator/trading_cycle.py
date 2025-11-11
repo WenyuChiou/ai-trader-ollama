@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, Any, List, Tuple, Optional
 from datetime import date, timedelta, datetime, timezone, time as dt_time
 from pathlib import Path  # 统一在文件顶部导入，避免函数内部重复导入导致的作用域问题
+import json  # 用于加载 portfolio_state.json
 
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
@@ -170,7 +171,39 @@ def execute_daily_trade(
 
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
     if portfolio is None:
-        portfolio = Portfolio()
+        # CRITICAL: 尝试从 portfolio_state.json 加载现有状态，而不是创建新的空 Portfolio
+        portfolio_file = Path("data/logs/portfolio_state.json")
+        if portfolio_file.exists():
+            try:
+                with portfolio_file.open("r", encoding="utf-8") as f:
+                    state = json.load(f)
+                portfolio = Portfolio(
+                    cash=float(state.get("cash", 10000.0)),
+                    initial_value=float(state.get("initial_value", 10000.0)),
+                )
+                # 恢复持仓
+                from src.data.portfolio import Position
+                for symbol, pos_info in state.get("positions", {}).items():
+                    if isinstance(pos_info, dict):
+                        qty = int(pos_info.get("quantity", 0))
+                        avg_cost = float(pos_info.get("avg_cost", 0))
+                        total_cost = float(pos_info.get("total_cost", 0))
+                        if total_cost <= 0:
+                            total_cost = avg_cost * qty
+                        if qty > 0:
+                            portfolio._positions[symbol] = Position(
+                                symbol=symbol,
+                                quantity=qty,
+                                avg_cost=avg_cost,
+                                total_cost=total_cost,
+                            )
+                print(f"[TRADING CYCLE] ✅ Loaded portfolio from state: cash=${portfolio.cash:.2f}, positions={len(portfolio._positions)}")
+            except Exception as e:
+                print(f"[TRADING CYCLE] ⚠️ Warning: Failed to load portfolio state: {e}, using default Portfolio()")
+                portfolio = Portfolio()
+        else:
+            print(f"[TRADING CYCLE] ⚠️ Portfolio state file not found, using default Portfolio()")
+            portfolio = Portfolio()
     if trade_logger is None:
         trade_logger = TradeLogger()
 
@@ -251,11 +284,36 @@ def execute_daily_trade(
     
     # ---- (3) 多Analyst討論層 ----
     # 运行多个专门的分析师：Market, Technical, Fundamental, Sentiment
+    # 注意：这里先准备仓位信息（在订单结算之前），但会在订单结算后更新
+    # 为了确保讨论系统也能看到当前仓位，我们先准备一个初步的仓位信息
+    preliminary_positions_info = {}
+    preliminary_portfolio_value = 10000.0
+    if portfolio:
+        preliminary_portfolio_value = portfolio.value(last_prices)
+        for symbol, pos in portfolio._positions.items():
+            current_price = last_prices.get(symbol, pos.avg_cost)
+            preliminary_positions_info[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": current_price,
+                "market_value": pos.quantity * current_price,
+            }
+    
+    # 计算初步可用现金
+    from src.utils.config_loader import load_config
+    config = load_config()
+    MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)
+    required_cash_reserve = preliminary_portfolio_value * MIN_CASH_RESERVE_RATIO
+    preliminary_available_cash = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
+    
     convo = run_multi_analyst_discussion(
         market_view=market_view,  # 传入完整的market_view
         use_tools=auto_tools,
         tool_budget=tool_budget,
         order_status=order_status,  # 传入订单状态
+        current_positions=preliminary_positions_info if preliminary_positions_info else None,  # 传入仓位信息
+        portfolio_value=preliminary_portfolio_value,  # 传入组合净值
+        available_cash=preliminary_available_cash,  # 传入可用现金
     )
     final_stance = convo.get("final_stance", "neutral")
 
@@ -634,28 +692,43 @@ def execute_daily_trade(
     # ---- (3) Risk Analyst：評估倉位風險 ----
     # CRITICAL: 在订单结算之后准备仓位信息，确保 Risk Analyst 使用最新的仓位状态
     # 这样在多日模拟中，Risk Analyst 能够正确分析前一天的仓位状态（包括当天已结算的订单）
+    # CRITICAL: 准备完整的持仓信息，包括损益和占比
+    # 即使没有持仓，也要传递组合信息（现金、总净值等）给 Risk Analyst
     current_positions_info = {}
     if portfolio:
         portfolio_value = portfolio.value(last_prices)
         for symbol, pos in portfolio._positions.items():
             current_price = last_prices.get(symbol, pos.avg_cost)
+            market_value = pos.quantity * current_price
+            unrealized_pnl = (current_price - pos.avg_cost) * pos.quantity
+            unrealized_pnl_pct = ((current_price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0
+            position_pct = (market_value / portfolio_value * 100.0) if portfolio_value > 0 else 0.0
+            
             current_positions_info[symbol] = {
                 "quantity": pos.quantity,
                 "avg_cost": pos.avg_cost,
                 "current_price": current_price,
-                "market_value": pos.quantity * current_price,
+                "market_value": market_value,
+                "unrealized_pnl": unrealized_pnl,  # 未实现损益（金额）
+                "unrealized_pnl_pct": unrealized_pnl_pct,  # 未实现损益（百分比）
+                "position_pct": position_pct,  # 持仓占比（占组合净值的百分比）
             }
     else:
         portfolio_value = 10000.0  # 默认初始净值
+    
+    # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
+    # 这样 Risk Analyst 可以分析"没有持仓"的状态，评估是否应该开始建仓
     
     # 调用 Risk Analyst (LLM版本)
     # 传递discussion内容让Risk Analyst理解讨论中的风险信号
     previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]  # 限制长度
     
+    # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
+    # 传递空字典而不是None，这样 Risk Analyst 可以明确知道"没有持仓"的状态
     risk_report = run_risk_analyst_llm(
         market_json=market_view,
-        current_positions=current_positions_info if current_positions_info else None,
-        portfolio_value=portfolio_value,
+        current_positions=current_positions_info,  # 传递空字典{}而不是None，表示"没有持仓"的状态
+        portfolio_value=portfolio_value,  # 即使没有持仓，也要传递组合净值
         discussion_risk_signals=discussion_risk_signals,
         previous_discussion=previous_discussion_text,
         use_tools=auto_tools,  # 与discussion使用相同的tool设置
@@ -686,6 +759,16 @@ def execute_daily_trade(
         # 如果读取失败，使用默认值
         pass
 
+    # 计算可用现金（考虑现金储备要求）
+    # 先计算，以便传递给 trader agent
+    from src.utils.config_loader import load_config
+    config = load_config()
+    MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)  # Keep 20% cash
+    required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
+    available_cash_for_trading = max(0, portfolio.cash - required_cash_reserve)
+    
+    print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, required reserve: ${required_cash_reserve:.2f}, available for trading: ${available_cash_for_trading:.2f}")
+    
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -695,6 +778,7 @@ def execute_daily_trade(
         current_positions=current_positions_info if current_positions_info else None,
         portfolio_value=portfolio_value,
         position_config=position_config,  # 传入仓位配置
+        available_cash=available_cash_for_trading,  # 传入可用现金
     )
     
     # Debug: Log decision content
@@ -776,9 +860,19 @@ def execute_daily_trade(
         # 按优先级排序（可以根据 signal_score 或其他指标排序）
         # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
         from math import floor
-        buy_orders_sorted = sorted(filtered_buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
         
-        # 掛單策略：開盤前掛限價單（使用價格範圍最低價作為限價）
+        # OPTIMIZATION: 限制单次交易周期创建的订单数量（避免过多pending订单）
+        MAX_ORDERS_PER_CYCLE = config.get("max_orders_per_cycle", 20)  # 默认最多20个订单
+        buy_orders_sorted = sorted(filtered_buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
+        buy_orders_sorted = buy_orders_sorted[:MAX_ORDERS_PER_CYCLE]  # 只保留前N个订单
+        
+        if len(filtered_buy_orders) > MAX_ORDERS_PER_CYCLE:
+            print(f"[OPTIMIZATION] Limited buy orders from {len(filtered_buy_orders)} to {MAX_ORDERS_PER_CYCLE} (max_orders_per_cycle)")
+        
+        # 掛單策略：開盤前掛限價單（使用更合理的限价策略）
+        # CRITICAL: 累计跟踪已使用的现金，确保订单总金额不超过可用现金
+        remaining_cash = available_for_trading  # 剩余可用现金（动态更新）
+        
         for order in buy_orders_sorted:
             symbol = order.get("symbol")
             buy_price = order.get("buy_price")  # 基准价格（用于计算）
@@ -790,26 +884,32 @@ def execute_daily_trade(
             if symbol and buy_price and quantity:
                 try:
                     # 檢查現金是否足夠
-                    # 使用 buy_price_min 作為限價（但更激進，提高成交率）
-                    # buy_price_min 現在是 99.5% 當前價格，而不是 98%
-                    limit_price = buy_price_min  # 使用價格範圍最低價作為限價（99.5%當前價格）
+                    # 使用更合理的限价策略：使用 buy_price（当前价格+0.2%）作为限价，允许小幅溢价提高成交率
+                    # 如果 buy_price 不在范围内，使用 buy_price_max（当前价格+0.5%）
+                    limit_price = min(buy_price, buy_price_max) if buy_price <= buy_price_max else buy_price_max
                     estimated_cost = limit_price * quantity
                     
-                    # Check 3: Cash reserve (use available_for_trading instead of full cash)
-                    if estimated_cost > available_for_trading:
+                    # Check 3: Cash reserve (use remaining_cash instead of initial available_for_trading)
+                    # CRITICAL: 使用剩余现金，而不是初始可用现金
+                    if estimated_cost > remaining_cash:
                         # 現金不足（考慮保留比例），減少數量
-                        max_affordable_qty = floor(available_for_trading / limit_price)
+                        max_affordable_qty = floor(remaining_cash / limit_price)
                         if max_affordable_qty > 0:
                             quantity = max_affordable_qty
                             total_cost = limit_price * quantity
-                            print(f"[OPTIMIZATION] Reduced {symbol} quantity to {quantity} due to cash reserve limit")
+                            estimated_cost = total_cost
+                            print(f"[OPTIMIZATION] Reduced {symbol} quantity to {quantity} due to cash reserve limit (remaining cash: ${remaining_cash:.2f})")
                         else:
-                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash after reserve (need ${estimated_cost:.2f}, available ${available_for_trading:.2f})")
+                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash after reserve (need ${estimated_cost:.2f}, remaining ${remaining_cash:.2f})")
                             continue
+                    
+                    # CRITICAL: 扣除已使用的现金（在创建订单前）
+                    remaining_cash -= estimated_cost
+                    print(f"[CASH TRACKING] Order for {symbol}: cost=${estimated_cost:.2f}, remaining cash=${remaining_cash:.2f}")
                     
                     # 掛單：創建限價買單（使用 buy_price_min 作為限價）
                     # Debug: Log the order_date being used
-                    print(f"[DEBUG] Creating order for {symbol} with order_date={today}")
+                    print(f"[DEBUG] Creating order for {symbol} with order_date={today}, cost=${estimated_cost:.2f}, remaining_cash=${remaining_cash:.2f}")
                     placed_order = order_manager.place_order(
                         symbol=symbol,
                         action="BUY",
@@ -826,7 +926,7 @@ def execute_daily_trade(
                     # 注意：訂單已掛單，但尚未執行
                     # 實際執行會在收盤後通過 check_order_fills() 檢查
                     market_status = "tomorrow" if not is_market_open and today != date.today().isoformat() else "today"
-                    print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (order_date: {today}, will check fill after market close)")
+                    print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (order_date: {today}, cost=${estimated_cost:.2f}, remaining_cash=${remaining_cash:.2f})")
                     
                 except Exception as e:
                     execution_errors.append(f"BUY {symbol} order placement failed: {e}")
@@ -840,6 +940,10 @@ def execute_daily_trade(
                         reason=f"Order placement failed: {e}",
                         rationale=decision.get("rationale"),
                     )
+        
+        # 打印现金使用总结
+        total_orders_cost = available_for_trading - remaining_cash
+        print(f"[CASH SUMMARY] Total orders cost: ${total_orders_cost:.2f}, Remaining cash: ${remaining_cash:.2f} (from ${available_for_trading:.2f} available)")
         
         # 执行卖出订单
         sell_orders = decision.get("sell_orders", [])

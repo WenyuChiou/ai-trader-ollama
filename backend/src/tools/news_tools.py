@@ -4,6 +4,8 @@ from typing import List, Dict, Any, Optional
 import time
 import json
 import re
+from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 
 import requests
 import feedparser
@@ -30,15 +32,53 @@ except Exception:
 # ---------------------------
 
 BUSINESS_FEEDS = [
-    # 華爾街日報 Markets（RSS）
-    "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
-    # Reuters 主要新聞（多數情況能抓到金融）
-    "https://feeds.reuters.com/reuters/topNews",
-    # CNBC Markets
-    "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-    # FT（Financial Times）Most Recent
-    "https://www.ft.com/?format=rss",
+    # 核心金融新闻源（已验证最新，<6小时）
+    "https://www.cnbc.com/id/100003114/device/rss/rss.html",  # CNBC Markets ✅ 最新
+    "https://www.marketwatch.com/rss/topstories",  # MarketWatch Top Stories ✅ 最新
+    "https://seekingalpha.com/feed.xml",  # Seeking Alpha ✅ 最新
+    "https://www.investing.com/rss/news.rss",  # Investing.com News ✅ 最新
+    "https://www.benzinga.com/feed",  # Benzinga News ✅ 最新
+    "https://feeds.bloomberg.com/markets/news.rss",  # Bloomberg Markets ✅ 最新
+    
+    # 多元化新闻源（社区讨论、观点，已验证最新）
+    "https://www.reddit.com/r/wallstreetbets/.rss",  # Reddit WSB ✅ 最新
+    "https://www.reddit.com/r/investing/.rss",  # Reddit Investing ✅ 最新
+    "https://www.reddit.com/r/stocks/.rss",  # Reddit Stocks ✅ 最新
+    "https://hnrss.org/frontpage",  # Hacker News（科技新闻）✅ 最新
+    
+    # 注意：以下源已移除（原因）
+    # "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",  # ❌ 移除：新闻过旧（287天前）
+    # "https://feeds.reuters.com/reuters/topNews",  # ❌ URLError
+    # "https://www.ft.com/?format=rss",  # ❌ URLError
+    # "https://feeds.reuters.com/reuters/businessNews",  # ❌ URLError
+    # "https://feeds.reuters.com/reuters/marketsNews",  # ❌ URLError
+    # "https://www.marketwatch.com/rss/markets",  # ❌ SAXParseException
+    # "https://www.zerohedge.com/fullrss2.xml",  # ❌ NonXMLContentType
 ]
+
+def _parse_entry_date(entry: Any) -> Optional[datetime]:
+    """解析新闻条目的发布日期"""
+    # 尝试多种日期格式
+    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+        try:
+            return datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+        except:
+            pass
+    
+    if hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+        try:
+            return datetime(*entry.updated_parsed[:6], tzinfo=timezone.utc)
+        except:
+            pass
+    
+    # 尝试解析 published 字符串
+    if hasattr(entry, 'published'):
+        try:
+            return parsedate_to_datetime(entry.published)
+        except:
+            pass
+    
+    return None
 
 def _norm_item(entry: Any) -> Dict[str, Any]:
     title = getattr(entry, "title", None) or entry.get("title", "")
@@ -48,17 +88,47 @@ def _norm_item(entry: Any) -> Dict[str, Any]:
         # 從 link 推斷來源網域
         domain = extract_domain(link or "")
         src = domain if domain else "rss"
-    return {"title": title, "link": link, "source": src}
+    
+    # 解析日期
+    date = _parse_entry_date(entry)
+    
+    item = {"title": title, "link": link, "source": src}
+    if date:
+        item["published"] = date.isoformat()
+        item["published_timestamp"] = date.timestamp()
+    return item
 
-def business_rss(max_items: int = 40) -> List[Dict[str, Any]]:
+def business_rss(max_items: int = 40, max_age_hours: int = 48) -> List[Dict[str, Any]]:
+    """
+    获取商业新闻RSS，只返回最新的新闻
+    
+    Args:
+        max_items: 最大返回条目数
+        max_age_hours: 最大新闻年龄（小时），超过此时间的新闻将被过滤
+    """
     hits: List[Dict[str, Any]] = []
+    now = datetime.now(timezone.utc)
+    cutoff_time = now - timedelta(hours=max_age_hours)
+    
     for url in BUSINESS_FEEDS:
         try:
             feed = feedparser.parse(url)
             for e in feed.entries[:20]:
-                hits.append(_norm_item(e))
+                item = _norm_item(e)
+                
+                # 过滤旧新闻：如果有日期信息，只保留最新的
+                if "published_timestamp" in item:
+                    item_date = datetime.fromtimestamp(item["published_timestamp"], tz=timezone.utc)
+                    if item_date < cutoff_time:
+                        continue  # 跳过过旧的新闻
+                
+                hits.append(item)
         except Exception:
             continue
+    
+    # 按日期排序（最新的在前）
+    hits.sort(key=lambda x: x.get("published_timestamp", 0), reverse=True)
+    
     # 去重（以 title+link）
     dedup = []
     seen = set()
@@ -67,6 +137,7 @@ def business_rss(max_items: int = 40) -> List[Dict[str, Any]]:
         if key not in seen:
             seen.add(key)
             dedup.append(h)
+    
     return dedup[:max_items]
 
 def google_news_rss(query: str, lang: str = "en", region: str = "US", max_items: int = 20) -> List[Dict[str, Any]]:
@@ -170,15 +241,38 @@ def news_scan(
     先用 RSS（business + google news）組合；若仍不足、且允許 domains=None，可再用 ddgs 搜尋補充。
     回傳 {"hits":[{title,link,source},...], "queries":[...]}。
     """
+    # 排除的新闻源（过旧或不可用）
+    EXCLUDED_SOURCES = {
+        "www.wsj.com", "wsj.com", "feeds.a.dj.com",  # 华尔街日报（新闻过旧）
+        "www.reuters.com", "reuters.com",  # 路透社（RSS不可用）
+        "www.ft.com", "ft.com",  # 金融时报（RSS不可用）
+        "www.zerohedge.com", "zerohedge.com",  # Zero Hedge（RSS不可用）
+    }
+    
     # RSS 先來一輪
     rss = fetch_rss(keywords, include_business=True, per_query=10, cap=max_articles)
     hits = rss.get("hits", [])
+    
+    # 过滤掉排除的新闻源
+    filtered_hits = []
+    for h in hits:
+        source = h.get("source", "").lower()
+        # 检查是否在排除列表中
+        if any(excluded in source for excluded in EXCLUDED_SOURCES):
+            continue
+        filtered_hits.append(h)
+    hits = filtered_hits
+    
     # 若不足且允許放寬域名，嘗試 web 搜尋補充
     if len(hits) < max_articles:
         extra = search_web(keywords, max_results=max_articles, domains=domains, recency_days=recency_days)
         for r in extra:
             h = {"title": r.get("title"), "link": r.get("link"), "source": r.get("source")}
             if h["title"] and h["link"]:
+                # 检查是否在排除列表中
+                source = h.get("source", "").lower()
+                if any(excluded in source for excluded in EXCLUDED_SOURCES):
+                    continue
                 # 去重
                 if not any((h["title"] == x.get("title") and h["link"] == x.get("link")) for x in hits):
                     hits.append(h)
@@ -256,8 +350,16 @@ def plan_and_scan_news(
     """
     if preferred_domains is None:
         preferred_domains = [
-            "www.reuters.com", "www.wsj.com", "www.ft.com", "www.cnbc.com",
-            "www.cboe.com", "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov"
+            # 核心金融新闻域名（已验证最新）
+            "www.cnbc.com", "www.marketwatch.com", "seekingalpha.com",
+            "www.investing.com", "www.benzinga.com", "www.bloomberg.com",
+            "finance.yahoo.com", "www.reddit.com",  # Reddit 用于多元化观点
+            # 其他可靠域名
+            "www.cboe.com", "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov",
+            # 注意：以下域名已移除（原因）
+            # "www.wsj.com",  # ❌ 移除：RSS源新闻过旧（287天前）
+            # "www.reuters.com", "www.ft.com",  # ❌ RSS源不可用
+            # "www.zerohedge.com",  # ❌ RSS源不可用
         ]
 
     queries = _choose_queries_llm(tickers, mview)

@@ -1464,7 +1464,7 @@
             <div class="chart-section" id="distributionSection" style="display: block; margin-top: 20px;">
                 <div class="chart-header">
                     <h2>🥧 Portfolio Distribution</h2>
-                    <span style="font-size: 13px; color: #6b7280;" id="pieChartInfo">By market value</span>
+                    <span style="font-size: 13px; color: #94a3b8;" id="pieChartInfo">By market value</span>
                 </div>
                 <div class="chart-container" style="position: relative; height: 400px; padding: 20px; display: flex; justify-content: center; align-items: center;">
                     <canvas id="distributionChart" style="max-width: 400px; max-height: 400px;"></canvas>
@@ -1643,12 +1643,14 @@
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
         const CONVERSATIONS_LIMIT = 30; // 限制对话数量（优化：减少DOM操作）
-        const TRADES_LIMIT = 30; // 限制交易数量（优化：减少DOM操作）
+        const TRADES_LIMIT = 100; // 限制交易数量（增加到100，确保显示完整订单数据）
         let refreshTimer = null;
         let orderCheckTimer = null; // 订单检查定时器
         let equityHistory = [];
         let demoTimer = null;
         let agentStatusTimer = null;
+        let lastMarketStatus = null; // 上次市场状态（用于检测状态切换）
+        let marketStatusMonitorTimer = null; // 市场状态监控定时器
 
         // Format number to currency
         function formatCurrency(value) {
@@ -2317,6 +2319,23 @@
                         console.warn('[Frontend] Backend did not return positions_pnl, will calculate from positions');
                         data.positions_pnl = {};
                     }
+                    
+                    // 确保positions_detail存在（用于图表显示）
+                    if (!data.positions_detail && data.positions) {
+                        // 如果后端返回的是positions（旧格式），转换为positions_detail
+                        data.positions_detail = data.positions;
+                    }
+                    
+                    // 调试：打印portfolio数据
+                    console.log('[Frontend] Portfolio data received:', {
+                        cash: data.cash,
+                        total_value: data.total_value,
+                        equity_value: data.equity_value,
+                        positions_count: Object.keys(data.positions || {}).length,
+                        positions_detail_count: Object.keys(data.positions_detail || {}).length,
+                        has_positions: Object.keys(data.positions || {}).length > 0,
+                        positions_keys: Object.keys(data.positions || {}).slice(0, 5)
+                    });
 
                     return data;
                 } catch (fetchErr) {
@@ -3795,24 +3814,36 @@
                                             // 确保 result 是对象，而不是字符串
                                             let resultData = toolInfo.result;
                                             if (typeof resultData === 'string') {
-                                                // 如果 result 是字符串，尝试解析
-                                                try {
-                                                    resultData = JSON.parse(resultData);
-                                                } catch (e) {
-                                                    // 如果直接解析失败，尝试使用 extractPartialJson
-                                                    const partial = extractPartialJson(resultData);
-                                                    if (partial) {
-                                                        resultData = partial;
-                                                    } else {
-                                                        console.warn(`[Tool Display] Failed to parse result string for ${entryToolName}`, e);
-                                                        return '';
+                                                // 检查字符串是否看起来像 JSON（以 { 或 [ 开头）
+                                                const trimmed = resultData.trim();
+                                                const looksLikeJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+                                                
+                                                if (looksLikeJson) {
+                                                    // 如果看起来像 JSON，尝试解析
+                                                    try {
+                                                        resultData = JSON.parse(resultData);
+                                                    } catch (e) {
+                                                        // 如果直接解析失败，尝试使用 extractPartialJson
+                                                        const partial = extractPartialJson(resultData);
+                                                        if (partial) {
+                                                            resultData = partial;
+                                                        } else {
+                                                            // 如果完全无法解析为 JSON，将其作为纯文本处理
+                                                            console.warn(`[Tool Display] Failed to parse result string for ${entryToolName}, treating as plain text`, e);
+                                                            resultData = { raw_text: resultData, _is_plain_text: true };
+                                                        }
                                                     }
+                                                } else {
+                                                    // 如果不像 JSON，直接作为纯文本处理
+                                                    resultData = { raw_text: resultData, _is_plain_text: true };
                                                 }
                                             }
                                             
-                                            // 处理嵌套的 ok/result 结构
-                                            while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
-                                                resultData = resultData.result;
+                                            // 处理嵌套的 ok/result 结构（但保留纯文本标记）
+                                            if (!resultData._is_plain_text) {
+                                                while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                                    resultData = resultData.result;
+                                                }
                                             }
                                             
                                             const tableHtml = formatToolResultAsTable(resultData, toolInfo.name);
@@ -4056,41 +4087,68 @@
             if (!resultText) return '';
             
             try {
+                // 检查是否是纯文本标记
+                if (typeof resultText === 'object' && resultText._is_plain_text && resultText.raw_text) {
+                    // 如果是纯文本，直接返回格式化的文本
+                    return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(resultText.raw_text)}</div>`;
+                }
+                
                 // 尝试解析JSON
                 let data;
                 if (typeof resultText === 'string') {
-                    // 尝试提取JSON对象
-                    const jsonMatch = resultText.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        data = JSON.parse(jsonMatch[0]);
+                    // 检查是否看起来像 JSON（以 { 或 [ 开头）
+                    const trimmed = resultText.trim();
+                    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                        // 尝试提取JSON对象
+                        const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            try {
+                                data = JSON.parse(jsonMatch[0]);
+                            } catch (e) {
+                                // 如果解析失败，尝试使用 extractPartialJson
+                                const partial = extractPartialJson(jsonMatch[0]);
+                                if (partial) {
+                                    data = partial;
+                                } else {
+                                    // 如果完全无法解析，返回原文本
+                                    return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(resultText)}</div>`;
+                                }
+                            }
+                        } else {
+                            return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(resultText)}</div>`;
+                        }
                     } else {
-                        return resultText; // 如果不是JSON，返回原文本
+                        // 如果不像 JSON，返回原文本
+                        return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(resultText)}</div>`;
                     }
                 } else if (typeof resultText === 'object') {
                     data = resultText;
                 } else {
-                    return String(resultText);
+                    return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(String(resultText))}</div>`;
                 }
                 
                 // 递归提取实际数据（处理嵌套的result结构）
                 // 例如: {ok: true, result: {ok: true, result: {indices: [...]}}}
-                let depth = 0;
-                const maxDepth = 10; // 防止无限循环
-                while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
-                    // 如果result中还有ok字段，继续提取
-                    if (data.result.ok !== undefined) {
-                        data = data.result;
-                    } else {
-                        // 如果result中没有ok字段，说明已经到了实际数据层
-                        data = data.result;
-                        break;
+                // 但跳过纯文本标记的对象
+                if (!data._is_plain_text) {
+                    let depth = 0;
+                    const maxDepth = 10; // 防止无限循环
+                    while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
+                        // 如果result中还有ok字段，继续提取
+                        if (data.result.ok !== undefined) {
+                            data = data.result;
+                        } else {
+                            // 如果result中没有ok字段，说明已经到了实际数据层
+                            data = data.result;
+                            break;
+                        }
+                        depth++;
                     }
-                    depth++;
-                }
-                // 如果还有result字段，再提取一次（处理多层嵌套）
-                while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
-                    data = data.result;
-                    depth++;
+                    // 如果还有result字段，再提取一次（处理多层嵌套）
+                    while (data && data.result && typeof data.result === 'object' && depth < maxDepth) {
+                        data = data.result;
+                        depth++;
+                    }
                 }
                 
                 // 特殊处理：fear_greed 工具 - 提取数据并更新顶部面板
@@ -5673,7 +5731,8 @@
         // Render Portfolio Distribution Pie Chart
         function renderDistributionChart(portfolio) {
             try {
-                const positions = portfolio.positions || {};
+                // 优先使用positions_detail（新格式），如果没有则使用positions（旧格式）
+                const positions = portfolio.positions_detail || portfolio.positions || {};
                 const positionsArray = Object.entries(positions);
                 const cash = portfolio.cash || 0;
                 
@@ -5689,16 +5748,34 @@
                 }
                 
                 // 如果有现金但没有持仓，也要显示圆饼图
-                console.log('[Chart] Rendering distribution chart:', { cash, positionsCount: positionsArray.length });
+                console.log('[Chart] Rendering distribution chart:', { cash, positionsCount: positionsArray.length, portfolio });
                 
                 // Prepare data - 包含现金和持仓
+                // 夜间模式：使用明亮、高饱和度的颜色，确保在深色背景下清晰可见
                 const labels = [];
                 const data = [];
                 const colors = [
-                    '#9ca3af', // 现金颜色（灰色）
-                    '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe',
-                    '#1e40af', '#2563eb', '#3b82f6', '#60a5fa',
-                    '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0',
+                    '#94a3b8', // 现金颜色（浅灰色，在深色背景下可见）
+                    // 明亮蓝色系
+                    '#3b82f6', '#60a5fa', '#38bdf8', '#22d3ee',
+                    // 明亮绿色系
+                    '#10b981', '#34d399', '#6ee7b7', '#a7f3d0',
+                    // 明亮紫色系
+                    '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe',
+                    // 明亮橙色系
+                    '#f59e0b', '#fbbf24', '#fcd34d', '#fde68a',
+                    // 明亮红色系
+                    '#ef4444', '#f87171', '#fca5a5', '#fecaca',
+                    // 明亮青色系
+                    '#06b6d4', '#22d3ee', '#67e8f9', '#a5f3fc',
+                    // 明亮黄色系
+                    '#eab308', '#facc15', '#fde047', '#fef08a',
+                    // 明亮粉色系
+                    '#ec4899', '#f472b6', '#f9a8d4', '#fbcfe8',
+                    // 明亮靛蓝色系
+                    '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe',
+                    // 明亮青色系（补充）
+                    '#14b8a6', '#5eead4', '#99f6e4', '#ccfbf1',
                 ];
                 
                 // 添加现金（如果有）
@@ -5708,8 +5785,38 @@
                 }
                 
                 // 添加持仓
+                // 处理两种数据格式：
+                // 1. 新格式：{symbol: {quantity, avg_cost, market_value, current_price, ...}}
+                // 2. 旧格式：{symbol: quantity} - 需要从 positions_detail 或 positions_pnl 获取 market_value
                 positionsArray.forEach(([symbol, pos]) => {
-                    const marketValue = pos.market_value || 0;
+                    let marketValue = 0;
+                    
+                    // 如果 pos 是对象（新格式）
+                    if (typeof pos === 'object' && pos !== null) {
+                        marketValue = pos.market_value || 0;
+                        // 如果没有 market_value，尝试计算：quantity * current_price
+                        if (marketValue === 0 && pos.quantity && pos.current_price) {
+                            marketValue = pos.quantity * pos.current_price;
+                        }
+                    } else {
+                        // 如果 pos 是数字（旧格式），尝试从 positions_detail 或 positions_pnl 获取
+                        const positionsDetail = portfolio.positions_detail || {};
+                        const positionsPnL = portfolio.positions_pnl || {};
+                        
+                        if (positionsDetail[symbol] && positionsDetail[symbol].market_value) {
+                            marketValue = positionsDetail[symbol].market_value;
+                        } else if (positionsPnL[symbol] && positionsPnL[symbol].market_value) {
+                            marketValue = positionsPnL[symbol].market_value;
+                        } else {
+                            // 如果都没有，尝试使用 equity_value / positions_count 作为估算
+                            const equityValue = portfolio.equity_value || 0;
+                            const positionsCount = positionsArray.length;
+                            if (equityValue > 0 && positionsCount > 0) {
+                                marketValue = equityValue / positionsCount;
+                            }
+                        }
+                    }
+                    
                     if (marketValue > 0) {
                         labels.push(symbol);
                         data.push(marketValue);
@@ -5718,16 +5825,35 @@
                 
                 const totalValue = data.reduce((sum, val) => sum + val, 0);
                 
+                // 如果最终没有数据（包括现金），显示空状态
+                if (labels.length === 0 || totalValue === 0) {
+                    console.log('[Chart] No valid data for distribution chart after processing');
+                    document.getElementById('pieChartInfo').textContent = 'No positions yet';
+                    if (distributionChart) {
+                        distributionChart.destroy();
+                        distributionChart = null;
+                    }
+                    return;
+                }
+                
                 document.getElementById('pieChartInfo').textContent = 
-                    `${labels.length} items (${cash > 0 ? '1 cash, ' : ''}${positionsArray.length} positions) • Total: ${formatCurrency(totalValue)}`;
+                    `${labels.length} items (${cash > 0 ? '1 cash, ' : ''}${labels.length - (cash > 0 ? 1 : 0)} positions) • Total: ${formatCurrency(totalValue)}`;
                 
                 // Destroy existing chart
                 if (distributionChart) {
                     distributionChart.destroy();
+                    distributionChart = null;
+                }
+                
+                // 确保 canvas 元素存在
+                const canvas = document.getElementById('distributionChart');
+                if (!canvas) {
+                    console.error('[Chart] Canvas element not found');
+                    return;
                 }
                 
                 // Create new chart
-                const ctx = document.getElementById('distributionChart').getContext('2d');
+                const ctx = canvas.getContext('2d');
                 distributionChart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -5735,7 +5861,7 @@
                         datasets: [{
                             data: data,
                             backgroundColor: colors.slice(0, labels.length),
-                            borderColor: '#ffffff',
+                            borderColor: '#1e293b', // 夜间模式：使用深色边框，与浅色背景形成对比
                             borderWidth: 2,
                         }]
                     },
@@ -5746,10 +5872,11 @@
                             legend: {
                                 position: 'right',
                                 labels: {
-                                    color: '#1e293b',
+                                    color: '#e2e8f0', // 夜间模式：使用浅色文字，在深色背景下清晰可见
                                     font: {
                                         size: 12,
                                         family: "'Inter', sans-serif",
+                                        weight: '500', // 稍微加粗以提高可读性
                                     },
                                     padding: 12,
                                     usePointStyle: true,
@@ -6461,9 +6588,9 @@
                         fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
                     );
                 } else {
-                    // 非交易时段：获取历史数据（净值图表）和对话订单数据
+                    // 非交易时段：获取历史数据和最后快照（包括portfolio），不更新实时数据
                     fetchPromises.push(
-                        Promise.resolve(null), // portfolio placeholder
+                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })), // ✅ 修复：非交易时段也要获取portfolio数据
                         fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),
@@ -6515,9 +6642,10 @@
                 }
                 
                 // 非交易时段：如果有portfolio数据就用，没有也不报错（静默处理）
-                if (!isMarketOpen && !portfolio) {
-                    // 非交易时段不获取 portfolio，这是正常的，不需要记录
-                } else if (isMarketOpen && !portfolio) {
+                if (!isMarketOpen && (!portfolio || portfolio.error)) {
+                    // 非交易时段获取portfolio失败是正常的（可能没有快照），不报错
+                    console.log('[Refresh] Market closed, portfolio data not available (will try to infer from filled orders)');
+                } else if (isMarketOpen && (!portfolio || portfolio.error)) {
                     // 交易时段但获取失败：只在调试模式下记录，不显示警告
                     // 因为可能是网络暂时问题，其他数据可能仍然可用
                     console.debug('[Refresh] Portfolio data not available (may use cached data)');
@@ -6574,13 +6702,49 @@
 
                 // 判断当前 Scenario
                 let currentScenario = 'Unknown';
-                const hasPositions = portfolio && Object.keys(portfolio.positions || {}).length > 0;
+                // 检查持仓：优先使用portfolio.positions_detail或positions，如果没有则检查filled订单
+                let hasPositions = false;
+                if (portfolio && !portfolio.error) {
+                    // 优先检查positions_detail（新格式），如果没有则检查positions（旧格式）
+                    const positions = portfolio.positions_detail || portfolio.positions || {};
+                    hasPositions = Object.keys(positions).length > 0;
+                    if (hasPositions) {
+                        console.log(`[Refresh] Found ${Object.keys(positions).length} positions in portfolio`);
+                    }
+                }
+                
+                if (!hasPositions && tradesData && tradesData.length > 0) {
+                    // 如果没有portfolio数据，检查是否有filled订单（说明可能有持仓）
+                    // 注意：订单可能使用 status='FILLED' 或 status='FILLED'，action='BUY' 或 side='BUY'
+                    const filledTrades = tradesData.filter(t => {
+                        const status = (t.status || '').toUpperCase();
+                        const action = (t.action || t.side || '').toUpperCase();
+                        return status === 'FILLED' && action === 'BUY';
+                    });
+                    hasPositions = filledTrades.length > 0;
+                    if (hasPositions) {
+                        console.log(`[Refresh] No portfolio positions, but found ${filledTrades.length} filled BUY orders - assuming positions exist`);
+                        console.log(`[Refresh] Sample filled trade:`, filledTrades[0]);
+                    } else {
+                        // 调试：如果没有找到filled订单，打印一些信息
+                        const allFilled = tradesData.filter(t => (t.status || '').toUpperCase() === 'FILLED');
+                        const allBuy = tradesData.filter(t => {
+                            const action = (t.action || t.side || '').toUpperCase();
+                            return action === 'BUY';
+                        });
+                        console.log(`[Refresh] Debug - Total trades: ${tradesData.length}, Filled: ${allFilled.length}, Buy: ${allBuy.length}`);
+                        if (tradesData.length > 0) {
+                            console.log(`[Refresh] Sample trade:`, { status: tradesData[0].status, action: tradesData[0].action, side: tradesData[0].side });
+                        }
+                    }
+                }
+                
                 if (isMarketOpen) {
                     currentScenario = hasPositions ? 'Scenario 2: Market Open, With Holdings' : 'Scenario 1: Market Open, No Holdings';
                 } else {
                     currentScenario = hasPositions ? 'Scenario 4: Market Closed, With Holdings' : 'Scenario 3: Market Closed, No Holdings';
                 }
-                console.log(`[Refresh] Current Scenario: ${currentScenario}`);
+                console.log(`[Refresh] Current Scenario: ${currentScenario} (hasPositions: ${hasPositions}, portfolio: ${portfolio ? 'yes' : 'no'})`);
                 
                 // Update UI（确保按顺序更新，持仓变化会反映到所有组件）
                 if (portfolio) {
@@ -6602,49 +6766,23 @@
                     await renderEquityChart();      // 更新净值曲线图（使用已获取的history数据）
                     renderDistributionChart(portfolio); // 更新持仓圆饼图
                 } else {
-                    // 非交易时段：显示历史数据和最后快照
+                    // 非交易时段：显示历史数据和portfolio快照
                     if (portfolio) {
                         // 如果有portfolio数据，显示最后快照
-                        console.log('[Refresh] Market closed - showing last snapshot');
-                        renderSummaryCards(portfolio);  // 显示最后的总资产、P&L等
-                        renderPositions(portfolio);     // 显示最后的持仓
-                        renderDistributionChart(portfolio); // 更新持仓圆饼图
-                        await renderEquityChart();      // 显示历史净值曲线
+                        console.log('[Refresh] Market closed - showing portfolio snapshot');
+                        renderSummaryCards(portfolio);  // 显示总资产、P&L、现金、持仓价值
+                        renderPositions(portfolio);     // 显示持仓表格
+                        renderDistributionChart(portfolio); // 显示持仓圆饼图
                     } else {
-                        // 如果没有portfolio数据，显示市场状态提示
-                        const summaryCards = document.getElementById('summaryCards');
-                        if (summaryCards && summaryCards.children.length === 0) {
-                            // 即使没有portfolio数据，也显示 Market Sentiment Dashboard
-                            fetchVIXAndFGICards();
-                            const marketStatusCard = document.createElement('div');
-                            marketStatusCard.className = 'card';
-                            marketStatusCard.style.cssText = `
-                                background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%);
-                                border: 2px solid rgba(245, 158, 11, 0.4);
-                                box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2), inset 0 0 30px rgba(245, 158, 11, 0.05);
-                                position: relative;
-                                overflow: hidden;
-                            `;
-                            marketStatusCard.innerHTML = `
-                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                    <div style="font-size: 32px; line-height: 1;">🌙</div>
-                                    <div>
-                                        <div class="card-label" style="font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.8;">Market Status</div>
-                                        <div class="card-value" style="color: #f59e0b; font-size: 24px; margin: 4px 0 0 0; text-shadow: 0 0 15px rgba(245, 158, 11, 0.5); display: flex; align-items: center; gap: 8px;">
-                                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 10px #f59e0b; animation: pulse 2s infinite;"></span>
-                                            Market Closed
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-subtitle" style="font-size: 13px; line-height: 1.6; color: #cbd5e1; padding-top: 8px; border-top: 1px solid rgba(245, 158, 11, 0.2);">
-                                    📋 Showing conversation history and tomorrow's orders
-                                </div>
-                            `;
-                            summaryCards.appendChild(marketStatusCard);
+                        // 如果没有portfolio数据，尝试从equity history获取最后净值
+                        console.log('[Refresh] Market closed - no portfolio data, using equity history');
+                        if (history && history.length > 0) {
+                            const lastRecord = history[history.length - 1];
+                            console.log('[Refresh] Last equity record:', lastRecord);
                         }
                     }
-                    // ✅ 非交易时段也显示净值历史图表（显示历史趋势）
-                    await renderEquityChart();  // 显示历史净值趋势
+                    // 无论是否有portfolio，都显示净值图表
+                    await renderEquityChart();  // 显示净值曲线图（使用已获取的history数据）
                 }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
@@ -6887,6 +7025,28 @@
                 stopAutoTrade();
             }
             
+            // ✅ 新增：市场状态监控，用于自动重启 Auto Trade
+            // 每30秒检查一次市场状态，如果从关闭变为开盘，且 Auto Trade 已勾选，自动重启
+            if (marketStatusMonitorTimer) {
+                clearInterval(marketStatusMonitorTimer);
+            }
+            marketStatusMonitorTimer = setInterval(async () => {
+                try {
+                    const isOpen = await isMarketOpen();
+                    const autoTradeChk = document.getElementById('autoTrade');
+                    
+                    // 如果市场从关闭变为开盘，且 Auto Trade 已勾选，但定时器不存在
+                    if (isOpen && lastMarketStatus === false && autoTradeChk && autoTradeChk.checked && !tradeCheckTimer) {
+                        console.log('[Auto Refresh] Market transitioned from closed to open, restarting Auto Trade...');
+                        startAutoTrade();
+                    }
+                    
+                    lastMarketStatus = isOpen;
+                } catch (e) {
+                    // 静默处理错误
+                }
+            }, 30000);  // 每30秒检查一次
+            
             // Agent status check (5 seconds) - always active
             startAgentStatusCheck();
         }
@@ -6910,8 +7070,14 @@
                 clearInterval(refreshTimer);
                 refreshTimer = null;
             }
+            if (marketStatusMonitorTimer) {
+                clearInterval(marketStatusMonitorTimer);
+                marketStatusMonitorTimer = null;
+            }
             if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
             if (agentStatusTimer) { clearInterval(agentStatusTimer); agentStatusTimer = null; }
+            stopOrderCheck();
+            stopAutoTrade();
         }
         
         // Theme toggle function

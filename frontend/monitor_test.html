@@ -1484,7 +1484,7 @@
             <div class="chart-section" id="distributionSection" style="display: block; margin-top: 20px;">
                 <div class="chart-header">
                     <h2>🥧 Portfolio Distribution</h2>
-                    <span style="font-size: 13px; color: #6b7280;" id="pieChartInfo">By market value</span>
+                    <span style="font-size: 13px; color: #94a3b8;" id="pieChartInfo">By market value</span>
                 </div>
                 <div class="chart-container" style="position: relative; height: 400px; padding: 20px; display: flex; justify-content: center; align-items: center;">
                     <canvas id="distributionChart" style="max-width: 400px; max-height: 400px;"></canvas>
@@ -6010,7 +6010,8 @@
         // Render Portfolio Distribution Pie Chart
         function renderDistributionChart(portfolio) {
             try {
-                const positions = portfolio.positions || {};
+                // 优先使用positions_detail（新格式），如果没有则使用positions（旧格式）
+                const positions = portfolio.positions_detail || portfolio.positions || {};
                 const positionsArray = Object.entries(positions);
                 const cash = portfolio.cash || 0;
                 
@@ -6026,13 +6027,31 @@
                 }
                 
                 // Prepare data - 包含现金和持仓
+                // 夜间模式：使用明亮、高饱和度的颜色，确保在深色背景下清晰可见
                 const labels = [];
                 const data = [];
                 const colors = [
-                    '#9ca3af', // 现金颜色（灰色）
-                    '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe',
-                    '#1e40af', '#2563eb', '#3b82f6', '#60a5fa',
-                    '#64748b', '#94a3b8', '#cbd5e1', '#e2e8f0',
+                    '#94a3b8', // 现金颜色（浅灰色，在深色背景下可见）
+                    // 明亮蓝色系
+                    '#3b82f6', '#60a5fa', '#38bdf8', '#22d3ee',
+                    // 明亮绿色系
+                    '#10b981', '#34d399', '#6ee7b7', '#a7f3d0',
+                    // 明亮紫色系
+                    '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe',
+                    // 明亮橙色系
+                    '#f59e0b', '#fbbf24', '#fcd34d', '#fde68a',
+                    // 明亮红色系
+                    '#ef4444', '#f87171', '#fca5a5', '#fecaca',
+                    // 明亮青色系
+                    '#06b6d4', '#22d3ee', '#67e8f9', '#a5f3fc',
+                    // 明亮黄色系
+                    '#eab308', '#facc15', '#fde047', '#fef08a',
+                    // 明亮粉色系
+                    '#ec4899', '#f472b6', '#f9a8d4', '#fbcfe8',
+                    // 明亮靛蓝色系
+                    '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe',
+                    // 明亮青色系（补充）
+                    '#14b8a6', '#5eead4', '#99f6e4', '#ccfbf1',
                 ];
                 
                 // 添加现金（如果有）
@@ -6042,8 +6061,38 @@
                 }
                 
                 // 添加持仓
+                // 处理两种数据格式：
+                // 1. 新格式：{symbol: {quantity, avg_cost, market_value, current_price, ...}}
+                // 2. 旧格式：{symbol: quantity} - 需要从 positions_detail 或 positions_pnl 获取 market_value
                 positionsArray.forEach(([symbol, pos]) => {
-                    const marketValue = pos.market_value || 0;
+                    let marketValue = 0;
+                    
+                    // 如果 pos 是对象（新格式）
+                    if (typeof pos === 'object' && pos !== null) {
+                        marketValue = pos.market_value || 0;
+                        // 如果没有 market_value，尝试计算：quantity * current_price
+                        if (marketValue === 0 && pos.quantity && pos.current_price) {
+                            marketValue = pos.quantity * pos.current_price;
+                        }
+                    } else {
+                        // 如果 pos 是数字（旧格式），尝试从 positions_detail 或 positions_pnl 获取
+                        const positionsDetail = portfolio.positions_detail || {};
+                        const positionsPnL = portfolio.positions_pnl || {};
+                        
+                        if (positionsDetail[symbol] && positionsDetail[symbol].market_value) {
+                            marketValue = positionsDetail[symbol].market_value;
+                        } else if (positionsPnL[symbol] && positionsPnL[symbol].market_value) {
+                            marketValue = positionsPnL[symbol].market_value;
+                        } else {
+                            // 如果都没有，尝试使用 equity_value / positions_count 作为估算
+                            const equityValue = portfolio.equity_value || 0;
+                            const positionsCount = positionsArray.length;
+                            if (equityValue > 0 && positionsCount > 0) {
+                                marketValue = equityValue / positionsCount;
+                            }
+                        }
+                    }
+                    
                     if (marketValue > 0) {
                         labels.push(symbol);
                         data.push(marketValue);
@@ -6052,16 +6101,35 @@
                 
                 const totalValue = data.reduce((sum, val) => sum + val, 0);
                 
+                // 如果最终没有数据（包括现金），显示空状态
+                if (labels.length === 0 || totalValue === 0) {
+                    console.log('[Chart] No valid data for distribution chart after processing');
+                    document.getElementById('pieChartInfo').textContent = 'No positions yet';
+                    if (distributionChart) {
+                        distributionChart.destroy();
+                        distributionChart = null;
+                    }
+                    return;
+                }
+                
                 document.getElementById('pieChartInfo').textContent = 
-                    `${labels.length} items (${cash > 0 ? '1 cash, ' : ''}${positionsArray.length} positions) • Total: ${formatCurrency(totalValue)}`;
+                    `${labels.length} items (${cash > 0 ? '1 cash, ' : ''}${labels.length - (cash > 0 ? 1 : 0)} positions) • Total: ${formatCurrency(totalValue)}`;
                 
                 // Destroy existing chart
                 if (distributionChart) {
                     distributionChart.destroy();
+                    distributionChart = null;
+                }
+                
+                // 确保 canvas 元素存在
+                const canvas = document.getElementById('distributionChart');
+                if (!canvas) {
+                    console.error('[Chart] Canvas element not found');
+                    return;
                 }
                 
                 // Create new chart
-                const ctx = document.getElementById('distributionChart').getContext('2d');
+                const ctx = canvas.getContext('2d');
                 distributionChart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -6069,7 +6137,7 @@
                         datasets: [{
                             data: data,
                             backgroundColor: colors.slice(0, labels.length),
-                            borderColor: '#ffffff',
+                            borderColor: '#1e293b', // 夜间模式：使用深色边框，与浅色背景形成对比
                             borderWidth: 2,
                         }]
                     },
@@ -6080,10 +6148,11 @@
                             legend: {
                                 position: 'right',
                                 labels: {
-                                    color: '#1e293b',
+                                    color: '#e2e8f0', // 夜间模式：使用浅色文字，在深色背景下清晰可见
                                     font: {
                                         size: 12,
                                         family: "'Inter', sans-serif",
+                                        weight: '500', // 稍微加粗以提高可读性
                                     },
                                     padding: 12,
                                     usePointStyle: true,
@@ -6118,7 +6187,8 @@
 
         // Render positions table
         function renderPositions(portfolio) {
-            const positions = portfolio.positions || {};
+            // 优先使用positions_detail（新格式），如果没有则使用positions（旧格式）
+            const positions = portfolio.positions_detail || portfolio.positions || {};
             const positionsPnL = portfolio.positions_pnl || {};
             // 确保 total_value 正确计算（如果后端返回错误，使用 cash + equity_value）
             let totalValue = portfolio.total_value || 0;
@@ -6772,9 +6842,9 @@
                         fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => [])
                     );
                 } else {
-                    // 非交易时段：获取历史数据（净值图表）和对话订单数据
+                    // 非交易时段：获取历史数据和最后快照（包括portfolio），不更新实时数据
                     fetchPromises.push(
-                        Promise.resolve(null), // portfolio placeholder
+                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })), // ✅ 修复：非交易时段也要获取portfolio数据
                         fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),

@@ -1379,6 +1379,49 @@ class ScenarioTester:
                     else:
                         print(f"   ⚠️  Warning: No positions and no trading activity")
                 checks.append(("Had holdings", has_holdings))
+                
+                # Check 10: Position information passed to agents (for scenarios 2, 4)
+                # Check if discussion contains position-related information
+                # This is a soft check - we can't directly verify if agents received positions,
+                # but we can check if the system is configured to pass positions
+                # (This is verified by checking if current_positions was passed to run_multi_analyst_discussion)
+                # For now, we'll just log that positions should be considered
+                print(f"   ℹ️  Position info should be passed to agents (scenario {scenario_num})")
+                
+                # Check 11: Order deduplication (for scenarios 2, 4)
+                # Check if there are duplicate orders (same symbol, action, date)
+                if placed_orders:
+                    from collections import defaultdict
+                    order_groups = defaultdict(list)
+                    for order in placed_orders:
+                        key = (order.get("symbol"), order.get("action"), order.get("order_date"))
+                        order_groups[key].append(order)
+                    
+                    duplicates = {k: v for k, v in order_groups.items() if len(v) > 1}
+                    if duplicates:
+                        print(f"   ⚠️  Warning: Found duplicate orders: {duplicates}")
+                        checks.append(("No duplicate orders", False))
+                    else:
+                        print(f"   ✅ No duplicate orders found")
+                        checks.append(("No duplicate orders", True))
+                
+                # Check 12: Cash check mechanism (for scenarios 2, 4)
+                # Verify that buy orders don't exceed available cash
+                if buy_orders and portfolio:
+                    from src.utils.config_loader import load_config
+                    config = load_config()
+                    MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)
+                    portfolio_value = portfolio.value({})  # Use empty prices for cash check
+                    required_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
+                    available_cash = max(0, portfolio.cash - required_reserve)
+                    
+                    total_buy_cost = sum(order.get("total_cost", 0) for order in buy_orders)
+                    if total_buy_cost > available_cash * 1.1:  # Allow 10% tolerance for rounding
+                        print(f"   ⚠️  Warning: Total buy cost (${total_buy_cost:.2f}) exceeds available cash (${available_cash:.2f})")
+                        checks.append(("Buy orders respect cash limit", False))
+                    else:
+                        print(f"   ✅ Buy orders respect cash limit (${total_buy_cost:.2f} <= ${available_cash:.2f})")
+                        checks.append(("Buy orders respect cash limit", True))
         
         # Summary
         passed = sum(1 for _, result in checks if result)

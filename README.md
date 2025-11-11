@@ -34,11 +34,12 @@
 
 ## 🆕 Latest Updates (January 2025)
 
-### 🔄 **Automatic Trading Management** (New Feature)
+### 🔄 **Automatic Trading Management** (Enhanced)
 
 **Intelligent Market Status Detection:**
 - ✅ **Automatic Market Detection**: System automatically detects trading hours and manages Auto Trade
-- ✅ **Trading Hours**: Auto Trade runs every 5 minutes during market hours
+- ✅ **Trading Hours**: Auto Trade runs **every 1 hour** during market hours (conversation/planning)
+- ✅ **Data Refresh**: Continuous data updates every **30 seconds** (independent of trading cycle)
 - ✅ **Non-Trading Hours**: Automatically checks if tomorrow is already planned
   - If already planned: Shows "Tomorrow Already Planned, Waiting" status
   - If not planned: Executes one planning cycle, then stops
@@ -48,9 +49,15 @@
   - ⚪ Gray: Waiting / Already Planned
   - 🔴 Red: Error / Failed
   - 🟡 Yellow: Detecting / Checking
+- ✅ **Initialization Conflict Detection**: Prevents system initialization during active trading/planning operations
 
 **Previous**: Manual checkbox to enable/disable Auto Trade  
 **Now**: Fully automatic - system manages itself based on market status
+
+**Update (Latest)**: 
+- Trading cycle interval optimized to **1 hour** (reduces frequent trading, saves resources)
+- Data refresh continues **every 30 seconds** for real-time monitoring
+- Prevents memory buildup from excessive LLM calls
 
 ### 🤖 **Multi-Analyst System** (Major Enhancement)
 
@@ -99,6 +106,11 @@ Each analyst:
 | **Market Analysis** | Basic | Comprehensive |
 | **Tool Freedom** | Fixed few | 23 tools, any combination |
 | **Agent Collaboration** | Single discussion | 4 specialists → consensus |
+| **Trading Interval** | 5 minutes | 1 hour (optimized) |
+| **Data Refresh** | 60 seconds | 30 seconds (continuous) |
+| **Memory Management** | Unbounded | Limited history (20 entries) |
+| **Time Display** | UTC only | Eastern Time (EST/EDT) with auto DST |
+| **Deployment** | Local only | GitHub Pages ready |
 
 ---
 
@@ -253,13 +265,15 @@ python scripts/init_data.py
 
 **3. Start Backend API**
 ```bash
+# Method 1: Stable version (推薦，帶自動重啟)
+.\scripts\start_api_stable_bypass.ps1
+
+# Method 2: Fast restart (日常使用，快速重啟)
+powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
+
+# Method 3: Manual start (開發調試)
 cd backend
-
-# Method 1: Direct Python
 python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
-
-# Method 2: Using script
-python scripts/start_api.py
 ```
 
 **4. Start Frontend**
@@ -1179,6 +1193,13 @@ http://localhost:8000/redoc
 - Tool usage indicators
 - Collapsible sections
 
+#### 7. **Equity Chart Enhancements** ⭐ 新增
+- **Eastern Time Display**: All timestamps displayed in EST/EDT with automatic DST handling
+- **Robust Time Parsing**: Handles timestamps with or without timezone information
+- **Time Format**: X-axis shows `Month Day HH:MM` (e.g., "Nov 10 14:30")
+- **Tooltip Details**: Full timestamp with seconds on hover
+- **Data Recording Optimization**: Limits recording frequency to prevent excessive data points
+
 ---
 
 ### UI Theme
@@ -1330,6 +1351,83 @@ curl http://localhost:8000/api/portfolio/real-time
 - **Testing Guide**: `backend/COMPREHENSIVE_TESTING_GUIDE.md` - Complete testing guide
 - **Round 1 Report**: `backend/TEST_ROUND_1_REPORT.md` - Backend API test results
 - **Round 2 Report**: `backend/TEST_ROUND_2_REPORT.md` - Frontend test results
+
+---
+
+## 🚀 Deployment & Sharing
+
+### GitHub Pages 部署（前端）⭐ 新增
+
+将前端部署到 GitHub Pages，让其他人可以通过浏览器访问：
+
+#### 快速部署步骤
+
+1. **推送到 GitHub**
+   ```bash
+   git add .
+   git commit -m "Add deployment configuration"
+   git push origin main
+   ```
+
+2. **启用 GitHub Pages**
+   - 进入仓库 Settings → Pages
+   - Source: `Deploy from a branch`
+   - Branch: `main` / `frontend`
+   - Folder: `/frontend`
+   - 点击 Save
+
+3. **配置 API 地址**
+   - 编辑 `frontend/config.js`
+   - 更新 `production` 为你的后端 API 地址
+   ```javascript
+   production: 'https://your-railway-app.railway.app',  // 替换为你的后端地址
+   ```
+
+4. **访问链接**
+   - 前端: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
+   - API 文档: `https://your-api-server.com/docs`
+
+**新功能**:
+- ✅ 自动环境检测（本地 vs 生产环境）
+- ✅ GitHub Actions 自动部署工作流
+- ✅ 配置文件分离（`frontend/config.js`）
+
+#### 后端部署选项
+
+**选项 1: Railway (推荐)**
+- 免费额度，自动部署
+- 连接 GitHub 仓库即可
+
+**选项 2: Render**
+- 免费套餐可用
+- 支持自动部署
+
+**选项 3: Heroku**
+- 需要信用卡验证
+- 稳定可靠
+
+详细部署指南请参考：[📖 GitHub 部署完整指南](docs/GITHUB_DEPLOYMENT.md)
+
+### 本地分享（同一网络）
+
+如果只想在本地网络分享：
+
+1. **启动后端（允许局域网访问）**
+   ```powershell
+   .\scripts\restart_api_fast.ps1
+   ```
+
+2. **启动前端（允许局域网访问）**
+   ```powershell
+   .\scripts\start_frontend_share.ps1
+   ```
+
+3. **获取分享链接**
+   ```powershell
+   .\scripts\get_share_link.ps1
+   ```
+
+详细说明请参考：[📖 分享访问指南](docs/SHARING_ACCESS.md)
 
 ---
 
@@ -1621,30 +1719,65 @@ model: llama3.1:8b
 
 ---
 
-#### 7. **Restart Backend API (Windows PowerShell)**
+#### 7. **初始化冲突检测** ⭐ 新增
+
+**功能**: 防止在交易/计划进行中时执行系统初始化
+
+**行为**:
+- 检测到进行中的操作时，会提示用户
+- 提供选项：取消或强制初始化
+- 强制初始化会停止所有进行中的操作
+
+**使用场景**: 避免在交易执行或自动计划运行时意外清除数据
+
+---
+
+#### 8. **重啟 Backend API (Windows PowerShell)**
 
 **Scenario**: Dashboard顯示 `Disconnected / Refreshing...`、或連不上 `http://127.0.0.1:8000`
 
-**Steps**:
+##### **快速重啟（日常使用）⭐ 推薦**
+
 ```powershell
-# 1) 進入專案根目錄
-cd "C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama"
+# 一鍵快速重啟（3-5秒完成）
+powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
+```
 
-# 2) 啟用虛擬環境（若已啟用可略過）
-.\.venv\Scripts\Activate.ps1
+**特性**：
+- ✅ 自動停止舊進程
+- ✅ 智能端口檢查（最多等待 2 秒）
+- ✅ 自動啟動新 API
+- ✅ 顯示分享連結
+- ✅ 總時間：約 3-5 秒
 
-# 3) 停掉既有的 8000 埠行程（若有占用）
-netstat -ano | findstr 8000
-taskkill /PID <上一行顯示的 PID> /F
+**輸出示例**：
+```
+Restarting API (fast mode)...
+[OK] API restarted
 
-# 4) 重新啟動 API（前景模式，可看到日誌）
-python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
+Access:
+  Local: http://127.0.0.1:8000/docs
+  Share: http://192.168.4.24:8000/docs
+```
 
-# 若要背景模式，將 stdout/stderr 轉到檔案：
-powershell -Command "Start-Process python -ArgumentList '-m','uvicorn','backend.src.api.server:app','--host','0.0.0.0','--port','8000' -WorkingDirectory 'C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama' -RedirectStandardOutput 'uvicorn.out.log' -RedirectStandardError 'uvicorn.err.log'"
+##### **穩定啟動（首次啟動或需要自動重啟功能）**
 
-# 5) 追蹤最新日誌（可選）
-Get-Content .\uvicorn.err.log -Tail 50 -Wait
+```powershell
+# 穩定版啟動（帶自動重啟、錯誤處理）
+.\scripts\start_api_stable_bypass.ps1
+```
+
+**特性**：
+- ✅ 崩潰時自動重啟（最多 10 次）
+- ✅ 完整的錯誤處理
+- ✅ 日誌記錄
+- ✅ 適合長期運行
+
+##### **查看分享連結**
+
+```powershell
+# 隨時查看你的分享連結
+powershell -ExecutionPolicy Bypass -File .\scripts\get_share_link.ps1
 ```
 
 ---
@@ -1716,6 +1849,11 @@ MIT License - see `LICENSE` file for details
 - ✅ Multi-Analyst System
 - ✅ 23 Advanced Tools
 - ✅ LLM-powered Risk Analyst
+- ✅ Trading Interval Optimization (1 hour)
+- ✅ GitHub Pages Deployment
+- ✅ Time Display Enhancement (EST/EDT)
+- ✅ Memory Management Optimization
+- ✅ Initialization Conflict Detection
 - 🔄 Scenario-based Testing
 - 📋 Frontend Integration
 

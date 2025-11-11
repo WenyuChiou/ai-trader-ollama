@@ -20,15 +20,15 @@
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
             min-height: 100vh;
             padding: 0 20px 20px 20px;
-            color: #ffffff; /* 黑底配白字 - 提高对比度 */
+            color: #ffffff; /* Dark background with white text - high contrast */
             font-size: 14px;
             line-height: 1.6;
             letter-spacing: -0.01em;
             transition: background 0.3s ease, color 0.3s ease;
-            cursor: none; /* 隐藏默认游标，使用自定义游标 */
+            cursor: none; /* Hide default cursor, use custom cursor */
         }
         
-        /* 游标动画 - 光标跟随效果 */
+        /* Cursor animation - cursor follow effect */
         .cursor-glow {
             position: fixed;
             width: 20px;
@@ -50,7 +50,7 @@
             box-shadow: 0 0 30px rgba(34, 211, 238, 0.8), 0 0 60px rgba(34, 211, 238, 0.6);
         }
         
-        /* 深色主题下，在白色背景元素上使用深色游标 */
+        /* Dark theme: use dark cursor on white background elements */
         .cursor-glow.on-white {
             background: radial-gradient(circle, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 40%, rgba(8, 145, 178, 0.4) 70%, transparent 100%);
             box-shadow: 0 0 15px rgba(15, 23, 42, 0.8), 0 0 30px rgba(8, 145, 178, 0.6), 0 0 50px rgba(8, 145, 178, 0.3);
@@ -64,174 +64,6 @@
             border: 3px solid rgba(8, 145, 178, 1);
         }
         
-        /* Light theme 游标 - 使用深色以确保在白色背景上可见 */
-        body.light-theme .cursor-glow {
-            background: radial-gradient(circle, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 40%, rgba(8, 145, 178, 0.4) 70%, transparent 100%);
-            box-shadow: 0 0 15px rgba(15, 23, 42, 0.8), 0 0 30px rgba(8, 145, 178, 0.6), 0 0 50px rgba(8, 145, 178, 0.3);
-            mix-blend-mode: normal; /* 在白色背景上不使用 screen 模式 */
-            border: 2px solid rgba(8, 145, 178, 0.8); /* 添加边框增强可见性 */
-        }
-        
-        body.light-theme .cursor-glow.active {
-            background: radial-gradient(circle, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.8) 40%, rgba(8, 145, 178, 0.6) 70%, transparent 100%);
-            box-shadow: 0 0 25px rgba(15, 23, 42, 1), 0 0 50px rgba(8, 145, 178, 0.8), 0 0 80px rgba(8, 145, 178, 0.5);
-            border: 3px solid rgba(8, 145, 178, 1); /* 激活时更粗的边框 */
-        }
-
-        /* Light Theme Styles */
-        body.light-theme {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f8fafc 100%);
-            color: #000000; /* 白底配黑字 - 提高对比度 */
-        }
-
-        body.light-theme .header {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            color: #1e293b;
-        }
-
-        body.light-theme .header-title h1 {
-            color: #0891b2;
-            text-shadow: none;
-        }
-
-        body.light-theme .card {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            color: #000000; /* 白底配黑字 */
-        }
-
-        body.light-theme .card-label {
-            color: #1e293b; /* 深色文字，提高对比度 */
-            font-weight: 600; /* 加粗提高可读性 */
-        }
-
-        body.light-theme .card-value {
-            color: #0891b2;
-            text-shadow: none;
-            font-weight: 700; /* 加粗提高可读性 */
-        }
-
-        body.light-theme .card-subtitle {
-            color: #475569; /* 深色文字，提高对比度 */
-            font-weight: 500; /* 加粗提高可读性 */
-        }
-
-        body.light-theme .chart-section,
-        body.light-theme .positions-section,
-        body.light-theme .status-section,
-        body.light-theme .trades-section {
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            color: #1e293b;
-        }
-
-        body.light-theme .section-header h2 {
-            color: #0891b2;
-        }
-
-        body.light-theme th {
-            background: rgba(8, 145, 178, 0.1);
-            color: #0891b2;
-            border-bottom: 2px solid rgba(148, 163, 184, 0.3);
-        }
-
-        body.light-theme td {
-            color: #000000; /* 深色文字，提高对比度 */
-            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-            font-weight: 600; /* 加粗提高可读性 */
-        }
-
-        body.light-theme .symbol-cell {
-            color: #0891b2;
-        }
-
-        body.light-theme .connection-status {
-            color: #64748b;
-        }
-
-        body.light-theme .footer {
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-            color: #1e293b;
-        }
-
-        body.light-theme .nav-btn {
-            background: rgba(255, 255, 255, 0.8);
-            color: #475569;
-            border: 1px solid rgba(148, 163, 184, 0.3);
-        }
-
-        body.light-theme .nav-btn:hover {
-            background: rgba(8, 145, 178, 0.1);
-            color: #0891b2;
-        }
-
-        body.light-theme .nav-btn.active {
-            background: #0891b2;
-            color: #ffffff;
-        }
-
-        body.light-theme .refresh-btn {
-            background: linear-gradient(135deg, #0891b2, #06b6d4);
-            color: white;
-            border: 1px solid #0891b2;
-        }
-
-        body.light-theme .refresh-btn:hover:not(:disabled) {
-            background: linear-gradient(135deg, #06b6d4, #0891b2);
-        }
-
-        /* Market Status Card - Light Theme */
-        body.light-theme .card[style*="rgba(245, 158, 11"] {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%) !important;
-            border: 2px solid rgba(245, 158, 11, 0.3) !important;
-            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15), inset 0 0 30px rgba(245, 158, 11, 0.03) !important;
-        }
-
-        body.light-theme .card[style*="rgba(245, 158, 11"] .card-subtitle {
-            color: #64748b !important;
-            border-top: 1px solid rgba(245, 158, 11, 0.15) !important;
-        }
-
-        /* Light theme - ensure all text is black, but preserve special colors */
-        /* Only apply black to elements without inline color styles */
-        body.light-theme .conversation-content:not([style*="color"]),
-        body.light-theme .conversation-item:not([style*="color"]),
-        body.light-theme .conversation-header:not([style*="color"]),
-        body.light-theme .conversation-agent:not([style*="color"]),
-        body.light-theme .conversation-date:not([style*="color"]),
-        body.light-theme .status-item-label:not([style*="color"]) {
-            color: #000000 !important;
-        }
-
-        /* Preserve special colors - don't override elements with inline color styles */
-        /* Elements with inline color styles (like FGI, risk levels, status indicators) will keep their colors */
-
-        /* Light theme - table styles */
-        body.light-theme table {
-            background: rgba(255, 255, 255, 0.9) !important;
-        }
-
-        /* Only apply black to table cells without inline color styles */
-        body.light-theme table td:not([style*="color"]),
-        body.light-theme table th:not([style*="color"]) {
-            color: #000000 !important;
-        }
-        
-        /* Preserve colors in table cells that have inline color styles (for status indicators, etc.) */
-
-        body.light-theme table thead tr {
-            background: rgba(8, 145, 178, 0.1) !important;
-        }
-
-        body.light-theme table tbody tr {
-            background: rgba(255, 255, 255, 0.9) !important;
-        }
-
-        body.light-theme table tbody tr:nth-child(even) {
-            background: rgba(241, 245, 249, 0.9) !important;
-        }
 
         /* Business style (applied in Allocation page) */
         body.business {
@@ -1381,7 +1213,7 @@
                     <span>Auto Refresh (30s)</span>
                 </label>
                 <span style="color: #94a3b8; font-size: 12px; margin-left: 12px;">
-                    🔄 Auto Trade: <span id="autoTradeStatus">检测中...</span>
+                    🔄 Auto Trade: <span id="autoTradeStatus">Detecting...</span>
                 </span>
                 <button class="refresh-btn" id="startTradeBtn" onclick="startTradingCycle()">
                     ▶️ Start Trading
@@ -1647,31 +1479,33 @@
                     <span class="api-url" id="apiUrl">http://127.0.0.1:8000</span>
                 </div>
                 <div style="display: flex; gap: 15px; align-items: center;">
-                    <button onclick="toggleTheme()" style="padding: 6px 12px; border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; background: rgba(15, 23, 42, 0.6); color: #22d3ee; cursor: pointer; font-size: 12px; transition: all 0.2s;">
-                        🎨 <span id="themeText">Light Theme</span>
-                    </button>
                     <div id="dataTimestamp"></div>
                 </div>
             </div>
         </footer>
     </div>
 
+    <!-- API Configuration -->
+    <script src="config.js"></script>
     <script>
         // Configuration
-        const API_BASE = 'http://127.0.0.1:8000';
-        const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh (增加频率以更快看到订单成交)
-        const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (交易时段)
+        // Use config.js if available, otherwise fallback to localhost
+        const API_BASE = (typeof window !== 'undefined' && window.API_CONFIG) 
+            ? window.API_CONFIG.apiUrl 
+            : 'http://127.0.0.1:8000';
+        const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh (continuous, independent of trading cycle)
+        const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (trading hours)
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
-        const CONVERSATIONS_LIMIT = 30; // 限制对话数量（优化：减少DOM操作）
-        const TRADES_LIMIT = 100; // 限制交易数量（增加到100，确保显示完整订单数据）
+        const CONVERSATIONS_LIMIT = 30; // Limit conversation count (optimization: reduce DOM operations)
+        const TRADES_LIMIT = 100; // Limit trade count (increased to 100 to ensure complete order data display)
         let refreshTimer = null;
-        let orderCheckTimer = null; // 订单检查定时器
+        let orderCheckTimer = null; // Order check timer
         let equityHistory = [];
         let demoTimer = null;
         let agentStatusTimer = null;
-        let lastMarketStatus = null; // 上次市场状态（用于检测状态切换）
-        let marketStatusMonitorTimer = null; // 市场状态监控定时器
+        let lastMarketStatus = null; // Last market status (for detecting status changes)
+        let marketStatusMonitorTimer = null; // Market status monitor timer
 
         // Format number to currency
         function formatCurrency(value) {
@@ -1684,7 +1518,7 @@
         }
 
         // Format number
-        // 从截断的 JSON 字符串中提取部分数据
+        // Extract partial data from truncated JSON string
         function extractPartialJson(jsonStr) {
             if (!jsonStr || typeof jsonStr !== 'string') return null;
             
@@ -1693,7 +1527,7 @@
                 let pos = 0;
                 const len = jsonStr.length;
                 
-                // 跳过开头的空白和第一个 {
+                // Skip leading whitespace and first {
                 while (pos < len && (jsonStr[pos] === ' ' || jsonStr[pos] === '\n' || jsonStr[pos] === '\t' || jsonStr[pos] === '{')) {
                     if (jsonStr[pos] === '{') {
                         pos++;
@@ -1702,18 +1536,18 @@
                     pos++;
                 }
                 
-                // 逐字符解析，提取键值对
+                // Parse character by character, extract key-value pairs
                 while (pos < len) {
-                    // 跳过空白和逗号
+                    // Skip whitespace and commas
                     while (pos < len && (jsonStr[pos] === ' ' || jsonStr[pos] === '\n' || jsonStr[pos] === '\t' || jsonStr[pos] === ',' || jsonStr[pos] === '\r')) {
                         pos++;
                     }
                     
                     if (pos >= len || jsonStr[pos] === '}') break;
                     
-                    // 提取键名（"key"）
+                    // Extract key name ("key")
                     if (jsonStr[pos] !== '"') {
-                        // 如果不是引号开头，尝试跳过到下一个可能的键
+                        // If not starting with quote, try to skip to next possible key
                         const nextQuote = jsonStr.indexOf('"', pos);
                         if (nextQuote === -1) break;
                         pos = nextQuote;
@@ -1723,7 +1557,7 @@
                     let keyEnd = keyStart;
                     let escaped = false;
                     
-                    // 处理转义的引号
+                    // Handle escaped quotes
                     while (keyEnd < len) {
                         if (escaped) {
                             escaped = false;
@@ -1745,7 +1579,7 @@
                     
                     const key = jsonStr.substring(keyStart, keyEnd);
                     
-                    // 跳过键名后的空白和冒号
+                    // Skip whitespace and colon after key name
                     pos = keyEnd + 1;
                     while (pos < len && (jsonStr[pos] === ' ' || jsonStr[pos] === '\n' || jsonStr[pos] === '\t' || jsonStr[pos] === ':')) {
                         pos++;
@@ -1753,12 +1587,12 @@
                     
                     if (pos >= len) break;
                     
-                    // 提取值（改进版：更好地处理嵌套结构）
+                    // Extract value (improved: better handling of nested structures)
                     let value = null;
                     let valueEnd = pos;
                     
                     if (jsonStr[pos] === '"') {
-                        // 字符串值（可能被截断，处理转义字符）
+                        // String value (may be truncated, handle escape characters)
                         const strStart = pos + 1;
                         let strEnd = strStart;
                         escaped = false;
@@ -1782,13 +1616,13 @@
                             strEnd++;
                         }
                         
-                        // 如果字符串被截断（没有找到结束引号），使用到末尾的内容
+                        // If string is truncated (no closing quote found), use content to end
                         if (value === null && strEnd >= len) {
                             value = jsonStr.substring(strStart, len);
                             valueEnd = len;
                         }
                     } else if (jsonStr[pos] === '{') {
-                        // 对象值（可能被截断，需要处理嵌套）
+                        // Object value (may be truncated, need to handle nesting)
                         let braceCount = 1;
                         let objEnd = pos + 1;
                         let inString = false;
@@ -1821,15 +1655,15 @@
                         try {
                             value = JSON.parse(objStr);
                         } catch (e) {
-                            // 如果解析失败，尝试递归提取部分数据
+                            // If parsing fails, try to recursively extract partial data
                             value = extractPartialJson(objStr);
                             if (!value) {
-                                // 如果还是失败，尝试添加缺失的 }
+                                // If still fails, try adding missing }
                                 const openBraces = (objStr.match(/\{/g) || []).length;
                                 const closeBraces = (objStr.match(/\}/g) || []).length;
                                 if (openBraces > closeBraces) {
                                     let testStr = objStr;
-                                    // 移除末尾的逗号（如果有）
+                                    // Remove trailing comma (if any)
                                     let lastChar = testStr.length - 1;
                                     while (lastChar >= 0 && (testStr[lastChar] === ' ' || testStr[lastChar] === '\n' || testStr[lastChar] === '\t' || testStr[lastChar] === '\r')) {
                                         lastChar--;
@@ -1851,7 +1685,7 @@
                         }
                         valueEnd = objEnd;
                     } else if (jsonStr[pos] === '[') {
-                        // 数组值（可能被截断，需要处理嵌套对象和数组）
+                        // Array value (may be truncated, need to handle nested objects and arrays)
                         let bracketCount = 1;
                         let arrEnd = pos + 1;
                         let inString = false;
@@ -1884,17 +1718,17 @@
                         try {
                             value = JSON.parse(arrStr);
                         } catch (e) {
-                            // 如果解析失败，尝试提取部分数组元素
+                            // If parsing fails, try extracting partial array elements
                             value = [];
-                            let elemPos = 1; // 跳过开头的 [
+                            let elemPos = 1; // Skip leading [
                             while (elemPos < arrStr.length - 1) {
-                                // 跳过空白和逗号
+                                // Skip whitespace and commas
                                 while (elemPos < arrStr.length && (arrStr[elemPos] === ' ' || arrStr[elemPos] === '\n' || arrStr[elemPos] === '\t' || arrStr[elemPos] === ',' || arrStr[elemPos] === '\r')) {
                                     elemPos++;
                                 }
                                 if (elemPos >= arrStr.length - 1) break;
                                 
-                                // 尝试解析单个元素
+                                // Try to parse single element
                                 if (arrStr[elemPos] === '{') {
                                     const elemEnd = arrStr.indexOf('}', elemPos);
                                     if (elemEnd > elemPos) {
@@ -1962,14 +1796,14 @@
                     if (value.length === 0) {
                         flattened[newKey] = '[]';
                     } else if (value.length <= 5 && value.every(v => typeof v !== 'object' || v === null)) {
-                        // 如果数组元素都是简单类型，直接显示
+                        // If array elements are all simple types, display directly
                         flattened[newKey] = `[${value.join(', ')}]`;
                     } else {
-                        // 如果数组元素是对象，显示数组长度
+                        // If array elements are objects, display array length
                         flattened[newKey] = `Array(${value.length})`;
                     }
                 } else if (typeof value === 'object') {
-                    // 递归展开嵌套对象
+                    // Recursively flatten nested objects
                     const nested = flattenObject(value, newKey, maxDepth, currentDepth + 1);
                     Object.assign(flattened, nested);
                 } else {
@@ -1980,7 +1814,7 @@
             return flattened;
         }
         
-        // 将基本面数据格式化为叙述形式
+        // Format fundamental data as narrative form
         function formatFundamentalsAsNarrative(fundamentals, symbol) {
             if (!fundamentals || typeof fundamentals !== 'object') {
                 return `<div style="color: #94a3b8; font-style: italic;">No fundamental data available for ${symbol}</div>`;
@@ -1992,13 +1826,13 @@
             const growth = fundamentals.growth || {};
             const health = fundamentals.financial_health || {};
             
-            // 公司基本信息
+            // Company basic information
             const companyName = fundamentals.company_name || symbol;
             const sector = fundamentals.sector || '';
             const industry = fundamentals.industry || '';
             html += `<div style="font-size: 14px; color: #22d3ee; font-weight: 700; margin-bottom: 8px;">${companyName}${sector ? ` (${sector}${industry ? ` - ${industry}` : ''})` : ''}</div>`;
             
-            // 估值指标
+            // Valuation metrics
             const valItems = [];
             if (val.pe_ratio !== undefined) valItems.push(`P/E: <strong style="color: #22d3ee;">${val.pe_ratio.toFixed(2)}</strong>`);
             if (val.forward_pe !== undefined) valItems.push(`Forward P/E: <strong style="color: #22d3ee;">${val.forward_pe.toFixed(2)}</strong>`);
@@ -2006,24 +1840,24 @@
             if (val.price_to_sales !== undefined) valItems.push(`P/S: <strong style="color: #22d3ee;">${val.price_to_sales.toFixed(2)}</strong>`);
             if (val.market_cap !== undefined) valItems.push(`Market Cap: <strong style="color: #10b981;">${formatNumber(val.market_cap)}</strong>`);
             
-            // 盈利能力
+            // Profitability
             const profItems = [];
             if (prof.net_margin !== undefined) profItems.push(`Net Margin: <strong style="color: #10b981;">${prof.net_margin.toFixed(2)}%</strong>`);
             else if (prof.profit_margins !== undefined) profItems.push(`Profit Margin: <strong style="color: #10b981;">${(prof.profit_margins * 100).toFixed(2)}%</strong>`);
             if (prof.roe !== undefined) profItems.push(`ROE: <strong style="color: #10b981;">${prof.roe.toFixed(2)}%</strong>`);
             else if (prof.return_on_equity !== undefined) profItems.push(`ROE: <strong style="color: #10b981;">${(prof.return_on_equity * 100).toFixed(2)}%</strong>`);
             
-            // 成长性
+            // Growth
             const growthItems = [];
             if (growth.revenue_growth !== undefined) growthItems.push(`Revenue Growth: <strong style="color: #10b981;">${growth.revenue_growth.toFixed(2)}%</strong>`);
             if (growth.earnings_growth !== undefined) growthItems.push(`Earnings Growth: <strong style="color: ${growth.earnings_growth >= 0 ? '#10b981' : '#ef4444'};">${growth.earnings_growth.toFixed(2)}%</strong>`);
             
-            // 财务健康
+            // Financial health
             const healthItems = [];
             if (health.current_ratio !== undefined) healthItems.push(`Current Ratio: <strong style="color: ${health.current_ratio >= 1 ? '#10b981' : '#ef4444'};">${health.current_ratio.toFixed(2)}</strong>`);
             if (health.debt_to_equity !== undefined) healthItems.push(`Debt/Equity: <strong style="color: ${health.debt_to_equity <= 1 ? '#10b981' : '#ef4444'};">${health.debt_to_equity.toFixed(2)}</strong>`);
             
-            // 组合所有信息
+            // Combine all information
             const allItems = [];
             if (valItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Valuation:</span> ${valItems.join(' • ')}`);
             if (profItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Profitability:</span> ${profItems.join(' • ')}`);
@@ -2039,7 +1873,7 @@
             return html;
         }
         
-        // 从工具结果中提取简要文字内容
+        // Extract brief text content from tool results
         function extractToolSummary(toolName, resultData) {
             if (!resultData || typeof resultData !== 'object') {
                 return null;
@@ -2053,10 +1887,10 @@
                 depth++;
             }
             
-            // 根据工具类型提取简要信息
+            // Extract brief information based on tool type
             const summaries = [];
             
-            // 技术指标
+            // Technical indicators
             if (toolName.includes('indicators') || toolName.includes('technical')) {
                 if (data.indicators) {
                     const ind = data.indicators;
@@ -2131,7 +1965,7 @@
                 }
             }
             
-            // 市场数据
+            // Market data
             if (toolName.includes('market') || toolName.includes('indices')) {
                 if (data.indices && Array.isArray(data.indices)) {
                     data.indices.slice(0, 2).forEach(idx => {
@@ -2142,7 +1976,7 @@
                 }
             }
             
-            // 板块轮动
+            // Sector rotation
             if (toolName.includes('sector') || toolName.includes('rotation')) {
                 if (data.sectors && Array.isArray(data.sectors)) {
                     data.sectors.slice(0, 3).forEach(sec => {
@@ -2153,14 +1987,14 @@
                 }
             }
             
-            // 支撑阻力
+            // Support and resistance
             if (toolName.includes('support') || toolName.includes('resistance')) {
                 if (data.current_price !== undefined) summaries.push(`Price: $${data.current_price.toFixed(2)}`);
                 if (data.nearest_resistance !== undefined) summaries.push(`Resistance: $${data.nearest_resistance.toFixed(2)}`);
                 if (data.nearest_support !== undefined) summaries.push(`Support: $${data.nearest_support.toFixed(2)}`);
             }
             
-            // 如果没有任何摘要，尝试提取一些通用字段
+            // If no summary available, try to extract some common fields
             if (summaries.length === 0) {
                 if (data.symbol) summaries.push(`Symbol: ${data.symbol}`);
                 if (data.date) summaries.push(`Date: ${data.date}`);
@@ -2315,7 +2149,7 @@
                 try {
                     const response = await fetch(`${API_BASE}/api/portfolio/real-time`, {
                         method: 'GET',
-                        mode: 'cors',  // 明确指定 CORS 模式
+                        mode: 'cors',  // Explicitly specify CORS mode
                         headers: {
                             'Content-Type': 'application/json',
                         },
@@ -2367,7 +2201,7 @@
                 if (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message.includes('timeout')) {
                     throw new Error('Request timeout, please check your network connection');
                 }
-                // 静默处理其他错误，避免控制台噪音
+                // Silently handle other errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch portfolio:', err.message);
                 }
@@ -2403,7 +2237,7 @@
                     pnl: item.total_pnl || 0,
                 }));
             } catch (err) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
@@ -2441,7 +2275,7 @@
                     timestamp: new Date().toISOString(),
                 };
             } catch (err) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
@@ -2468,16 +2302,61 @@
         }
 
         async function initSystem() {
-            // 确认对话框
-            const confirmMsg = `⚠️ WARNING: This will DELETE ALL trading history, conversations, and reset portfolio to initial state.\n\n` +
-                              `This action CANNOT be undone!\n\n` +
-                              `Are you sure you want to continue?`;
-            
-            if (!confirm(confirmMsg)) {
-                return; // 用户取消
+            // 检查是否有进行中的操作
+            const conflicts = [];
+            if (isTradingExecuting) {
+                conflicts.push('交易正在执行中');
+            }
+            if (typeof smartAutoTradeBusy !== 'undefined' && smartAutoTradeBusy) {
+                conflicts.push('自动交易正在运行中');
             }
             
-            // 二次确认
+            // 检查按钮状态
+            const tradeBtn = document.getElementById('startTradeBtn');
+            if (tradeBtn && (tradeBtn.textContent.includes('Trading...') || tradeBtn.textContent.includes('Planning...'))) {
+                conflicts.push('交易/计划正在进行中');
+            }
+            
+            // 检查自动交易定时器
+            if (tradeCheckTimer) {
+                conflicts.push('自动交易定时器正在运行');
+            }
+            
+            // 如果有冲突，提示用户
+            if (conflicts.length > 0) {
+                const conflictMsg = `⚠️ 检测到进行中的操作：\n\n` +
+                                  conflicts.map(c => `• ${c}`).join('\n') +
+                                  `\n\n初始化会中断这些操作并清除所有数据。\n\n` +
+                                  `选择操作：\n` +
+                                  `1. 取消 - 等待操作完成后再初始化\n` +
+                                  `2. 强制初始化 - 立即中断并初始化（不推荐）`;
+                
+                const userChoice = confirm(conflictMsg + '\n\n点击"确定"强制初始化，点击"取消"中止。');
+                if (!userChoice) {
+                    alert('❌ 初始化已取消。请等待当前操作完成后再试。');
+                    return;
+                }
+                
+                // 用户选择强制初始化，显示额外警告
+                const forceConfirm = confirm(`⚠️ 强制初始化警告\n\n` +
+                                            `这将立即中断所有进行中的操作并清除所有数据。\n\n` +
+                                            `此操作无法撤销！\n\n` +
+                                            `确定要继续吗？`);
+                if (!forceConfirm) {
+                    return;
+                }
+            } else {
+                // 没有冲突，正常确认流程
+                const confirmMsg = `⚠️ WARNING: This will DELETE ALL trading history, conversations, and reset portfolio to initial state.\n\n` +
+                                  `This action CANNOT be undone!\n\n` +
+                                  `Are you sure you want to continue?`;
+                
+                if (!confirm(confirmMsg)) {
+                    return; // 用户取消
+                }
+            }
+            
+            // 二次确认（无论是否有冲突都需要）
             const secondConfirm = confirm(`⚠️ FINAL CONFIRMATION\n\n` +
                                          `This will permanently delete:\n` +
                                          `- All trading history\n` +
@@ -2497,16 +2376,52 @@
                     btn.textContent = '⏳ Initializing...';
                 }
                 
+                // 停止所有进行中的操作
+                console.log('[Init] Stopping all ongoing operations...');
+                
+                // 停止自动交易定时器
+                if (tradeCheckTimer) {
+                    clearInterval(tradeCheckTimer);
+                    tradeCheckTimer = null;
+                    console.log('[Init] Stopped auto-trade timer');
+                }
+                
+                // 重置状态标志
+                isTradingExecuting = false;
+                if (typeof smartAutoTradeBusy !== 'undefined') {
+                    smartAutoTradeBusy = false;
+                }
+                
+                // 重置按钮状态
+                const tradeBtn = document.getElementById('startTradeBtn');
+                if (tradeBtn) {
+                    tradeBtn.disabled = false;
+                    const isOpen = await isMarketOpen().catch(() => false);
+                    tradeBtn.textContent = isOpen ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                }
+                
+                // 执行初始化
+                console.log('[Init] Calling API to initialize system...');
                 const r = await fetch(`${API_BASE}/api/system/init`, { method: 'POST' });
                 const data = await r.json();
                 
                 if (r.ok && data.ok) {
                     alert('✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.');
+                    
+                    // 刷新数据
                     await refreshData(true);
+                    
+                    // 更新自动交易状态
+                    if (typeof updateAutoTradeStatus !== 'undefined') {
+                        updateAutoTradeStatus('Stopped');
+                    }
+                    
+                    console.log('[Init] System initialization completed');
                 } else {
                     alert('❌ Initialization failed: ' + (data.error || 'Unknown error'));
                 }
             } catch (e) {
+                console.error('[Init] Error:', e);
                 alert('❌ Initialization failed: ' + e.message);
             } finally {
                 const btn = document.getElementById('initBtn') || document.querySelector('button[onclick="initSystem()"]');
@@ -2517,13 +2432,13 @@
             }
         }
 
-        // 直接执行交易循环（改进版：防重复执行、支持市场关闭时规划、适用于所有5个scenario）
+        // Directly execute trading cycle (improved: prevent duplicate execution, support planning when market is closed, applies to all 5 scenarios)
         let tradeCheckTimer = null;
-        let isTradingExecuting = false;  // ✅ 添加执行状态标志，防止重复执行
-        // ✅ 已移除 hasPlannedToday，改为通过API返回的消息判断是否已规划
+        let isTradingExecuting = false;  // Add execution state flag to prevent duplicate execution
+        // Removed hasPlannedToday, now determined by API response message
         
         async function executeTradeCycle() {
-            // ✅ 防重复执行：如果上次交易还在执行，跳过本次
+            // Prevent duplicate execution: if last trade is still executing, skip this one
             if (isTradingExecuting) {
                 console.log('[Trade Cycle] Previous trade cycle still executing, skipping...');
                 const btn = document.getElementById('startTradeBtn');
@@ -2539,7 +2454,7 @@
                 return;
             }
             
-            // ✅ 检查是否有待处理的订单，给出提示
+            // Check if there are pending orders, show warning
             try {
                 const tradesResponse = await fetch(`${API_BASE}/api/trades/recent?limit=10`);
                 if (tradesResponse.ok) {
@@ -2549,19 +2464,19 @@
                     );
                     if (pendingOrders.length > 0) {
                         console.log(`[Trade Cycle] Warning: ${pendingOrders.length} pending orders exist. New orders may replace existing ones for the same symbol/action/date.`);
-                        // 可以选择显示提示或继续执行
+                        // Can choose to show warning or continue execution
                     }
                 }
             } catch (e) {
-                // 如果检查失败，继续执行（不影响主流程）
+                // If check fails, continue execution (does not affect main flow)
                 console.warn('[Trade Cycle] Failed to check existing orders:', e);
             }
             
-            // ✅ 检查市场状态（仅用于显示，不阻止执行）
-            // 注意：这适用于所有5个scenario：
-            // - Scenario 1-2: 市场开盘（或模拟），执行实时交易
-            // - Scenario 3-4: 市场关闭（或模拟），规划明天的交易
-            // - Scenario 5: 多天模拟，根据每天的市场状态执行
+            // Check market status (for display only, does not block execution)
+            // Note: This applies to all 5 scenarios:
+            // - Scenario 1-2: Market open (or simulated), execute real-time trading
+            // - Scenario 3-4: Market closed (or simulated), plan tomorrow's trades
+            // - Scenario 5: Multi-day simulation, execute based on daily market status
             let marketStatus = 'unknown';
             try {
                 const isOpen = await isMarketOpen();
@@ -2573,15 +2488,15 @@
                 }
             } catch (e) {
                 console.warn('[Trade Cycle] Failed to check market status, proceeding anyway:', e);
-                // 如果无法检查市场状态，假设市场关闭（更安全）
+                // If unable to check market status, assume market is closed (safer)
                 marketStatus = 'closed';
             }
             
             isTradingExecuting = true;
-            // Update conversation status to Running (agents状态灯)
+            // Update conversation status to Running (agent status indicator)
             updateConversationStatus(true);
             
-            // 更新按钮状态
+            // Update button state
             const btn = document.getElementById('startTradeBtn');
             let progressInterval = null;
             if (btn) {
@@ -2626,7 +2541,7 @@
                     const message = data.message || '';
                     const isPlanning = data.result?.is_planning || false;
                     
-                    // 根据API返回的实际结果更新市场状态
+                    // Update market status based on actual API response
                     if (isPlanning) {
                         marketStatus = 'closed';
                         console.log(`[Trade Cycle] Planning completed: ${orderCount} pending orders for tomorrow, ${convCount} conversations. ${message}`);
@@ -2690,14 +2605,14 @@
                     if (btn) {
                         btn.disabled = false;
                         btn.textContent = '⏳ Processing... (may take several minutes)';
-                        // 5秒后恢复按钮文本
+                        // Restore button text after 5 seconds
                         setTimeout(() => {
                             if (btn && !btn.disabled) {
                                 btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
                             }
                         }, 5000);
                     }
-                    // 即使超时，也尝试刷新数据（服务器可能已经完成处理）
+                    // Even if timeout, try to refresh data (server may have completed processing)
                     console.log('[Trade Cycle] Attempting to refresh data despite timeout...');
                     try {
                         await refreshData(false, true);
@@ -2724,14 +2639,14 @@
                     progressInterval = null;
                 }
                 
-                isTradingExecuting = false;  // ✅ 确保无论成功失败都重置标志
-                // Update conversation status back to Idle (agents状态灯)
+                isTradingExecuting = false;  // Ensure flag is reset regardless of success or failure
+                // Update conversation status back to Idle (agent status indicator)
                 updateConversationStatus(false);
                 
-                // 恢复按钮状态（根据实际市场状态）
+                // Restore button state (based on actual market status)
                 if (btn) {
                     btn.disabled = false;
-                    // 根据市场状态更新按钮文本
+                    // Update button text based on market status
                     if (marketStatus === 'open') {
                         btn.textContent = '▶️ Start Trading';
                     } else if (marketStatus === 'closed') {
@@ -2804,18 +2719,18 @@
                     
                     if (r.ok && data.ok) {
                         const orderCount = data.result?.placed_orders || 0;
-                        console.log(`[Trade Check] 交易执行成功: ${orderCount} 笔订单`);
-                        // 刷新数据
+                        console.log(`[Trade Check] Trade execution successful: ${orderCount} orders`);
+                        // Refresh data
                         await refreshData(false);
                     } else {
-                        console.error('[Trade Check] 交易执行失败:', data.error);
+                        console.error('[Trade Check] Trade execution failed:', data.error);
                     }
                 } else {
-                    // 更新检查计数
+                    // Update check count
                     lastCheckedConvoCount = currentConvoCount;
                 }
             } catch (e) {
-                console.error('[Trade Check] 检查异常:', e);
+                console.error('[Trade Check] Check exception:', e);
             }
         }
         
@@ -2824,38 +2739,46 @@
                 clearInterval(tradeCheckTimer);
             }
             
-            // ✅ 自动智能调度：根据市场状态自动管理
-            // 交易时段：每5分钟执行一次交易循环
-            // 非交易时段：检查是否已规划明天，如果没有就执行一次规划
+            // Automatic intelligent scheduling: automatically manage based on market status
+            // Trading hours: execute trade cycle every 5 minutes
+            // Non-trading hours: check if tomorrow is already planned, if not execute one planning cycle
+            // Concurrency guard to avoid overlapping executions (prevents timeout storms)
+            let smartAutoTradeBusy = false;
             async function smartAutoTrade() {
+                if (smartAutoTradeBusy) {
+                    // Skip if a previous run is still in progress
+                    return;
+                }
+                smartAutoTradeBusy = true;
                 try {
                     const isOpen = await isMarketOpen();
-                    updateAutoTradeStatus(isOpen ? '交易时段运行中' : '非交易时段检测中');
+                    updateAutoTradeStatus(isOpen ? 'Trading Hours Running' : 'Non-Trading Hours Detecting');
                     
                     if (isOpen) {
-                        // 交易时段：执行交易循环
+                        // Trading hours: execute trade cycle
                         console.log('[Auto Trade] Market is open, executing trade cycle...');
-                        updateAutoTradeStatus('交易时段运行中');
+                        updateAutoTradeStatus('Trading Hours Running');
                         try {
                             await executeTradeCycle();
                             console.log('[Auto Trade] Trade cycle completed successfully');
                         } catch (e) {
                             console.error('[Auto Trade] Error during trade cycle:', e);
-                            // 即使失败也继续，下次重试
+                            // Continue even if failed, retry next time
                         }
                     } else {
-                        // 非交易时段：检查是否已规划明天
+                        // Non-trading hours: check if tomorrow is already planned
                         console.log('[Auto Trade] Market is closed, checking if tomorrow is already planned...');
-                        updateAutoTradeStatus('检查明日规划状态');
+                        updateAutoTradeStatus('Checking Tomorrow Planning Status');
                         
                         try {
-                            // 调用API检查是否有明天的订单（API会自动检查并返回相应消息）
+                            // Call API to check if there are orders for tomorrow (API will automatically check and return corresponding message)
                             const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
                                 method: 'POST',
                                 mode: 'cors',
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
+                                // Use a generous timeout to allow LLM planning when after-hours
                                 signal: AbortSignal.timeout(600000),  // 10分钟超时
                             });
                             
@@ -2871,39 +2794,39 @@
                                 const message = data.message || '';
                                 const isPlanning = data.result?.is_planning || false;
                                 
-                                // 检查消息中是否包含"Already have"或"already planned"
+                                // Check if message contains "Already have" or "already planned"
                                 if (message.includes('Already have') || message.includes('already planned') || message.includes('No new planning needed')) {
                                     console.log('[Auto Trade] Tomorrow is already planned, skipping:', message);
-                                    updateAutoTradeStatus('明日已规划，等待中');
-                                    // 停止自动交易，等待市场开盘
+                                    updateAutoTradeStatus('Tomorrow Already Planned, Waiting');
+                                    // Stop auto trade, wait for market to open
                                     stopAutoTrade();
                                     return;
                                 } else if (isPlanning) {
-                                    // 刚刚完成规划
+                                    // Just completed planning
                                     console.log('[Auto Trade] Planning completed for tomorrow:', message);
-                                    updateAutoTradeStatus('明日规划完成');
-                                    // 停止自动交易，等待市场开盘
+                                    updateAutoTradeStatus('Tomorrow Planning Completed');
+                                    // Stop auto trade, wait for market to open
                                     stopAutoTrade();
                                     return;
                                 } else {
-                                    // 执行了交易（不应该在非交易时段发生，但处理一下）
+                                    // Executed trade (should not happen in non-trading hours, but handle it)
                                     console.log('[Auto Trade] Trade cycle executed:', message);
-                                    updateAutoTradeStatus('交易完成');
+                                    updateAutoTradeStatus('Trading Completed');
                                 }
                             } else {
                                 console.error('[Auto Trade] API returned error:', data.error || 'Unknown error');
-                                updateAutoTradeStatus('执行出错');
+                                updateAutoTradeStatus('Execution Error');
                             }
                         } catch (e) {
                             console.error('[Auto Trade] Error during planning check:', e);
-                            updateAutoTradeStatus('检查失败');
-                            // 如果检查失败，不停止，让它在下次重试
+                            updateAutoTradeStatus('Check Failed');
+                            // If check fails, don't stop, let it retry next time
                         }
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
-                    updateAutoTradeStatus('状态检测失败');
-                    // 如果无法检查市场状态，假设市场开盘并尝试执行（盘中应该能执行）
+                    updateAutoTradeStatus('Status Detection Failed');
+                    // If unable to check market status, assume market is open and try to execute (should work during trading hours)
                     try {
                         console.log('[Auto Trade] Market status check failed, attempting trade cycle anyway...');
                         await executeTradeCycle();
@@ -2911,13 +2834,18 @@
                         console.error('[Auto Trade] Trade cycle also failed:', tradeErr);
                     }
                 }
+                finally {
+                    smartAutoTradeBusy = false;
+                }
             }
             
-            // 交易时段：每5分钟执行一次
-            const TRADING_INTERVAL = 5 * 60 * 1000;  // 5分钟
+            // Trading hours: execute trade cycle every 1 hour (conversation/planning)
+            // Note: Data refresh continues every 30 seconds regardless of trading interval
+            const TRADING_INTERVAL = 60 * 60 * 1000;  // 1 hour (only during trading hours)
             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
-            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 1000} seconds during market hours)`);
-            // 立即执行一次
+            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes during market hours)`);
+            console.log(`[Auto Trade] Note: Data refresh continues every ${REFRESH_INTERVAL / 1000} seconds`);
+            // Execute immediately once
             smartAutoTrade();
         }
         
@@ -2925,15 +2853,15 @@
             const statusEl = document.getElementById('autoTradeStatus');
             if (statusEl) {
                 statusEl.textContent = status;
-                // 根据状态设置颜色
-                if (status.includes('运行中') || status.includes('完成')) {
-                    statusEl.style.color = '#10b981'; // 绿色
-                } else if (status.includes('等待中') || status.includes('已规划')) {
-                    statusEl.style.color = '#94a3b8'; // 灰色
-                } else if (status.includes('失败') || status.includes('出错')) {
-                    statusEl.style.color = '#ef4444'; // 红色
+                // Set color based on status
+                if (status.includes('Running') || status.includes('Completed')) {
+                    statusEl.style.color = '#10b981'; // Green
+                } else if (status.includes('Waiting') || status.includes('Planned')) {
+                    statusEl.style.color = '#94a3b8'; // Gray
+                } else if (status.includes('Failed') || status.includes('Error')) {
+                    statusEl.style.color = '#ef4444'; // Red
                 } else {
-                    statusEl.style.color = '#f59e0b'; // 黄色
+                    statusEl.style.color = '#f59e0b'; // Yellow
                 }
             }
         }
@@ -2942,7 +2870,7 @@
             if (tradeCheckTimer) {
                 clearInterval(tradeCheckTimer);
                 tradeCheckTimer = null;
-                console.log('[Auto Trade] 交易检查已停止');
+                console.log('[Auto Trade] Trade check stopped');
             }
         }
 
@@ -2967,7 +2895,7 @@
                 // API returns agents directly as object, not nested under "agents" key
                 return data || {};
             } catch (err) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch agent status:', err.message);
                 }
@@ -2994,7 +2922,7 @@
                 const data = await response.json();
                 return data.tools || [];
             } catch (err) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch tools list:', err.message);
                 }
@@ -3021,7 +2949,7 @@
                 const data = await response.json();
                 return data.ok ? data : null;
             } catch (err) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     console.warn('Failed to fetch system info:', err.message);
                 }
@@ -3055,7 +2983,7 @@
                 }
                 return { conversations: [], total: 0, has_more: false };
             } catch (err) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
@@ -3388,7 +3316,7 @@
                                             </div>`;
                                         }
                                     } catch (e) {
-                                        // 如果解析失败，显示原始内容
+                                        // If parsing fails, display original content
                                         toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool Result</div>`;
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                             <div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content_text)}</div>
@@ -3493,12 +3421,12 @@
                                                         }
                                                     }
                                                 } catch (e) {
-                                                    // 解析失败，跳过
+                                                    // Parsing failed, skip
                                                 }
                                             }
                                         });
                                         
-                                        // 生成工具简要信息 HTML
+                                        // Generate tool brief information HTML
                                         if (toolSummaries.length > 0) {
                                             const toolsList = toolSummaries.map(t => `<strong style="color: #f59e0b;">${escapeHtml(t.name)}</strong>: ${escapeHtml(t.summary)}`).join('<br>');
                                             toolsSummaryHtml = `<div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 12px; line-height: 1.6;">
@@ -3835,7 +3763,7 @@
                                         }
                                     }
                                 } catch (e) {
-                                    // 如果解析失败，显示原始内容
+                                    // If parsing fails, display original content
                                     toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool Result</div>`;
                                     toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
                                         <div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content)}</div>
@@ -3995,7 +3923,7 @@
                             try {
                                 data = JSON.parse(jsonMatch[0]);
                             } catch (e) {
-                                // 如果解析失败，尝试使用 extractPartialJson
+                                // If parsing fails, try using extractPartialJson
                                 const partial = extractPartialJson(jsonMatch[0]);
                                 if (partial) {
                                     data = partial;
@@ -4297,7 +4225,7 @@
                         `;
                     }
                     
-                    // 优先检查数组字段（如indices, records等），因为数组更常见
+                    // Prioritize checking array fields (like indices, records, etc.), as arrays are more common
                     for (const [key, value] of Object.entries(data)) {
                         if (Array.isArray(value) && value.length > 0) {
                             // 找到数组字段，转换为表格
@@ -4377,7 +4305,7 @@
                         }
                     }
                     
-                    // 然后检查是否是对象字典（如 stocks: {AAPL: {...}, MSFT: {...}}）
+                    // Then check if it's an object dictionary (like stocks: {AAPL: {...}, MSFT: {...}})
                     for (const [key, value] of Object.entries(data)) {
                         // 检查是否是对象字典：值是一个对象，且所有值都是对象
                         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -4786,7 +4714,7 @@
                     }
                 }
                 
-                // 如果无法转换为表格，使用键值对表格格式
+                // If unable to convert to table, use key-value pair table format
                 const entries = Object.entries(data);
                 if (entries.length > 0) {
                     let tableHtml = `
@@ -4832,7 +4760,7 @@
                 }
                 return '<div style="color: #94a3b8; font-style: italic;">No data</div>';
             } catch (e) {
-                // 如果解析失败，尝试提取文本内容，不显示原始JSON
+                // If parsing fails, try to extract text content, don't display raw JSON
                 const textContent = String(resultText).replace(/\{[\s\S]*\}/g, '').trim();
                 if (textContent.length > 0) {
                     return `<div style="padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; color: #e2e8f0; font-size: 13px; line-height: 1.6;">${escapeHtml(textContent)}</div>`;
@@ -4898,14 +4826,14 @@
                         }
                     }
                 } catch (e) {
-                    // 如果解析失败，返回 null
+                    // If parsing fails, return null
                     return null;
                 }
-                // 如果无法解析，返回 null
+                // If unable to parse, return null
                 return null;
             }
             
-            // 解析工具信息，支持多种格式：
+            // Parse tool information, supports multiple formats:
             // 1. "news_scan: 10 hits, queries=['AAPL'], samples=[...]"
             // 2. "vix_term: VIX=17.17, VIX3M=20.38, ratio=1.187"
             // 3. "fear_greed: ok"
@@ -4946,7 +4874,7 @@
                             try {
                                 parsed = JSON.parse(jsonStr.substring(0, lastValidPos + 1));
                             } catch (e2) {
-                                // 如果还是失败，保持原样
+                                // If still fails, keep as is
                                 parsed = null;
                             }
                         } else {
@@ -4964,7 +4892,7 @@
                     }
                 }
             } catch (e) {
-                // 如果解析失败，保持原样
+                // If parsing fails, keep as is
             }
             
             // 提取更详细的指标信息
@@ -5029,7 +4957,7 @@
                     }
                     finalResult = resultData;
                 } catch (e) {
-                    // 如果解析失败，保持原样
+                    // If parsing fails, keep as is
                     finalResult = toolResult;
                 }
             } else if (typeof toolResult === 'object' && toolResult !== null) {
@@ -5273,7 +5201,7 @@
                     html += '</div>';
                     return html;
                 } catch (e) {
-                    // 如果解析失败，直接显示原始内容
+                    // If parsing fails, display original content directly
                     console.warn('Failed to parse risk report JSON:', e);
                     return escapeHtml(String(content));
                 }
@@ -5339,7 +5267,7 @@
             const container = document.getElementById('summaryCards');
             if (!container) return;
             
-            // 默认值（如果 API 失败时使用）
+            // Default value (used when API fails)
             let vixLevel = 0;
             let vix3m = 0;
             let ratio = 0;
@@ -5412,7 +5340,7 @@
                             if (!fgLabel) fgLabel = 'Extreme Fear';
                         }
                     } else if (fgValue === 0 && fgLabel === 'N/A') {
-                        // 使用默认值
+                        // Use default value
                         fgLabel = 'N/A';
                         fgColor = '#6b7280';
                     }
@@ -5489,6 +5417,11 @@
         }
 
         // Render Equity Curve Chart
+        // Note: Asset value fluctuations around $10,000 are normal and expected:
+        // 1. Real-time price updates: Stock prices change continuously during market hours
+        // 2. Portfolio revaluation: Each refresh recalculates total_value = cash + (positions * current_price)
+        // 3. Market volatility: Small price movements in holdings cause total asset value to fluctuate
+        // 4. Initial value baseline: $10,000 is the starting capital, so values naturally oscillate around it
         async function renderEquityChart() {
             try {
                 // 使用全局的 equityHistory 数据，如果没有则重新获取
@@ -5513,19 +5446,74 @@
                 
                 // Sort by date
                 equityData.sort((a, b) => {
-                    const dateA = new Date(a.date || a.timestamp || 0);
-                    const dateB = new Date(b.date || b.timestamp || 0);
+                    // 优先使用 timestamp（包含完整时间信息）
+                    const getDate = (item) => {
+                        if (item.timestamp) {
+                            return new Date(item.timestamp);
+                        } else if (item.date) {
+                            return new Date(item.date + 'T00:00:00Z');
+                        }
+                        return new Date(0);
+                    };
+                    const dateA = getDate(a);
+                    const dateB = getDate(b);
                     return dateA - dateB;
                 });
                 
+                // Helper function: Get Eastern Time components (EST/EDT, auto DST)
+                const getEasternTime = (dateObj) => {
+                    // 使用 Intl.DateTimeFormat 获取美东时间的各个组件（自动处理夏令时）
+                    const formatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'America/New_York',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                    const parts = formatter.formatToParts(dateObj);
+                    const result = {};
+                    parts.forEach(part => {
+                        result[part.type] = part.value;
+                    });
+                    return result;
+                };
+                
                 // Prepare chart data
                 const labels = equityData.map(item => {
-                    const date = new Date(item.date || item.timestamp);
-                    // 格式化：包含日期、小时和分钟
-                    const month = date.toLocaleDateString('en-US', { month: 'short' });
-                    const day = date.getDate();
-                    const hours = String(date.getHours()).padStart(2, '0');
-                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    // 优先使用 timestamp（包含完整时间信息），如果没有则使用 date
+                    let dateObj;
+                    if (item.timestamp) {
+                        // 处理timestamp：如果缺少时区信息，假设为UTC
+                        let ts = item.timestamp;
+                        if (!ts.includes('Z') && !ts.includes('+') && !ts.includes('-', 10)) {
+                            // 缺少时区信息，添加Z表示UTC
+                            ts = ts.endsWith('Z') ? ts : ts + 'Z';
+                        }
+                        dateObj = new Date(ts);
+                    } else if (item.date) {
+                        // 如果只有日期，使用当天的当前时间（但这不是理想情况）
+                        dateObj = new Date(item.date + 'T00:00:00Z');
+                    } else {
+                        dateObj = new Date();
+                    }
+                    
+                    // 检查日期是否有效
+                    if (isNaN(dateObj.getTime())) {
+                        console.warn('[Chart] Invalid date:', item.date || item.timestamp);
+                        return 'Invalid Date';
+                    }
+                    
+                    // 转换为美东时间
+                    const etParts = getEasternTime(dateObj);
+                    
+                    // 格式化：包含日期、小时和分钟（美东时间）
+                    const month = etParts.month || 'Jan';
+                    const day = etParts.day || '1';
+                    const hours = etParts.hour || '00';
+                    const minutes = etParts.minute || '00';
                     return `${month} ${day} ${hours}:${minutes}`;
                 });
                 
@@ -5580,17 +5568,52 @@
                                 displayColors: false,
                                 callbacks: {
                                     title: function(context) {
-                                        // 在 tooltip 中显示完整的时间（包括秒）
+                                        // 在 tooltip 中显示完整的时间（包括秒，美东时间）
                                         const index = context[0].dataIndex;
                                         const item = equityData[index];
-                                        const date = new Date(item.date || item.timestamp);
-                                        const month = date.toLocaleDateString('en-US', { month: 'short' });
-                                        const day = date.getDate();
-                                        const year = date.getFullYear();
-                                        const hours = String(date.getHours()).padStart(2, '0');
-                                        const minutes = String(date.getMinutes()).padStart(2, '0');
-                                        const seconds = String(date.getSeconds()).padStart(2, '0');
-                                        return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds}`;
+                                        
+                                        // 优先使用 timestamp（包含完整时间信息）
+                                        let dateObj;
+                                        if (item.timestamp) {
+                                            // 处理timestamp：如果缺少时区信息，假设为UTC
+                                            let ts = item.timestamp;
+                                            if (!ts.includes('Z') && !ts.includes('+') && !ts.includes('-', 10)) {
+                                                // 缺少时区信息，添加Z表示UTC
+                                                ts = ts.endsWith('Z') ? ts : ts + 'Z';
+                                            }
+                                            dateObj = new Date(ts);
+                                        } else if (item.date) {
+                                            dateObj = new Date(item.date + 'T00:00:00Z');
+                                        } else {
+                                            dateObj = new Date();
+                                        }
+                                        
+                                        // 检查日期是否有效
+                                        if (isNaN(dateObj.getTime())) {
+                                            return 'Invalid Date';
+                                        }
+                                        
+                                        // 转换为美东时间并格式化
+                                        const etParts = getEasternTime(dateObj);
+                                        
+                                        const month = etParts.month || 'Jan';
+                                        const day = etParts.day || '1';
+                                        const year = etParts.year || new Date().getFullYear();
+                                        const hours = etParts.hour || '00';
+                                        const minutes = etParts.minute || '00';
+                                        const seconds = etParts.second || '00';
+                                        
+                                        // 判断是 EST 还是 EDT（通过比较 UTC 偏移量）
+                                        // 创建美东时间的 Date 对象来获取时区信息
+                                        const etDateStr = new Intl.DateTimeFormat('en-US', {
+                                            timeZone: 'America/New_York',
+                                            timeZoneName: 'short'
+                                        }).formatToParts(dateObj).find(p => p.type === 'timeZoneName')?.value || 'ET';
+                                        
+                                        // 简化：如果包含 'D' 就是 EDT，否则是 EST
+                                        const timeZone = etDateStr.includes('D') ? 'EDT' : 'EST';
+                                        
+                                        return `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} ${timeZone}`;
                                     },
                                     label: function(context) {
                                         return 'Value: $' + formatNumber(context.parsed.y, 2);
@@ -5612,6 +5635,44 @@
                                     minRotation: 0,
                                     autoSkip: true,  // 自动跳过一些标签，避免过于拥挤
                                     maxTicksLimit: 20,  // 最多显示20个标签
+                                    callback: function(value, index, ticks) {
+                                        // 确保显示的时间包含分钟（美东时间）
+                                        // 从原始数据获取完整时间（包含分钟）
+                                        if (index >= 0 && index < equityData.length) {
+                                            const item = equityData[index];
+                                            // 优先使用 timestamp（包含完整时间信息）
+                                            let dateObj;
+                                            if (item.timestamp) {
+                                                // 处理timestamp：如果缺少时区信息，假设为UTC
+                                                let ts = item.timestamp;
+                                                if (!ts.includes('Z') && !ts.includes('+') && !ts.includes('-', 10)) {
+                                                    // 缺少时区信息，添加Z表示UTC
+                                                    ts = ts.endsWith('Z') ? ts : ts + 'Z';
+                                                }
+                                                dateObj = new Date(ts);
+                                            } else if (item.date) {
+                                                dateObj = new Date(item.date + 'T00:00:00Z');
+                                            } else {
+                                                return '';
+                                            }
+                                            
+                                            // 检查日期是否有效
+                                            if (isNaN(dateObj.getTime())) {
+                                                return '';
+                                            }
+                                            
+                                            // 转换为美东时间
+                                            const etParts = getEasternTime(dateObj);
+                                            
+                                            const month = etParts.month || 'Jan';
+                                            const day = etParts.day || '1';
+                                            const hours = etParts.hour || '00';
+                                            const minutes = etParts.minute || '00';
+                                            return `${month} ${day} ${hours}:${minutes}`;
+                                        }
+                                        // 如果无法获取数据，返回默认格式
+                                        return '';
+                                    }
                                 },
                             },
                             y: {
@@ -5643,12 +5704,12 @@
         // Render Portfolio Distribution Pie Chart
         function renderDistributionChart(portfolio) {
             try {
-                // 优先使用positions_detail（新格式），如果没有则使用positions（旧格式）
+                // Prioritize using positions_detail (new format), if not available use positions (old format)
                 const positions = portfolio.positions_detail || portfolio.positions || {};
                 const positionsArray = Object.entries(positions);
                 const cash = portfolio.cash || 0;
                 
-                // 如果没有持仓也没有现金，显示空状态
+                // If no positions and no cash, display empty state
                 if (positionsArray.length === 0 && (!cash || cash === 0)) {
                     console.log('[Chart] No positions or cash for distribution chart');
                     document.getElementById('pieChartInfo').textContent = 'No positions yet';
@@ -5851,11 +5912,11 @@
             let totalUnrealizedPnL = 0;
 
             tbody.innerHTML = positionsArray.map(([symbol, pos]) => {
-                // 获取P&L数据，如果后端没有提供，从前端计算
+                // Get P&L data, if backend doesn't provide, calculate from frontend
                 let pnl = positionsPnL[symbol];
                 if (!pnl || typeof pnl.unrealized_pnl !== 'number') {
                     // 如果后端没有提供P&L数据，从前端计算
-                    // 优先使用total_cost（如果存在），否则使用cost_basis，最后使用avg_cost * quantity
+                    // Prioritize using total_cost (if exists), otherwise use cost_basis, finally use avg_cost * quantity
                     const costBasis = pos.total_cost || pos.cost_basis || ((pos.avg_cost || 0) * (pos.quantity || 0));
                     const marketValue = pos.market_value || 0;
                     const unrealizedPnl = marketValue - costBasis;
@@ -6134,7 +6195,7 @@
                 const data = await resp.json();
                 return data.ok ? (data.trades || []) : [];
             } catch (e) {
-                // 静默处理错误，避免控制台噪音
+                // Silently handle errors to avoid console noise
                 if (e.name !== 'AbortError') {
                     console.warn('Failed to fetch trades:', e.message);
                 }
@@ -6266,7 +6327,7 @@
                 // 有FILLED订单时，只显示FILLED
                 displayTrades = filledTrades;
             } else {
-                // 没有FILLED订单时，显示PENDING（优先显示明日挂单）
+                // When there are no FILLED orders, display PENDING (prioritize showing tomorrow's pending orders)
                 displayTrades = [...tomorrowOrders, ...pendingTrades.filter(t => !tomorrowOrders.includes(t))];
             }
             
@@ -6301,7 +6362,7 @@
             tbody.innerHTML = recentTrades.map(t => {
                 const side = (t.side || t.action || '').toUpperCase();
                 const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
-                // 优先使用filled_at（成交时间），其次使用placed_at（挂单时间），最后使用timestamp
+                // Prioritize using filled_at (fill time), then placed_at (order time), finally use timestamp
                 const ts = t.filled_at || t.placed_at || t.timestamp || '';
                 let timeDisplay = '-';
                 if (ts) {
@@ -6317,7 +6378,7 @@
                             hour12: false
                         });
                     } catch (e) {
-                        timeDisplay = ts; // 如果解析失败，直接显示原始字符串
+                        timeDisplay = ts; // If parsing fails, display original string directly
                     }
                 }
                 const fillPrice = t.fill_price || t.price || null;
@@ -6361,7 +6422,7 @@
 
         // Main refresh function
         async function refreshData(showLoading = false, skipHealthCheck = false) {
-            // 如果正在执行交易，跳过健康检查（避免在执行期间显示 connection error）
+            // If trading is executing, skip health check (avoid showing connection error during execution)
             if (!skipHealthCheck) {
                 // 首先检查后端是否可用（使用更宽松的策略）
                 let backendAvailable = false;
@@ -6390,11 +6451,11 @@
                     }
                 }
                 
-                // 如果所有健康检查都失败，尝试一个更简单的检查（不显示错误页面）
+                // If all health checks fail, try a simpler check (don't show error page)
                 if (!backendAvailable && healthCheckFailed) {
                     // 不立即显示错误页面，而是继续尝试获取数据
-                    // 如果后续数据获取也失败，再显示错误
-                    // 健康检查失败可能是服务器正在处理请求，这是正常的
+                    // If subsequent data fetch also fails, then show error
+                    // Health check failure may be due to server processing requests, this is normal
                     console.debug('[Refresh] Health check failed (server may be busy), continuing to try fetching data...');
                     updateConnectionStatus(false);
                 } else if (backendAvailable) {
@@ -6405,7 +6466,7 @@
                 console.log('[Refresh] Skipping health check (trading in progress)');
             }
             
-            // 检查市场是否开盘 - 非交易时段仍显示对话内容，但不更新实时数据
+            // Check if market is open - non-trading hours still show conversation content, but don't update real-time data
             let isMarketOpen = true;
             let marketStatusSource = 'api'; // 追踪状态来源：'api' 或 'fallback'
             try {
@@ -6435,7 +6496,7 @@
                     throw new Error(`API returned status ${marketCheck.status}`);
                 }
             } catch (e) {
-                // 如果检查失败，根据当前时间智能判断（fallback逻辑）
+                // If check fails, intelligently judge based on current time (fallback logic)
                 const now = new Date();
                 const hour = now.getHours();
                 const minute = now.getMinutes();
@@ -6445,7 +6506,7 @@
                 const isTradingHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
                 isMarketOpen = isWeekday && isTradingHours;
                 marketStatusSource = 'fallback';
-                // 如果错误是超时或连接重置，静默处理（服务器可能正在处理请求，这是正常的）
+                // If error is timeout or connection reset, silently handle (server may be processing requests, this is normal)
                 const isTimeoutOrReset = e.message && (e.message.includes('timeout') || e.message.includes('reset') || e.message.includes('aborted') || e.message.includes('signal timed out'));
                 // 超时错误完全静默，因为fallback逻辑已经处理了
                 if (!isTimeoutOrReset && showLoading) {
@@ -6484,11 +6545,11 @@
                 // Fetch all data in parallel (使用Promise.allSettled，避免单个失败导致整体失败)
                 const fetchOptions = { signal: refreshAbortController.signal };
                 
-                // 非交易时段：只获取对话和订单数据，不更新实时数据
-                // 交易时段：获取所有数据
+                // Non-trading hours: only fetch conversation and order data, don't update real-time data
+                // Trading hours: fetch all data
                 const fetchPromises = [];
                 if (isMarketOpen) {
-                    // 交易时段：获取所有数据
+                    // Trading hours: fetch all data
                     fetchPromises.push(
                         fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })),
                         fetchEquityHistory(fetchOptions).catch(() => []),
@@ -6502,29 +6563,29 @@
                 } else {
                     // 非交易时段：获取历史数据和最后快照（包括portfolio），不更新实时数据
                     fetchPromises.push(
-                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })), // ✅ 修复：非交易时段也要获取portfolio数据
-                        fetchEquityHistory(fetchOptions).catch(() => []), // ✅ 修复：非交易时段也要获取历史数据用于图表显示
+                        fetchPortfolio(fetchOptions).catch(err => ({ error: err.message, data: null })), // ✅ Fix: non-trading hours should also fetch portfolio data
+                        fetchEquityHistory(fetchOptions).catch(() => []), // ✅ Fix: non-trading hours should also fetch historical data for chart display
                         fetchBackendStatus(fetchOptions).catch(() => null),
                         fetchAgentStatus(fetchOptions).catch(() => ({})),
                         fetchToolsList(fetchOptions).catch(() => []),
                         fetchSystemInfo(fetchOptions).catch(() => null),
                         fetchConversations(CONVERSATIONS_LIMIT, fetchOptions).catch(() => ({ conversations: [], total: 0, has_more: false })),
-                        fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => []) // 包括明日挂单
+                        fetchTrades(TRADES_LIMIT, fetchOptions).catch(() => []) // Include tomorrow's pending orders
                     );
                 }
                 
-                // 使用Promise.allSettled，即使某些请求失败也能继续显示其他数据
+                // Use Promise.allSettled, even if some requests fail, can still display other data
                 const results = await Promise.allSettled(fetchPromises);
                 
                 // 提取结果，处理错误
                 let portfolio = null;
                 if (results[0].status === 'fulfilled') {
                     const portfolioValue = results[0].value;
-                    // 检查是否是错误响应（有 error 字段且没有有效数据）
+                    // Check if it's an error response (has error field and no valid data)
                     if (portfolioValue && !portfolioValue.error && (portfolioValue.total_value !== undefined || portfolioValue.cash !== undefined)) {
                         portfolio = portfolioValue;
                     } else if (portfolioValue?.error) {
-                        // 只有在真正失败时才记录（非交易时段不记录）
+                        // Only log when truly failed (don't log during non-trading hours)
                         if (isMarketOpen) {
                             console.debug('[Refresh] Portfolio fetch returned error:', portfolioValue.error);
                         }
@@ -6553,7 +6614,7 @@
                     console.log(`[Refresh] Updated equity history: ${history.length} records`);
                 }
                 
-                // 非交易时段：如果有portfolio数据就用，没有也不报错（静默处理）
+                // Non-trading hours: if portfolio data exists, use it; if not, don't error (silent handling)
                 if (!isMarketOpen && (!portfolio || portfolio.error)) {
                     // 非交易时段获取portfolio失败是正常的（可能没有快照），不报错
                     console.log('[Refresh] Market closed, portfolio data not available (will try to infer from filled orders)');
@@ -6580,11 +6641,11 @@
                     if (mainContent) mainContent.style.display = 'block';
                 }
                 
-                // 如果所有数据都获取失败，才显示错误页面（且只在用户主动刷新时显示）
+                // Only show error page if all data fetch fails (and only when user actively refreshes)
                 const allDataFailed = !hasAnyData;
                 
                 if (allDataFailed && !skipHealthCheck && showLoading) {
-                    // 只有在用户主动刷新且所有数据都失败时才显示错误页面
+                    // Only show error page when user actively refreshes and all data fails
                     // 自动刷新时不显示错误页面，避免干扰用户
                     updateConnectionStatus(false);
                     const loadingState = document.getElementById('loadingState');
@@ -6614,10 +6675,10 @@
 
                 // 判断当前 Scenario
                 let currentScenario = 'Unknown';
-                // 检查持仓：优先使用portfolio.positions_detail或positions，如果没有则检查filled订单
+                // Check holdings: prioritize using portfolio.positions_detail or positions, if not available check filled orders
                 let hasPositions = false;
                 if (portfolio && !portfolio.error) {
-                    // 优先检查positions_detail（新格式），如果没有则检查positions（旧格式）
+                    // Prioritize checking positions_detail (new format), if not available check positions (old format)
                     const positions = portfolio.positions_detail || portfolio.positions || {};
                     hasPositions = Object.keys(positions).length > 0;
                     if (hasPositions) {
@@ -6626,7 +6687,7 @@
                 }
                 
                 if (!hasPositions && tradesData && tradesData.length > 0) {
-                    // 如果没有portfolio数据，检查是否有filled订单（说明可能有持仓）
+                    // If no portfolio data, check if there are filled orders (indicating possible holdings)
                     // 注意：订单可能使用 status='FILLED' 或 status='FILLED'，action='BUY' 或 side='BUY'
                     const filledTrades = tradesData.filter(t => {
                         const status = (t.status || '').toUpperCase();
@@ -6669,16 +6730,16 @@
                     });
                 }
                 
-                // 非交易时段：显示历史数据和最后快照，不更新实时数据
+                // Non-trading hours: display historical data and last snapshot, don't update real-time data
                 if (isMarketOpen && portfolio) {
-                    // 交易时段：实时更新所有数据
+                    // Trading hours: real-time update all data
                     console.log('[Refresh] Market open - updating all data');
                     renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
                     renderPositions(portfolio);     // 更新持仓表格
                     await renderEquityChart();      // 更新净值曲线图（使用已获取的history数据）
                     renderDistributionChart(portfolio); // 更新持仓圆饼图
                 } else {
-                    // 非交易时段：显示历史数据和portfolio快照
+                    // Non-trading hours: display historical data and portfolio snapshot
                     if (portfolio) {
                         // 如果有portfolio数据，显示最后快照
                         console.log('[Refresh] Market closed - showing portfolio snapshot');
@@ -6698,7 +6759,7 @@
                 }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
-                renderExecutionDetails(tradesData || []);  // 更新执行详情（包括明日挂单）
+                renderExecutionDetails(tradesData || []);  // Update execution details (including tomorrow's pending orders)
                 
                 // 如果当前在Trade History页面，也更新交易数据
                 const tradesPage = document.getElementById('tradesPage');
@@ -6776,7 +6837,7 @@
                 
                 updateConnectionStatus(false);
                 
-                // 即使portfolio失败，也尝试显示后端状态
+                // Even if portfolio fails, try to display backend status
                 try {
                     const [backendStatus, agentStatus, toolsList, systemInfo] = await Promise.allSettled([
                         fetchBackendStatus(),
@@ -6794,7 +6855,7 @@
                 }
                 
                 loadingState.style.display = 'none';
-                mainContent.style.display = 'block'; // 即使出错也显示状态部分
+                mainContent.style.display = 'block'; // Even if error, display status section
                 errorState.style.display = 'block';
                 // Error message handling
                 const errorMsg = error.message || 'Unknown error';
@@ -6829,7 +6890,7 @@
         let isRefreshing = false;
         let refreshAbortController = null;
         
-        // 检查并结算pending订单（交易时段）
+        // Check and settle pending orders (trading hours)
         async function checkPendingOrders() {
             try {
                 console.log('[Order Check] Calling /api/trading/check-pending-orders...');
@@ -6871,7 +6932,7 @@
         function startOrderCheck() {
             stopOrderCheck();
             console.log(`[Order Check] Starting order check timer (every ${ORDER_CHECK_INTERVAL/1000} seconds)`);
-            // 只在交易时段检查订单
+            // Only check orders during trading hours
             orderCheckTimer = setInterval(async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/market/is-open`, {
@@ -6891,7 +6952,7 @@
                 }
             }, ORDER_CHECK_INTERVAL);
             
-            // 立即执行一次检查（如果市场开盘）
+            // Execute check once immediately (if market is open)
             (async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/market/is-open`, {
@@ -6921,31 +6982,31 @@
             stopAutoRefresh();
             refreshTimer = setInterval(() => {
                 if (!isRefreshing) {
-                    // 自动刷新时跳过健康检查，避免频繁显示错误消息
+                    // Skip health check during auto refresh to avoid frequent error messages
                     refreshData(false, true);  // skipHealthCheck = true
                 }
             }, REFRESH_INTERVAL);
             
-            // 启动订单检查（交易时段）
+            // Start order check (trading hours)
             startOrderCheck();
             
-            // ✅ Auto Trade 自动管理：根据市场状态自动开启/关闭
-            // 不再依赖复选框，系统自动检测市场状态并管理
+            // Auto Trade automatic management: automatically enable/disable based on market status
+            // No longer depends on checkbox, system automatically detects market status and manages
             async function checkAndManageAutoTrade() {
                 try {
                     const isOpen = await isMarketOpen();
                     
                     if (isOpen) {
-                        // 交易时段：如果 Auto Trade 未运行，启动它
+                        // Trading hours: if Auto Trade is not running, start it
                         if (!tradeCheckTimer) {
                             console.log('[Auto Refresh] Market is open, starting Auto Trade...');
                             startAutoTrade();
                         }
                     } else {
-                        // 非交易时段：如果 Auto Trade 正在运行，停止它（会在下次检查时重新评估是否需要规划）
+                        // Non-trading hours: if Auto Trade is running, let it handle itself (will re-evaluate if planning is needed on next check)
                         if (tradeCheckTimer) {
-                            // 不立即停止，让 smartAutoTrade 自己处理（它会检查是否已规划）
-                            // 如果已规划，smartAutoTrade 会自己停止
+                            // Don't stop immediately, let smartAutoTrade handle it (it will check if already planned)
+                            // If already planned, smartAutoTrade will stop itself
                         }
                     }
                     
@@ -6955,10 +7016,10 @@
                 }
             }
             
-            // 立即检查一次
+            // Check immediately once
             checkAndManageAutoTrade();
             
-            // ✅ 市场状态监控：每30秒检查一次，自动管理 Auto Trade
+            // Market status monitoring: check every 30 seconds, automatically manage Auto Trade
             if (marketStatusMonitorTimer) {
                 clearInterval(marketStatusMonitorTimer);
             }
@@ -6966,24 +7027,24 @@
                 try {
                     const isOpen = await isMarketOpen();
                     
-                    // 如果市场从关闭变为开盘，且 Auto Trade 未运行，启动它
+                    // If market transitions from closed to open, and Auto Trade is not running, start it
                     if (isOpen && lastMarketStatus === false && !tradeCheckTimer) {
                         console.log('[Auto Refresh] Market transitioned from closed to open, starting Auto Trade...');
                         startAutoTrade();
                     }
-                    // 如果市场从开盘变为关闭，让 smartAutoTrade 自己处理（检查是否已规划）
+                    // If market transitions from open to closed, let smartAutoTrade handle it (check if already planned)
                     
                     lastMarketStatus = isOpen;
                 } catch (e) {
-                    // 静默处理错误
+                    // Silently handle error
                 }
-            }, 30000);  // 每30秒检查一次
+            }, 30000);  // Check every 30 seconds
             
             // Agent status check (5 seconds) - always active
             startAgentStatusCheck();
         }
 
-        // 状态检查功能已暂时禁用，专注于对话显示
+        // Status check function temporarily disabled, focus on conversation display
         async function checkAgentStatus() {
             // 已禁用，专注于对话显示
         }
@@ -6991,7 +7052,7 @@
         function startAgentStatusCheck() {
             if (agentStatusTimer) clearInterval(agentStatusTimer);
             checkAgentStatus(); // Check immediately
-            // 状态检查已暂时禁用
+            // Status check temporarily disabled
             agentStatusTimer = setInterval(() => {
                 checkAgentStatus();
             }, AGENT_STATUS_INTERVAL);
@@ -7012,48 +7073,20 @@
             stopAutoTrade();
         }
         
-        // Theme toggle function
-        function toggleTheme() {
-            const body = document.body;
-            const themeText = document.getElementById('themeText');
-            
-            if (body.classList.contains('light-theme')) {
-                body.classList.remove('light-theme');
-                if (themeText) themeText.textContent = 'Light Theme';
-                localStorage.setItem('theme', 'dark');
-            } else {
-                body.classList.add('light-theme');
-                if (themeText) themeText.textContent = 'Dark Theme';
-                localStorage.setItem('theme', 'light');
-            }
-        }
-        
-        // Load saved theme on page load
-        function loadSavedTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            const themeText = document.getElementById('themeText');
-            if (savedTheme === 'light') {
-                document.body.classList.add('light-theme');
-                if (themeText) themeText.textContent = 'Dark Theme';
-            } else {
-                if (themeText) themeText.textContent = 'Light Theme';
-            }
-        }
-
-        // 手动启动交易循环（用户点击按钮时）
-        // 适用于所有5个scenario：
-        // - Scenario 1-2: 市场开盘，执行实时交易
-        // - Scenario 3-4: 市场关闭，规划明天的交易
-        // - Scenario 5: 多天模拟，根据每天的市场状态执行
+        // Manually start trading cycle (when user clicks button)
+        // Applies to all 5 scenarios:
+        // - Scenario 1-2: Market open, execute real-time trading
+        // - Scenario 3-4: Market closed, plan tomorrow's trades
+        // - Scenario 5: Multi-day simulation, execute based on daily market status
         async function startTradingCycle() {
-            // 检查按钮是否已禁用（防止重复点击）
+            // Check if button is disabled (prevent duplicate clicks)
             const btn = document.getElementById('startTradeBtn');
             if (btn && btn.disabled) {
                 console.log('[Manual] Trading cycle already running, please wait...');
                 return;
             }
             
-            // 检查市场状态以更新按钮文本（仅用于显示）
+                // Check market status to update button text (for display only)
             let marketStatus = 'unknown';
             try {
                 const isOpen = await isMarketOpen();
@@ -7098,13 +7131,13 @@
             function isLightBackground(element) {
                 if (!element) return false;
                 
-                // 检查特定类名
+                // Check specific class name
                 const lightClasses = ['trades-section', 'status-section', 'status-item', 'api-url'];
                 if (lightClasses.some(cls => element.classList.contains(cls))) {
                     return true;
                 }
                 
-                // 检查计算样式
+                // Check computed style
                 const style = window.getComputedStyle(element);
                 const bg = style.backgroundColor;
                 if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
@@ -7118,7 +7151,7 @@
                     }
                 }
                 
-                // 检查父元素
+                // Check parent element
                 if (element.parentElement) {
                     return isLightBackground(element.parentElement);
                 }
@@ -7132,23 +7165,20 @@
                     cursorGlow.style.left = e.clientX + 'px';
                     cursorGlow.style.top = e.clientY + 'px';
                     
-                    // 检测鼠标下方的元素
+                    // Detect element below mouse
                     const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
-                    if (elementBelow && !document.body.classList.contains('light-theme')) {
-                        // 只在深色主题下检测
+                    if (elementBelow) {
+                        // Only detect in dark theme
                         if (isLightBackground(elementBelow)) {
                             cursorGlow.classList.add('on-white');
                         } else {
                             cursorGlow.classList.remove('on-white');
                         }
-                    } else if (document.body.classList.contains('light-theme')) {
-                        // 浅色主题下移除 on-white 类（因为整个背景都是浅色）
-                        cursorGlow.classList.remove('on-white');
                     }
                 }
             });
             
-            // 鼠标进入可点击元素时激活
+            // Activate when mouse enters clickable elements
             const interactiveElements = ['button', 'a', 'input', 'select', 'textarea', '.nav-btn', '.refresh-btn', '.card', '.conversation-item'];
             interactiveElements.forEach(selector => {
                 document.addEventListener('mouseover', (e) => {
@@ -7186,23 +7216,20 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            // 初始化游标动画
+            // Initialize cursor animation
             initCursorGlow();
             
-            // Load saved theme first
-            loadSavedTheme();
             setupAutoRefresh();
             
-            // 只刷新数据，不自动执行交易循环
+            // Only refresh data, do not automatically execute trading cycle
             console.log('[Init] Page loaded, refreshing data...');
             
-            // 等待1秒后刷新数据
+            // Wait 1 second then refresh data
             setTimeout(() => {
                 refreshData(true);
             }, 1000);
             
-            // Setup auto trade checkbox
-            // ✅ Auto Trade 现在自动管理，不再需要复选框事件监听
+            // Auto Trade is now automatically managed, no checkbox needed
             
             const demoChk = document.getElementById('autoDemoLoop');
             if (demoChk) {
@@ -7227,7 +7254,7 @@
                     const toolName = conv.tool_name || '';
                     const content = conv.content || '';
                     
-                    // 检查是否是新闻相关的工具
+                    // Check if it's a news-related tool
                     if (toolName.includes('news') || toolName.includes('plan_and_scan')) {
                         try {
                             // 尝试解析工具结果
@@ -7236,7 +7263,7 @@
                             if (toolInfo && toolInfo.result) {
                                 result = toolInfo.result;
                             } else {
-                                // 如果 parseToolInfo 失败，尝试直接从 content 中提取 JSON
+                                // If parseToolInfo fails, try to extract JSON directly from content
                                 // 查找 "Tool used: news_scan: {" 之后的内容
                                 const jsonStart = content.indexOf('{');
                                 if (jsonStart > 0) {
@@ -7245,7 +7272,7 @@
                                     try {
                                         result = JSON.parse(jsonStr);
                                     } catch (e1) {
-                                        // 如果失败，尝试提取部分 JSON（特别是 hits 数组）
+                                        // If fails, try to extract partial JSON (especially hits array)
                                         try {
                                             // 查找 "hits": [ 开始的位置
                                             const hitsStart = jsonStr.indexOf('"hits":');

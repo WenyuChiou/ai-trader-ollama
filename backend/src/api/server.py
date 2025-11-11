@@ -788,7 +788,9 @@ async def check_pending_orders():
                                         if action == "BUY":
                                             current_portfolio.buy(symbol, quantity, fill_price)
                                         elif action == "SELL":
-                                            current_portfolio.sell(symbol, quantity, fill_price)
+                                            # 重新执行已成交订单（已实现损益已在原始订单中记录）
+                                            realized_pnl = current_portfolio.sell(symbol, quantity, fill_price)
+                                            log_print(f"[Check Pending Orders] Re-execution realized P&L: ${realized_pnl['realized_pnl']:.2f} ({realized_pnl['realized_pnl_pct']:+.2f}%)")
                     # 如果有重新执行的订单，保存portfolio状态
                     if len(current_portfolio._positions) > 0:
                         portfolio_state = {
@@ -833,13 +835,16 @@ async def check_pending_orders():
                     fill_price = fill_result.get("fill_price")
                     if fill_price:
                         log_print(f"[Check Pending Orders] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
+                        realized_pnl = None
                         if action == "BUY":
                             current_portfolio.buy(symbol, quantity, fill_price)
                         elif action == "SELL":
-                            current_portfolio.sell(symbol, quantity, fill_price)
+                            # 卖出时计算已实现损益
+                            realized_pnl = current_portfolio.sell(symbol, quantity, fill_price)
+                            log_print(f"[Check Pending Orders] Realized P&L: ${realized_pnl['realized_pnl']:.2f} ({realized_pnl['realized_pnl_pct']:+.2f}%)")
                         
-                        # 标记订单为已成交
-                        order_manager.mark_order_filled(order, fill_result)
+                        # 标记订单为已成交（传递已实现损益）
+                        order_manager.mark_order_filled(order, fill_result, realized_pnl=realized_pnl)
                         settled_count += 1
                         log_print(f"[Check Pending Orders] Order {order_id} executed successfully")
             except Exception as e:
@@ -2212,13 +2217,16 @@ def run_october_simulation_background():
                         continue
                     
                     log_print(f"[Settle Orders] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
+                    realized_pnl = None
                     if action == "BUY":
                         portfolio.buy(symbol, quantity, fill_price)
                     elif action == "SELL":
-                        portfolio.sell(symbol, quantity, fill_price)
+                        # 卖出时计算已实现损益
+                        realized_pnl = portfolio.sell(symbol, quantity, fill_price)
+                        log_print(f"[Settle Orders] Realized P&L: ${realized_pnl['realized_pnl']:.2f} ({realized_pnl['realized_pnl_pct']:+.2f}%)")
                     
-                    # 标记订单为已成交
-                    order_manager.mark_order_filled(order, fill_result)
+                    # 标记订单为已成交（传递已实现损益）
+                    order_manager.mark_order_filled(order, fill_result, realized_pnl=realized_pnl)
                     settled_count += 1
                     log_print(f"[Settle Orders] Order {order_id} executed successfully")
                 except Exception as e:

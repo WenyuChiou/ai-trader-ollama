@@ -21,9 +21,10 @@ def buy_stock(symbol: str, amount: int, price: float) -> str:
 @tool("sell_stock")
 def sell_stock(symbol: str, amount: int, price: float) -> str:
     """Sell a number of shares at a given price and update the portfolio."""
-    CTX.portfolio.sell(symbol, amount, price)
+    realized_pnl = CTX.portfolio.sell(symbol, amount, price)
     CTX.last_prices[symbol] = price
-    return f"Sold {amount} {symbol} @ {price}"
+    pnl_str = f" (P&L: ${realized_pnl['realized_pnl']:.2f}, {realized_pnl['realized_pnl_pct']:+.2f}%)"
+    return f"Sold {amount} {symbol} @ {price}{pnl_str}"
 
 @tool("portfolio_status")
 def portfolio_status() -> dict:

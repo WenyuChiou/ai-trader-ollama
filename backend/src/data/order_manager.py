@@ -450,11 +450,17 @@ class OrderManager:
         self,
         order: Dict[str, Any],
         fill_result: Dict[str, Any],
+        realized_pnl: Optional[Dict[str, float]] = None,
     ) -> None:
         """
         标记订单为已成交，移到已成交文件
         
         **重要**：如果市场未开盘，订单保持为PENDING状态，不会标记为FILLED
+        
+        参数:
+        - order: 订单信息
+        - fill_result: 成交结果
+        - realized_pnl: 已实现损益（仅SELL订单需要，格式：{"realized_pnl": float, "realized_pnl_pct": float, "cost_basis": float, "proceeds": float}）
         """
         # 检查市场是否开盘 - 如果未开盘，不应标记为FILLED
         if not fill_result.get("filled", False):
@@ -471,6 +477,13 @@ class OrderManager:
         order["daily_high"] = fill_result["daily_high"]
         order["daily_low"] = fill_result["daily_low"]
         order["filled_at"] = datetime.now().isoformat()
+        
+        # 如果是SELL订单且有已实现损益，记录到订单中
+        if order.get("action") == "SELL" and realized_pnl:
+            order["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
+            order["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
+            order["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
+            order["proceeds"] = realized_pnl.get("proceeds", 0.0)
         
         # 保存到已成交文件
         with self.filled_orders_file.open("a", encoding="utf-8") as f:

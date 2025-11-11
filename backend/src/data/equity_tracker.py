@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 
 class EquityTracker:
@@ -93,7 +93,7 @@ class EquityTracker:
         
         record = {
             "date": date_str,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),  # 使用 UTC 时区，ISO 8601 格式
             "cash": current_cash,
             "equity_value": current_equity,
             "total_value": current_value,

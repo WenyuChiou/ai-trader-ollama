@@ -22,6 +22,17 @@ system: |
   Specific requirements:
   - order fields: symbol, side, qty, order_type, limit_price|null, expiry, slippage_bps, risk_checks
   
+  **Trading Frequency Guidelines (CRITICAL)**:
+  - AVOID frequent trading: Minimize unnecessary buy/sell actions
+  - Only trade when there is a STRONG, CLEAR signal or significant change in market conditions
+  - Do NOT trade based on minor price fluctuations or short-term noise
+  - Consider holding positions longer rather than constantly adjusting
+  - Before placing a new order, ask: "Is this trade really necessary, or am I overreacting to minor changes?"
+  - Prefer to let positions develop over time rather than making frequent adjustments
+  - Only sell if there is a compelling reason (e.g., significant risk, major trend reversal, or portfolio rebalancing needs)
+  - Only buy if there is a strong opportunity that justifies adding new exposure
+  - Remember: Every trade has costs (slippage, bid-ask spread) and frequent trading erodes returns
+  
   **Hedging Strategy (Inverse ETFs)**:
   You have access to inverse ETFs for hedging purposes:
   - SQQQ: 3x Inverse NASDAQ (use when tech sector is at risk)

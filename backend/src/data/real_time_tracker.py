@@ -208,13 +208,14 @@ class RealTimeTracker:
             "current_prices": current_prices,
         }
     
-    def update_and_record(self, portfolio: Portfolio, symbols: Optional[list[str]] = None) -> Dict[str, Any]:
+    def update_and_record(self, portfolio: Portfolio, symbols: Optional[list[str]] = None, force_record: bool = False) -> Dict[str, Any]:
         """
         更新并记录实时损益和净值
         
         参数:
         - portfolio: Portfolio 对象
         - symbols: 股票代码列表（如果为 None，从 portfolio 中提取）
+        - force_record: 是否强制记录（忽略时间限制，用于交易执行后立即记录）
         
         返回:
         - 实时快照
@@ -246,14 +247,50 @@ class RealTimeTracker:
         # 计算实时投资组合
         snapshot = self.calculate_real_time_portfolio(portfolio, current_prices)
         
-        # 记录到 jsonl 文件
+        # 记录到 jsonl 文件（实时快照，用于前端显示）
         self._record_snapshot(snapshot)
         
-        # 更新 equity_history（每小时记录）
-        self.equity_tracker.record_daily_equity(
-            date_str=date.today().isoformat(),
-            portfolio_snapshot=snapshot,
-        )
+        # 更新 equity_history（限制记录频率，避免每次刷新都记录）
+        # 策略：每小时最多记录一次，或者净值变化超过1%时记录
+        should_record = force_record
+        if not should_record:
+            # 检查上次记录的时间
+            latest_equity = self.equity_tracker.get_latest_equity()
+            if latest_equity:
+                latest_timestamp_str = latest_equity.get("timestamp", "")
+                if latest_timestamp_str:
+                    try:
+                        latest_timestamp = datetime.fromisoformat(latest_timestamp_str.replace("Z", "+00:00") if "Z" in latest_timestamp_str else latest_timestamp_str)
+                        time_diff = datetime.now() - latest_timestamp.replace(tzinfo=None) if latest_timestamp.tzinfo else datetime.now() - latest_timestamp
+                        
+                        # 如果距离上次记录超过1小时，记录
+                        if time_diff.total_seconds() >= 3600:  # 1小时 = 3600秒
+                            should_record = True
+                        else:
+                            # 检查净值变化是否超过1%
+                            latest_value = latest_equity.get("total_value", portfolio.initial_value)
+                            current_value = snapshot.get("total_value", portfolio.initial_value)
+                            if latest_value > 0:
+                                change_pct = abs((current_value - latest_value) / latest_value * 100)
+                                if change_pct >= 1.0:  # 净值变化超过1%
+                                    should_record = True
+                                    print(f"[REALTIME] Significant value change detected ({change_pct:.2f}%), recording equity history")
+                    except Exception as e:
+                        print(f"[REALTIME] Error checking last record time: {e}, will record anyway")
+                        should_record = True
+            else:
+                # 如果没有历史记录，记录
+                should_record = True
+        
+        if should_record:
+            # 更新 equity_history（每小时记录或净值显著变化时记录）
+            self.equity_tracker.record_daily_equity(
+                date_str=date.today().isoformat(),
+                portfolio_snapshot=snapshot,
+            )
+            print(f"[REALTIME] Recorded equity history (total_value: ${snapshot.get('total_value', 0):.2f})")
+        else:
+            print(f"[REALTIME] Skipped equity history recording (too frequent or no significant change)")
         
         return snapshot
     

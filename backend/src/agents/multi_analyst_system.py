@@ -128,6 +128,8 @@ def run_multi_analyst_discussion(
     analyst_reports = {}
     
     # 对话历史记录（用于agents互相影响）
+    # 限制历史长度，避免内存累积：只保留最近 N 轮讨论（每轮4个analyst = 4条记录）
+    MAX_DISCUSSION_HISTORY_ENTRIES = 20  # 最多保留20条记录（约5轮完整讨论）
     discussion_history = []
     
     print("\n" + "="*80)
@@ -219,6 +221,7 @@ def run_multi_analyst_discussion(
                 "tools_used": tools_used_names,
                 "key_points": market_result.get("recommendations", [])[:3] if market_result.get("recommendations") else [],
             })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
             print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
             analysis_text = market_result.get('analysis', '')
@@ -340,6 +343,7 @@ def run_multi_analyst_discussion(
                 "tools_used": tools_used_names,
                 "key_points": technical_result.get("recommendations", [])[:3] if technical_result.get("recommendations") else [],
             })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
             print(f"   ✅ Technical Stance: {technical_result.get('stance', 'N/A')}")
             analysis_preview = technical_result.get('analysis', '')[:100] if technical_result.get('analysis') else 'No analysis'
@@ -448,6 +452,7 @@ def run_multi_analyst_discussion(
                 "tools_used": tools_used_names,
                 "key_points": fundamental_result.get("recommendations", [])[:3] if fundamental_result.get("recommendations") else [],
             })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
             print(f"   ✅ Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
             analysis_preview = fundamental_result.get('analysis', '')[:100] if fundamental_result.get('analysis') else 'No analysis'
@@ -532,6 +537,7 @@ def run_multi_analyst_discussion(
                 "tools_used": tools_used_names,
                 "key_points": sentiment_result.get("recommendations", [])[:3] if sentiment_result.get("recommendations") else [],
             })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
             print(f"   ✅ Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
             analysis_preview = sentiment_result.get('analysis', '')[:100] if sentiment_result.get('analysis') else 'No analysis'
@@ -566,6 +572,7 @@ def run_multi_analyst_discussion(
                 "tools_used": [],
                 "key_points": coordinator_summary.get("key_points", []),
             })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             print(f"   ✅ Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
             summary_text = coordinator_summary.get('summary', '')
             if summary_text and len(summary_text.strip()) > 0:
@@ -666,6 +673,18 @@ def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
         return float(score)
     except:
         return 'N/A'
+
+
+def _limit_discussion_history(discussion_history: List[Dict[str, Any]], max_entries: int = 20) -> None:
+    """
+    限制对话历史长度，避免内存累积
+    只保留最近的 N 条记录，删除旧的记录
+    """
+    if len(discussion_history) > max_entries:
+        old_len = len(discussion_history)
+        # 只保留最近的 max_entries 条
+        discussion_history[:] = discussion_history[-max_entries:]
+        print(f"[MEMORY] Trimmed discussion_history: {old_len} -> {len(discussion_history)} entries")
 
 
 def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:

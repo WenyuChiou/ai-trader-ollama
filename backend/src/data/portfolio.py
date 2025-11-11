@@ -128,8 +128,13 @@ class Portfolio:
                 total_cost=cost,
             )
 
-    def sell(self, symbol: str, amount: int, price: float) -> None:
-        """卖出股票（FIFO 方法，但保持平均成本不变）"""
+    def sell(self, symbol: str, amount: int, price: float) -> Dict[str, float]:
+        """
+        卖出股票（FIFO 方法，但保持平均成本不变）
+        
+        返回:
+        - 已实现损益信息 {"realized_pnl": float, "realized_pnl_pct": float, "cost_basis": float, "proceeds": float}
+        """
         if amount <= 0 or price <= 0:
             raise ValueError(f"Invalid amount={amount} or price={price}")
         
@@ -140,8 +145,13 @@ class Portfolio:
         if amount > pos.quantity:
             raise ValueError(f"Insufficient shares: need {amount}, have {pos.quantity}")
         
+        # 计算已实现损益（使用平均成本）
+        cost_basis = pos.avg_cost * amount  # 卖出部分的成本
+        proceeds = amount * price  # 卖出收入
+        realized_pnl = proceeds - cost_basis  # 已实现损益
+        realized_pnl_pct = (realized_pnl / cost_basis * 100.0) if cost_basis > 0 else 0.0
+        
         # 更新现金
-        proceeds = amount * price
         self.cash += proceeds
         
         # 更新持仓
@@ -158,3 +168,10 @@ class Portfolio:
                 avg_cost=pos.avg_cost,  # 平均成本保持不变
                 total_cost=new_total_cost,
             )
+        
+        return {
+            "realized_pnl": realized_pnl,
+            "realized_pnl_pct": realized_pnl_pct,
+            "cost_basis": cost_basis,
+            "proceeds": proceeds,
+        }

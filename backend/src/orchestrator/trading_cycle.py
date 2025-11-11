@@ -654,13 +654,16 @@ def execute_daily_trade(
                                 fill_price = fill_result.get("fill_price")
                                 if fill_price:
                                     print(f"[TRADING CYCLE] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
+                                    realized_pnl = None
                                     if action == "BUY":
                                         current_portfolio.buy(symbol, quantity, fill_price)
                                     elif action == "SELL":
-                                        current_portfolio.sell(symbol, quantity, fill_price)
+                                        # 卖出时计算已实现损益
+                                        realized_pnl = current_portfolio.sell(symbol, quantity, fill_price)
+                                        print(f"[TRADING CYCLE] Realized P&L: ${realized_pnl['realized_pnl']:.2f} ({realized_pnl['realized_pnl_pct']:+.2f}%)")
                                     
-                                    # 标记订单为已成交
-                                    order_manager.mark_order_filled(order, fill_result)
+                                    # 标记订单为已成交（传递已实现损益，仅SELL订单有值）
+                                    order_manager.mark_order_filled(order, fill_result, realized_pnl=realized_pnl)
                                     settled_count += 1
                                     print(f"[TRADING CYCLE] ✅ Order {order_id} executed successfully")
                         except Exception as e:
@@ -1190,13 +1193,16 @@ def execute_daily_trade(
                                 fill_price = fill_result.get("fill_price")
                                 if fill_price:
                                     print(f"[TRADING CYCLE] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
+                                    realized_pnl = None
                                     if action == "BUY":
                                         current_portfolio.buy(symbol, quantity, fill_price)
                                     elif action == "SELL":
-                                        current_portfolio.sell(symbol, quantity, fill_price)
+                                        # 卖出时计算已实现损益
+                                        realized_pnl = current_portfolio.sell(symbol, quantity, fill_price)
+                                        print(f"[TRADING CYCLE] Realized P&L: ${realized_pnl['realized_pnl']:.2f} ({realized_pnl['realized_pnl_pct']:+.2f}%)")
                                     
-                                    # 标记订单为已成交
-                                    order_manager.mark_order_filled(order, fill_result)
+                                    # 标记订单为已成交（传递已实现损益，仅SELL订单有值）
+                                    order_manager.mark_order_filled(order, fill_result, realized_pnl=realized_pnl)
                                     settled_count += 1
                                     print(f"[TRADING CYCLE] ✅ Order {order_id} executed successfully")
                         except Exception as e:
@@ -1316,6 +1322,13 @@ def execute_daily_trade(
     except Exception as e:
         print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
         # 不影响主流程，继续执行
+    
+    # ---- 内存清理：交易循环结束后清理临时数据 ----
+    # 注意：discussion_history 已经在 multi_analyst_system 中自动限制长度
+    # 这里可以添加其他内存清理逻辑（如果需要）
+    import gc
+    gc.collect()  # 强制垃圾回收，释放未使用的内存
+    print("[MEMORY] Trading cycle completed, memory cleaned")
 
     return {
         "stance": final_stance,

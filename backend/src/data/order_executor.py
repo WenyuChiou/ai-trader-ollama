@@ -302,7 +302,7 @@ def execute_orders_with_price_check(
                     continue
                 
                 total_proceeds = execution_price * quantity
-                portfolio.sell(symbol, quantity, execution_price)
+                realized_pnl = portfolio.sell(symbol, quantity, execution_price)
                 
                 if trade_logger:
                     trade_logger.log(

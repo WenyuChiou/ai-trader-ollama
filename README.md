@@ -1568,11 +1568,11 @@ For detailed deployment guide, see: [📖 GitHub Deployment Guide](docs/GITHUB_D
 
 ### 🌐 Access Methods Comparison
 
-| Access Method | Frontend URL | Use Case | Configuration Difficulty | Security |
-|--------------|--------------|----------|-------------------------|----------|
-| **Public Access** | `https://username.github.io/ai-trader-ollama/monitor.html` | Share with anyone, internet access | ⭐⭐ | Read-only mode |
-| **LAN Access** | `http://192.168.x.x:3000/monitor.html` | Same WiFi/network, local sharing | ⭐ | 🔒 Read-only mode (automatic) |
-| **Local Access** | `http://localhost:3000/monitor.html` | Personal use only | ⭐ | ✅ Full control |
+| Access Method | Frontend URL | Use Case | Configuration Difficulty | Security | Internet Access |
+|--------------|--------------|----------|-------------------------|----------|----------------|
+| **Public Access** | `https://username.github.io/ai-trader-ollama/monitor.html` | Share with anyone, internet access | ⭐⭐ | Read-only mode | ✅ Yes |
+| **LAN Access** | `http://192.168.x.x:3000/monitor.html` | Same WiFi/network, local sharing | ⭐ | 🔒 Read-only mode (automatic) | ❌ No (same network only) |
+| **Local Access** | `http://localhost:3000/monitor.html` | Personal use only | ⭐ | ✅ Full control | ❌ No (local only) |
 
 **🔒 Read-Only Mode**: When accessing via IP address (shared website), the system automatically enables read-only mode:
 - ✅ View all data (portfolio, trades, conversations)
@@ -1591,6 +1591,51 @@ For detailed deployment guide, see: [📖 GitHub Deployment Guide](docs/GITHUB_D
 - `localhost` → `http://127.0.0.1:8000`
 - IP address → `http://IP:8000` (same IP, port 8000)
 - Hostname → `http://hostname:8000`
+
+### 🌍 Public Internet Access (Different Network)
+
+**Problem**: LAN access (`http://192.168.x.x:3000`) only works on the same network. People on different networks cannot access.
+
+**Solutions**:
+
+#### Option 1: Use ngrok (Easiest, 5 minutes) ⭐ Recommended
+
+1. **Download ngrok**: https://ngrok.com/
+2. **Start backend**:
+   ```powershell
+   python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000
+   ```
+3. **Start ngrok** (new terminal):
+   ```powershell
+   ngrok http 8000
+   ```
+4. **Copy the public URL** (e.g., `https://abc123.ngrok.io`)
+5. **Update `frontend/config.js`**:
+   ```javascript
+   production: 'https://abc123.ngrok.io'
+   ```
+6. **Share the link** - Anyone can access via internet! ✅
+
+**Pros**: Free, easy, quick setup  
+**Cons**: URL changes each restart (free version)
+
+#### Option 2: Deploy to Cloud (Railway + GitHub Pages) ⭐⭐⭐ Best for Long-term
+
+1. **Deploy backend to Railway**: https://railway.app/
+   - Connect GitHub repo
+   - Auto-deploy
+   - Get public URL (e.g., `https://ai-trader.railway.app`)
+
+2. **Deploy frontend to GitHub Pages**:
+   - Settings → Pages → Enable
+   - Get public URL (e.g., `https://username.github.io/ai-trader-ollama/monitor.html`)
+
+3. **Update `frontend/config.js`** with Railway URL
+
+**Pros**: Stable, fixed URL, 24/7 running  
+**Cons**: Requires GitHub account, some setup time
+
+**For detailed guide, see**: [📖 Public Access Guide](docs/PUBLIC_ACCESS_GUIDE.md)
 
 ### Local Sharing (Same Network)
 

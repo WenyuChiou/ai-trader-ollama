@@ -2192,6 +2192,117 @@ async def seed_conversations(n: int = 10):
     return {"ok": True, "written": n}
 
 
+@app.options("/api/data/upload")
+async def upload_data_options():
+    """Handle CORS preflight for data upload endpoint"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.post("/api/data/upload")
+async def upload_data(data: dict):
+    """Upload data to Railway backend from local files"""
+    try:
+        import json
+        from pathlib import Path
+        
+        # Try multiple possible paths for logs directory
+        possible_logs_dirs = [
+            Path("data/logs"),  # Project root
+            Path("backend/data/logs"),  # From backend directory
+            Path(__file__).parent.parent.parent / "data" / "logs",  # Absolute from backend
+        ]
+        
+        logs_dir = None
+        for path in possible_logs_dirs:
+            if path.exists():
+                logs_dir = path
+                break
+        
+        if not logs_dir:
+            logs_dir = Path("data/logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        uploaded_counts = {}
+        
+        # Upload conversations
+        if "conversations" in data and data["conversations"]:
+            convo_file = logs_dir / "discussion_actions.jsonl"
+            count = 0
+            with convo_file.open("a", encoding="utf-8") as f:
+                for entry in data["conversations"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    count += 1
+            uploaded_counts["conversations"] = count
+            log_print(f"[Upload] Uploaded {count} conversations")
+        
+        # Upload trades
+        if "trades" in data and data["trades"]:
+            trades_file = logs_dir / "trades.jsonl"
+            count = 0
+            with trades_file.open("a", encoding="utf-8") as f:
+                for entry in data["trades"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    count += 1
+            uploaded_counts["trades"] = count
+            log_print(f"[Upload] Uploaded {count} trades")
+        
+        # Upload filled orders
+        if "filled_orders" in data and data["filled_orders"]:
+            filled_file = logs_dir / "filled_orders.jsonl"
+            count = 0
+            with filled_file.open("a", encoding="utf-8") as f:
+                for entry in data["filled_orders"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    count += 1
+            uploaded_counts["filled_orders"] = count
+            log_print(f"[Upload] Uploaded {count} filled orders")
+        
+        # Upload equity history
+        if "equity_history" in data and data["equity_history"]:
+            equity_file = logs_dir / "equity_history.jsonl"
+            count = 0
+            with equity_file.open("a", encoding="utf-8") as f:
+                for entry in data["equity_history"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    count += 1
+            uploaded_counts["equity_history"] = count
+            log_print(f"[Upload] Uploaded {count} equity history records")
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "ok": True,
+                "message": "Data uploaded successfully",
+                "uploaded": uploaded_counts
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    except Exception as e:
+        log_print(f"[Upload] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
+
 # 模拟状态跟踪
 _simulation_status = {
     "running": False,

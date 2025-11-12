@@ -2863,7 +2863,7 @@
                     console.log('[Trade Check] 检测到交易意图，执行交易循环...');
                     lastCheckedConvoCount = currentConvoCount;
                     
-                    const r = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
+                    const r = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
                         method: 'POST',
                         mode: 'cors',
                         headers: {
@@ -6805,7 +6805,7 @@
             let isMarketOpen = true;
             let marketStatusSource = 'api'; // 追踪状态来源：'api' 或 'fallback'
             try {
-                const marketCheck = await fetch(`${API_BASE}/api/market/is-open`, {
+                const marketCheck = await fetch(`${getApiBase()}/api/market/is-open`, {
                     mode: 'cors',  // 明确指定 CORS 模式
                     signal: AbortSignal.timeout(3000)  // 3秒超时，快速fallback到时间判断
                 });
@@ -7289,7 +7289,7 @@
             // Only check orders during trading hours
             orderCheckTimer = setInterval(async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/market/is-open`, {
+                    const response = await fetch(`${getApiBase()}/api/market/is-open`, {
                         mode: 'cors'  // 明确指定 CORS 模式
                     });
                     if (response.ok) {
@@ -7309,7 +7309,7 @@
             // Execute check once immediately (if market is open)
             (async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/market/is-open`, {
+                    const response = await fetch(`${getApiBase()}/api/market/is-open`, {
                         mode: 'cors'  // 明确指定 CORS 模式
                     });
                     if (response.ok) {

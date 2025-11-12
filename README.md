@@ -1536,8 +1536,8 @@ Deploy the frontend to GitHub Pages so others can access it via browser (like ht
    ```
 
 5. **Deploy Backend** (Choose one):
-   - **Option A**: Use ngrok (quick test) - See [Public Access Guide](docs/PUBLIC_ACCESS_GUIDE.md)
-   - **Option B**: Deploy to Railway (stable) - See [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
+   - **Option A**: Use ngrok (quick test, 5 minutes) - See [Backend Deployment Guide](docs/BACKEND_DEPLOYMENT_STEP_BY_STEP.md)
+   - **Option B**: Deploy to Railway (stable, recommended) - See [Backend Deployment Guide](docs/BACKEND_DEPLOYMENT_STEP_BY_STEP.md)
 
 6. **Access Your Website**:
    ```

@@ -25,6 +25,14 @@ const API_CONFIG = {
             return this.development;
         }
         
+        // Check if running on GitHub Pages (github.io domain) - MUST CHECK FIRST
+        // This prevents github.io from being caught by the generic hostname check below
+        if (hostname.includes('github.io')) {
+            // GitHub Pages deployment - use production backend URL
+            // User needs to update 'production' URL in this file
+            return this.production;
+        }
+        
         // If accessing via IP address (shared website), use same IP with port 8000
         // This handles cases like: http://192.168.4.24:3000 -> http://192.168.4.24:8000
         const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -33,18 +41,12 @@ const API_CONFIG = {
             return `${protocol}//${hostname}:8000`;
         }
         
-        // If accessing via hostname (e.g., computer-name.local), use same hostname with port 8000
+        // If accessing via local hostname (e.g., computer-name.local), use same hostname with port 8000
         // This handles cases like: http://computer-name.local:3000 -> http://computer-name.local:8000
-        if (hostname.includes('.local') || hostname.includes('.')) {
+        // NOTE: Only check .local, not generic '.' to avoid matching github.io
+        if (hostname.includes('.local')) {
             // For local network sharing, assume backend is on same host with port 8000
             return `${protocol}//${hostname}:8000`;
-        }
-        
-        // Check if running on GitHub Pages (github.io domain)
-        if (hostname.includes('github.io')) {
-            // GitHub Pages deployment - use production backend URL
-            // User needs to update 'production' URL in this file
-            return this.production;
         }
         
         // Otherwise use production URL (for deployed environments)

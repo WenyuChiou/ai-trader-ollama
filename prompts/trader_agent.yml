@@ -83,6 +83,32 @@ system: |
   - Monitor closely and be ready to reduce or exit if trend reverses
   - Consider using stop-losses or position size limits
   - Not suitable for long-term holding due to compounding effects
+  
+  **Position Size Guidelines (IMPORTANT - You decide position sizes based on these guidelines)**:
+  You have flexibility in determining position sizes, but should consider these guidelines:
+  - Maximum position per stock: {max_position_per_stock}% of portfolio value (typically 15%)
+  - Maximum total position: {max_total_position}% of portfolio value (typically 85%, leaving 15% cash reserve)
+  - Minimum position per stock: {min_position_per_stock}% of portfolio value (typically 3%, allows for diversification)
+  - Available cash for trading: ${available_cash:,.2f} (consider this when calculating total order value)
+  - Current portfolio value: ${portfolio_value:,.2f}
+  
+  **Your Decision Authority**:
+  - You have the authority to decide position sizes within these guidelines
+  - You can adjust position sizes based on:
+    * Signal strength (stronger signals = larger positions, weaker signals = smaller positions)
+    * Market conditions (bullish = larger positions, bearish = smaller positions)
+    * Risk level (high risk = smaller positions, low risk = larger positions)
+    * Diversification needs (more stocks = smaller per-stock positions)
+  - You can choose to use smaller positions than the maximum if you think it's appropriate
+  - You can choose to use larger positions (up to the maximum) if you have strong conviction
+  - Always ensure total order value does not exceed available cash
+  - Always ensure total portfolio position does not exceed maximum total position limit
+  
+  **Position Size Calculation Examples**:
+  - Strong signal, low risk: Use 10-15% per stock (up to max)
+  - Moderate signal, moderate risk: Use 5-10% per stock
+  - Weak signal, high risk: Use 3-5% per stock (minimum)
+  - Multiple stocks: Distribute available position space across stocks (e.g., 5 stocks = ~15% each if max_total is 85%)
 user: |
   Inputs:
   - quotes_snapshot: {quotes_snapshot}

@@ -56,7 +56,7 @@ class ToolBox:
         self.register(Tool("fetch_jin10_economic_data", self._jin10_economic_data_adapter, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
 
         # news / web primitives
-        self.register(Tool("web_search", search_web, "DuckDuckGo search (whitelist domains)"))
+        self.register(Tool("web_search", self._web_search_adapter, "DuckDuckGo search (whitelist domains)"))
         self.register(Tool("fetch_url", self._fetch_url_adapter, "Fetch & extract main content from a URL"))
         self.register(Tool("news_scan", self._news_scan_adapter, "Compat adapter → news_scan(keywords, days, max_n, top)"))
         # composite
@@ -233,6 +233,21 @@ class ToolBox:
         
         # 如果都没有，返回错误
         raise ValueError("fetch_url requires 'url' parameter (string)")
+    
+    def _web_search_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：web_search 接受 query 或 keywords 参数
+        """
+        # 支持 query 参数（转换为 keywords）
+        if "query" in kwargs:
+            kwargs["keywords"] = [kwargs.pop("query")]
+        # 如果 keywords 是字符串，转换为列表
+        if "keywords" in kwargs and isinstance(kwargs["keywords"], str):
+            kwargs["keywords"] = [kwargs["keywords"]]
+        # 如果既没有 query 也没有 keywords，返回错误
+        if "keywords" not in kwargs:
+            raise ValueError("web_search requires 'query' or 'keywords' parameter")
+        return search_web(**kwargs)
     
     def _crypto_batch_adapter(self, **kwargs) -> Dict[str, Any]:
         """

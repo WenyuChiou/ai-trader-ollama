@@ -196,30 +196,37 @@ def get_earnings_history(symbol: str) -> Dict[str, Any]:
             if income_stmt is not None and not income_stmt.empty:
                 # income_stmt 的列是日期，行是指标名称
                 # 获取最近3年的数据（列）
-                for i, date_col in enumerate(income_stmt.columns[:3]):
-                    year_data = {
-                        "year": int(date_col.year) if hasattr(date_col, 'year') else None,
-                        "revenue": None,
-                        "earnings": None,
-                    }
-                    # 从行索引中查找 Revenue 和 Net Income
-                    if "Total Revenue" in income_stmt.index:
-                        val = income_stmt.loc["Total Revenue", date_col]
-                        year_data["revenue"] = float(val) if pd.notna(val) else None
-                    elif "Revenue" in income_stmt.index:
-                        val = income_stmt.loc["Revenue", date_col]
-                        year_data["revenue"] = float(val) if pd.notna(val) else None
-                    if "Net Income" in income_stmt.index:
-                        val = income_stmt.loc["Net Income", date_col]
-                        year_data["earnings"] = float(val) if pd.notna(val) else None
-                    elif "Net Income Common Stockholders" in income_stmt.index:
-                        val = income_stmt.loc["Net Income Common Stockholders", date_col]
-                        year_data["earnings"] = float(val) if pd.notna(val) else None
-                    elif "Net Income From Continuing Operation Net Minority Interest" in income_stmt.index:
-                        val = income_stmt.loc["Net Income From Continuing Operation Net Minority Interest", date_col]
-                        year_data["earnings"] = float(val) if pd.notna(val) else None
-                    if year_data["revenue"] is not None or year_data["earnings"] is not None:
-                        result["annual_earnings"].append(year_data)
+                # 修复：确保 columns 是列表或可切片对象
+                columns_list = list(income_stmt.columns) if hasattr(income_stmt.columns, '__iter__') else []
+                if not columns_list:
+                    # 如果没有列，跳过
+                    pass
+                else:
+                    # 获取最近3年的数据（最多3列）
+                    for i, date_col in enumerate(columns_list[:3]):
+                        year_data = {
+                            "year": int(date_col.year) if hasattr(date_col, 'year') else None,
+                            "revenue": None,
+                            "earnings": None,
+                        }
+                        # 从行索引中查找 Revenue 和 Net Income
+                        if "Total Revenue" in income_stmt.index:
+                            val = income_stmt.loc["Total Revenue", date_col]
+                            year_data["revenue"] = float(val) if pd.notna(val) else None
+                        elif "Revenue" in income_stmt.index:
+                            val = income_stmt.loc["Revenue", date_col]
+                            year_data["revenue"] = float(val) if pd.notna(val) else None
+                        if "Net Income" in income_stmt.index:
+                            val = income_stmt.loc["Net Income", date_col]
+                            year_data["earnings"] = float(val) if pd.notna(val) else None
+                        elif "Net Income Common Stockholders" in income_stmt.index:
+                            val = income_stmt.loc["Net Income Common Stockholders", date_col]
+                            year_data["earnings"] = float(val) if pd.notna(val) else None
+                        elif "Net Income From Continuing Operation Net Minority Interest" in income_stmt.index:
+                            val = income_stmt.loc["Net Income From Continuing Operation Net Minority Interest", date_col]
+                            year_data["earnings"] = float(val) if pd.notna(val) else None
+                        if year_data["revenue"] is not None or year_data["earnings"] is not None:
+                            result["annual_earnings"].append(year_data)
         except Exception as e:
             # 如果新方法失败，尝试旧方法（已弃用但可能仍可用）
             try:

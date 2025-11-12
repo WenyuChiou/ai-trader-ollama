@@ -6,12 +6,54 @@ Write-Host "  Share Links for AI Trader" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Get local IP address
-$localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.254.*"} | Select-Object -First 1).IPAddress
+# Get local IP address (improved method)
+$localIP = $null
+try {
+    # Method 1: Get first non-loopback, non-APIPA IPv4 address
+    $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | 
+        Where-Object {
+            $_.InterfaceAlias -notlike "*Loopback*" -and 
+            $_.IPAddress -notlike "169.254.*" -and
+            $_.IPAddress -notlike "127.*"
+        } | 
+        Sort-Object -Property InterfaceIndex
+    
+    if ($ipAddresses) {
+        $localIP = $ipAddresses[0].IPAddress
+    }
+    
+    # Method 2: Fallback - try to get IP from network adapter
+    if (-not $localIP) {
+        $adapter = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+        if ($adapter) {
+            $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | 
+                Where-Object {$_.IPAddress -notlike "169.254.*" -and $_.IPAddress -notlike "127.*"}
+            if ($ipConfig) {
+                $localIP = $ipConfig.IPAddress
+            }
+        }
+    }
+    
+    # Method 3: Last resort - try hostname resolution
+    if (-not $localIP) {
+        $hostname = [System.Net.Dns]::GetHostName()
+        $hostEntry = [System.Net.Dns]::GetHostEntry($hostname)
+        $ipv4Addresses = $hostEntry.AddressList | Where-Object {$_.AddressFamily -eq "InterNetwork" -and $_.ToString() -notlike "127.*"}
+        if ($ipv4Addresses) {
+            $localIP = $ipv4Addresses[0].ToString()
+        }
+    }
+} catch {
+    Write-Host "[WARN] Error detecting IP address: $_" -ForegroundColor Yellow
+}
 
 if (-not $localIP) {
     Write-Host "[ERROR] Could not detect IP address" -ForegroundColor Red
     Write-Host "Please check your network connection" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "You can manually find your IP with:" -ForegroundColor Yellow
+    Write-Host "  ipconfig | findstr IPv4" -ForegroundColor White
+    Write-Host ""
     Read-Host "Press Enter to exit"
     exit 1
 }

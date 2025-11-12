@@ -7,7 +7,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-Enabled-green.svg)](https://www.langchain.com/)
-[![Ollama](https://img.shields.io/badge/Ollama-llama3.1-orange.svg)](https://ollama.ai/)
+[![Ollama](https://img.shields.io/badge/Ollama-deepseek-r1-orange.svg)](https://ollama.ai/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -27,6 +27,7 @@
 - [Testing](#-testing)
 - [Project Structure](#-project-structure)
 - [Advanced Features](#-advanced-features)
+- [Long-Term Operation & Best Practices](#-long-term-operation--best-practices)
 - [Troubleshooting](#-troubleshooting)
 - [Documentation](#-documentation)
 
@@ -229,7 +230,7 @@ pip install -r requirements.txt
 ollama serve
 
 # Pull LLM model (in terminal 2)
-ollama pull llama3.1
+ollama pull deepseek-r1
 ```
 
 **3. API Keys (Optional but Recommended)**
@@ -251,7 +252,8 @@ cd ai-trader-ollama
 
 **2. Initialize System**
 ```bash
-cd backend
+# From project root directory
+cd "path\to\ai-trader-ollama"
 
 # Initialize portfolio and data structures
 python scripts/init_data.py
@@ -264,7 +266,13 @@ python scripts/init_data.py
 ```
 
 **3. Start Backend API**
-```bash
+
+**Important**: Scripts are in the **project root** `scripts/` folder.
+
+```powershell
+# Make sure you're in the project ROOT directory (not backend/)
+cd "path\to\ai-trader-ollama"
+
 # Method 1: Stable version (推薦，帶自動重啟)
 .\scripts\start_api_stable_bypass.ps1
 
@@ -272,21 +280,79 @@ python scripts/init_data.py
 powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 
 # Method 3: Manual start (開發調試)
-cd backend
-python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+# From project ROOT directory:
+python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**4. Start Frontend**
+**Command Explanation** (`python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload`):
+
+| Parameter | Value | Explanation |
+|-----------|-------|-------------|
+| `python -m uvicorn` | - | Run uvicorn ASGI server via Python module |
+| `backend.src.api.server:app` | - | Path to FastAPI app: `backend/src/api/server.py` → `app` object |
+| `--host 0.0.0.0` | `0.0.0.0` | **Bind to all network interfaces** (allows LAN access, not just localhost) |
+| `--port 8000` | `8000` | **Listen on port 8000** |
+| `--reload` | - | **Auto-reload on code changes** (development mode) |
+
+**Important Notes**:
+- ✅ `--host 0.0.0.0` allows access from other devices on your network
+- ✅ `--host 127.0.0.1` (or `localhost`) only allows local access
+- ✅ `--reload` automatically restarts server when you modify code (development only)
+- ⚠️ Remove `--reload` for production (better performance)
+
+**4. Monitor API Status** (After Starting)
+
+**Quick Check** (in browser):
+```
+http://localhost:8000/api/status
+http://localhost:8000/docs
+```
+
+**Quick Check** (in PowerShell):
+```powershell
+# Check if port 8000 is in use
+netstat -ano | findstr 8000
+
+# Test API response
+curl http://localhost:8000/api/status
+
+# Or use Invoke-WebRequest
+Invoke-WebRequest -Uri http://localhost:8000/api/status | Select-Object -ExpandProperty Content
+```
+
+**Expected Response**:
+```json
+{
+  "ok": true,
+  "status": "running",
+  "message": "API is operational"
+}
+```
+
+**If API is NOT running**, you'll see:
+- Connection refused error
+- Port 8000 not in use
+- Browser shows "This site can't be reached"
+
+**5. Start Frontend**
 ```bash
 # In a new terminal
 cd frontend
 python -m http.server 3000
 ```
 
-**5. Access Dashboard**
+**6. Access Dashboard**
+
+**本地访问**:
 ```
-Open browser: http://localhost:3000/monitor.html
+http://localhost:3000/monitor.html
 ```
+
+**公共访问**（部署后）:
+```
+https://你的用户名.github.io/ai-trader-ollama/monitor.html
+```
+> 💡 **提示**: 部署到 GitHub Pages 后，任何人都可以通过公共网址访问你的前端。详见 [部署指南](#-deployment--sharing)
 
 ### First Trading Cycle
 
@@ -317,7 +383,7 @@ Open browser: http://localhost:3000/monitor.html
 
 **Specialty**: Macro trends, sector rotation, market structure  
 **Years of Experience**: 14  
-**Model**: llama3.1 (temperature: 0.3)
+**Model**: deepseek-r1 (temperature: 0.3)
 
 **Priority Tools**:
 - `get_market_indices`: S&P 500, Dow, NASDAQ, Russell 2000
@@ -348,7 +414,7 @@ Open browser: http://localhost:3000/monitor.html
 
 **Specialty**: Chart patterns, indicators, support/resistance  
 **Years of Experience**: 12  
-**Model**: llama3.1 (temperature: 0.2)
+**Model**: deepseek-r1 (temperature: 0.2)
 
 **Priority Tools**:
 - `get_advanced_indicators`: RSI, MACD, BB, ADX, Stochastic, ATR, OBV
@@ -378,7 +444,7 @@ Open browser: http://localhost:3000/monitor.html
 
 **Specialty**: Financial statements, valuation, earnings  
 **Years of Experience**: 15  
-**Model**: llama3.1 (temperature: 0.2)
+**Model**: deepseek-r1 (temperature: 0.2)
 
 **Priority Tools**:
 - `get_company_fundamentals`: P/E, ROE, profit margins, growth
@@ -409,7 +475,7 @@ Open browser: http://localhost:3000/monitor.html
 
 **Specialty**: Market psychology, news sentiment, fear/greed  
 **Years of Experience**: 10  
-**Model**: llama3.1 (temperature: 0.3)
+**Model**: deepseek-r1 (temperature: 0.3)
 
 **Priority Tools**:
 - `fear_greed`: CNN Fear & Greed Index (0-100)
@@ -442,7 +508,7 @@ Open browser: http://localhost:3000/monitor.html
 
 **Specialty**: Risk assessment, position management  
 **Years of Experience**: 15  
-**Model**: llama3.1 (temperature: 0.2)
+**Model**: deepseek-r1 (temperature: 0.2)
 
 **Priority Tools**:
 - `vix_term`: Tail risk assessment
@@ -473,7 +539,7 @@ Open browser: http://localhost:3000/monitor.html
 
 **Specialty**: Trading decisions, position sizing  
 **Years of Experience**: N/A (Pure logic-based)  
-**Model**: llama3.1 (temperature: 0.25)
+**Model**: deepseek-r1 (temperature: 0.25)
 
 **Inputs**:
 - Market data with prices
@@ -1220,25 +1286,37 @@ http://localhost:8000/redoc
 
 ```json
 {
-  "universe": "nasdaq100",
-  "max_positions": 10,
+  "universe_source": "custom",
+  "universe_limit": 100,
+  "universe": ["NVDA", "MSFT", "AAPL", "GOOG", "GOOGL", "AMZN", ...],
+  "crypto": ["BTC-USD", "ETH-USD", "SOL-USD", ...],
+  "initial_cash": 10000,
   "position_limit_per_stock": 0.15,
   "position_limit_total": 0.85,
   "position_limit_min_per_stock": 0.03,
-  "min_cash_reserve_ratio": 0.15,
-  "trade_cooldown_hours": 24.0,
-  "initial_cash": 10000.0,
-  "initial_equity": 10000.0
+  "discussion_rounds": 3,
+  "discussion_auto_tools": true,
+  "discussion_tool_budget": 15,
+  "llm": {
+    "default_model": "deepseek-r1",
+    "ollama_host": "http://localhost:11434",
+    "auto_pull": true,
+    "timeout_seconds": 8.0
+  }
 }
 ```
 
-**Parameters:**
-- `max_positions`: Maximum number of different stocks
-- `position_limit_per_stock`: Max 15% per stock
-- `position_limit_total`: Max 85% total equity
-- `min_cash_reserve_ratio`: Keep 15% cash
-- `trade_cooldown_hours`: 24h cooldown per symbol
-- `initial_cash` / `initial_equity`: Starting capital
+**Key Parameters:**
+- `universe`: List of stock symbols to trade (includes inverse/leveraged ETFs like SQQQ, TQQQ)
+- `crypto`: List of cryptocurrency symbols (optional)
+- `initial_cash`: Starting capital ($10,000 default)
+- `position_limit_per_stock`: Max 15% per stock (guideline for agent decision-making)
+- `position_limit_total`: Max 85% total equity (guideline, leaves 15% cash reserve)
+- `position_limit_min_per_stock`: Min 3% per stock (for diversification)
+- `discussion_rounds`: Number of discussion rounds (3 default)
+- `discussion_tool_budget`: Max tool calls per cycle (15 default)
+- `llm.default_model`: LLM model to use (`deepseek-r1` default)
+- `llm.timeout_seconds`: Request timeout (8.0 seconds default)
 
 ---
 
@@ -1247,13 +1325,13 @@ http://localhost:8000/redoc
 ```yaml
 market_analyst:
   name: Market Analyst
-  model: llama3.1
+  model: deepseek-r1
   temperature: 0.3
   prompt_file: ../prompts/market_analyst.yml
 
 technical_analyst:
   name: Technical Analyst
-  model: llama3.1
+  model: deepseek-r1
   temperature: 0.2
   prompt_file: ../prompts/technical_analyst.yml
 
@@ -1384,13 +1462,31 @@ curl http://localhost:8000/api/portfolio/real-time
    ```
 
 4. **访问链接**
-   - 前端: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
-   - API 文档: `https://your-api-server.com/docs`
+
+**公共前端网址**（部署后自动生成）:
+```
+https://你的用户名.github.io/ai-trader-ollama/monitor.html
+```
+
+**示例**（根据实际仓库名称）:
+- 如果仓库是 `WenyuChiou/ai-trader-ollama`：
+  ```
+  https://WenyuChiou.github.io/ai-trader-ollama/monitor.html
+  ```
+- 如果仓库是 `your-username/ai-trader-ollama`：
+  ```
+  https://your-username.github.io/ai-trader-ollama/monitor.html
+  ```
+
+**其他链接**:
+- API 文档: `https://your-api-server.com/docs`
+- API 状态: `https://your-api-server.com/api/status`
 
 **新功能**:
 - ✅ 自动环境检测（本地 vs 生产环境）
 - ✅ GitHub Actions 自动部署工作流
 - ✅ 配置文件分离（`frontend/config.js`）
+- ✅ 公共 HTTPS 访问（无需配置）
 
 #### 后端部署选项
 
@@ -1407,6 +1503,14 @@ curl http://localhost:8000/api/portfolio/real-time
 - 稳定可靠
 
 详细部署指南请参考：[📖 GitHub 部署完整指南](docs/GITHUB_DEPLOYMENT.md)
+
+### 🌐 访问方式对比
+
+| 访问方式 | 前端地址 | 适用场景 | 配置难度 |
+|---------|---------|---------|---------|
+| **公共访问** | `https://用户名.github.io/ai-trader-ollama/monitor.html` | 分享给任何人，互联网访问 | ⭐⭐ |
+| **局域网访问** | `http://192.168.x.x:3000/monitor.html` | 同一 WiFi/网络，本地分享 | ⭐ |
+| **本地访问** | `http://localhost:3000/monitor.html` | 仅自己使用 | ⭐ |
 
 ### 本地分享（同一网络）
 
@@ -1426,6 +1530,12 @@ curl http://localhost:8000/api/portfolio/real-time
    ```powershell
    .\scripts\get_share_link.ps1
    ```
+
+**局域网访问地址示例**:
+```
+http://192.168.1.100:3000/monitor.html  # 前端
+http://192.168.1.100:8000/docs           # API 文档
+```
 
 详细说明请参考：[📖 分享访问指南](docs/SHARING_ACCESS.md)
 
@@ -1624,6 +1734,420 @@ portfolio.total_value = portfolio.cash + sum(pos.market_value for pos in positio
 
 ---
 
+## 🔄 Long-Term Operation & Best Practices
+
+### 🚀 Quick Start: How to Run Long-Term
+
+#### Step 1: Start Backend API (Required)
+
+**Important**: Scripts are in the **project root** `scripts/` folder, not `backend/scripts/`.
+
+**Open PowerShell and run**:
+```powershell
+# Navigate to project ROOT directory (not backend/)
+cd "path\to\ai-trader-ollama"
+
+# Start API with auto-restart (recommended for long-term)
+.\scripts\start_api_stable_bypass.ps1
+```
+
+**If you're in the backend directory**:
+```powershell
+# Go back to project root first
+cd ..
+
+# Then run the script
+.\scripts\start_api_stable_bypass.ps1
+```
+
+**Or use full path from anywhere**:
+```powershell
+# Replace with your actual project path
+& "C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\scripts\start_api_stable_bypass.ps1"
+```
+
+**What this does**:
+- ✅ Starts backend API server on port 8000
+- ✅ Auto-restarts if it crashes (up to 10 times)
+- ✅ Logs all operations for troubleshooting
+- ✅ Keeps running even if you close the terminal
+
+**Verify it's running** (Monitoring Steps):
+
+**Step 1: Check API Status** (Browser):
+```
+Open: http://localhost:8000/api/status
+Expected: {"ok": true, "status": "running"}
+```
+
+**Step 2: Check API Documentation** (Browser):
+```
+Open: http://localhost:8000/docs
+Expected: Swagger UI interface showing all API endpoints
+```
+
+**Step 3: Check Port** (PowerShell):
+```powershell
+# Check if port 8000 is listening
+netstat -ano | findstr 8000
+
+# Should show: TCP    0.0.0.0:8000    0.0.0.0:0    LISTENING
+```
+
+**Step 4: Test API Endpoint** (PowerShell):
+```powershell
+# Test status endpoint
+curl http://localhost:8000/api/status
+
+# Or test with Invoke-WebRequest
+$response = Invoke-WebRequest -Uri http://localhost:8000/api/status
+$response.Content
+```
+
+**If API is NOT running**, you'll see:
+- ❌ Connection refused / Connection timeout
+- ❌ Port 8000 not in `netstat` output
+- ❌ Browser shows "This site can't be reached" or "ERR_CONNECTION_REFUSED"
+
+**Troubleshooting**:
+- If port 8000 is already in use, stop the old process first
+- Check the PowerShell window where API is running for error messages
+- Verify Python environment is activated
+- Check if Ollama is running (required for LLM agents)
+
+#### Step 2: Enable Auto Trading (Optional but Recommended)
+
+**Open frontend**:
+```powershell
+# In a new terminal
+cd frontend
+python -m http.server 3000
+```
+
+**Then**:
+1. Open browser: `http://localhost:3000/monitor.html`
+2. Click **"▶️ Start Auto Trade"** button
+3. System will automatically:
+   - Execute trading cycles every 1 hour (during market hours)
+   - Check tomorrow planning every 1 hour (during non-trading hours)
+   - Refresh data every 30 seconds
+
+**You can now close the browser** - backend continues running!
+
+#### Step 3: Monitor System (Daily Check)
+
+**Quick Status Check**:
+```powershell
+# Check if API is running
+curl http://localhost:8000/api/status
+
+# Or open in browser
+start http://localhost:8000/api/status
+```
+
+**View Portfolio**:
+- Open: `http://localhost:3000/monitor.html`
+- All data will be up-to-date (even if you closed it before)
+
+#### Step 4: Maintenance (Weekly/Monthly)
+
+**Clean old memory files** (optional):
+```powershell
+python scripts/cleanup_old_memory.py
+```
+
+**Check system health**:
+- Review error logs (if any)
+- Check disk space
+- Verify orders are executing
+
+---
+
+### Running the System Continuously
+
+The system is designed to run continuously for extended periods. Here are the key considerations and best practices:
+
+#### ✅ **What Runs Automatically**
+
+1. **Memory Management**
+   - ✅ Discussion history automatically limited to 20 entries
+   - ✅ Automatic garbage collection after each trading cycle
+   - ✅ Temporary data cleaned up automatically
+   - ✅ No memory leaks from conversation history
+
+2. **Trading Operations**
+   - ✅ Automatic order fill checking (every 30 seconds during market hours)
+   - ✅ Automatic trading cycle execution (every 1 hour during market hours)
+   - ✅ Automatic tomorrow planning check (every 1 hour during non-trading hours)
+   - ✅ Portfolio state automatically saved after each operation
+
+3. **Data Refresh**
+   - ✅ Frontend auto-refreshes data every 30 seconds
+   - ✅ Backend continuously monitors market status
+   - ✅ Automatic transition between trading and non-trading modes
+
+#### ⚠️ **Important Considerations**
+
+##### 1. **Backend API Server** (Must Keep Running)
+
+**Critical**: The backend API server must remain running at all times.
+
+**Recommended Setup**:
+```powershell
+# Use stable startup script with auto-restart
+.\scripts\start_api_stable_bypass.ps1
+```
+
+**Features**:
+- ✅ Auto-restart on crash (up to 10 times)
+- ✅ Complete error handling
+- ✅ Logging for troubleshooting
+- ✅ Suitable for long-term operation
+
+**Monitoring**:
+- Check API status: `http://localhost:8000/api/status`
+- Check logs for errors
+- Verify orders are being executed correctly
+
+##### 2. **Frontend Webpage** (Can Be Closed)
+
+**✅ You can close the webpage** - it won't affect backend operations.
+
+**Why**:
+- Frontend is **display-only** - it doesn't execute trading logic
+- All trading logic runs in the backend
+- Backend continues to:
+  - Execute trading cycles
+  - Check order fills
+  - Plan for tomorrow
+  - Save all data
+
+**Behavior When Closed**:
+- ✅ Backend continues hourly trading cycles (market hours)
+- ✅ Backend continues hourly planning checks (non-trading hours)
+- ✅ All data saved to files
+- ❌ Frontend stops refreshing (no impact on backend)
+
+**When You Reopen**:
+- ✅ Automatically loads latest data
+- ✅ All functions restored
+- ✅ Shows complete history
+
+##### 3. **System Resources**
+
+**Memory Usage**:
+- ✅ Auto-limited discussion history (20 entries max)
+- ✅ Automatic garbage collection
+- ✅ No memory leaks
+- ⚠️ Memory files accumulate on disk (doesn't affect performance)
+
+**Disk Space**:
+- ⚠️ `discussion_actions.jsonl` grows continuously
+- ⚠️ `memory/daily/` creates one file per day
+- ⚠️ `equity_history.jsonl` grows with each record
+- **Recommendation**: Periodically clean old files (see below)
+
+**Cleanup Script**:
+```powershell
+# Clean up old memory files (before today)
+python scripts/cleanup_old_memory.py
+```
+
+##### 4. **Network Connection**
+
+**Required**:
+- ✅ Backend needs internet connection for market data
+- ✅ yfinance requires network access
+- ⚠️ If network fails, tool calls will fail (but system won't crash)
+
+**Handling Network Issues**:
+- System will retry on next cycle
+- Errors logged for review
+- No data loss (all state saved to files)
+
+##### 5. **System Time**
+
+**Critical**: System time must be accurate.
+
+**Why**:
+- Used to determine trading hours
+- Used for order timestamps
+- Used for equity history recording
+
+**Check**:
+```powershell
+# Verify system time is correct
+Get-Date
+```
+
+#### 📋 **Long-Term Operation Checklist**
+
+##### **Daily Checks** (Recommended)
+
+- [ ] Verify backend API is running (`http://localhost:8000/api/status`)
+- [ ] Check for error logs
+- [ ] Verify orders are executing correctly
+- [ ] Check portfolio state is normal
+
+##### **Weekly Checks** (Recommended)
+
+- [ ] Check `discussion_actions.jsonl` file size
+- [ ] Check memory file count in `backend/data/logs/memory/daily/`
+- [ ] Check disk space
+- [ ] Review error logs for patterns
+- [ ] Consider cleaning old memory files if needed
+
+##### **Monthly Checks** (Recommended)
+
+- [ ] Review system performance
+- [ ] Check log file sizes
+- [ ] Backup important data
+- [ ] Clean old memory files (keep last 30 days)
+- [ ] Review trading performance
+
+#### 🧹 **Memory File Cleanup**
+
+**Automatic Cleanup** (Already Implemented):
+- ✅ In-memory `discussion_history` limited to 20 entries
+- ✅ Automatic garbage collection after each cycle
+- ✅ Discussion history reinitialized each cycle
+
+**Manual Cleanup** (Optional):
+
+**Option 1: Clean Old Daily Memory Files**
+```powershell
+# Delete memory files before today
+python scripts/cleanup_old_memory.py
+```
+
+**Option 2: Full System Reset**
+```bash
+# WARNING: This clears ALL data
+# Use frontend "Initialize System" button
+# Or via API:
+curl -X POST http://localhost:8000/api/system/init
+```
+
+**Option 3: Selective Cleanup**
+```powershell
+# Keep last 30 days, delete older files
+# (Manual file deletion - be careful!)
+```
+
+#### 💡 **Best Practices**
+
+1. **Startup**:
+   - Always use `start_api_stable_bypass.ps1` for long-term operation
+   - Verify API is running before leaving system unattended
+   - Keep the PowerShell window open (or minimize it)
+
+2. **Monitoring**:
+   - Check API status daily: `http://localhost:8000/api/status`
+   - Review error logs weekly
+   - Monitor disk space monthly
+   - Use frontend dashboard for visual monitoring
+
+3. **Frontend**:
+   - Can be closed when not needed
+   - Reopen anytime to check status: `http://localhost:3000/monitor.html`
+   - No impact on backend operations
+   - Auto-refreshes when open
+
+4. **Backup**:
+   - Periodically backup `backend/data/logs/` directory
+   - Especially before major operations (e.g., system init)
+   - Backup portfolio state before major changes
+
+5. **Maintenance**:
+   - Clean old memory files monthly: `python scripts/cleanup_old_memory.py`
+   - Review and archive old logs quarterly
+   - Keep system time synchronized
+   - Restart API weekly (optional, for fresh start)
+
+#### 📝 **Daily Usage Example**
+
+**Morning (Before Market Opens)**:
+```powershell
+# 1. Check if API is still running
+curl http://localhost:8000/api/status
+
+# 2. If not running, restart
+.\scripts\restart_api_fast.ps1
+
+# 3. Open frontend to check status
+start http://localhost:3000/monitor.html
+```
+
+**During Market Hours**:
+- System automatically executes trading cycles every hour
+- No action needed - just let it run
+- Check frontend occasionally to monitor progress
+
+**Evening (After Market Closes)**:
+- System automatically checks for tomorrow planning
+- No action needed
+- Can close frontend - backend continues
+
+**Weekly Maintenance**:
+```powershell
+# Clean old memory files
+python scripts/cleanup_old_memory.py
+
+# Check system health
+curl http://localhost:8000/api/system/info
+```
+
+#### ⚡ **Common Operations**
+
+**Restart Backend** (if needed):
+```powershell
+# From project root directory
+.\scripts\restart_api_fast.ps1
+
+# Or with full path
+powershell -ExecutionPolicy Bypass -File "path\to\ai-trader-ollama\scripts\restart_api_fast.ps1"
+```
+
+**Stop Backend** (temporarily):
+```powershell
+# Find and stop the process
+Get-NetTCPConnection -LocalPort 8000 | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+```
+
+**View Share Links** (for local network):
+```powershell
+.\scripts\get_share_link.ps1
+```
+
+**Check System Info**:
+```powershell
+# Via browser
+start http://localhost:8000/api/system/info
+
+# Or via curl
+curl http://localhost:8000/api/system/info
+```
+
+#### 🔍 **Troubleshooting Long-Term Issues**
+
+**Issue**: Backend stops responding
+- **Solution**: Use `restart_api_fast.ps1` to restart
+- **Prevention**: Use `start_api_stable_bypass.ps1` (auto-restart)
+
+**Issue**: Disk space running low
+- **Solution**: Run `cleanup_old_memory.py` to remove old files
+- **Prevention**: Set up monthly cleanup schedule
+
+**Issue**: Memory usage high
+- **Solution**: System auto-manages memory, but check for memory leaks
+- **Prevention**: Ensure using latest code with memory optimizations
+
+**Issue**: Network connection lost
+- **Solution**: System will retry on next cycle
+- **Prevention**: Ensure stable internet connection
+
+---
+
 ## ❓ Troubleshooting
 
 ### Common Issues
@@ -1643,8 +2167,8 @@ ollama serve
 # Check if model is pulled
 ollama list
 
-# If llama3.1 not listed, pull it
-ollama pull llama3.1
+# If deepseek-r1 not listed, pull it
+ollama pull deepseek-r1
 ```
 
 ---
@@ -1700,7 +2224,7 @@ python scripts/init_data.py
 **Solutions**:
 - Reduce `tool_budget` in trading_cycle.py (default: 15)
 - Increase Ollama timeout
-- Use faster model (e.g., `llama3.1:8b` instead of `llama3.1:70b`)
+- Use faster model (e.g., `deepseek-r1:7b` instead of `deepseek-r1:32b`)
 
 ---
 
@@ -1710,11 +2234,11 @@ python scripts/init_data.py
 
 **Solutions**:
 ```bash
-# Use smaller model
-ollama pull llama3.1:8b
+# Use smaller model (if needed)
+ollama pull deepseek-r1:7b
 
-# Update agents.yaml
-model: llama3.1:8b
+# Update agents.yaml (if switching models)
+model: deepseek-r1:7b
 ```
 
 ---

@@ -1668,14 +1668,30 @@ async def get_system_info():
         import json
         # Path 已经在文件顶部导入，不需要重复导入
         
-        # Load config.json
-        config_file = Path("config/config.json")
+        # Load config.json (use absolute path to ensure correct location)
+        # Try multiple possible paths
+        config_file = None
+        possible_paths = [
+            Path("config/config.json"),  # Relative from project root
+            Path(__file__).parent.parent.parent / "config" / "config.json",  # Absolute from this file
+            Path("backend/config/config.json"),  # Relative from backend directory
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                config_file = path
+                break
+        
         llm_config = {}
         config = {}
-        if config_file.exists():
+        if config_file and config_file.exists():
             with config_file.open("r", encoding="utf-8") as f:
                 config = json.load(f)
                 llm_config = config.get("llm", {})
+                print(f"[SYSTEM INFO] Loaded config from: {config_file}")
+                print(f"[SYSTEM INFO] LLM default_model: {llm_config.get('default_model', 'NOT FOUND')}")
+        else:
+            print(f"[SYSTEM INFO WARNING] Config file not found. Tried paths: {possible_paths}")
         
         # Load agents.yaml to get agent-specific models
         agent_models = {}

@@ -174,6 +174,51 @@ def run_risk_analyst_llm(
             if "position_control_report" not in risk_report:
                 risk_report["position_control_report"] = _default_position_control(current_positions, portfolio_value, market_json)
             
+            # 修复：确保 position_control_report.recommended_position_sizes 的值是字典类型
+            position_control = risk_report.get("position_control_report", {})
+            recommended_sizes = position_control.get("recommended_position_sizes", {})
+            if isinstance(recommended_sizes, dict):
+                # 检查并修复每个值，确保是字典类型
+                for symbol, size_info in list(recommended_sizes.items()):
+                    if not isinstance(size_info, dict):
+                        # 如果是字符串或其他类型，尝试解析或使用默认值
+                        if isinstance(size_info, (int, float)):
+                            # 如果是数字，转换为字典格式
+                            recommended_sizes[symbol] = {
+                                "max_pct": float(size_info),
+                                "current_pct": 0.0,
+                                "adjustment": "HOLD"
+                            }
+                        elif isinstance(size_info, str):
+                            # 如果是字符串，尝试解析 JSON 或使用默认值
+                            try:
+                                parsed = json.loads(size_info)
+                                if isinstance(parsed, dict):
+                                    recommended_sizes[symbol] = parsed
+                                else:
+                                    # 解析后不是字典，使用默认值
+                                    recommended_sizes[symbol] = {
+                                        "max_pct": 0.15,
+                                        "current_pct": 0.0,
+                                        "adjustment": "HOLD"
+                                    }
+                            except (json.JSONDecodeError, TypeError):
+                                # 解析失败，使用默认值
+                                recommended_sizes[symbol] = {
+                                    "max_pct": 0.15,
+                                    "current_pct": 0.0,
+                                    "adjustment": "HOLD"
+                                }
+                        else:
+                            # 其他类型，使用默认值
+                            recommended_sizes[symbol] = {
+                                "max_pct": 0.15,
+                                "current_pct": 0.0,
+                                "adjustment": "HOLD"
+                            }
+                position_control["recommended_position_sizes"] = recommended_sizes
+                risk_report["position_control_report"] = position_control
+            
             return risk_report
             
         except json.JSONDecodeError:

@@ -68,26 +68,38 @@ class AgentFactory:
         self._llm_client = llm_client
 
     def _load_prompts(self, prompt_file: str) -> Tuple[str, str]:
-        # 支援 agents.yaml 內寫 ../prompts/xxx.yml 或 prompts/xxx.yml
-        # 首先尝试相对于 config 文件的路径
-        if prompt_file.startswith("../"):
-            # 处理 ../prompts/xxx.yml
-            p = (self.config_path.parent.parent / prompt_file[3:]).resolve()
-        else:
-            # 处理 prompts/xxx.yml 或相对路径
-            p = (self.config_path.parent / prompt_file).resolve()
+        # 统一使用项目根目录的 prompts/ 文件夹
+        # 支持 agents.yaml 内写 ../prompts/xxx.yml 或 prompts/xxx.yml
+        # 统一解析到项目根目录的 prompts/ 文件夹
+        
+        # 提取文件名（去掉路径前缀）
+        prompt_filename = Path(prompt_file).name
+        
+        # 优先使用项目根目录的 prompts/ 文件夹
+        # config_path 通常是 backend/config/agents.yaml
+        # 所以 parent.parent.parent 是项目根目录
+        root_prompts_dir = self.config_path.parent.parent.parent / "prompts"
+        p = (root_prompts_dir / prompt_filename).resolve()
         
         if not p.exists():
-            # 也尝试相对于项目根目录的 prompts 目录
-            prompts_dir = self.config_path.parent.parent / "prompts"
-            p = (prompts_dir / Path(prompt_file).name).resolve()
+            # 备用：尝试相对于 config 文件的路径（向后兼容）
+            if prompt_file.startswith("../"):
+                # 处理 ../prompts/xxx.yml
+                p = (self.config_path.parent.parent / prompt_file[3:]).resolve()
+            else:
+                # 处理 prompts/xxx.yml 或相对路径
+                p = (self.config_path.parent / prompt_file).resolve()
         
         if not p.exists():
             # 最后尝试：相对于当前工作目录
             p = Path(prompt_file).resolve()
         
         if not p.exists():
-            raise FileNotFoundError(f"prompt file not found: {prompt_file}. Tried: {p}")
+            raise FileNotFoundError(
+                f"prompt file not found: {prompt_file}. "
+                f"Tried: {root_prompts_dir / prompt_filename}, {p}. "
+                f"Please ensure the file exists in the root prompts/ folder."
+            )
         
         with open(p, "r", encoding="utf-8") as f:
             y = yaml.safe_load(f) or {}

@@ -134,11 +134,23 @@ def execute_daily_trade(
     # ---- (1) 市場層 ----
     # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 调用
     # 注意：fetch_market_batch 只接受 symbols, start, end 三个参数
-    market_view: Dict[str, Any] = fetch_market_batch.invoke({
-        "symbols": universe,
-        "start": start,
-        "end": end,
-    })
+    # CRITICAL: 确保 end 参数正确设置（用于获取市场数据）
+    # 如果 end 是 None（实时模式），使用昨天的日期（因为今天的数据可能还不完整）
+    # 如果 end 是特定日期（规划模式），使用该日期
+    market_data_end = end if end else (date.today() - timedelta(days=1)).isoformat()
+    print(f"[TRADING CYCLE] Fetching market data: start={start}, end={market_data_end}")
+    
+    try:
+        market_view: Dict[str, Any] = fetch_market_batch.invoke({
+            "symbols": universe,
+            "start": start,
+            "end": market_data_end,
+        })
+        print(f"[TRADING CYCLE] ✅ Market data fetched successfully: {len(market_view.get('stocks', {}))} stocks")
+    except Exception as e:
+        print(f"[TRADING CYCLE] ❌ Failed to fetch market data: {e}")
+        # 如果获取失败，返回错误信息
+        raise Exception(f"Failed to fetch market data: {e}")
     # market_view 典型：
     # {
     #   "stocks": {SYM: {price, change_pct, rsi14, macd, bb_pos, signal_score, ...}, ...},
@@ -818,9 +830,15 @@ def execute_daily_trade(
                 position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
                 # min_position_per_stock 如果配置中没有，使用默认值
                 position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
-    except Exception:
+                print(f"[TRADING CYCLE] ✅ Loaded position limits from config.json:")
+                print(f"  - max_position_per_stock: {position_config['max_position_per_stock']:.1%}")
+                print(f"  - max_total_position: {position_config['max_total_position']:.1%}")
+                print(f"  - min_position_per_stock: {position_config['min_position_per_stock']:.1%}")
+        else:
+            print(f"[TRADING CYCLE] ⚠️ Config file not found at {config_path}, using default position limits")
+    except Exception as e:
         # 如果读取失败，使用默认值
-        pass
+        print(f"[TRADING CYCLE] ⚠️ Failed to load position limits from config: {e}, using defaults")
 
     # 计算可用现金（考虑现金储备要求）
     # 先计算，以便传递给 trader agent

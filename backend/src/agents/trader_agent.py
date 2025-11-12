@@ -38,8 +38,16 @@ def _calculate_position_size(
         control_report = risk_report.get("position_control_report", {})
         recommended_sizes = control_report.get("recommended_position_sizes", {})
         if symbol in recommended_sizes:
-            suggested_max = recommended_sizes[symbol].get("max_pct", max_position_per_stock)
-            max_position_per_stock = min(max_position_per_stock, suggested_max)
+            # 修复：确保 recommended_sizes[symbol] 是字典类型
+            size_info = recommended_sizes[symbol]
+            if isinstance(size_info, dict):
+                suggested_max = size_info.get("max_pct", max_position_per_stock)
+                max_position_per_stock = min(max_position_per_stock, suggested_max)
+            elif isinstance(size_info, (int, float)):
+                # 如果直接是数字，当作 max_pct 使用
+                suggested_max = float(size_info)
+                max_position_per_stock = min(max_position_per_stock, suggested_max)
+            # 如果是字符串，忽略（可能是 LLM 返回格式错误）
     
     # 计算当前总仓位（已持有的股票总价值占比）
     current_total_position = 0.0
@@ -56,29 +64,32 @@ def _calculate_position_size(
                 position_value = qty * current_price
                 current_total_position += position_value / portfolio_value
     
-    # 动态调整单股仓位：根据推荐股票数量调整
-    # 如果有更多推荐股票，单股仓位可以更小，允许分散投资
+    # 动态调整单股仓位：根据推荐股票数量、信号强度等因素调整
+    # Agent 可以根据情况灵活调整仓位大小（在指导原则范围内）
     num_recommended = len(recommended_stocks) if recommended_stocks else 1
     
     # 计算可用仓位空间
     available_position_space = max_total_position - current_total_position
     
     if available_position_space <= 0:
-        # 已达到总仓位上限
+        # 已达到总仓位上限（硬限制）
         return 0
     
-    # 动态调整：如果有多个推荐股票，单股仓位可以更小
-    # 例如：3只股票时，每只10%；5只股票时，每只6%；10只股票时，每只5%
+    # Agent 决策逻辑：根据推荐股票数量动态调整单股仓位
+    # 这是 agent 的自主决策，在指导原则范围内灵活调整
     if num_recommended > 1:
-        # 根据推荐股票数量动态调整单股最大仓位
-        # 但不超过 max_position_per_stock，也不小于 min_position_per_stock
+        # 多个推荐股票：分散投资，每只股票仓位可以更小
+        # Agent 可以根据信号强度、市场条件等因素决定具体仓位
+        # 例如：3只股票时，每只10%；5只股票时，每只6%；10只股票时，每只5%
+        # 但不超过 max_position_per_stock（指导原则），也不小于 min_position_per_stock（指导原则）
         dynamic_max_pct = min(max_position_per_stock, available_position_space / num_recommended)
         dynamic_max_pct = max(min_position_per_stock, dynamic_max_pct)
         
-        # 确保不超过可用仓位空间
+        # 确保不超过可用仓位空间（硬限制）
         dynamic_max_pct = min(dynamic_max_pct, available_position_space)
     else:
-        # 只有1只推荐股票时，可以使用更大的仓位
+        # 只有1只推荐股票时：可以使用更大的仓位（在指导原则范围内）
+        # Agent 可以根据信号强度决定是否使用最大仓位或更小的仓位
         dynamic_max_pct = min(max_position_per_stock, available_position_space)
     
     # 检查当前持仓
@@ -367,7 +378,7 @@ def run_trader(
             print(f"[TRADER] Fallback: Using top {len(recs)} available stocks: {recs[:5]}...")
     
     if recs and portfolio_value > 0:
-        # 从配置中读取仓位限制参数
+        # 从配置中读取仓位限制参数（这些是指导原则，agent 可以根据情况灵活调整）
         if position_config:
             max_position_per_stock = position_config.get("max_position_per_stock", 0.15)
             max_total_position = position_config.get("max_total_position", 0.80)
@@ -377,6 +388,13 @@ def run_trader(
             max_position_per_stock = 0.15  # 默认单股最大15%
             max_total_position = 0.80  # 默认总仓位80%
             min_position_per_stock = 0.03  # 默认单股最小3%（允许更小的仓位）
+        
+        # 打印仓位限制信息（作为指导原则）
+        print(f"[TRADER] Position size guidelines (agent can adjust based on signals):")
+        print(f"  - Max per stock: {max_position_per_stock:.1%} (guideline, agent can use smaller)")
+        print(f"  - Max total position: {max_total_position:.1%} (guideline, agent can use less)")
+        print(f"  - Min per stock: {min_position_per_stock:.1%} (guideline, for diversification)")
+        print(f"  - Available cash: ${available_cash:,.2f} (hard limit, cannot exceed)")
         
         # CRITICAL: 计算当前总仓位（用于限制买入）
         # current_positions 包含完整信息：quantity, avg_cost, current_price, market_value, unrealized_pnl, unrealized_pnl_pct, position_pct
@@ -431,7 +449,8 @@ def run_trader(
                 is_leveraged_etf = symbol in LEVERAGED_ETFS
                 
                 # 计算买入数量（使用改进后的函数）
-                # CRITICAL: 使用剩余现金，而不是初始可用现金
+                # NOTE: 仓位限制是指导原则，agent 可以根据信号强度、市场条件等因素灵活调整
+                # 函数内部会根据信号强度、推荐股票数量等因素动态调整仓位大小
                 quantity = _calculate_position_size(
                     symbol, 
                     recs, 
@@ -439,10 +458,10 @@ def run_trader(
                     last_price, 
                     rview, 
                     current_positions,
-                    max_position_per_stock=max_position_per_stock,
-                    max_total_position=max_total_position,
-                    min_position_per_stock=min_position_per_stock,
-                    available_cash=remaining_cash,  # 传递剩余现金，而不是初始可用现金
+                    max_position_per_stock=max_position_per_stock,  # 指导原则：最大单股仓位
+                    max_total_position=max_total_position,  # 指导原则：最大总仓位
+                    min_position_per_stock=min_position_per_stock,  # 指导原则：最小单股仓位（用于分散投资）
+                    available_cash=remaining_cash,  # 硬限制：可用现金（不能超过）
                 )
                 
                 if quantity > 0:

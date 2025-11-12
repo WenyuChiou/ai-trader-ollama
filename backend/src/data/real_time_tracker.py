@@ -9,7 +9,7 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from typing import Dict, Any, Optional
 import json
 
@@ -196,7 +196,7 @@ class RealTimeTracker:
         total_pnl_pct = (total_pnl / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0
         
         return {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
             "cash": portfolio.cash,
             "equity_value": positions_value,
             "total_value": total_value,
@@ -227,7 +227,7 @@ class RealTimeTracker:
         if not symbols:
             # 如果没有持仓，只返回现金信息
             return {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
                 "cash": portfolio.cash,
                 "equity_value": 0.0,
                 "total_value": portfolio.cash,
@@ -260,8 +260,19 @@ class RealTimeTracker:
                 latest_timestamp_str = latest_equity.get("timestamp", "")
                 if latest_timestamp_str:
                     try:
-                        latest_timestamp = datetime.fromisoformat(latest_timestamp_str.replace("Z", "+00:00") if "Z" in latest_timestamp_str else latest_timestamp_str)
-                        time_diff = datetime.now() - latest_timestamp.replace(tzinfo=None) if latest_timestamp.tzinfo else datetime.now() - latest_timestamp
+                        # 处理UTC时间戳（带Z后缀）
+                        if "Z" in latest_timestamp_str:
+                            latest_timestamp = datetime.fromisoformat(latest_timestamp_str.replace("Z", "+00:00"))
+                        else:
+                            latest_timestamp = datetime.fromisoformat(latest_timestamp_str)
+                        # 计算时间差（都转换为UTC时间）
+                        now_utc = datetime.now(timezone.utc)
+                        if latest_timestamp.tzinfo:
+                            time_diff = now_utc - latest_timestamp
+                        else:
+                            # 如果没有时区信息，假设是UTC
+                            latest_timestamp_utc = latest_timestamp.replace(tzinfo=timezone.utc)
+                            time_diff = now_utc - latest_timestamp_utc
                         
                         # 如果距离上次记录超过1小时，记录
                         if time_diff.total_seconds() >= 3600:  # 1小时 = 3600秒

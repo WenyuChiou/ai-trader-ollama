@@ -2233,6 +2233,7 @@
 
                 return (data.records || []).map(item => ({
                     date: item.date || item.timestamp?.split('T')[0] || '',
+                    timestamp: item.timestamp || null,  // CRITICAL: 保留 timestamp 字段用于时间显示
                     value: item.total_value || 0,
                     pnl: item.total_pnl || 0,
                 }));
@@ -2767,11 +2768,13 @@
                         }
                     } else {
                         // Non-trading hours: check if tomorrow is already planned
+                        // If not planned, execute planning; if already planned, skip and continue checking hourly
                         console.log('[Auto Trade] Market is closed, checking if tomorrow is already planned...');
                         updateAutoTradeStatus('Checking Tomorrow Planning Status');
                         
                         try {
-                            // Call API to check if there are orders for tomorrow (API will automatically check and return corresponding message)
+                            // First, check if there are pending orders for tomorrow (lightweight check)
+                            // We'll use a separate endpoint if available, or check the execute-trade response
                             const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
                                 method: 'POST',
                                 mode: 'cors',
@@ -2787,40 +2790,50 @@
                                 data = await response.json();
                             } catch (parseErr) {
                                 console.error('[Auto Trade] Response parse failed:', parseErr);
+                                updateAutoTradeStatus('Check Failed - Will Retry');
                                 return;
                             }
                             
                             if (response.ok && data.ok) {
                                 const message = data.message || '';
                                 const isPlanning = data.result?.is_planning || false;
+                                const orderCount = data.result?.placed_orders?.length || 0;
                                 
                                 // Check if message contains "Already have" or "already planned"
                                 if (message.includes('Already have') || message.includes('already planned') || message.includes('No new planning needed')) {
                                     console.log('[Auto Trade] Tomorrow is already planned, skipping:', message);
-                                    updateAutoTradeStatus('Tomorrow Already Planned, Waiting');
-                                    // Stop auto trade, wait for market to open
-                                    stopAutoTrade();
+                                    updateAutoTradeStatus(`Tomorrow Already Planned (${orderCount} orders) - Checking Hourly`);
+                                    // Don't stop auto trade - continue checking hourly in case plans change
+                                    // The timer will continue running and check again in 1 hour
                                     return;
-                                } else if (isPlanning) {
+                                } else if (isPlanning || orderCount > 0) {
                                     // Just completed planning
                                     console.log('[Auto Trade] Planning completed for tomorrow:', message);
-                                    updateAutoTradeStatus('Tomorrow Planning Completed');
-                                    // Stop auto trade, wait for market to open
-                                    stopAutoTrade();
+                                    updateAutoTradeStatus(`Tomorrow Planning Completed (${orderCount} orders) - Checking Hourly`);
+                                    // Don't stop auto trade - continue checking hourly
+                                    // The timer will continue running and check again in 1 hour
                                     return;
                                 } else {
-                                    // Executed trade (should not happen in non-trading hours, but handle it)
-                                    console.log('[Auto Trade] Trade cycle executed:', message);
-                                    updateAutoTradeStatus('Trading Completed');
+                                    // No planning found, but API didn't execute planning (shouldn't happen, but handle it)
+                                    console.log('[Auto Trade] No planning found, but API response unclear:', message);
+                                    updateAutoTradeStatus('Status Unclear - Will Retry');
+                                    // Continue checking hourly
+                                    return;
                                 }
                             } else {
                                 console.error('[Auto Trade] API returned error:', data.error || 'Unknown error');
-                                updateAutoTradeStatus('Execution Error');
+                                updateAutoTradeStatus('Execution Error - Will Retry');
+                                // Continue checking hourly even on error
                             }
                         } catch (e) {
-                            console.error('[Auto Trade] Error during planning check:', e);
-                            updateAutoTradeStatus('Check Failed');
-                            // If check fails, don't stop, let it retry next time
+                            if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+                                console.warn('[Auto Trade] Request timed out, but planning may have started. Will check again in 1 hour.');
+                                updateAutoTradeStatus('Timeout - Will Check Again');
+                            } else {
+                                console.error('[Auto Trade] Error during planning check:', e);
+                                updateAutoTradeStatus('Check Failed - Will Retry');
+                            }
+                            // If check fails, don't stop, let it retry next hour
                         }
                     }
                 } catch (e) {
@@ -2840,10 +2853,13 @@
             }
             
             // Trading hours: execute trade cycle every 1 hour (conversation/planning)
+            // Non-trading hours: check if tomorrow is planned every 1 hour, auto-plan if not
             // Note: Data refresh continues every 30 seconds regardless of trading interval
-            const TRADING_INTERVAL = 60 * 60 * 1000;  // 1 hour (only during trading hours)
+            const TRADING_INTERVAL = 60 * 60 * 1000;  // 1 hour (both trading and non-trading hours)
             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
-            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes during market hours)`);
+            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
+            console.log(`[Auto Trade] - Trading hours: Execute trade cycle every hour`);
+            console.log(`[Auto Trade] - Non-trading hours: Check tomorrow planning every hour, auto-plan if needed`);
             console.log(`[Auto Trade] Note: Data refresh continues every ${REFRESH_INTERVAL / 1000} seconds`);
             // Execute immediately once
             smartAutoTrade();
@@ -5481,29 +5497,52 @@
                     return result;
                 };
                 
-                // Prepare chart data
-                const labels = equityData.map(item => {
+                // Prepare chart data - 生成标签数组（Chart.js 会直接使用这些标签）
+                // CRITICAL: 确保所有情况下时间都能正确解析和显示
+                const labels = equityData.map((item, idx) => {
                     // 优先使用 timestamp（包含完整时间信息），如果没有则使用 date
                     let dateObj;
+                    let timestampUsed = false;
+                    
                     if (item.timestamp) {
                         // 处理timestamp：如果缺少时区信息，假设为UTC
                         let ts = item.timestamp;
+                        // 确保是字符串
+                        if (typeof ts !== 'string') {
+                            ts = String(ts);
+                        }
+                        // 检查是否包含时区信息（Z, +, 或 - 在位置10之后）
                         if (!ts.includes('Z') && !ts.includes('+') && !ts.includes('-', 10)) {
                             // 缺少时区信息，添加Z表示UTC
                             ts = ts.endsWith('Z') ? ts : ts + 'Z';
                         }
-                        dateObj = new Date(ts);
+                        try {
+                            dateObj = new Date(ts);
+                            timestampUsed = true;
+                        } catch (e) {
+                            console.warn('[Chart] Failed to parse timestamp:', ts, e);
+                            // Fallback: 使用date字段
+                            if (item.date) {
+                                dateObj = new Date(item.date + 'T00:00:00Z');
+                            } else {
+                                dateObj = new Date();
+                            }
+                        }
                     } else if (item.date) {
-                        // 如果只有日期，使用当天的当前时间（但这不是理想情况）
-                        dateObj = new Date(item.date + 'T00:00:00Z');
+                        // 如果只有日期，使用当天的中午时间（12:00 UTC）作为默认时间
+                        // 这样转换为美东时间后会更合理
+                        dateObj = new Date(item.date + 'T12:00:00Z');
                     } else {
+                        console.warn('[Chart] No timestamp or date for item:', item);
+                        // 使用当前时间作为最后手段
                         dateObj = new Date();
                     }
                     
                     // 检查日期是否有效
                     if (isNaN(dateObj.getTime())) {
-                        console.warn('[Chart] Invalid date:', item.date || item.timestamp);
-                        return 'Invalid Date';
+                        console.warn('[Chart] Invalid date:', item.date || item.timestamp, 'at index', idx);
+                        // 使用当前时间作为fallback
+                        dateObj = new Date();
                     }
                     
                     // 转换为美东时间
@@ -5514,8 +5553,28 @@
                     const day = etParts.day || '1';
                     const hours = etParts.hour || '00';
                     const minutes = etParts.minute || '00';
-                    return `${month} ${day} ${hours}:${minutes}`;
+                    const year = etParts.year || new Date().getFullYear();
+                    
+                    // 返回格式化的时间字符串（确保唯一性，避免 Chart.js 显示重复标签）
+                    // 使用更简洁的格式：11/11 17:00 (月/日 时:分)
+                    // 将月份名称转换为数字
+                    const monthMap = {
+                        'Jan': '1', 'Feb': '2', 'Mar': '3', 'Apr': '4', 'May': '5', 'Jun': '6',
+                        'Jul': '7', 'Aug': '8', 'Sep': '9', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+                    };
+                    const monthNum = monthMap[month] || '1';
+                    const label = `${monthNum}/${day} ${hours}:${minutes}`;
+                    
+                    // 调试日志：打印每个标签的生成过程（仅在开发时启用）
+                    if (idx < 3 || idx === equityData.length - 1) {
+                        console.log(`[Chart Label ${idx}] Timestamp: ${item.timestamp || 'N/A'}, Date: ${item.date || 'N/A'}, Parsed: ${dateObj.toISOString()}, ET Label: ${label}${timestampUsed ? '' : ' (no timestamp, using date fallback)'}`);
+                    }
+                    
+                    return label;
                 });
+                
+                // 调试：打印所有标签
+                console.log('[Chart] Generated labels:', labels);
                 
                 const values = equityData.map(item => item.value || item.total_value || item.equity || 0);
                 
@@ -5569,28 +5628,50 @@
                                 callbacks: {
                                     title: function(context) {
                                         // 在 tooltip 中显示完整的时间（包括秒，美东时间）
+                                        // CRITICAL: 使用与标签生成相同的逻辑，确保一致性
                                         const index = context[0].dataIndex;
                                         const item = equityData[index];
                                         
-                                        // 优先使用 timestamp（包含完整时间信息）
+                                        // 优先使用 timestamp（包含完整时间信息），如果没有则使用 date
                                         let dateObj;
+                                        
                                         if (item.timestamp) {
                                             // 处理timestamp：如果缺少时区信息，假设为UTC
                                             let ts = item.timestamp;
+                                            // 确保是字符串
+                                            if (typeof ts !== 'string') {
+                                                ts = String(ts);
+                                            }
+                                            // 检查是否包含时区信息（Z, +, 或 - 在位置10之后）
                                             if (!ts.includes('Z') && !ts.includes('+') && !ts.includes('-', 10)) {
                                                 // 缺少时区信息，添加Z表示UTC
                                                 ts = ts.endsWith('Z') ? ts : ts + 'Z';
                                             }
-                                            dateObj = new Date(ts);
+                                            try {
+                                                dateObj = new Date(ts);
+                                            } catch (e) {
+                                                console.warn('[Chart Tooltip] Failed to parse timestamp:', ts, e);
+                                                // Fallback: 使用date字段
+                                                if (item.date) {
+                                                    dateObj = new Date(item.date + 'T12:00:00Z');
+                                                } else {
+                                                    dateObj = new Date();
+                                                }
+                                            }
                                         } else if (item.date) {
-                                            dateObj = new Date(item.date + 'T00:00:00Z');
+                                            // 如果只有日期，使用当天的中午时间（12:00 UTC）作为默认时间
+                                            dateObj = new Date(item.date + 'T12:00:00Z');
                                         } else {
+                                            console.warn('[Chart Tooltip] No timestamp or date for item:', item);
+                                            // 使用当前时间作为最后手段
                                             dateObj = new Date();
                                         }
                                         
                                         // 检查日期是否有效
                                         if (isNaN(dateObj.getTime())) {
-                                            return 'Invalid Date';
+                                            console.warn('[Chart Tooltip] Invalid date:', item.date || item.timestamp);
+                                            // 使用当前时间作为fallback
+                                            dateObj = new Date();
                                         }
                                         
                                         // 转换为美东时间并格式化
@@ -5623,6 +5704,7 @@
                         },
                         scales: {
                             x: {
+                                type: 'category',  // 明确指定为 category scale，确保使用 labels 数组
                                 grid: {
                                     display: false,
                                 },
@@ -5635,44 +5717,8 @@
                                     minRotation: 0,
                                     autoSkip: true,  // 自动跳过一些标签，避免过于拥挤
                                     maxTicksLimit: 20,  // 最多显示20个标签
-                                    callback: function(value, index, ticks) {
-                                        // 确保显示的时间包含分钟（美东时间）
-                                        // 从原始数据获取完整时间（包含分钟）
-                                        if (index >= 0 && index < equityData.length) {
-                                            const item = equityData[index];
-                                            // 优先使用 timestamp（包含完整时间信息）
-                                            let dateObj;
-                                            if (item.timestamp) {
-                                                // 处理timestamp：如果缺少时区信息，假设为UTC
-                                                let ts = item.timestamp;
-                                                if (!ts.includes('Z') && !ts.includes('+') && !ts.includes('-', 10)) {
-                                                    // 缺少时区信息，添加Z表示UTC
-                                                    ts = ts.endsWith('Z') ? ts : ts + 'Z';
-                                                }
-                                                dateObj = new Date(ts);
-                                            } else if (item.date) {
-                                                dateObj = new Date(item.date + 'T00:00:00Z');
-                                            } else {
-                                                return '';
-                                            }
-                                            
-                                            // 检查日期是否有效
-                                            if (isNaN(dateObj.getTime())) {
-                                                return '';
-                                            }
-                                            
-                                            // 转换为美东时间
-                                            const etParts = getEasternTime(dateObj);
-                                            
-                                            const month = etParts.month || 'Jan';
-                                            const day = etParts.day || '1';
-                                            const hours = etParts.hour || '00';
-                                            const minutes = etParts.minute || '00';
-                                            return `${month} ${day} ${hours}:${minutes}`;
-                                        }
-                                        // 如果无法获取数据，返回默认格式
-                                        return '';
-                                    }
+                                    // 对于 category scale，Chart.js 会自动使用 labels 数组
+                                    // 不需要 callback，直接使用 labels 数组中的值
                                 },
                             },
                             y: {

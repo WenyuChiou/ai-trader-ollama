@@ -351,18 +351,26 @@ class OrderManager:
             # 判断是否成交
             if action == "BUY":
                 # 买入：如果当天的 Low 低于等于限价，订单可以成交
-                # 成交价格：使用当天的收盘价（Close），如果不可用则使用 Low（实际成交价）
+                # 成交价格：使用当天的实际成交价（优先使用Low，因为限价订单在触及限价时成交）
                 if daily_low <= limit_price:
                     # 可以成交
-                    # 使用收盘价作为成交价（更接近实际成交价格），如果不可用则使用 Low
-                    fill_price = daily_close if daily_close else daily_low
+                    # 对于限价买入订单，成交价应该是 min(limit_price, daily_low)
+                    # 但如果 daily_low 远低于 limit_price，使用 limit_price 更合理（因为订单在限价处成交）
+                    # 如果 daily_low 接近 limit_price，使用 daily_low 更接近实际成交价
+                    # 实际策略：使用 min(limit_price, daily_close) 或 daily_low，取更接近限价的值
+                    if daily_close and daily_close <= limit_price:
+                        # 如果收盘价在限价内，使用收盘价（更接近实际成交价）
+                        fill_price = daily_close
+                    else:
+                        # 否则使用限价（订单在限价处成交）
+                        fill_price = limit_price
                     # 确保成交价不超过限价
                     fill_price = min(fill_price, limit_price)
-                    print(f"[Order Fill] ✅ {symbol} BUY order FILLED: daily low ${daily_low:.2f} <= limit {limit_price:.2f}, fill price: ${fill_price:.2f}")
+                    print(f"[Order Fill] ✅ {symbol} BUY order FILLED: daily low ${daily_low:.2f} <= limit {limit_price:.2f}, fill price: ${fill_price:.2f} (close: ${daily_close:.2f})")
                     return {
                         "filled": True,
                         "fill_price": fill_price,
-                        "fill_reason": f"Daily low ${daily_low:.2f} <= limit ${limit_price:.2f}",
+                        "fill_reason": f"Daily low ${daily_low:.2f} <= limit ${limit_price:.2f}, filled at ${fill_price:.2f}",
                         "daily_high": daily_high,
                         "daily_low": daily_low,
                         "current_price": None,
@@ -381,18 +389,25 @@ class OrderManager:
             
             elif action == "SELL":
                 # 卖出：如果当天的 High 高于等于限价，订单可以成交
-                # 成交价格：使用当天的收盘价（Close），如果不可用则使用 High（实际成交价）
+                # 成交价格：使用当天的实际成交价（优先使用High或收盘价，因为限价订单在触及限价时成交）
                 if daily_high >= limit_price:
                     # 可以成交
-                    # 使用收盘价作为成交价（更接近实际成交价格），如果不可用则使用 High
-                    fill_price = daily_close if daily_close else daily_high
+                    # 对于限价卖出订单，成交价应该是 max(limit_price, daily_high)
+                    # 但如果 daily_high 远高于 limit_price，使用 limit_price 更合理（因为订单在限价处成交）
+                    # 如果 daily_high 接近 limit_price，使用 daily_close 或 daily_high 更接近实际成交价
+                    if daily_close and daily_close >= limit_price:
+                        # 如果收盘价在限价以上，使用收盘价（更接近实际成交价）
+                        fill_price = daily_close
+                    else:
+                        # 否则使用限价（订单在限价处成交）
+                        fill_price = limit_price
                     # 确保成交价不低于限价
                     fill_price = max(fill_price, limit_price)
-                    print(f"[Order Fill] ✅ {symbol} SELL order FILLED: daily high ${daily_high:.2f} >= limit {limit_price:.2f}, fill price: ${fill_price:.2f}")
+                    print(f"[Order Fill] ✅ {symbol} SELL order FILLED: daily high ${daily_high:.2f} >= limit {limit_price:.2f}, fill price: ${fill_price:.2f} (close: ${daily_close:.2f})")
                     return {
                         "filled": True,
                         "fill_price": fill_price,
-                        "fill_reason": f"Daily high ${daily_high:.2f} >= limit ${limit_price:.2f}",
+                        "fill_reason": f"Daily high ${daily_high:.2f} >= limit ${limit_price:.2f}, filled at ${fill_price:.2f}",
                         "daily_high": daily_high,
                         "daily_low": daily_low,
                         "current_price": None,

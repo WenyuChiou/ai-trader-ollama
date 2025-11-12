@@ -76,24 +76,42 @@ class EquityTracker:
                         last_positions = last_record.get("positions", {})
                         
                         # 如果净值下降超过 50%，且当前是 10000.0，且之前有持仓，记录警告并跳过
-                        if (last_value > 0 and 
+                        # 或者如果净值突然回到初始值（10000），且之前有持仓，也跳过
+                        suspicious_drop = (
+                            last_value > 0 and 
                             current_value < last_value * 0.5 and 
                             current_value == 10000.0 and 
                             current_cash == 10000.0 and
                             current_equity == 0.0 and
                             len(last_positions) > 0 and
-                            len(positions) == 0):
-                            print(f"[EQUITY WARNING] ⚠️ Suspicious equity drop detected: ${last_value:.2f} -> ${current_value:.2f}")
+                            len(positions) == 0
+                        )
+                        # 额外检查：如果净值突然回到初始值，且之前有持仓
+                        reset_to_initial = (
+                            last_value > 10000.0 and
+                            current_value == 10000.0 and
+                            current_cash == 10000.0 and
+                            current_equity == 0.0 and
+                            len(last_positions) > 0 and
+                            len(positions) == 0
+                        )
+                        if suspicious_drop or reset_to_initial:
+                            print(f"[EQUITY WARNING] ⚠️ Suspicious equity drop/reset detected: ${last_value:.2f} -> ${current_value:.2f}")
                             print(f"[EQUITY WARNING] Previous positions: {len(last_positions)}, Current positions: {len(positions)}")
+                            print(f"[EQUITY WARNING] Previous cash: ${last_record.get('cash', 0):.2f}, Current cash: ${current_cash:.2f}")
                             print(f"[EQUITY WARNING] Skipping recording to prevent data corruption (likely portfolio state not loaded correctly)")
                             return  # 不记录异常数据
             except Exception as e:
                 # 如果检查失败，继续记录（但记录警告）
                 print(f"[EQUITY WARNING] Failed to check previous equity: {e}, continuing with record")
         
+        # CRITICAL: 确保时间戳始终包含Z后缀（UTC时区标识）
+        # 使用UTC时间，ISO 8601格式，确保前端能正确解析
+        timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        
         record = {
             "date": date_str,
-            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),  # 使用 UTC 时区，ISO 8601 格式
+            "timestamp": timestamp_str,  # 使用 UTC 时区，ISO 8601 格式，确保包含 Z
             "cash": current_cash,
             "equity_value": current_equity,
             "total_value": current_value,
@@ -101,6 +119,11 @@ class EquityTracker:
             "total_pnl_pct": float(portfolio_snapshot.get("total_pnl_pct", 0.0)),
             "positions": positions,
         }
+        
+        # 验证时间戳格式
+        if not timestamp_str.endswith('Z'):
+            print(f"[EQUITY WARNING] Timestamp missing Z suffix: {timestamp_str}, fixing...")
+            record["timestamp"] = timestamp_str + 'Z'
         
         # 追加到 JSONL 文件
         with self.equity_file.open("a", encoding="utf-8") as f:
@@ -134,6 +157,24 @@ class EquityTracker:
                 for line in f:
                     if line.strip():
                         record = json.loads(line)
+                        
+                        # CRITICAL: 确保所有记录都有timestamp字段
+                        # 如果旧数据缺少timestamp，从date生成一个默认的timestamp
+                        if "timestamp" not in record or not record.get("timestamp"):
+                            if record.get("date"):
+                                # 为旧数据生成一个默认的timestamp（使用当天的中午UTC时间）
+                                record["timestamp"] = record["date"] + "T12:00:00.000Z"
+                                print(f"[EQUITY] Added missing timestamp for record {record.get('date')}: {record['timestamp']}")
+                            else:
+                                # 如果连date都没有，使用当前时间
+                                record["timestamp"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                        
+                        # 确保timestamp格式正确（包含Z后缀）
+                        if record.get("timestamp") and not record["timestamp"].endswith('Z'):
+                            # 检查是否包含时区信息（+ 或 - 在位置10之后）
+                            ts = record["timestamp"]
+                            if '+' not in ts and ('-' not in ts[10:] if len(ts) > 10 else True):
+                                record["timestamp"] = record["timestamp"] + 'Z'
                         
                         # 日期过滤
                         record_date = record.get("date", "")

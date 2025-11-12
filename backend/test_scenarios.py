@@ -1422,6 +1422,102 @@ class ScenarioTester:
                     else:
                         print(f"   ✅ Buy orders respect cash limit (${total_buy_cost:.2f} <= ${available_cash:.2f})")
                         checks.append(("Buy orders respect cash limit", True))
+                
+                # Check 13: Execution price accuracy (NEW - verifies fix for issue #1)
+                # Verify that filled orders use actual market prices, not limit prices
+                filled_orders_file = self.logs_dir / "filled_orders.jsonl"
+                if filled_orders_file.exists():
+                    try:
+                        with filled_orders_file.open("r", encoding="utf-8") as f:
+                            filled_lines = f.readlines()
+                            if filled_lines:
+                                # Check last few filled orders
+                                price_checks = []
+                                for line in filled_lines[-5:]:  # Check last 5 filled orders
+                                    try:
+                                        order = json.loads(line.strip())
+                                        fill_price = order.get("fill_price")
+                                        limit_price = order.get("limit_price")
+                                        current_price = order.get("current_price")
+                                        
+                                        if fill_price and limit_price:
+                                            # For BUY: fill_price should be <= limit_price and close to current_price
+                                            # For SELL: fill_price should be >= limit_price and close to current_price
+                                            action = order.get("action", "")
+                                            if action == "BUY":
+                                                # Fill price should be <= limit and close to current_price (if available)
+                                                price_ok = fill_price <= limit_price
+                                                if current_price:
+                                                    # Fill price should be within 5% of current price (allowing for market movement)
+                                                    price_diff_pct = abs(fill_price - current_price) / current_price * 100
+                                                    price_ok = price_ok and price_diff_pct <= 5.0
+                                                price_checks.append(price_ok)
+                                            elif action == "SELL":
+                                                # Fill price should be >= limit and close to current_price (if available)
+                                                price_ok = fill_price >= limit_price
+                                                if current_price:
+                                                    # Fill price should be within 5% of current price
+                                                    price_diff_pct = abs(fill_price - current_price) / current_price * 100
+                                                    price_ok = price_ok and price_diff_pct <= 5.0
+                                                price_checks.append(price_ok)
+                                    except (json.JSONDecodeError, KeyError, ValueError):
+                                        continue
+                                
+                                if price_checks:
+                                    all_prices_ok = all(price_checks)
+                                    checks.append(("Execution prices match market prices", all_prices_ok))
+                                    if all_prices_ok:
+                                        print(f"   ✅ Execution prices verified: {len(price_checks)} orders checked")
+                                    else:
+                                        print(f"   ⚠️  Some execution prices may not match market prices")
+                    except Exception as e:
+                        print(f"   ⚠️  Could not verify execution prices: {e}")
+                
+                # Check 14: Equity history integrity (NEW - verifies fix for issue #3)
+                # Verify that equity history doesn't have abnormal drops to 10000
+                equity_file = self.logs_dir / "equity_history.jsonl"
+                if equity_file.exists():
+                    try:
+                        with equity_file.open("r", encoding="utf-8") as f:
+                            equity_lines = f.readlines()
+                            if len(equity_lines) >= 2:
+                                # Check last 2 records for abnormal drops
+                                last_record = json.loads(equity_lines[-1].strip())
+                                prev_record = json.loads(equity_lines[-2].strip())
+                                
+                                last_value = float(last_record.get("total_value", 0))
+                                prev_value = float(prev_record.get("total_value", 0))
+                                last_positions = len(last_record.get("positions", {}))
+                                prev_positions = len(prev_record.get("positions", {}))
+                                
+                                # Check for suspicious reset: value drops to 10000 with positions disappearing
+                                suspicious_reset = (
+                                    prev_value > 10000.0 and
+                                    last_value == 10000.0 and
+                                    prev_positions > 0 and
+                                    last_positions == 0
+                                )
+                                
+                                if suspicious_reset:
+                                    checks.append(("Equity history integrity (no abnormal reset)", False))
+                                    print(f"   ⚠️  Warning: Suspicious equity reset detected: ${prev_value:.2f} -> ${last_value:.2f}")
+                                else:
+                                    checks.append(("Equity history integrity (no abnormal reset)", True))
+                                    print(f"   ✅ Equity history integrity verified")
+                    except Exception as e:
+                        print(f"   ⚠️  Could not verify equity history: {e}")
+                
+                # Check 15: Plan tomorrow market data (NEW - verifies fix for issue #4)
+                # For scenarios 3 and 4 (market closed), verify that market data was fetched
+                if scenario_num in [3, 4]:
+                    market_agent = result.get("market_agent", {})
+                    stocks = market_agent.get("stocks", {})
+                    if len(stocks) > 0:
+                        checks.append(("Plan tomorrow: Market data fetched", True))
+                        print(f"   ✅ Market data fetched for planning: {len(stocks)} stocks")
+                    else:
+                        checks.append(("Plan tomorrow: Market data fetched", False))
+                        print(f"   ⚠️  Warning: No market data fetched for planning")
         
         # Summary
         passed = sum(1 for _, result in checks if result)

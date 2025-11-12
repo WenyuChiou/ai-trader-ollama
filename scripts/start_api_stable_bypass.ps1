@@ -9,10 +9,40 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
 $BackendDir = Join-Path $ProjectRoot "backend"
 
-# Get local IP address for sharing
-$localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike "*Loopback*" -and $_.IPAddress -notlike "169.254.*"} | Select-Object -First 1).IPAddress
+# Get local IP address for sharing (improved method)
+$localIP = $null
+try {
+    # Method 1: Get first non-loopback, non-APIPA IPv4 address
+    $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | 
+        Where-Object {
+            $_.InterfaceAlias -notlike "*Loopback*" -and 
+            $_.IPAddress -notlike "169.254.*" -and
+            $_.IPAddress -notlike "127.*"
+        } | 
+        Sort-Object -Property InterfaceIndex
+    
+    if ($ipAddresses) {
+        $localIP = $ipAddresses[0].IPAddress
+    }
+    
+    # Method 2: Fallback - try to get IP from network adapter
+    if (-not $localIP) {
+        $adapter = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+        if ($adapter) {
+            $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | 
+                Where-Object {$_.IPAddress -notlike "169.254.*" -and $_.IPAddress -notlike "127.*"}
+            if ($ipConfig) {
+                $localIP = $ipConfig.IPAddress
+            }
+        }
+    }
+} catch {
+    Write-Host "  [WARN] Could not detect IP address: $_" -ForegroundColor Yellow
+}
+
 if (-not $localIP) {
     $localIP = "YOUR_IP_ADDRESS"
+    Write-Host "  [WARN] Using placeholder IP - run get_share_link.ps1 to get actual IP" -ForegroundColor Yellow
 }
 
 Write-Host "================================================" -ForegroundColor Cyan
@@ -54,22 +84,33 @@ if (Test-Path $venvPath) {
 Write-Host "[Check] Port 8000..." -ForegroundColor Yellow
 $portConnections = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
 if ($portConnections) {
-    $processIds = $portConnections.OwningProcess | Select-Object -Unique
-    foreach ($processId in $processIds) {
-        $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
-        if ($process) {
-            Write-Host "  Found process: PID $processId ($($process.ProcessName))" -ForegroundColor Yellow
-            Write-Host "  Stopping..." -ForegroundColor Yellow
-            try {
-                Stop-Process -Id $processId -Force -ErrorAction Stop
-                Write-Host "  [OK] Process $processId stopped" -ForegroundColor Green
-            } catch {
-                $errorMsg = $_.Exception.Message
-                Write-Host "  [ERROR] Failed to stop process $processId : $errorMsg" -ForegroundColor Red
+    $processIds = $portConnections.OwningProcess | Select-Object -Unique | Where-Object {$_ -gt 0}
+    if ($processIds) {
+        foreach ($processId in $processIds) {
+            # Skip PID 0 (System Idle Process) - cannot and should not be stopped
+            if ($processId -eq 0) {
+                Write-Host "  [SKIP] PID 0 (System Idle Process) - skipping" -ForegroundColor Gray
+                continue
+            }
+            
+            $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+            if ($process) {
+                Write-Host "  Found process: PID $processId ($($process.ProcessName))" -ForegroundColor Yellow
+                Write-Host "  Stopping..." -ForegroundColor Yellow
+                try {
+                    Stop-Process -Id $processId -Force -ErrorAction Stop
+                    Write-Host "  [OK] Process $processId stopped" -ForegroundColor Green
+                } catch {
+                    $errorMsg = $_.Exception.Message
+                    Write-Host "  [WARN] Could not stop process $processId : $errorMsg" -ForegroundColor Yellow
+                    Write-Host "  (This is OK if it's a system process)" -ForegroundColor Gray
+                }
             }
         }
+        Start-Sleep -Seconds 2
+    } else {
+        Write-Host "  [OK] Port 8000 is available (only system processes)" -ForegroundColor Green
     }
-    Start-Sleep -Seconds 2
 } else {
     Write-Host "  [OK] Port 8000 is available" -ForegroundColor Green
 }

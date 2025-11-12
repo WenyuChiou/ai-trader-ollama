@@ -50,7 +50,7 @@
   },
   "preferred_domains": [
     "www.cboe.com",
-    "www.wsj.com",
+    "https://www.wsj.com/finance?mod=nav_top_section",
     "www.reuters.com",
     "www.ft.com",
     "www.cmegroup.com",

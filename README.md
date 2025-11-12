@@ -22,7 +22,6 @@
 - [Agent Discussion Flow](#-agent-discussion-flow)
 - [Trading Workflow](#-trading-workflow)
 - [API Endpoints](#-api-endpoints)
-- [Frontend Features](#-frontend-features)
 - [Configuration](#-configuration)
 - [Testing](#-testing)
 - [Project Structure](#-project-structure)
@@ -338,14 +337,7 @@ Invoke-WebRequest -Uri http://localhost:8000/api/status | Select-Object -ExpandP
 - Port 8000 not in use
 - Browser shows "This site can't be reached"
 
-**5. Start Frontend**
-```bash
-# In a new terminal
-cd frontend
-python -m http.server 3000
-```
-
-**6. Access Dashboard**
+**5. Access Dashboard**
 
 **Local Access**:
 ```
@@ -356,11 +348,24 @@ http://localhost:3000/monitor.html
 ```
 https://your-username.github.io/ai-trader-ollama/monitor.html
 ```
+
+<details>
+<summary><b>Frontend Setup (Developer Only - Click to expand)</b></summary>
+
+```bash
+# In a new terminal
+cd frontend
+python -m http.server 3000
+```
+
 > 💡 **Tip**: After deploying to GitHub Pages, anyone can access your frontend via the public URL. See [Deployment Guide](#-deployment--sharing) for details.
+
+</details>
 
 ### First Trading Cycle
 
 1. **Check System Status**
+   - Open dashboard: `http://localhost:3000/monitor.html`
    - Market Status indicator (top right)
    - Portfolio display (should show $10,000 cash)
 
@@ -1275,6 +1280,9 @@ http://localhost:8000/redoc
 
 ## 🎨 Frontend Features
 
+<details>
+<summary><b>Frontend Dashboard Details (Developer Only - Click to expand)</b></summary>
+
 ### Dashboard Components
 
 #### 1. **Quick Navigation Bar**
@@ -1328,8 +1336,6 @@ http://localhost:8000/redoc
 - **Tooltip Details**: Full timestamp with seconds on hover
 - **Data Recording Optimization**: Limits recording frequency to prevent excessive data points
 
----
-
 ### UI Theme
 
 **Dark Tech Style**:
@@ -1339,6 +1345,10 @@ http://localhost:8000/redoc
 - Text: `#e5e7eb` (light gray)
 - Borders: Gradient cyan
 - Effects: Glassmorphism, neon glow, smooth animations
+
+</details>
+
+**User-facing**: Access the dashboard at `http://localhost:3000/monitor.html` or via GitHub Pages after deployment.
 
 ---
 
@@ -1998,15 +2008,7 @@ $response.Content
 
 #### Step 2: Enable Auto Trading (Optional but Recommended)
 
-**Open frontend**:
-```powershell
-# In a new terminal
-cd frontend
-python -m http.server 3000
-```
-
-**Then**:
-1. Open browser: `http://localhost:3000/monitor.html`
+1. Open dashboard: `http://localhost:3000/monitor.html`
 2. Click **"▶️ Start Auto Trade"** button
 3. System will automatically:
    - Execute trading cycles every 1 hour (during market hours)
@@ -2014,6 +2016,17 @@ python -m http.server 3000
    - Refresh data every 30 seconds
 
 **You can now close the browser** - backend continues running!
+
+<details>
+<summary><b>Frontend Setup (Developer Only - Click to expand)</b></summary>
+
+```powershell
+# In a new terminal
+cd frontend
+python -m http.server 3000
+```
+
+</details>
 
 #### Step 3: Monitor System (Daily Check)
 
@@ -2027,7 +2040,7 @@ start http://localhost:8000/api/status
 ```
 
 **View Portfolio**:
-- Open: `http://localhost:3000/monitor.html`
+- Open dashboard: `http://localhost:3000/monitor.html`
 - All data will be up-to-date (even if you closed it before)
 
 #### Step 4: Maintenance (Weekly/Monthly)
@@ -2090,12 +2103,12 @@ The system is designed to run continuously for extended periods. Here are the ke
 - Check logs for errors
 - Verify orders are being executed correctly
 
-##### 2. **Frontend Webpage** (Can Be Closed)
+##### 2. **Frontend Dashboard** (Can Be Closed)
 
-**✅ You can close the webpage** - it won't affect backend operations.
+**✅ You can close the dashboard** - it won't affect backend operations.
 
 **Why**:
-- Frontend is **display-only** - it doesn't execute trading logic
+- Dashboard is **display-only** - it doesn't execute trading logic
 - All trading logic runs in the backend
 - Backend continues to:
   - Execute trading cycles
@@ -2107,7 +2120,7 @@ The system is designed to run continuously for extended periods. Here are the ke
 - ✅ Backend continues hourly trading cycles (market hours)
 - ✅ Backend continues hourly planning checks (non-trading hours)
 - ✅ All data saved to files
-- ❌ Frontend stops refreshing (no impact on backend)
+- ❌ Dashboard stops refreshing (no impact on backend)
 
 **When You Reopen**:
 - ✅ Automatically loads latest data
@@ -2226,11 +2239,11 @@ curl -X POST http://localhost:8000/api/system/init
    - Check API status daily: `http://localhost:8000/api/status`
    - Review error logs weekly
    - Monitor disk space monthly
-   - Use frontend dashboard for visual monitoring
+   - Use dashboard for visual monitoring: `http://localhost:3000/monitor.html`
 
-3. **Frontend**:
+3. **Dashboard**:
    - Can be closed when not needed
-   - Reopen anytime to check status: `http://localhost:3000/monitor.html`
+   - Reopen anytime to check status
    - No impact on backend operations
    - Auto-refreshes when open
 
@@ -2255,7 +2268,7 @@ curl http://localhost:8000/api/status
 # 2. If not running, restart
 .\scripts\restart_api_fast.ps1
 
-# 3. Open frontend to check status
+# 3. Open dashboard to check status
 start http://localhost:3000/monitor.html
 ```
 
@@ -2372,17 +2385,24 @@ $env:FRED_API_KEY="your_key_here"
 
 ---
 
-#### 3. **Frontend CORS Errors**
+#### 3. **Dashboard CORS Errors**
 
 **Error**: `Access to fetch at 'file://...' has been blocked by CORS`
 
-**Solution**: Don't open `monitor.html` directly. Use HTTP server:
+**Solution**: Access via HTTP server, not directly:
+```
+http://localhost:3000/monitor.html
+```
+
+<details>
+<summary><b>Frontend Setup (Developer Only - Click to expand)</b></summary>
+
 ```bash
 cd frontend
 python -m http.server 3000
-
-# Then access: http://localhost:3000/monitor.html
 ```
+
+</details>
 
 ---
 
@@ -2506,7 +2526,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\get_share_link.ps1
 - **Tool Implementations**: `backend/src/tools/`
 - **API Server**: `backend/src/api/server.py`
 - **Trading Logic**: `backend/src/orchestrator/trading_cycle.py`
-- **Frontend**: `frontend/monitor.html`
+- **Dashboard**: `frontend/monitor.html`
 
 ---
 
@@ -2535,7 +2555,7 @@ MIT License - see `LICENSE` file for details
 - **Ollama**: Local LLM inference
 - **yfinance**: Market data
 - **FRED API**: Economic data
-- **Chart.js**: Frontend charts
+- **Chart.js**: Dashboard charts
 - **FastAPI**: Backend API framework
 
 ---
@@ -2560,7 +2580,7 @@ MIT License - see `LICENSE` file for details
 - ✅ Memory Management Optimization
 - ✅ Initialization Conflict Detection
 - 🔄 Scenario-based Testing
-- 📋 Frontend Integration
+- 📋 Dashboard Integration
 
 ### Q2 2025
 - Options trading capability
@@ -2583,9 +2603,9 @@ MIT License - see `LICENSE` file for details
 ### Current Status: Round 2 Complete ✅
 
 - **Round 1**: Backend API Testing - ✅ 9/9 passed (100%)
-- **Round 2**: Frontend Functionality Testing - ✅ 22/22 passed (100%)
+- **Round 2**: Dashboard Functionality Testing - ✅ 22/22 passed (100%)
 - **Round 3**: Data Recording Scenarios - ⏭️ Next
-- **Round 4**: Frontend-Backend Integration - ⏭️ Pending
+- **Round 4**: Dashboard-Backend Integration - ⏭️ Pending
 
 See `backend/TESTING_STATUS.md` for detailed testing information.
 

@@ -40,6 +40,13 @@ const API_CONFIG = {
             return `${protocol}//${hostname}:8000`;
         }
         
+        // Check if running on GitHub Pages (github.io domain)
+        if (hostname.includes('github.io')) {
+            // GitHub Pages deployment - use production backend URL
+            // User needs to update 'production' URL in this file
+            return this.production;
+        }
+        
         // Otherwise use production URL (for deployed environments)
         return this.production;
     }

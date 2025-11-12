@@ -1498,57 +1498,67 @@ curl http://localhost:8000/api/portfolio/real-time
 
 ### GitHub Pages Deployment (Frontend) ⭐ New
 
-Deploy the frontend to GitHub Pages so others can access it via browser:
+Deploy the frontend to GitHub Pages so others can access it via browser (like https://hkuds.github.io/AI-Trader/portfolio.html):
 
-#### Quick Deployment Steps
+#### Quick Deployment Steps (5 minutes)
 
-1. **Push to GitHub**
-   ```bash
+1. **Push to GitHub** (if not already done)
+   ```powershell
    git add .
-   git commit -m "Add deployment configuration"
+   git commit -m "Prepare for GitHub Pages"
    git push origin main
    ```
 
 2. **Enable GitHub Pages**
-   - Go to repository Settings → Pages
-   - Source: `Deploy from a branch`
-   - Branch: `main` / `frontend`
-   - Folder: `/frontend`
-   - Click Save
+   - Go to repository: `https://github.com/你的用户名/ai-trader-ollama`
+   - Click **Settings** → **Pages**
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`
+   - **Folder**: `/frontend`
+   - Click **Save**
 
-3. **Configure API Address**
+3. **Wait for Deployment** (1-2 minutes)
+   - GitHub Actions will automatically deploy
+   - You'll see a green success message
+   - Get your public URL: `https://你的用户名.github.io/ai-trader-ollama/monitor.html`
+
+4. **Configure Backend API Address**
    - Edit `frontend/config.js`
-   - Update `production` to your backend API address
+   - Update `production` to your backend API address:
    ```javascript
-   production: 'https://your-railway-app.railway.app',  // Replace with your backend address
+   production: 'https://your-railway-app.railway.app',  // Or ngrok URL
+   ```
+   - Commit and push:
+   ```powershell
+   git add frontend/config.js
+   git commit -m "Configure API for GitHub Pages"
+   git push origin main
    ```
 
-4. **Access Links**
+5. **Deploy Backend** (Choose one):
+   - **Option A**: Use ngrok (quick test) - See [Public Access Guide](docs/PUBLIC_ACCESS_GUIDE.md)
+   - **Option B**: Deploy to Railway (stable) - See [GitHub Pages Setup](docs/GITHUB_PAGES_SETUP.md)
 
-**Public Frontend URL** (auto-generated after deployment):
+6. **Access Your Website**:
+   ```
+   https://你的用户名.github.io/ai-trader-ollama/monitor.html
+   ```
+
+**Example** (if your username is `WenyuChiou`):
 ```
-https://your-username.github.io/ai-trader-ollama/monitor.html
+https://WenyuChiou.github.io/ai-trader-ollama/monitor.html
 ```
 
-**Examples** (based on actual repository name):
-- If repository is `WenyuChiou/ai-trader-ollama`:
-  ```
-  https://WenyuChiou.github.io/ai-trader-ollama/monitor.html
-  ```
-- If repository is `your-username/ai-trader-ollama`:
-  ```
-  https://your-username.github.io/ai-trader-ollama/monitor.html
-  ```
+**Now anyone can access your website via the internet!** ✅
 
-**Other Links**:
-- API Documentation: `https://your-api-server.com/docs`
-- API Status: `https://your-api-server.com/api/status`
+**Features**:
+- ✅ Automatic deployment via GitHub Actions
+- ✅ Auto HTTPS (no SSL configuration needed)
+- ✅ Auto-update on every push
+- ✅ Read-only mode for security
+- ✅ Professional public URL
 
-**New Features**:
-- ✅ Automatic environment detection (local vs production)
-- ✅ GitHub Actions auto-deployment workflow
-- ✅ Configuration file separation (`frontend/config.js`)
-- ✅ Public HTTPS access (no configuration needed)
+**For detailed guide, see**: [📖 GitHub Pages Setup Guide](docs/GITHUB_PAGES_SETUP.md)
 
 #### Backend Deployment Options
 

@@ -1664,9 +1664,24 @@ If you've deployed to **GitHub Pages + Railway**:
 
 **For detailed scenarios, see**: [📖 Deployment Scenarios Guide](docs/DEPLOYMENT_SCENARIOS.md)
 
-### Local Sharing (Same Network)
+### ⚠️ Local Sharing (Deprecated - Use GitHub Pages + Railway Instead)
 
-If you only want to share on local network (or for quick testing):
+**Note**: LAN sharing is deprecated. **Recommended**: Use **GitHub Pages + Railway** for public access.
+
+**Why deprecated?**
+- ❌ Only works on same network
+- ❌ Requires your computer to run continuously
+- ❌ IP address may change
+- ❌ Complex configuration
+
+**Recommended alternative**: See [GitHub Pages Deployment](#github-pages-deployment-frontend--new) above.
+
+---
+
+<details>
+<summary><b>Old LAN Sharing Instructions (Deprecated - Click to expand)</b></summary>
+
+If you still need LAN sharing for quick local testing:
 
 1. **Start Backend (Allow LAN Access)**
    ```powershell
@@ -1682,8 +1697,6 @@ If you only want to share on local network (or for quick testing):
    cd frontend
    python -m http.server 3000
    ```
-   
-   **Note**: Frontend server must keep running. The script opens a new window so you can continue working.
 
 3. **Get Share Link**
    ```powershell
@@ -1695,6 +1708,10 @@ If you only want to share on local network (or for quick testing):
 http://192.168.4.24:3000/monitor.html  # Frontend (replace with your actual IP)
 http://192.168.4.24:8000/docs           # API Documentation (replace with your actual IP)
 ```
+
+**⚠️ Note**: These scripts are deprecated. Use GitHub Pages + Railway instead.
+
+</details>
 
 **To get your actual IP address**:
 ```powershell

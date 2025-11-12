@@ -7587,14 +7587,26 @@
         function collectNewsData(conversations) {
             const newsData = [];
             
+            // Debug: Log conversations count and types
+            console.log('[News] Collecting news data from', conversations.length, 'conversations');
+            const toolConversations = conversations.filter(c => c.type === 'tool');
+            console.log('[News] Found', toolConversations.length, 'tool conversations');
+            const newsTools = toolConversations.filter(c => {
+                const toolName = (c.tool_name || '').toLowerCase();
+                return toolName.includes('news') || toolName.includes('plan_and_scan');
+            });
+            console.log('[News] Found', newsTools.length, 'news tool calls:', newsTools.map(t => t.tool_name));
+            
             // 从所有conversations中提取新闻工具的结果
             for (const conv of conversations) {
                 if (conv.type === 'tool') {
                     const toolName = conv.tool_name || '';
                     const content = conv.content || '';
                     
-                    // Check if it's a news-related tool
-                    if (toolName.includes('news') || toolName.includes('plan_and_scan')) {
+                    // Check if it's a news-related tool (case-insensitive)
+                    const toolNameLower = toolName.toLowerCase();
+                    if (toolNameLower.includes('news') || toolNameLower.includes('plan_and_scan')) {
+                        console.log('[News] Processing news tool:', toolName, 'Content length:', content.length);
                         try {
                             // 尝试解析工具结果
                             let result = null;
@@ -7680,6 +7692,7 @@
                             
                             // 提取新闻数据
                             if (result && result.hits && Array.isArray(result.hits)) {
+                                console.log('[News] Found', result.hits.length, 'news hits from', toolName);
                                 for (const hit of result.hits) {
                                     if (hit && (hit.title || hit.link)) {
                                         newsData.push({
@@ -7693,6 +7706,8 @@
                                         });
                                     }
                                 }
+                            } else {
+                                console.warn('[News] No hits array found in result:', result ? Object.keys(result) : 'null');
                             }
                             
                             // 如果有queries信息，也保存
@@ -7729,9 +7744,11 @@
             
             // 获取当前conversations数据
             const conversations = window.currentConversations || [];
+            console.log('[News Modal] Opening with', conversations.length, 'conversations');
             
             // 收集新闻数据
             const newsData = collectNewsData(conversations);
+            console.log('[News Modal] Collected', newsData.length, 'news items');
             
             if (newsData.length === 0) {
                 newsContent.innerHTML = `

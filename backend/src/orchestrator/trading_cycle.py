@@ -580,10 +580,21 @@ def execute_daily_trade(
         next_trading_day = get_next_trading_day(date.today(), days_ahead=1)
         today = next_trading_day.isoformat()
         
-        # 检查是否已经有明天的订单计划
+        # 检查是否已经有明天的订单计划（pending orders）
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         if existing_pending_orders:
-            print(f"[TRADING CYCLE] Market closed. Already have {len(existing_pending_orders)} pending orders for {today}, skipping new order creation.")
+            # 如果有 pending orders，视为已有规划，直接返回，不继续执行交易周期
+            print(f"[TRADING CYCLE] Market closed. Already have {len(existing_pending_orders)} pending orders for {today}. No new planning needed.")
+            # 返回现有订单，不继续执行
+            return {
+                "placed_orders": existing_pending_orders,
+                "executed_trades": [],
+                "execution_errors": [],
+                "conversations_count": 0,
+                "is_planning": True,
+                "order_date": today,
+                "message": f"Already have {len(existing_pending_orders)} pending orders for {today}. No new planning needed."
+            }
         is_market_open_for_simulation = False
     
     executed_trades = []

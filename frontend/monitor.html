@@ -6484,10 +6484,23 @@
                 const data = await resp.json();
                 return data.ok ? (data.trades || []) : [];
             } catch (e) {
-                // Silently handle errors to avoid console noise
-                if (e.name !== 'AbortError') {
-                    console.warn('Failed to fetch trades:', e.message);
+                // Handle network errors gracefully (especially during trading cycle execution)
+                if (e.name === 'AbortError') {
+                    return [];
                 }
+                // ERR_NETWORK_CHANGED is often temporary (backend busy processing)
+                if (e.message && (e.message.includes('ERR_NETWORK_CHANGED') || e.message.includes('Failed to fetch'))) {
+                    // If trading is executing, this is expected - silently return empty
+                    if (isTradingExecuting) {
+                        console.debug('[Fetch Trades] Network error during trading execution (expected)');
+                        return [];
+                    }
+                    // Otherwise, log as warning but don't show error page
+                    console.debug('[Fetch Trades] Network error (may be temporary):', e.message);
+                    return [];
+                }
+                // Other errors: log but don't show error page
+                console.warn('Failed to fetch trades:', e.message);
                 return [];
             }
         }
@@ -7122,9 +7135,28 @@
                     isRefreshing = false;
                     return;
                 }
+                
+                // Handle network errors gracefully (especially during trading cycle execution)
+                const isNetworkError = error.message && (
+                    error.message.includes('ERR_NETWORK_CHANGED') || 
+                    error.message.includes('Failed to fetch') ||
+                    error.message.includes('network')
+                );
+                
+                // If trading is executing and we get network errors, this is expected
+                if (isTradingExecuting && isNetworkError) {
+                    console.debug('[Refresh] Network error during trading execution (expected, backend is busy)');
+                    // Don't show error page, just return silently
+                    isRefreshing = false;
+                    return;
+                }
+                
                 console.error('Error fetching data:', error);
                 
-                updateConnectionStatus(false);
+                // Only update connection status if not a temporary network error
+                if (!isNetworkError) {
+                    updateConnectionStatus(false);
+                }
                 
                 // Even if portfolio fails, try to display backend status
                 try {

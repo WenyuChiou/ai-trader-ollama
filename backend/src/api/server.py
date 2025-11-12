@@ -2275,6 +2275,17 @@ async def upload_data(data: dict):
             uploaded_counts["equity_history"] = count
             log_print(f"[Upload] Uploaded {count} equity history records")
         
+        # Upload pending orders
+        if "pending_orders" in data and data["pending_orders"]:
+            pending_file = logs_dir / "pending_orders.jsonl"
+            count = 0
+            with pending_file.open("a", encoding="utf-8") as f:
+                for entry in data["pending_orders"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    count += 1
+            uploaded_counts["pending_orders"] = count
+            log_print(f"[Upload] Uploaded {count} pending orders")
+        
         return JSONResponse(
             status_code=200,
             content={

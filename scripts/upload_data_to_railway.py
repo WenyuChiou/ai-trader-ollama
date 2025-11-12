@@ -153,19 +153,22 @@ def main():
     convo_file = find_data_file("discussion_actions.jsonl")
     trades_file = find_data_file("trades.jsonl")
     filled_file = find_data_file("filled_orders.jsonl")
+    pending_file = find_data_file("pending_orders.jsonl")
     equity_file = find_data_file("equity_history.jsonl")
     
     conversations = read_jsonl_file(convo_file) if convo_file else []
     trades = read_jsonl_file(trades_file) if trades_file else []
     filled_orders = read_jsonl_file(filled_file) if filled_file else []
+    pending_orders = read_jsonl_file(pending_file) if pending_file else []
     equity_history = read_jsonl_file(equity_file) if equity_file else []
     
     print(f"   Found {len(conversations)} conversations")
     print(f"   Found {len(trades)} trades")
     print(f"   Found {len(filled_orders)} filled orders")
+    print(f"   Found {len(pending_orders)} pending orders")
     print(f"   Found {len(equity_history)} equity history records")
     
-    if not any([conversations, trades, filled_orders, equity_history]):
+    if not any([conversations, trades, filled_orders, pending_orders, equity_history]):
         print("\n[ERROR] No data found to upload!")
         print("   Make sure you have run a trading cycle locally first.")
         return False
@@ -179,6 +182,8 @@ def main():
         data_dict["trades"] = trades
     if filled_orders:
         data_dict["filled_orders"] = filled_orders
+    if pending_orders:
+        data_dict["pending_orders"] = pending_orders
     if equity_history:
         data_dict["equity_history"] = equity_history
     

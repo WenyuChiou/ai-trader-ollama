@@ -1569,17 +1569,20 @@
                 }
                 
                 // Hide Auto Trade status label (since trading is disabled)
-                const autoTradeLabel = document.querySelector('span:has(#autoTradeStatus)');
-                if (autoTradeLabel && autoTradeLabel.textContent.includes('Auto Trade')) {
-                    autoTradeLabel.style.display = 'none';
+                // Find the parent span containing autoTradeStatus
+                const autoTradeStatus = document.getElementById('autoTradeStatus');
+                if (autoTradeStatus && autoTradeStatus.parentElement) {
+                    const autoTradeLabel = autoTradeStatus.parentElement;
+                    if (autoTradeLabel.textContent.includes('Auto Trade')) {
+                        autoTradeLabel.style.display = 'none';
+                    }
                 }
                 
                 // Disable auto-trade (prevent it from starting)
                 window.READ_ONLY_MODE = true;
                 
-                // Update auto trade status to show read-only (if element still exists)
-                const autoTradeStatus = document.getElementById('autoTradeStatus');
-                if (autoTradeStatus) {
+                // Update auto trade status to show read-only (if element still exists and wasn't hidden)
+                if (autoTradeStatus && autoTradeStatus.parentElement.style.display !== 'none') {
                     autoTradeStatus.textContent = 'Read-Only Mode';
                     autoTradeStatus.style.color = '#fbbf24'; // Yellow/orange color
                 }

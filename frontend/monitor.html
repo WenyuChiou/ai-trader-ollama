@@ -7736,15 +7736,28 @@
         }
 
         // 显示新闻模态框
-        function showNewsModal() {
+        async function showNewsModal() {
             const modal = document.getElementById('newsModal');
             const newsContent = document.getElementById('newsContent');
             
             if (!modal || !newsContent) return;
             
-            // 获取当前conversations数据
-            const conversations = window.currentConversations || [];
-            console.log('[News Modal] Opening with', conversations.length, 'conversations');
+            // 获取当前conversations数据（优先使用全局变量，如果没有则重新获取）
+            let conversations = window.currentConversations || [];
+            console.log('[News Modal] Opening with', conversations.length, 'conversations from cache');
+            
+            // 如果缓存为空，尝试重新获取
+            if (conversations.length === 0) {
+                console.log('[News Modal] No cached conversations, fetching fresh data...');
+                try {
+                    const convData = await fetchConversations(100);
+                    conversations = convData.conversations || [];
+                    window.currentConversations = conversations;  // 更新缓存
+                    console.log('[News Modal] Fetched', conversations.length, 'conversations');
+                } catch (e) {
+                    console.warn('[News Modal] Failed to fetch conversations:', e);
+                }
+            }
             
             // 收集新闻数据
             const newsData = collectNewsData(conversations);

@@ -10,23 +10,18 @@
 
 ```
 ai-trader-ollama/
-├── config/                    # 项目根目录配置（与backend同级）
-│   ├── config.json           # 根目录配置（与backend/config/config.json同步）
-│   └── agents.yaml           # 根目录Agent配置（与backend/config/agents.yaml同步）
-│
 ├── backend/
 │   └── config/
-│       ├── config.json       # 后端配置（主要使用，实际生效）
-│       └── agents.yaml       # 后端Agent配置（主要使用，实际生效）
+│       ├── config.json       # 后端配置（唯一配置文件）
+│       └── agents.yaml       # 后端Agent配置（唯一配置文件）
 │
 └── frontend/
     └── config.js             # 前端API地址配置
 ```
 
 **重要**：
-- **后端实际使用**：`backend/config/config.json` 和 `backend/config/agents.yaml`
-- **根目录配置**：`config/config.json` 和 `config/agents.yaml` 作为备份/同步副本
-- **保持同步**：修改配置时，建议同时更新两个位置的配置文件
+- **唯一配置文件位置**：`backend/config/config.json` 和 `backend/config/agents.yaml`
+- **所有配置修改**：只需修改 `backend/config/` 下的文件
 
 ---
 
@@ -214,10 +209,10 @@ console.log(window.API_CONFIG.apiUrl);
 - ✅ `backend/config/config.json` - 交易配置
 - ✅ `backend/config/agents.yaml` - Agent配置
 
-**配置文件同步**：
-- ✅ `config/config.json` - 与 `backend/config/config.json` 保持同步（备份副本）
-- ✅ `config/agents.yaml` - 与 `backend/config/agents.yaml` 保持同步（备份副本）
-- ⚠️ **修改配置时**：建议同时更新两个位置的配置文件，确保一致性
+**唯一配置文件位置**：
+- ✅ `backend/config/config.json` - 唯一的交易配置文件
+- ✅ `backend/config/agents.yaml` - 唯一的Agent配置文件
+- ⚠️ **修改配置时**：只需修改 `backend/config/` 下的文件
 
 ---
 

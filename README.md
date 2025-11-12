@@ -799,161 +799,208 @@ indices = get_market_indices()
 
 ## 🔄 Agent Discussion Flow
 
-### 多代理协作流程
+### Multi-Agent Collaboration Process
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 步骤 1: Market Analyst (市场分析师)                         │
+│ Step 1: Market Analyst                                      │
 ├─────────────────────────────────────────────────────────────┤
-│ • 工具调用: get_market_indices(), get_sector_rotation(),     │
-│            get_economic_summary()                            │
-│ • 分析内容: 市场整体趋势、板块轮动、经济环境                  │
-│ • 输出示例: "市场处于中期牛市阶段，科技和医疗板块领涨。      │
-│            GDP 增长稳定，VIX 处于低位。"                      │
-│ • 观点: risk_on (评分: 7.5/10)                              │
-│ • 推荐股票: 基于 signal_score > 5.0 筛选                    │
+│ • Tools: get_market_indices(), get_sector_rotation(),       │
+│          get_economic_summary()                              │
+│ • Analysis: Overall market trends, sector rotation,          │
+│            economic environment                              │
+│ • Output: "Market in mid-cycle bull phase. Tech and         │
+│          healthcare sectors leading. GDP growth stable,      │
+│          VIX at low levels."                                 │
+│ • Stance: risk_on (Score: 7.5/10)                           │
+│ • Stock Selection: Based on signal_score > 5.0              │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (传递分析结果)
+                            ▼ (Pass analysis results)
 ┌─────────────────────────────────────────────────────────────┐
-│ 步骤 2: Technical Analyst (技术分析师)                      │
+│ Step 2: Technical Analyst                                   │
 ├─────────────────────────────────────────────────────────────┤
-│ • 接收: Market Analyst 的 "risk_on" 观点                    │
-│ • 工具调用: get_advanced_indicators(), get_support_resistance() │
-│ • 分析策略: 按 signal_score 排序，优先分析高分股票          │
-│ • 分析内容: RSI, MACD, 布林带, 支撑/阻力位, 价格动量         │
-│ • 输出示例: "NVDA: RSI=65, MACD 看涨, 支撑位 120。          │
-│            MSFT: 突破阻力位 380, 成交量放大。               │
-│            整体技术面强劲，多只股票 signal_score > 6.0"     │
-│ • 观点: bullish (评分: 8.2/10)                              │
-│ • 分析股票数: 最多 8 只（受 tool_budget=15 限制，每个 analyst 最多 8 个工具）│
+│ • Receives: Market Analyst's "risk_on" stance               │
+│ • Tools: get_advanced_indicators(), get_support_resistance() │
+│ • Strategy: Sort by signal_score, prioritize high scores    │
+│ • Analysis: RSI, MACD, Bollinger Bands, support/resistance,  │
+│            price momentum                                    │
+│ • Output: "NVDA: RSI=65, MACD bullish, support at 120.     │
+│          MSFT: Breakout above resistance 380, volume up.    │
+│          Strong technical setup, multiple stocks with       │
+│          signal_score > 6.0"                                 │
+│ • Stance: bullish (Score: 8.2/10)                           │
+│ • Stocks Analyzed: Up to 8 (limited by tool_budget=15,     │
+│                    max 8 tools per analyst)                  │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (传递分析结果)
+                            ▼ (Pass analysis results)
 ┌─────────────────────────────────────────────────────────────┐
-│ 步骤 3: Fundamental Analyst (基本面分析师)                  │
+│ Step 3: Fundamental Analyst                                 │
 ├─────────────────────────────────────────────────────────────┤
-│ • 接收: Market "risk_on" + Technical "bullish"              │
-│ • 工具调用: get_company_fundamentals(),                     │
-│            get_earnings_history(),                          │
-│            get_financial_statements()                        │
-│ • 分析内容: P/E 比率, 盈利增长, ROE, 财务健康度             │
-│ • 输出示例: "NVDA: P/E=45, 盈利增长 55%, ROE=65%。          │
-│            估值合理，盈利质量强，超预期 5%。"                 │
-│ • 观点: bullish (评分: 7.8/10)                              │
+│ • Receives: Market "risk_on" + Technical "bullish"          │
+│ • Tools: get_company_fundamentals(),                        │
+│          get_earnings_history(),                            │
+│          get_financial_statements()                          │
+│ • Analysis: P/E ratio, earnings growth, ROE, financial health│
+│ • Output: "NVDA: P/E=45, earnings growth 55%, ROE=65%.       │
+│          Fair valuation, strong earnings quality,            │
+│          +5% surprise."                                      │
+│ • Stance: bullish (Score: 7.8/10)                          │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (传递分析结果)
+                            ▼ (Pass analysis results)
 ┌─────────────────────────────────────────────────────────────┐
-│ 步骤 4: Sentiment Analyst (情绪分析师)                      │
+│ Step 4: Sentiment Analyst                                   │
 ├─────────────────────────────────────────────────────────────┤
-│ • 接收: 所有之前的观点（3 个看涨）                          │
-│ • 工具调用: fear_greed(), vix_term(), news_scan()           │
-│ • 分析内容: 恐惧贪婪指数, VIX 结构, 新闻情绪                 │
-│ • 输出示例: "市场情绪看涨但接近贪婪区域。                    │
-│            F&G=65 (贪婪), VIX=18 (低位), 新闻偏正面。        │
-│            需注意潜在反转信号。"                             │
-│ • 观点: bullish (评分: 6.5/10)                              │
+│ • Receives: All previous stances (3 bullish)                │
+│ • Tools: fear_greed(), vix_term(), news_scan()               │
+│ • Analysis: Fear & Greed Index, VIX structure, news sentiment│
+│ • Output: "Market sentiment bullish but approaching greed.  │
+│          F&G=65 (Greed), VIX=18 (Low), news positive.       │
+│          Watch for potential reversal signals."              │
+│ • Stance: bullish (Score: 6.5/10)                           │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (汇总所有观点)
+                            ▼ (Aggregate all stances)
 ┌─────────────────────────────────────────────────────────────┐
-│ Final Consensus (最终共识)                                   │
+│ Final Consensus                                             │
 ├─────────────────────────────────────────────────────────────┤
-│ • 投票结果: 4 看涨 / 0 看跌 / 0 中性                        │
-│ • 最终观点: BULLISH (看涨)                                  │
-│ • 工具调用: 12-15 次（共享 15 预算）                        │
-│ • 工具多样性: 8+ 种不同工具                                 │
-│ • 分析股票数: Technical Analyst 最多分析 8 只股票（受预算限制）│
+│ • Vote: 4 bullish / 0 bearish / 0 neutral                    │
+│ • Final Stance: BULLISH                                     │
+│ • Tool Calls: 12-15 per cycle (shared 15 budget)            │
+│ • Tool Diversity: 8+ different tools                       │
+│ • Stock Coverage: Technical Analyst analyzes up to 8 stocks │
+│                    (limited by tool_budget=15)               │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (传递给 Risk Analyst)
+                            ▼ (Pass to Risk Analyst)
 ┌─────────────────────────────────────────────────────────────┐
-│ Risk Analyst (风险分析师)                                    │
+│ Risk Analyst                                                │
 ├─────────────────────────────────────────────────────────────┤
-│ • 接收: 最终共识 + 市场数据 + 当前仓位                       │
-│ • 工具调用: get_correlation_matrix(), vix_term()            │
-│ • 分析内容: 仓位集中度, 市场风险, 相关性分析                 │
-│ • 输出: 仓位控制报告, 风险调整后的仓位大小                   │
+│ • Receives: Final consensus + market data + current positions│
+│ • Tools: get_correlation_matrix(), vix_term()                │
+│ • Analysis: Position concentration, market risk, correlation │
+│ • Output: Position control report, risk-adjusted sizes       │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (传递给 Trader)
+                            ▼ (Pass to Trader)
 ┌─────────────────────────────────────────────────────────────┐
-│ Trader Agent (交易员代理)                                    │
+│ Trader Agent                                                │
 ├─────────────────────────────────────────────────────────────┤
-│ • 输入: 最终共识 (看涨) + 风险报告 + signal_score 数据      │
-│ • 决策逻辑: 优先考虑 signal_score > 3.0 的股票              │
-│ • 交易决策: 买入 NVDA x10 @ $122.50 (最多 15% 组合)         │
-│ • 订单类型: 限价单，带价格范围                               │
-│ • 筛选标准: signal_score > 3.0 (中等信号以上)                │
+│ • Input: Final consensus (bullish) + risk report +           │
+│          signal_score data                                   │
+│ • Decision Logic: Prioritize stocks with signal_score > 3.0 │
+│ • Trading Decision: Buy NVDA x10 @ $122.50                  │
+│                     (max 15% portfolio)                      │
+│ • Order Type: Limit order with price range                   │
+│ • Filter: signal_score > 3.0 (medium signal and above)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Signal Score 评分系统 (0-10 分)
+<details>
+<summary><b>Signal Score System (0-10) - Technical Details (Click to expand)</b></summary>
 
-**Signal Score** 是一个综合技术指标评分系统，用于评估股票的买入信号强度：
+**Signal Score** is a comprehensive technical indicator scoring system (0-10) that evaluates stock buy signal strength:
 
-#### 评分维度（6 个维度，总分 0-10）
+#### Scoring Dimensions (6 dimensions, total 0-10)
 
-1. **均线趋势 (0-2 分)**
-   - 基础: MA20 > MA50 (+1.0)
-   - 强化: MA20 显著高于 MA50 (>2%) (+1.0)
+1. **Moving Average Trend (0-2 points)**
+   - Base: MA20 > MA50 (+1.0)
+   - Enhanced: MA20 significantly above MA50 (>2%) (+1.0)
 
-2. **MACD 信号 (0-2.5 分)**
-   - MACD 线 > 信号线 (+1.0)
-   - MACD 柱状图为正 (+0.5)
-   - 强动量 (+1.0)
+2. **MACD Signal (0-2.5 points)**
+   - MACD line > Signal line (+1.0)
+   - MACD histogram positive (+0.5)
+   - Strong momentum (+1.0)
 
-3. **RSI 信号 (0-2 分)**
-   - RSI 在 50-70 (+1.0)
-   - RSI 在 55-65 最优 (+1.0)
-   - RSI 在 30-50 超卖反弹 (+0.5)
-   - 极端 RSI (>80 或 <20) (-0.5)
+3. **RSI Signal (0-2 points)**
+   - RSI in 50-70 (+1.0)
+   - RSI in 55-65 optimal (+1.0)
+   - RSI in 30-50 oversold bounce (+0.5)
+   - Extreme RSI (>80 or <20) (-0.5)
 
-4. **布林带位置 (0-1.5 分)**
-   - 位置在 0.2-0.8 (+1.0)
-   - 位置在 0.5-0.7 更强 (+0.5)
-   - 极端位置 (>0.95 或 <0.05) (-0.5)
+4. **Bollinger Bands Position (0-1.5 points)**
+   - Position in 0.2-0.8 (+1.0)
+   - Position in 0.5-0.7 stronger (+0.5)
+   - Extreme position (>0.95 or <0.05) (-0.5)
 
-5. **价格动量 (0-1.5 分)**
-   - 正动量 (+0.5)
-   - 强正动量 (>2%) (+1.0)
-   - 强负动量 (<-2%) (-0.5)
+5. **Price Momentum (0-1.5 points)**
+   - Positive momentum (+0.5)
+   - Strong positive momentum (>2%) (+1.0)
+   - Strong negative momentum (<-2%) (-0.5)
 
-6. **成交量确认 (0-1 分)**
-   - 成交量 > 平均 1.2 倍 (+0.5)
-   - 成交量 > 平均 1.5 倍 (+0.5)
+6. **Volume Confirmation (0-1 point)**
+   - Volume > 1.2x average (+0.5)
+   - Volume > 1.5x average (+0.5)
 
-#### 分数含义
+#### Score Interpretation
 
-- **0-2**: 弱信号（看跌或中性）
-- **3-5**: 中等信号（轻微看涨）
-- **6-8**: 强信号（明显看涨）
-- **9-10**: 极强信号（强烈看涨）
+- **0-2**: Weak signal (bearish or neutral)
+- **3-5**: Medium signal (slightly bullish)
+- **6-8**: Strong signal (clearly bullish)
+- **9-10**: Very strong signal (strongly bullish)
 
-#### 使用场景
+#### Usage
 
-- **Market Analyst**: 使用 `signal_score > 5.0` 筛选高信号股票
-- **Technical Analyst**: 按 `signal_score` 排序，优先分析高分股票（最多 8 只，受 tool_budget 限制）
-- **Trader Agent**: 使用 `signal_score > 3.0` 作为买入阈值
+- **Market Analyst**: Uses `signal_score > 5.0` to filter high-signal stocks
+- **Technical Analyst**: Sorts by `signal_score`, prioritizes high scores (up to 8 stocks, limited by tool_budget)
+- **Trader Agent**: Uses `signal_score > 3.0` as buy threshold
 
-### 各代理工具使用情况
+### Agent Tool Usage Summary
 
-| 代理 | 优先工具 | 典型调用次数 | 分析重点 |
-|------|----------|------------|----------|
-| **Market** | market_indices, sector_rotation, economic_summary | 2-3 | 宏观环境 |
-| **Technical** | advanced_indicators, support_resistance | 最多 8 | 价格行为（多股票分析，受预算限制） |
-| **Fundamental** | company_fundamentals, earnings_history | 2-3 | 估值分析 |
-| **Sentiment** | fear_greed, vix_term, news_scan | 2-3 | 市场心理 |
-| **Risk** | vix_term, correlation_matrix, market_breadth | 2-3 | 风险管理 |
+| Agent | Priority Tools | Typical Calls | Focus |
+|-------|---------------|---------------|-------|
+| **Market** | market_indices, sector_rotation, economic_summary | 2-3 | Macro environment |
+| **Technical** | advanced_indicators, support_resistance | Up to 8 | Price action (multi-stock analysis, budget limited) |
+| **Fundamental** | company_fundamentals, earnings_history | 2-3 | Valuation analysis |
+| **Sentiment** | fear_greed, vix_term, news_scan | 2-3 | Market psychology |
+| **Risk** | vix_term, correlation_matrix, market_breadth | 2-3 | Risk management |
 
-**总计**: ~12-15 次工具调用每周期（共享 15 预算）  
-**多样性**: 8+ 种不同工具  
-**股票覆盖**: Technical Analyst 最多分析 8 只股票（受 tool_budget=15 限制，每个 analyst 最多 8 个工具）
+**Total**: ~12-15 tool calls per cycle (shared 15 budget)  
+**Diversity**: 8+ different tools  
+**Stock Coverage**: Technical Analyst analyzes up to 8 stocks (limited by tool_budget=15, max 8 tools per analyst)
+
+</details>
 
 ---
 
 ## 📈 Trading Workflow
+
+### High-Level Process
+
+1. **Data Collection** (5-10 seconds)
+   - Fetch market data for 118+ NASDAQ-100 stocks
+   - Calculate technical indicators (RSI, MACD, signal_score)
+   - Get economic indicators and market sentiment
+
+2. **Multi-Agent Analysis** (30-60 seconds)
+   - Market Analyst: Macro trends and sector rotation
+   - Technical Analyst: Price patterns and indicators (up to 8 stocks)
+   - Fundamental Analyst: Valuation and earnings
+   - Sentiment Analyst: Market psychology and news
+
+3. **Risk Assessment** (10-20 seconds)
+   - Position concentration analysis
+   - Market risk evaluation
+   - Position size recommendations
+
+4. **Trading Decisions** (5-10 seconds)
+   - Generate buy/sell orders based on consensus
+   - Apply position limits (max 15% per stock)
+   - Calculate price ranges for limit orders
+
+5. **Order Execution**
+   - Market open: Execute immediately if price is within range
+   - Market closed: Place pending orders for next trading day
+
+6. **Portfolio Update**
+   - Update portfolio state
+   - Record equity history
+   - Save memory snapshot
+
+<details>
+<summary><b>Trading Workflow Technical Details (Developer Only - Click to expand)</b></summary>
 
 ### Complete Cycle Breakdown
 
@@ -978,8 +1025,6 @@ market_data = fetch_market_batch(symbols=universe, start=start_date, end=end_dat
 }
 ```
 
----
-
 #### Phase 2: Multi-Analyst Discussion (30-60 seconds)
 
 ```python
@@ -1003,8 +1048,6 @@ discussion_result = run_multi_analyst_discussion(
   "transcript": [...]    # Full discussion text
 }
 ```
-
----
 
 #### Phase 3: Risk Analysis (10-20 seconds)
 
@@ -1032,8 +1075,6 @@ risk_report = run_risk_analyst_llm(
   "position_risks": [...]
 }
 ```
-
----
 
 #### Phase 4: Trading Decisions (5-10 seconds)
 
@@ -1064,8 +1105,6 @@ decision = run_trader(
   "sell_orders": [...]
 }
 ```
-
----
 
 #### Phase 5: Order Execution
 
@@ -1098,8 +1137,6 @@ else:
     order_manager.place_order(...)
 ```
 
----
-
 #### Phase 6: Post-Trade Operations
 
 ```python
@@ -1131,8 +1168,6 @@ memory_manager.save_daily_memory(
 # Saved to discussion_actions.jsonl for frontend display
 ```
 
----
-
 ### Order Management Details
 
 #### Limit Order Strategy
@@ -1163,8 +1198,6 @@ price_range = {
 }
 ```
 
----
-
 #### Position Controls
 
 **Hard Limits:**
@@ -1187,6 +1220,8 @@ max_cost = 12 * 122.50 = $1,470
 
 # Check: $1,470 < $1,500 ✅
 ```
+
+</details>
 
 ---
 
@@ -1520,7 +1555,7 @@ Deploy the frontend to GitHub Pages so others can access it via browser (like ht
    ```
 
 2. **Enable GitHub Pages**
-   - Go to repository: `https://github.com/你的用户名/ai-trader-ollama`
+   - Go to repository: `https://github.com/your-username/ai-trader-ollama`
    - Click **Settings** → **Pages**
    - **Source**: `Deploy from a branch`
    - **Branch**: `main`
@@ -1530,7 +1565,7 @@ Deploy the frontend to GitHub Pages so others can access it via browser (like ht
 3. **Wait for Deployment** (1-2 minutes)
    - GitHub Actions will automatically deploy
    - You'll see a green success message
-   - Get your public URL: `https://你的用户名.github.io/ai-trader-ollama/monitor.html`
+   - Get your public URL: `https://your-username.github.io/ai-trader-ollama/monitor.html`
 
 4. **Configure Backend API Address**
    - Edit `frontend/config.js`
@@ -1551,7 +1586,7 @@ Deploy the frontend to GitHub Pages so others can access it via browser (like ht
 
 6. **Access Your Website**:
    ```
-   https://你的用户名.github.io/ai-trader-ollama/monitor.html
+   https://your-username.github.io/ai-trader-ollama/monitor.html
    ```
 
 **Example** (if your username is `WenyuChiou`):

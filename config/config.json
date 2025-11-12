@@ -15,28 +15,7 @@
     "KDP", "MCHP", "GEHC", "VRSK", "CTSH", "CSGP", "KHC", "ODFL", "DXCM", "TTD",
     "ON", "BIIB", "LULU", "CDW", "GFS",
     "SQQQ", "SPXU", "SH", "PSQ", "SDS", "DOG", "SOXS",
-    "TQQQ", "SOXL", "UPRO", "TNA", "FAS", "CURE", "LABU", "TECL", "TMF", "EDC"
-  ],
-  "inverse_etfs": [
-    "SQQQ",
-    "SPXU",
-    "SH",
-    "PSQ",
-    "SDS",
-    "DOG",
-    "SOXS"
-  ],
-  "leveraged_etfs": [
-    "TQQQ",
-    "SOXL",
-    "UPRO",
-    "TNA",
-    "FAS",
-    "CURE",
-    "LABU",
-    "TECL",
-    "TMF",
-    "EDC"
+    "TQQQ", "SPXL", "UPRO"
   ],
   
   "crypto": [
@@ -61,26 +40,23 @@
   },
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
-  "discussion_tool_budget": 2,
+  "discussion_tool_budget": 15,
   
   "llm": {
-    "default_model": "llama3.1",
+    "default_model": "deepseek-r1",
     "ollama_host": "http://localhost:11434",
     "auto_pull": true,
     "timeout_seconds": 8.0
   },
   "preferred_domains": [
     "www.cboe.com",
-    "www.wsj.com",
+    "https://www.wsj.com/finance?mod=nav_top_section",
     "www.reuters.com",
     "www.ft.com",
     "www.cmegroup.com",
     "fred.stlouisfed.org",
     "home.treasury.gov"
-  ],
-  "market_indices": [
-    "^GSPC",
-    "^IXIC",
-    "^DJI"
   ]
+
+  
 }

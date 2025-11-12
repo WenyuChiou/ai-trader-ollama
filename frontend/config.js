@@ -11,7 +11,7 @@ const API_CONFIG = {
     // - Render: 'https://your-app.onrender.com'
     // - Heroku: 'https://your-app.herokuapp.com'
     // - Custom: 'https://api.yourdomain.com'
-    production: 'https://your-api-server.com',
+    production: 'https://web-production-b42d6.up.railway.app',
     
     // Auto-detect environment
     get apiUrl() {

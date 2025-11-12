@@ -1,9 +1,15 @@
 name: Daily Data Update
 
+# NOTE: This workflow has limitations:
+# - Cannot run trading cycles (requires local Ollama)
+# - Can only upload existing data if data files are in repository
+# - For full automation, use local scheduled task (see docs/DEVELOPER_UPDATE_WORKFLOW.md)
+
 on:
   schedule:
     # Run daily at 00:00 UTC (adjust for your timezone)
     # Example: 00:00 UTC = 08:00 CST (China Standard Time)
+    # Note: This will only work if Railway has Ollama access (not the case currently)
     - cron: '0 0 * * *'
   workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
 
@@ -24,14 +30,20 @@ jobs:
           pip install -r backend/requirements.txt
           pip install requests
       
-      - name: Run trading cycle and upload to Railway
-        env:
-          RAILWAY_URL: ${{ secrets.RAILWAY_URL || 'https://web-production-b42d6.up.railway.app' }}
+      - name: Note about limitations
         run: |
-          python scripts/run_cycle_and_upload_to_railway.py
+          echo "⚠️  This workflow cannot run trading cycles because Ollama is local."
+          echo "It can only upload existing data if data files are in the repository."
+          echo "For full automation, use local scheduled task (see docs/DEVELOPER_UPDATE_WORKFLOW.md)"
+          echo ""
+          echo "To enable this workflow:"
+          echo "1. Deploy Ollama to Railway, OR"
+          echo "2. Use external LLM API instead of Ollama"
       
-      - name: Check upload status
-        run: |
-          echo "Checking if data was uploaded successfully..."
-          # Add verification step if needed
-
+      # This step would only work if Railway has Ollama or external LLM API
+      # Currently disabled because Railway cannot access local Ollama
+      # - name: Run trading cycle and upload to Railway
+      #   env:
+      #     RAILWAY_URL: ${{ secrets.RAILWAY_URL || 'https://web-production-b42d6.up.railway.app' }}
+      #   run: |
+      #     python scripts/run_cycle_and_upload_to_railway.py

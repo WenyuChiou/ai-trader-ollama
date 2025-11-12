@@ -1735,6 +1735,13 @@ async def get_recent_trades(limit: int = 100):
             else:
                 final_status = status or ("FILLED" if source == "filled" else x.get("state", "PENDING"))
             
+            # 提取已实现损益（仅SELL订单有值）
+            realized_pnl = None
+            realized_pnl_pct = None
+            if source == "filled" and x.get("action") == "SELL":
+                realized_pnl = x.get("realized_pnl")
+                realized_pnl_pct = x.get("realized_pnl_pct")
+            
             return {
                 "timestamp": x.get("timestamp") or x.get("time") or x.get("date") or x.get("placed_at") or x.get("filled_at"),
                 "symbol": x.get("symbol") or x.get("ticker"),
@@ -1748,6 +1755,8 @@ async def get_recent_trades(limit: int = 100):
                 "placed_at": x.get("placed_at"),  # 添加placed_at字段
                 "filled_at": x.get("filled_at"),  # 添加filled_at字段
                 "order_date": x.get("order_date"),  # 添加order_date字段
+                "realized_pnl": realized_pnl,  # 已实现损益（仅SELL订单）
+                "realized_pnl_pct": realized_pnl_pct,  # 已实现损益百分比（仅SELL订单）
                 "details": x,
             }
 

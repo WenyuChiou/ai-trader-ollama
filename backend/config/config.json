@@ -41,6 +41,8 @@
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
   "discussion_tool_budget": 15,
+  "max_orders_per_cycle": 20,
+  "trade_cooldown_hours": 24.0,
   
   "llm": {
     "default_model": "deepseek-r1",

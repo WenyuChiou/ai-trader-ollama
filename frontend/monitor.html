@@ -1044,6 +1044,8 @@
         }
         .trade-buy { color:#10b981; font-weight:600; }
         .trade-sell { color:#ef4444; font-weight:600; }
+        .trade-profit { color:#10b981; font-weight:600; }
+        .trade-loss { color:#ef4444; font-weight:600; }
         .status-pill { display:inline-block; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:500; }
         .status-pill.status-filled { background:#d1fae5; color:#065f46; }
         .status-pill.status-pending { background:#fef3c7; color:#92400e; }
@@ -1404,6 +1406,7 @@
                                     <th>Side</th>
                                     <th>Qty</th>
                                     <th>Price</th>
+                                    <th>Realized P&L</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -1469,6 +1472,7 @@
                                     <th>Limit Price</th>
                                     <th>Fill Price</th>
                                     <th>Price Range</th>
+                                    <th>Realized P&L</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -6582,7 +6586,7 @@
             document.getElementById('tradesCount').textContent = `${uniqueTrades.length} trades`;
             
             if (uniqueTrades.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #6b7280;">No trades yet. Run a trading cycle to generate orders.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px; color: #6b7280;">No trades yet. Run a trading cycle to generate orders.</td></tr>`;
                 return;
             }
             
@@ -6609,6 +6613,17 @@
                 const orderDate = t.order_date || t.date || '';
                 const orderDateDisplay = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
                 
+                // 已实现损益（仅SELL订单且已成交）
+                let realizedPnlDisplay = '-';
+                if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
+                    const pnl = Number(t.realized_pnl);
+                    const pnlPct = t.realized_pnl_pct !== undefined && t.realized_pnl_pct !== null ? Number(t.realized_pnl_pct) : null;
+                    const pnlClass = pnl >= 0 ? 'trade-profit' : 'trade-loss';
+                    const pnlSign = pnl >= 0 ? '+' : '';
+                    const pnlPctStr = pnlPct !== null ? ` (${pnlSign}${pnlPct.toFixed(2)}%)` : '';
+                    realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
+                }
+                
                 return `
                     <tr>
                         <td>${timeDisplay}</td>
@@ -6619,6 +6634,7 @@
                         <td>${limitPriceDisplay}</td>
                         <td>${fillPriceDisplay}</td>
                         <td>${priceRangeDisplay}</td>
+                        <td>${realizedPnlDisplay}</td>
                         <td><span class="status-pill ${statusClass}">${status}</span></td>
                     </tr>
                 `;
@@ -6708,7 +6724,7 @@
             }
             
             if (displayCount === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">No execution records yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">No execution records yet.</td></tr>`;
                 return;
             }
             
@@ -6749,6 +6765,17 @@
                 const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">TOMORROW</span>' : '';
                 const orderDateDisplay = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
                 
+                // 已实现损益（仅SELL订单且已成交）
+                let realizedPnlDisplay = '-';
+                if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
+                    const pnl = Number(t.realized_pnl);
+                    const pnlPct = t.realized_pnl_pct !== undefined && t.realized_pnl_pct !== null ? Number(t.realized_pnl_pct) : null;
+                    const pnlClass = pnl >= 0 ? 'trade-profit' : 'trade-loss';
+                    const pnlSign = pnl >= 0 ? '+' : '';
+                    const pnlPctStr = pnlPct !== null ? ` (${pnlSign}${pnlPct.toFixed(2)}%)` : '';
+                    realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
+                }
+                
                 return `
                     <tr ${isTomorrowOrder ? 'style="background-color: #fff7ed;"' : ''}>
                         <td>${timeDisplay}</td>
@@ -6757,6 +6784,7 @@
                         <td class="${sideClass}">${side || '-'}</td>
                         <td>${t.quantity ?? '-'}</td>
                         <td>${priceDisplay}</td>
+                        <td>${realizedPnlDisplay}</td>
                         <td><span class="status-pill ${statusClass}">${status}</span></td>
                     </tr>
                 `;

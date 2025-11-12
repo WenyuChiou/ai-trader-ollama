@@ -77,6 +77,57 @@ def load_recent_conversations(limit: int = 30) -> List[Dict[str, Any]]:
     return conversations[-limit:]
 
 
+def load_tool_results(limit: int = 100) -> Dict[str, List[Dict[str, Any]]]:
+    """Load tool results grouped by agent and tool name"""
+    tool_results = {}  # {agent: {tool_name: [results]}}
+    logs_dir = Path("backend/data/logs") if (ROOT / "backend").exists() else Path("data/logs")
+    convo_file = logs_dir / "discussion_actions.jsonl"
+    
+    if convo_file.exists():
+        with convo_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    entry = json.loads(line.strip())
+                    if entry.get("type") == "tool":
+                        agent = entry.get("agent", "Unknown")
+                        tool_name = entry.get("tool_name", "unknown_tool")
+                        content = entry.get("content", "")
+                        timestamp = entry.get("timestamp", entry.get("date", ""))
+                        
+                        # Extract result from content (format: "Tool used: tool_name: {result}")
+                        result_text = content
+                        if "Tool used:" in content:
+                            parts = content.split(":", 2)
+                            if len(parts) >= 3:
+                                result_text = parts[2].strip()
+                        
+                        tool_result = {
+                            "tool_name": tool_name,
+                            "result": result_text,
+                            "timestamp": timestamp,
+                            "date": entry.get("date", ""),
+                            "full_entry": entry
+                        }
+                        
+                        if agent not in tool_results:
+                            tool_results[agent] = {}
+                        if tool_name not in tool_results[agent]:
+                            tool_results[agent][tool_name] = []
+                        
+                        tool_results[agent][tool_name].append(tool_result)
+                except Exception as e:
+                    continue
+    
+    # Limit results per tool
+    for agent in tool_results:
+        for tool_name in tool_results[agent]:
+            tool_results[agent][tool_name] = tool_results[agent][tool_name][-limit:]
+    
+    return tool_results
+
+
 def load_equity_history(limit: int = 60) -> List[Dict[str, Any]]:
     """Load equity history"""
     try:
@@ -97,6 +148,7 @@ def generate_html_report(output_path: Path) -> None:
     trades = load_recent_trades(limit=50)
     conversations = load_recent_conversations(limit=30)
     equity_history = load_equity_history(limit=60)
+    tool_results = load_tool_results(limit=50)  # Load tool results
     
     # Calculate summary stats
     total_trades = len(trades)
@@ -115,6 +167,16 @@ def generate_html_report(output_path: Path) -> None:
         agent = conv.get("agent", "")
         if agent:
             agents_used.add(agent)
+    
+    # Count tool usage
+    total_tool_calls = sum(
+        len(tool_list) 
+        for agent_tools in tool_results.values() 
+        for tool_list in agent_tools.values()
+    )
+    unique_tools = set()
+    for agent_tools in tool_results.values():
+        unique_tools.update(agent_tools.keys())
     
     # Generate HTML
     html = f"""<!DOCTYPE html>
@@ -278,6 +340,14 @@ def generate_html_report(output_path: Path) -> None:
                 <div class="stat-value">{len(conversations)}</div>
                 <div class="stat-label">Conversations</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-value">{total_tool_calls}</div>
+                <div class="stat-label">Tool Calls</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{len(unique_tools)}</div>
+                <div class="stat-label">Unique Tools</div>
+            </div>
         </div>
         
         <div class="section">
@@ -361,6 +431,80 @@ def generate_html_report(output_path: Path) -> None:
         </div>
         
         <div class="section">
+            <h2>🛠️ Tool Results by Agent</h2>
+"""
+    
+    # Add tool results section
+    if tool_results:
+        agent_icons = {
+            "MarketAnalyst": "🌐",
+            "TechnicalAnalyst": "📈",
+            "FundamentalAnalyst": "💼",
+            "SentimentAnalyst": "😊",
+            "RiskAnalyst": "⚠️",
+            "TraderAgent": "🤖",
+            "DiscussionCoordinator": "💬",
+        }
+        
+        for agent in sorted(tool_results.keys()):
+            agent_tools = tool_results[agent]
+            total_tools_for_agent = sum(len(tool_list) for tool_list in agent_tools.values())
+            icon = agent_icons.get(agent, "🤖")
+            
+            html += f"""
+            <div class="tool-section">
+                <div class="agent-header">
+                    <span class="agent-icon">{icon}</span>
+                    <span class="agent-name">{agent}</span>
+                    <span class="tool-count">({total_tools_for_agent} tool calls)</span>
+                </div>
+"""
+            
+            # Group by tool name
+            for tool_name in sorted(agent_tools.keys()):
+                tool_calls = agent_tools[tool_name]
+                html += f"""
+                <div class="tool-group">
+                    <h3>🔧 {tool_name} <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">({len(tool_calls)} calls)</span></h3>
+"""
+                
+                # Show latest 3 results per tool (most recent first)
+                for tool_call in tool_calls[-3:][::-1]:
+                    result_text = tool_call.get("result", "")
+                    date_str = tool_call.get("date", tool_call.get("timestamp", ""))[:10] if tool_call.get("date") or tool_call.get("timestamp") else "N/A"
+                    
+                    # Truncate very long results
+                    if len(result_text) > 2000:
+                        result_text = result_text[:2000] + "\n... (truncated, showing first 2000 characters)"
+                    
+                    html += f"""
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">{tool_name}</span>
+                            <span class="tool-date">{date_str}</span>
+                        </div>
+                        <div class="tool-result">{result_text}</div>
+                    </div>
+"""
+                
+                html += """
+                </div>
+"""
+            
+            html += """
+            </div>
+"""
+    else:
+        html += """
+            <div style="color: #94a3b8; text-align: center; padding: 40px;">
+                <p>No tool results yet. Run a trading cycle to generate tool calls.</p>
+            </div>
+"""
+    
+    html += """
+        </div>
+        
+        <div class="section">
             <h2>📊 Equity History (Last 30 Days)</h2>
             <div style="color: #94a3b8; font-size: 14px;">
                 <p>Total records: {equity_count}</p>
@@ -394,6 +538,9 @@ def generate_html_report(output_path: Path) -> None:
     print(f"   - Trades: {total_trades}")
     print(f"   - Conversations: {len(conversations)}")
     print(f"   - Equity records: {len(equity_history)}")
+    print(f"   - Tool calls: {total_tool_calls}")
+    print(f"   - Unique tools: {len(unique_tools)}")
+    print(f"   - Agents with tools: {len(tool_results)}")
     print(f"   - Current value: ${current_value:,.2f}")
 
 

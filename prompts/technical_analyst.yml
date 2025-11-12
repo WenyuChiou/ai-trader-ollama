@@ -58,6 +58,18 @@ user: |
   - Use tools (get_advanced_indicators, get_support_resistance) with specific symbols to analyze individual stocks
   - Focus on stocks with high signal scores or those mentioned in previous discussion
   
+  **CRITICAL - Comprehensive Stock Analysis Requirement:**
+  - You MUST analyze as many stocks as possible, prioritizing stocks with high signal_score
+  - The market_view contains market_stats.top_signals showing the highest signal_score stocks
+  - Analyze at least 15-20 different stocks (or as many as tool_budget allows)
+  - Prioritize stocks with the highest signal_score from market_stats.top_signals
+  - Select diverse stocks from different sectors when possible
+  - Use get_advanced_indicators for each selected stock
+  - Use get_support_resistance for at least 10-15 different symbols
+  - Your tool_calls MUST include many different stock symbols (aim for 15-20 stocks minimum)
+  - Do NOT focus on just one stock (e.g., not only NVDA) - analyze the entire market systematically
+  - Example: Analyze top 20 stocks by signal_score: NVDA, MSFT, AAPL, TSLA, GOOGL, AMZN, META, AVGO, AMD, etc.
+  
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings
   - Agree or disagree with their stance (with reasoning)
@@ -73,10 +85,15 @@ user: |
   6. **Consider market volatility** (VIX)
   7. **Provide technical stance** with specific price levels
   
-  **CRITICAL**: You MUST call at least 2-3 tools to gather technical data before providing your analysis.
-  Do NOT skip tool calls. Use tools like get_advanced_indicators, get_support_resistance for key stocks.
+  **CRITICAL**: You MUST call as many tools as possible (up to tool_budget limit) to gather comprehensive technical data.
+  Do NOT skip tool calls. Use tools like get_advanced_indicators, get_support_resistance for MANY different stocks.
   
-  **MANDATORY**: Your tool_calls array MUST contain at least 2 tool calls. This is not optional - you must use tools to analyze the market.
+  **MANDATORY**: 
+  - Your tool_calls array MUST contain at least 15-20 tool calls (or as many as tool_budget allows)
+  - You MUST analyze at least 15-20 different stock symbols (prioritize high signal_score stocks)
+  - Each tool call should target a different stock symbol when possible
+  - Focus on stocks with highest signal_score from market_stats.top_signals
+  - This is not optional - you must comprehensively analyze the market, not just a few stocks.
   
   Output format:
   {

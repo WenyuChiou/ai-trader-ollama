@@ -15,13 +15,32 @@ const API_CONFIG = {
     
     // Auto-detect environment
     get apiUrl() {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        
         // Check if running on localhost
-        if (window.location.hostname === 'localhost' || 
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname === '') {
+        if (hostname === 'localhost' || 
+            hostname === '127.0.0.1' ||
+            hostname === '') {
             return this.development;
         }
-        // Otherwise use production URL
+        
+        // If accessing via IP address (shared website), use same IP with port 8000
+        // This handles cases like: http://192.168.4.24:3000 -> http://192.168.4.24:8000
+        const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (ipv4Regex.test(hostname)) {
+            // Use same protocol and IP, but port 8000 for backend
+            return `${protocol}//${hostname}:8000`;
+        }
+        
+        // If accessing via hostname (e.g., computer-name.local), use same hostname with port 8000
+        // This handles cases like: http://computer-name.local:3000 -> http://computer-name.local:8000
+        if (hostname.includes('.local') || hostname.includes('.')) {
+            // For local network sharing, assume backend is on same host with port 8000
+            return `${protocol}//${hostname}:8000`;
+        }
+        
+        // Otherwise use production URL (for deployed environments)
         return this.production;
     }
 };

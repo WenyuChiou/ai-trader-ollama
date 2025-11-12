@@ -112,6 +112,10 @@ Each analyst:
 | **Memory Management** | Unbounded | Limited history (20 entries) |
 | **Time Display** | UTC only | Eastern Time (EST/EDT) with auto DST |
 | **Deployment** | Local only | GitHub Pages ready |
+| **Security** | ❌ None | ✅ Read-only mode for shared access |
+| **API Config** | Manual | ✅ Auto-detection |
+| **Order Safety** | Basic | ✅ Duplicate prevention, cash validation |
+| **Net Value** | Basic | ✅ Anomaly detection, accurate calculation |
 
 ---
 
@@ -273,13 +277,13 @@ python scripts/init_data.py
 # Make sure you're in the project ROOT directory (not backend/)
 cd "path\to\ai-trader-ollama"
 
-# Method 1: Stable version (推薦，帶自動重啟)
+# Method 1: Stable version (Recommended, with auto-restart)
 .\scripts\start_api_stable_bypass.ps1
 
-# Method 2: Fast restart (日常使用，快速重啟)
+# Method 2: Fast restart (Daily use, quick restart)
 powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 
-# Method 3: Manual start (開發調試)
+# Method 3: Manual start (Development/Testing)
 # From project ROOT directory:
 python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -343,16 +347,16 @@ python -m http.server 3000
 
 **6. Access Dashboard**
 
-**本地访问**:
+**Local Access**:
 ```
 http://localhost:3000/monitor.html
 ```
 
-**公共访问**（部署后）:
+**Public Access** (after deployment):
 ```
-https://你的用户名.github.io/ai-trader-ollama/monitor.html
+https://your-username.github.io/ai-trader-ollama/monitor.html
 ```
-> 💡 **提示**: 部署到 GitHub Pages 后，任何人都可以通过公共网址访问你的前端。详见 [部署指南](#-deployment--sharing)
+> 💡 **Tip**: After deploying to GitHub Pages, anyone can access your frontend via the public URL. See [Deployment Guide](#-deployment--sharing) for details.
 
 ### First Trading Cycle
 
@@ -790,99 +794,157 @@ indices = get_market_indices()
 
 ## 🔄 Agent Discussion Flow
 
-### Step-by-Step Process
+### 多代理协作流程
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 1: Market Analyst                                       │
+│ 步骤 1: Market Analyst (市场分析师)                         │
 ├─────────────────────────────────────────────────────────────┤
-│ • Calls: get_market_indices(), get_sector_rotation(),        │
-│          get_economic_summary()                              │
-│ • Analyzes: Market regime, sector leadership                 │
-│ • Output: "Market is in mid-cycle bull phase, Technology    │
-│           and Healthcare leading. GDP growth steady."        │
-│ • Stance: risk_on (Score: 7.5/10)                           │
+│ • 工具调用: get_market_indices(), get_sector_rotation(),     │
+│            get_economic_summary()                            │
+│ • 分析内容: 市场整体趋势、板块轮动、经济环境                  │
+│ • 输出示例: "市场处于中期牛市阶段，科技和医疗板块领涨。      │
+│            GDP 增长稳定，VIX 处于低位。"                      │
+│ • 观点: risk_on (评分: 7.5/10)                              │
+│ • 推荐股票: 基于 signal_score > 5.0 筛选                    │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (passes findings to)
+                            ▼ (传递分析结果)
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 2: Technical Analyst                                    │
+│ 步骤 2: Technical Analyst (技术分析师)                      │
 ├─────────────────────────────────────────────────────────────┤
-│ • Receives: Market Analyst's "risk_on" stance               │
-│ • Calls: get_advanced_indicators("NVDA"),                   │
-│          get_support_resistance("NVDA")                      │
-│ • Analyzes: RSI=65, MACD bullish, above support at 120      │
-│ • Output: "Strong momentum, RSI approaching overbought      │
-│           but trend intact. Support at 120."                │
-│ • Stance: bullish (Score: 8.2/10)                           │
+│ • 接收: Market Analyst 的 "risk_on" 观点                    │
+│ • 工具调用: get_advanced_indicators(), get_support_resistance() │
+│ • 分析策略: 按 signal_score 排序，优先分析高分股票          │
+│ • 分析内容: RSI, MACD, 布林带, 支撑/阻力位, 价格动量         │
+│ • 输出示例: "NVDA: RSI=65, MACD 看涨, 支撑位 120。          │
+│            MSFT: 突破阻力位 380, 成交量放大。               │
+│            整体技术面强劲，多只股票 signal_score > 6.0"     │
+│ • 观点: bullish (评分: 8.2/10)                              │
+│ • 分析股票数: 最多 8 只（受 tool_budget=15 限制，每个 analyst 最多 8 个工具）│
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (passes findings to)
+                            ▼ (传递分析结果)
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 3: Fundamental Analyst                                  │
+│ 步骤 3: Fundamental Analyst (基本面分析师)                  │
 ├─────────────────────────────────────────────────────────────┤
-│ • Receives: Market "risk_on" + Technical "bullish"          │
-│ • Calls: get_company_fundamentals("NVDA"),                  │
-│          get_earnings_history("NVDA")                        │
-│ • Analyzes: P/E=45, earnings growth 55%, ROE=65%            │
-│ • Output: "Valuation reasonable given growth. Strong        │
-│           earnings quality, beat estimates by 5%."          │
-│ • Stance: bullish (Score: 7.8/10)                           │
+│ • 接收: Market "risk_on" + Technical "bullish"              │
+│ • 工具调用: get_company_fundamentals(),                     │
+│            get_earnings_history(),                          │
+│            get_financial_statements()                        │
+│ • 分析内容: P/E 比率, 盈利增长, ROE, 财务健康度             │
+│ • 输出示例: "NVDA: P/E=45, 盈利增长 55%, ROE=65%。          │
+│            估值合理，盈利质量强，超预期 5%。"                 │
+│ • 观点: bullish (评分: 7.8/10)                              │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (passes findings to)
+                            ▼ (传递分析结果)
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 4: Sentiment Analyst                                    │
+│ 步骤 4: Sentiment Analyst (情绪分析师)                      │
 ├─────────────────────────────────────────────────────────────┤
-│ • Receives: All previous stances (3 bullish)                │
-│ • Calls: fear_greed(), vix_term(), news_scan("NVDA")        │
-│ • Analyzes: F&G=65 (greed), VIX=18 (low), positive news     │
-│ • Output: "Market sentiment bullish but approaching greed.  │
-│           Watch for potential reversal signals."            │
-│ • Stance: bullish (Score: 6.5/10)                           │
+│ • 接收: 所有之前的观点（3 个看涨）                          │
+│ • 工具调用: fear_greed(), vix_term(), news_scan()           │
+│ • 分析内容: 恐惧贪婪指数, VIX 结构, 新闻情绪                 │
+│ • 输出示例: "市场情绪看涨但接近贪婪区域。                    │
+│            F&G=65 (贪婪), VIX=18 (低位), 新闻偏正面。        │
+│            需注意潜在反转信号。"                             │
+│ • 观点: bullish (评分: 6.5/10)                              │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (all stances aggregated)
+                            ▼ (汇总所有观点)
 ┌─────────────────────────────────────────────────────────────┐
-│ Final Consensus                                              │
+│ Final Consensus (最终共识)                                   │
 ├─────────────────────────────────────────────────────────────┤
-│ • Votes: 4 bullish / 0 bearish / 0 neutral                  │
-│ • Final Stance: BULLISH                                     │
-│ • Tool Calls: 12 total (within 15 budget)                   │
-│ • Tool Diversity: 8 different tools used                    │
+│ • 投票结果: 4 看涨 / 0 看跌 / 0 中性                        │
+│ • 最终观点: BULLISH (看涨)                                  │
+│ • 工具调用: 12-15 次（共享 15 预算）                        │
+│ • 工具多样性: 8+ 种不同工具                                 │
+│ • 分析股票数: Technical Analyst 最多分析 8 只股票（受预算限制）│
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (passes to Risk Analyst)
+                            ▼ (传递给 Risk Analyst)
 ┌─────────────────────────────────────────────────────────────┐
-│ Risk Analyst (receives consensus + market data)             │
+│ Risk Analyst (风险分析师)                                    │
 ├─────────────────────────────────────────────────────────────┤
-│ • Analyzes: Position concentration, market risks            │
-│ • Calls: get_correlation_matrix(), vix_term()               │
-│ • Output: Position control report, risk-adjusted sizes      │
+│ • 接收: 最终共识 + 市场数据 + 当前仓位                       │
+│ • 工具调用: get_correlation_matrix(), vix_term()            │
+│ • 分析内容: 仓位集中度, 市场风险, 相关性分析                 │
+│ • 输出: 仓位控制报告, 风险调整后的仓位大小                   │
 └─────────────────────────────────────────────────────────────┘
                             │
-                            ▼ (passes to Trader)
+                            ▼ (传递给 Trader)
 ┌─────────────────────────────────────────────────────────────┐
-│ Trader Agent (makes final decisions)                        │
+│ Trader Agent (交易员代理)                                    │
 ├─────────────────────────────────────────────────────────────┤
-│ • Inputs: Consensus (bullish) + Risk Report                 │
-│ • Decisions: BUY NVDA x10 @ $122.50 (max 15% portfolio)     │
-│ • Order Placement: Limit order with price range             │
+│ • 输入: 最终共识 (看涨) + 风险报告 + signal_score 数据      │
+│ • 决策逻辑: 优先考虑 signal_score > 3.0 的股票              │
+│ • 交易决策: 买入 NVDA x10 @ $122.50 (最多 15% 组合)         │
+│ • 订单类型: 限价单，带价格范围                               │
+│ • 筛选标准: signal_score > 3.0 (中等信号以上)                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Tool Usage by Agent
+### Signal Score 评分系统 (0-10 分)
 
-| Agent | Priority Tools | Typical # Calls | Focus |
-|-------|----------------|-----------------|-------|
-| **Market** | market_indices, sector_rotation, economic_summary | 2-3 | Macro environment |
-| **Technical** | advanced_indicators, support_resistance | 2-3 | Price action |
-| **Fundamental** | company_fundamentals, earnings_history | 2-3 | Valuation |
-| **Sentiment** | fear_greed, vix_term, news_scan | 2-3 | Psychology |
-| **Risk** | vix_term, correlation_matrix, market_breadth | 2-3 | Risk management |
+**Signal Score** 是一个综合技术指标评分系统，用于评估股票的买入信号强度：
 
-**Total**: ~12 tool calls per cycle (within 15 budget)  
-**Diversity**: 8+ different tools typically used
+#### 评分维度（6 个维度，总分 0-10）
+
+1. **均线趋势 (0-2 分)**
+   - 基础: MA20 > MA50 (+1.0)
+   - 强化: MA20 显著高于 MA50 (>2%) (+1.0)
+
+2. **MACD 信号 (0-2.5 分)**
+   - MACD 线 > 信号线 (+1.0)
+   - MACD 柱状图为正 (+0.5)
+   - 强动量 (+1.0)
+
+3. **RSI 信号 (0-2 分)**
+   - RSI 在 50-70 (+1.0)
+   - RSI 在 55-65 最优 (+1.0)
+   - RSI 在 30-50 超卖反弹 (+0.5)
+   - 极端 RSI (>80 或 <20) (-0.5)
+
+4. **布林带位置 (0-1.5 分)**
+   - 位置在 0.2-0.8 (+1.0)
+   - 位置在 0.5-0.7 更强 (+0.5)
+   - 极端位置 (>0.95 或 <0.05) (-0.5)
+
+5. **价格动量 (0-1.5 分)**
+   - 正动量 (+0.5)
+   - 强正动量 (>2%) (+1.0)
+   - 强负动量 (<-2%) (-0.5)
+
+6. **成交量确认 (0-1 分)**
+   - 成交量 > 平均 1.2 倍 (+0.5)
+   - 成交量 > 平均 1.5 倍 (+0.5)
+
+#### 分数含义
+
+- **0-2**: 弱信号（看跌或中性）
+- **3-5**: 中等信号（轻微看涨）
+- **6-8**: 强信号（明显看涨）
+- **9-10**: 极强信号（强烈看涨）
+
+#### 使用场景
+
+- **Market Analyst**: 使用 `signal_score > 5.0` 筛选高信号股票
+- **Technical Analyst**: 按 `signal_score` 排序，优先分析高分股票（最多 8 只，受 tool_budget 限制）
+- **Trader Agent**: 使用 `signal_score > 3.0` 作为买入阈值
+
+### 各代理工具使用情况
+
+| 代理 | 优先工具 | 典型调用次数 | 分析重点 |
+|------|----------|------------|----------|
+| **Market** | market_indices, sector_rotation, economic_summary | 2-3 | 宏观环境 |
+| **Technical** | advanced_indicators, support_resistance | 最多 8 | 价格行为（多股票分析，受预算限制） |
+| **Fundamental** | company_fundamentals, earnings_history | 2-3 | 估值分析 |
+| **Sentiment** | fear_greed, vix_term, news_scan | 2-3 | 市场心理 |
+| **Risk** | vix_term, correlation_matrix, market_breadth | 2-3 | 风险管理 |
+
+**总计**: ~12-15 次工具调用每周期（共享 15 预算）  
+**多样性**: 8+ 种不同工具  
+**股票覆盖**: Technical Analyst 最多分析 8 只股票（受 tool_budget=15 限制，每个 analyst 最多 8 个工具）
 
 ---
 
@@ -1259,7 +1321,7 @@ http://localhost:8000/redoc
 - Tool usage indicators
 - Collapsible sections
 
-#### 7. **Equity Chart Enhancements** ⭐ 新增
+#### 7. **Equity Chart Enhancements** ⭐ New
 - **Eastern Time Display**: All timestamps displayed in EST/EDT with automatic DST handling
 - **Robust Time Parsing**: Handles timestamps with or without timezone information
 - **Time Format**: X-axis shows `Month Day HH:MM` (e.g., "Nov 10 14:30")
@@ -1434,110 +1496,140 @@ curl http://localhost:8000/api/portfolio/real-time
 
 ## 🚀 Deployment & Sharing
 
-### GitHub Pages 部署（前端）⭐ 新增
+### GitHub Pages Deployment (Frontend) ⭐ New
 
-将前端部署到 GitHub Pages，让其他人可以通过浏览器访问：
+Deploy the frontend to GitHub Pages so others can access it via browser:
 
-#### 快速部署步骤
+#### Quick Deployment Steps
 
-1. **推送到 GitHub**
+1. **Push to GitHub**
    ```bash
    git add .
    git commit -m "Add deployment configuration"
    git push origin main
    ```
 
-2. **启用 GitHub Pages**
-   - 进入仓库 Settings → Pages
+2. **Enable GitHub Pages**
+   - Go to repository Settings → Pages
    - Source: `Deploy from a branch`
    - Branch: `main` / `frontend`
    - Folder: `/frontend`
-   - 点击 Save
+   - Click Save
 
-3. **配置 API 地址**
-   - 编辑 `frontend/config.js`
-   - 更新 `production` 为你的后端 API 地址
+3. **Configure API Address**
+   - Edit `frontend/config.js`
+   - Update `production` to your backend API address
    ```javascript
-   production: 'https://your-railway-app.railway.app',  // 替换为你的后端地址
+   production: 'https://your-railway-app.railway.app',  // Replace with your backend address
    ```
 
-4. **访问链接**
+4. **Access Links**
 
-**公共前端网址**（部署后自动生成）:
+**Public Frontend URL** (auto-generated after deployment):
 ```
-https://你的用户名.github.io/ai-trader-ollama/monitor.html
+https://your-username.github.io/ai-trader-ollama/monitor.html
 ```
 
-**示例**（根据实际仓库名称）:
-- 如果仓库是 `WenyuChiou/ai-trader-ollama`：
+**Examples** (based on actual repository name):
+- If repository is `WenyuChiou/ai-trader-ollama`:
   ```
   https://WenyuChiou.github.io/ai-trader-ollama/monitor.html
   ```
-- 如果仓库是 `your-username/ai-trader-ollama`：
+- If repository is `your-username/ai-trader-ollama`:
   ```
   https://your-username.github.io/ai-trader-ollama/monitor.html
   ```
 
-**其他链接**:
-- API 文档: `https://your-api-server.com/docs`
-- API 状态: `https://your-api-server.com/api/status`
+**Other Links**:
+- API Documentation: `https://your-api-server.com/docs`
+- API Status: `https://your-api-server.com/api/status`
 
-**新功能**:
-- ✅ 自动环境检测（本地 vs 生产环境）
-- ✅ GitHub Actions 自动部署工作流
-- ✅ 配置文件分离（`frontend/config.js`）
-- ✅ 公共 HTTPS 访问（无需配置）
+**New Features**:
+- ✅ Automatic environment detection (local vs production)
+- ✅ GitHub Actions auto-deployment workflow
+- ✅ Configuration file separation (`frontend/config.js`)
+- ✅ Public HTTPS access (no configuration needed)
 
-#### 后端部署选项
+#### Backend Deployment Options
 
-**选项 1: Railway (推荐)**
-- 免费额度，自动部署
-- 连接 GitHub 仓库即可
+**Option 1: Railway (Recommended)**
+- Free tier, auto-deployment
+- Connect GitHub repository
 
-**选项 2: Render**
-- 免费套餐可用
-- 支持自动部署
+**Option 2: Render**
+- Free tier available
+- Supports auto-deployment
 
-**选项 3: Heroku**
-- 需要信用卡验证
-- 稳定可靠
+**Option 3: Heroku**
+- Credit card verification required
+- Stable and reliable
 
-详细部署指南请参考：[📖 GitHub 部署完整指南](docs/GITHUB_DEPLOYMENT.md)
+For detailed deployment guide, see: [📖 GitHub Deployment Guide](docs/GITHUB_DEPLOYMENT.md)
 
-### 🌐 访问方式对比
+### 🌐 Access Methods Comparison
 
-| 访问方式 | 前端地址 | 适用场景 | 配置难度 |
-|---------|---------|---------|---------|
-| **公共访问** | `https://用户名.github.io/ai-trader-ollama/monitor.html` | 分享给任何人，互联网访问 | ⭐⭐ |
-| **局域网访问** | `http://192.168.x.x:3000/monitor.html` | 同一 WiFi/网络，本地分享 | ⭐ |
-| **本地访问** | `http://localhost:3000/monitor.html` | 仅自己使用 | ⭐ |
+| Access Method | Frontend URL | Use Case | Configuration Difficulty | Security |
+|--------------|--------------|----------|-------------------------|----------|
+| **Public Access** | `https://username.github.io/ai-trader-ollama/monitor.html` | Share with anyone, internet access | ⭐⭐ | Read-only mode |
+| **LAN Access** | `http://192.168.x.x:3000/monitor.html` | Same WiFi/network, local sharing | ⭐ | 🔒 Read-only mode (automatic) |
+| **Local Access** | `http://localhost:3000/monitor.html` | Personal use only | ⭐ | ✅ Full control |
 
-### 本地分享（同一网络）
+**🔒 Read-Only Mode**: When accessing via IP address (shared website), the system automatically enables read-only mode:
+- ✅ View all data (portfolio, trades, conversations)
+- ✅ Refresh data
+- ❌ Cannot execute trades
+- ❌ Cannot initialize system
+- ❌ Cannot start auto-trade
 
-如果只想在本地网络分享：
+**✅ Full Control Mode**: When accessing via `localhost` or `127.0.0.1`:
+- ✅ All features available
+- ✅ Can execute trades
+- ✅ Can initialize system
+- ✅ Can start auto-trade
 
-1. **启动后端（允许局域网访问）**
+**API Address Auto-Detection**: The frontend automatically detects the access method and uses the correct backend API address:
+- `localhost` → `http://127.0.0.1:8000`
+- IP address → `http://IP:8000` (same IP, port 8000)
+- Hostname → `http://hostname:8000`
+
+### Local Sharing (Same Network)
+
+If you only want to share on local network:
+
+1. **Start Backend (Allow LAN Access)**
    ```powershell
    .\scripts\restart_api_fast.ps1
    ```
 
-2. **启动前端（允许局域网访问）**
+2. **Start Frontend (Allow LAN Access)**
    ```powershell
-   .\scripts\start_frontend_share.ps1
+   # Use script (recommended - runs in new window)
+   powershell -ExecutionPolicy Bypass -File .\scripts\start_frontend_share.ps1
+   
+   # Or manually (keep window open)
+   cd frontend
+   python -m http.server 3000
    ```
+   
+   **Note**: Frontend server must keep running. The script opens a new window so you can continue working.
 
-3. **获取分享链接**
+3. **Get Share Link**
    ```powershell
    .\scripts\get_share_link.ps1
    ```
 
-**局域网访问地址示例**:
+**LAN Access Address Examples**:
 ```
-http://192.168.1.100:3000/monitor.html  # 前端
-http://192.168.1.100:8000/docs           # API 文档
+http://192.168.4.24:3000/monitor.html  # Frontend (replace with your actual IP)
+http://192.168.4.24:8000/docs           # API Documentation (replace with your actual IP)
 ```
 
-详细说明请参考：[📖 分享访问指南](docs/SHARING_ACCESS.md)
+**To get your actual IP address**:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\get_share_link.ps1
+```
+
+For detailed instructions, see: [📖 Sharing Access Guide](docs/SHARING_ACCESS.md)
 
 ---
 
@@ -2243,38 +2335,38 @@ model: deepseek-r1:7b
 
 ---
 
-#### 7. **初始化冲突检测** ⭐ 新增
+#### 7. **Initialization Conflict Detection** ⭐ New
 
-**功能**: 防止在交易/计划进行中时执行系统初始化
+**Function**: Prevents system initialization during active trading/planning operations
 
-**行为**:
-- 检测到进行中的操作时，会提示用户
-- 提供选项：取消或强制初始化
-- 强制初始化会停止所有进行中的操作
+**Behavior**:
+- When active operations are detected, prompts the user
+- Provides options: Cancel or Force initialization
+- Force initialization stops all active operations
 
-**使用场景**: 避免在交易执行或自动计划运行时意外清除数据
+**Use Case**: Avoid accidentally clearing data during trade execution or auto-planning
 
 ---
 
-#### 8. **重啟 Backend API (Windows PowerShell)**
+#### 8. **Restart Backend API (Windows PowerShell)**
 
-**Scenario**: Dashboard顯示 `Disconnected / Refreshing...`、或連不上 `http://127.0.0.1:8000`
+**Scenario**: Dashboard shows `Disconnected / Refreshing...` or cannot connect to `http://127.0.0.1:8000`
 
-##### **快速重啟（日常使用）⭐ 推薦**
+##### **Quick Restart (Daily Use) ⭐ Recommended**
 
 ```powershell
-# 一鍵快速重啟（3-5秒完成）
+# One-click quick restart (3-5 seconds)
 powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 ```
 
-**特性**：
-- ✅ 自動停止舊進程
-- ✅ 智能端口檢查（最多等待 2 秒）
-- ✅ 自動啟動新 API
-- ✅ 顯示分享連結
-- ✅ 總時間：約 3-5 秒
+**Features**:
+- ✅ Automatically stops old process
+- ✅ Smart port check (max 2 seconds wait)
+- ✅ Automatically starts new API
+- ✅ Shows share link
+- ✅ Total time: ~3-5 seconds
 
-**輸出示例**：
+**Output Example**:
 ```
 Restarting API (fast mode)...
 [OK] API restarted
@@ -2284,23 +2376,23 @@ Access:
   Share: http://192.168.4.24:8000/docs
 ```
 
-##### **穩定啟動（首次啟動或需要自動重啟功能）**
+##### **Stable Start (First Start or Need Auto-Restart Feature)**
 
 ```powershell
-# 穩定版啟動（帶自動重啟、錯誤處理）
-.\scripts\start_api_stable_bypass.ps1
+# Stable version start (with auto-restart, error handling)
+powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 ```
 
-**特性**：
-- ✅ 崩潰時自動重啟（最多 10 次）
-- ✅ 完整的錯誤處理
-- ✅ 日誌記錄
-- ✅ 適合長期運行
+**Features**:
+- ✅ Auto-restart on crash (max 10 times)
+- ✅ Complete error handling
+- ✅ Logging
+- ✅ Suitable for long-term operation
 
-##### **查看分享連結**
+##### **View Share Link**
 
 ```powershell
-# 隨時查看你的分享連結
+# View your share link anytime
 powershell -ExecutionPolicy Bypass -File .\scripts\get_share_link.ps1
 ```
 

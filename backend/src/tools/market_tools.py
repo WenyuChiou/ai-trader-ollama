@@ -26,7 +26,7 @@ def _safe_dict(**kwargs) -> Dict[str, Any]:
     Any missing numeric becomes NaN; missing text stays None.
     """
     keys = [
-        "price","change_pct","volume",
+        "price","change_pct","volume","vol_ratio",
         "ma20","ma50","rsi14","macd","macd_signal","macd_hist",
         "bb_pos","signal_score"
     ]
@@ -85,20 +85,86 @@ def _calc_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     # Daily pct change (last)
     chg_series = close.pct_change()
     change_pct = _to_float(chg_series)
+    
+    # Volume analysis (volume ratio: current vs average)
+    vol_avg = _to_float(vol.rolling(20, min_periods=1).mean())
+    vol_current = _to_float(vol)
+    vol_ratio = vol_current / vol_avg if math.isfinite(vol_avg) and vol_avg > 0 else 1.0
 
-    # Simple composite signal score (0–3)
-    sig_up_ma = (math.isfinite(ma20) and math.isfinite(ma50) and ma20 > ma50)
-    sig_macd_cross_up = (
-        math.isfinite(macd_val) and math.isfinite(macd_sig) and math.isfinite(macd_hist)
-        and macd_val > macd_sig and macd_hist > 0
-    )
-    sig_rsi_strong = (math.isfinite(rsi14) and 55 <= rsi14 <= 70)
-    signal_score = int(sig_up_ma) + int(sig_macd_cross_up) + int(sig_rsi_strong)
+    # Enhanced composite signal score (0–10)
+    # Uses weighted scoring system for more nuanced signals
+    
+    score = 0.0
+    
+    # 1. Moving Average Trend (0-2 points)
+    if math.isfinite(ma20) and math.isfinite(ma50):
+        if ma20 > ma50:
+            score += 1.0  # Basic uptrend
+            # Bonus if MA20 is significantly above MA50 (strong trend)
+            ma_distance = (ma20 - ma50) / ma50 if ma50 > 0 else 0
+            if ma_distance > 0.02:  # MA20 > 2% above MA50
+                score += 1.0
+    
+    # 2. MACD Signal (0-2.5 points)
+    if math.isfinite(macd_val) and math.isfinite(macd_sig) and math.isfinite(macd_hist):
+        if macd_val > macd_sig:
+            score += 1.0  # MACD above signal line
+            if macd_hist > 0:
+                score += 0.5  # Positive histogram
+                # Bonus for strong MACD momentum
+                if macd_hist > abs(macd_val) * 0.1:  # Strong momentum
+                    score += 1.0
+    
+    # 3. RSI Signal (0-2 points)
+    if math.isfinite(rsi14):
+        if 50 <= rsi14 <= 70:
+            score += 1.0  # Neutral to strong
+            if 55 <= rsi14 <= 65:
+                score += 1.0  # Optimal range (strong but not overbought)
+        elif 30 <= rsi14 < 50:
+            score += 0.5  # Oversold recovery
+        # Penalty for extreme RSI
+        if rsi14 > 80:
+            score -= 0.5  # Overbought
+        elif rsi14 < 20:
+            score -= 0.5  # Oversold
+    
+    # 4. Bollinger Bands Position (0-1.5 points)
+    if math.isfinite(bb_pos):
+        if 0.2 <= bb_pos <= 0.8:
+            score += 1.0  # Good position (not at extremes)
+        elif 0.5 <= bb_pos <= 0.7:
+            score += 0.5  # Strong position (upper half but not extreme)
+        # Penalty for extreme positions
+        if bb_pos > 0.95:
+            score -= 0.5  # Near upper band (overbought)
+        elif bb_pos < 0.05:
+            score -= 0.5  # Near lower band (oversold)
+    
+    # 5. Price Momentum (0-1.5 points)
+    if math.isfinite(change_pct):
+        if change_pct > 0:
+            score += 0.5  # Positive momentum
+            if change_pct > 0.02:  # Strong positive (>2%)
+                score += 1.0
+        elif change_pct < -0.02:  # Strong negative (>-2%)
+            score -= 0.5  # Penalty for strong decline
+    
+    # 6. Volume Confirmation (0-1 point)
+    if math.isfinite(vol_ratio):
+        if vol_ratio > 1.2:  # Above average volume
+            score += 0.5
+            if vol_ratio > 1.5:  # Strong volume
+                score += 0.5
+    
+    # Normalize to 0-10 range and round
+    signal_score = max(0.0, min(10.0, round(score, 1)))
 
     return _safe_dict(
         price=c,
         change_pct=change_pct,
         volume=_to_float(vol),
+        vol_ratio=vol_ratio,
         ma20=ma20,
         ma50=ma50,
         rsi14=rsi14,

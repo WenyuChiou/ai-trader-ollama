@@ -242,19 +242,19 @@ def run_trader(
     recs = mview.get("recommended_stocks", []) if isinstance(mview, dict) else []
     final_stance = (convo or {}).get("final_stance", "neutral")
     
-    # 更激进：除了 Market Analyst 推荐的股票，还考虑所有 signal_score > 0 的股票
+    # 更激进：除了 Market Analyst 推荐的股票，还考虑所有 signal_score > 3.0 的股票（新范围 0-10）
     stocks = mview.get("stocks", {}) if isinstance(mview, dict) else {}
     all_symbols = list(stocks.keys())
     
     # 从所有股票中筛选出信号良好的股票（不依赖 Market Analyst 的推荐）
-    # 降低阈值：从 2.0 降到 0.5，允许更多股票被考虑
+    # signal_score 范围现在是 0-10，使用 3.0 作为阈值（相当于旧范围的 1.0）
     additional_buys = []
     for symbol, stock_data in stocks.items():
         if isinstance(stock_data, dict):
             try:
                 signal_score = float(stock_data.get("signal_score", 0))
-                # 更激进：signal_score > 0.5 就考虑买入（降低阈值，提高交易频率）
-                if signal_score > 0.5 and symbol not in recs:
+                # signal_score 范围现在是 0-10，使用 3.0 作为阈值（相当于原来的 1.0）
+                if signal_score > 3.0 and symbol not in recs:
                     additional_buys.append(symbol)
             except Exception:
                 pass

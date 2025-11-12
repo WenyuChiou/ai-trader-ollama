@@ -769,11 +769,17 @@ async def check_pending_orders():
                         total_cost=total_cost
                     )
         
-        # 如果portfolio中没有持仓，但filled_orders中有今天的订单，重新执行它们来恢复portfolio状态
+        # CRITICAL FIX: 如果portfolio中没有持仓，但filled_orders中有今天的订单，需要恢复portfolio状态
+        # 但是，不应该重新执行订单（因为现金已经被扣除过了），而是应该从filled_orders计算正确的现金和持仓
         if len(current_portfolio._positions) == 0:
             filled_file = Path("data/logs/filled_orders.jsonl")
             if filled_file.exists():
                 try:
+                    # 计算已成交订单的总成本和总收益
+                    total_buy_cost = 0.0
+                    total_sell_proceeds = 0.0
+                    restored_positions = {}  # {symbol: {quantity, total_cost, avg_cost}}
+                    
                     with filled_file.open("r", encoding="utf-8") as f:
                         for line in f:
                             if line.strip():
@@ -784,15 +790,72 @@ async def check_pending_orders():
                                     quantity = filled_order.get("quantity", 0)
                                     fill_price = filled_order.get("fill_price")
                                     if symbol and action and quantity > 0 and fill_price:
-                                        log_print(f"[Check Pending Orders] Re-executing filled order: {action} {quantity} {symbol} @ ${fill_price:.2f}")
                                         if action == "BUY":
-                                            current_portfolio.buy(symbol, quantity, fill_price)
+                                            cost = quantity * fill_price
+                                            total_buy_cost += cost
+                                            # 累加持仓（使用加权平均）
+                                            if symbol in restored_positions:
+                                                existing = restored_positions[symbol]
+                                                total_qty = existing["quantity"] + quantity
+                                                total_cost = existing["total_cost"] + cost
+                                                avg_cost = total_cost / total_qty if total_qty > 0 else fill_price
+                                                restored_positions[symbol] = {
+                                                    "quantity": total_qty,
+                                                    "total_cost": total_cost,
+                                                    "avg_cost": avg_cost,
+                                                }
+                                            else:
+                                                restored_positions[symbol] = {
+                                                    "quantity": quantity,
+                                                    "total_cost": cost,
+                                                    "avg_cost": fill_price,
+                                                }
                                         elif action == "SELL":
-                                            # 重新执行已成交订单（已实现损益已在原始订单中记录）
-                                            realized_pnl = current_portfolio.sell(symbol, quantity, fill_price)
-                                            log_print(f"[Check Pending Orders] Re-execution realized P&L: ${realized_pnl['realized_pnl']:.2f} ({realized_pnl['realized_pnl_pct']:+.2f}%)")
-                    # 如果有重新执行的订单，保存portfolio状态
-                    if len(current_portfolio._positions) > 0:
+                                            proceeds = quantity * fill_price
+                                            total_sell_proceeds += proceeds
+                                            # 减少持仓
+                                            if symbol in restored_positions:
+                                                existing = restored_positions[symbol]
+                                                if existing["quantity"] >= quantity:
+                                                    remaining_qty = existing["quantity"] - quantity
+                                                    if remaining_qty > 0:
+                                                        # 按比例减少成本
+                                                        cost_ratio = remaining_qty / existing["quantity"]
+                                                        remaining_cost = existing["total_cost"] * cost_ratio
+                                                        avg_cost = remaining_cost / remaining_qty if remaining_qty > 0 else existing["avg_cost"]
+                                                        restored_positions[symbol] = {
+                                                            "quantity": remaining_qty,
+                                                            "total_cost": remaining_cost,
+                                                            "avg_cost": avg_cost,
+                                                        }
+                                                    else:
+                                                        # 全部卖出，移除持仓
+                                                        del restored_positions[symbol]
+                    
+                    # 如果有恢复的持仓，更新portfolio状态
+                    if restored_positions:
+                        # 计算正确的现金：初始现金 - 买入成本 + 卖出收益
+                        correct_cash = current_portfolio.initial_value - total_buy_cost + total_sell_proceeds
+                        
+                        # 确保现金不为负数（如果计算错误，至少保持为0）
+                        if correct_cash < 0:
+                            log_print(f"[Check Pending Orders] ⚠️ Warning: Calculated cash is negative (${correct_cash:.2f}), setting to 0")
+                            correct_cash = 0.0
+                        
+                        # 更新portfolio现金
+                        current_portfolio.cash = correct_cash
+                        
+                        # 恢复持仓（不调用buy/sell，直接设置）
+                        from src.data.portfolio import Position
+                        for symbol, pos_info in restored_positions.items():
+                            current_portfolio._positions[symbol] = Position(
+                                symbol=symbol,
+                                quantity=pos_info["quantity"],
+                                avg_cost=pos_info["avg_cost"],
+                                total_cost=pos_info["total_cost"],
+                            )
+                        
+                        # 保存portfolio状态
                         portfolio_state = {
                             "cash": current_portfolio.cash,
                             "initial_value": current_portfolio.initial_value,
@@ -806,9 +869,11 @@ async def check_pending_orders():
                                 "total_cost": pos.total_cost,
                             }
                         portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
-                        log_print(f"[Check Pending Orders] Restored {len(current_portfolio._positions)} positions from filled orders")
+                        log_print(f"[Check Pending Orders] ✅ Restored {len(current_portfolio._positions)} positions from filled orders (cash: ${correct_cash:.2f}, buy_cost: ${total_buy_cost:.2f}, sell_proceeds: ${total_sell_proceeds:.2f})")
                 except Exception as e:
-                    log_print(f"[Check Pending Orders] Warning: Failed to restore positions from filled orders: {e}")
+                    log_print(f"[Check Pending Orders] ⚠️ Warning: Failed to restore positions from filled orders: {e}")
+                    import traceback
+                    traceback.print_exc()
         
         # 检查并结算订单
         settled_count = 0
@@ -826,6 +891,25 @@ async def check_pending_orders():
             limit_price = order.get("limit_price", 0)
             order_id = order.get("order_id", "unknown")
             
+            # CRITICAL: 检查订单是否已经在 filled_orders 中（防止重复执行）
+            filled_file = Path("data/logs/filled_orders.jsonl")
+            order_already_filled = False
+            if filled_file.exists():
+                try:
+                    with filled_file.open("r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip():
+                                filled_order = json.loads(line)
+                                if filled_order.get("order_id") == order_id and filled_order.get("status") == "FILLED":
+                                    order_already_filled = True
+                                    log_print(f"[Check Pending Orders] ⚠️ Order {order_id} already filled, skipping duplicate execution")
+                                    break
+                except Exception as e:
+                    log_print(f"[Check Pending Orders] Warning: Failed to check filled orders: {e}")
+            
+            if order_already_filled:
+                continue
+            
             try:
                 # 使用实时价格检查订单
                 fill_result = order_manager.check_order_fill(order, today, use_realtime=True)
@@ -834,6 +918,13 @@ async def check_pending_orders():
                 if fill_result.get("filled", False):
                     fill_price = fill_result.get("fill_price")
                     if fill_price:
+                        # CRITICAL: 再次检查现金是否足够（防止重复执行导致现金为负）
+                        if action == "BUY":
+                            cost = quantity * fill_price
+                            if cost > current_portfolio.cash:
+                                log_print(f"[Check Pending Orders] ⚠️ Skipping {action} {quantity} {symbol}: insufficient cash (need ${cost:.2f}, have ${current_portfolio.cash:.2f})")
+                                continue
+                        
                         log_print(f"[Check Pending Orders] Executing {action} {quantity} {symbol} @ ${fill_price:.2f}...")
                         realized_pnl = None
                         if action == "BUY":

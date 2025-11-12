@@ -885,10 +885,10 @@ def execute_daily_trade(
         stocks_count = len(enriched_market.get("stocks", {}))
         print(f"[TRADING CYCLE] Debug: enriched_market has {recs_count} recommended_stocks, {stocks_count} stocks")
         if stocks_count > 0:
-            # Check signal scores (lowered threshold to 0.5 to match trader_agent changes)
+            # Check signal scores (signal_score range is now 0-10, threshold is 3.0)
             stocks = enriched_market.get("stocks", {})
-            high_signal_stocks = [s for s, d in stocks.items() if isinstance(d, dict) and float(d.get("signal_score", 0)) > 0.5]
-            print(f"[TRADING CYCLE] Debug: {len(high_signal_stocks)} stocks with signal_score > 0.5: {high_signal_stocks[:5]}")
+            high_signal_stocks = [s for s, d in stocks.items() if isinstance(d, dict) and float(d.get("signal_score", 0)) > 3.0]
+            print(f"[TRADING CYCLE] Debug: {len(high_signal_stocks)} stocks with signal_score > 3.0: {high_signal_stocks[:5]}")
             # Also check top 10 by signal_score
             sorted_stocks = sorted(
                 [(s, d) for s, d in stocks.items() if isinstance(d, dict)],

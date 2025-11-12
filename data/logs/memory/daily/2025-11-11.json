@@ -1,6 +1,6 @@
 {
   "date": "2025-11-11",
-  "timestamp": "2025-11-11T18:12:32.029926",
+  "timestamp": "2025-11-11T22:23:47.016995",
   "metadata": {
     "version": "1.0",
     "compressed": false
@@ -12,777 +12,777 @@
         "change_pct": 0.0579325512031128,
         "rsi14": 63.481538702480705,
         "macd": 3.552399378289124,
-        "signal_score": 2
+        "signal_score": 6.5
       },
       "MSFT": {
         "price": 506.0,
         "change_pct": 0.018477501993575007,
         "rsi14": 42.60529605988937,
         "macd": -2.9950975665917667,
-        "signal_score": 1
+        "signal_score": 3.0
       },
       "AAPL": {
         "price": 269.42999267578125,
         "change_pct": 0.003575786682732396,
         "rsi14": 64.26736226881363,
         "macd": 5.3264343683801485,
-        "signal_score": 2
+        "signal_score": 5.5
       },
       "GOOG": {
         "price": 290.5899963378906,
         "change_pct": 0.03893451432100292,
         "rsi14": 79.82072470623152,
         "macd": 10.985063921345727,
-        "signal_score": 2
+        "signal_score": 6.0
       },
       "GOOGL": {
         "price": 290.1000061035156,
         "change_pct": 0.040418965226070025,
         "rsi14": 79.13848640090234,
         "macd": 11.007986281475894,
-        "signal_score": 2
+        "signal_score": 6.0
       },
       "AMZN": {
         "price": 248.39999389648438,
         "change_pct": 0.01632498741700883,
         "rsi14": 68.03940103874176,
         "macd": 6.809514662975232,
-        "signal_score": 3
+        "signal_score": 5.0
       },
       "META": {
         "price": 631.760009765625,
         "change_pct": 0.0161650728438969,
         "rsi14": 21.991051363717204,
         "macd": -29.076802345793908,
-        "signal_score": 0
+        "signal_score": 0.5
       },
       "AVGO": {
         "price": 358.3900146484375,
         "change_pct": 0.025641822855686502,
         "rsi14": 57.30744071931027,
         "macd": 4.623791333254644,
-        "signal_score": 2
+        "signal_score": 6.5
       },
       "TSLA": {
         "price": 445.2300109863281,
         "change_pct": 0.03657576451501576,
         "rsi14": 50.66904203242206,
         "macd": 6.395563857428215,
-        "signal_score": 1
+        "signal_score": 5.5
       },
       "NFLX": {
         "price": 1120.0699462890625,
         "change_pct": 0.01486862947028067,
         "rsi14": 26.124073705590973,
         "macd": -25.027605970757122,
-        "signal_score": 1
+        "signal_score": 3.0
       },
       "PLTR": {
         "price": 193.61000061035156,
         "change_pct": 0.08812459158103803,
         "rsi14": 56.24226787406172,
         "macd": 2.737357382077363,
-        "signal_score": 2
+        "signal_score": 7.5
       },
       "COST": {
         "price": 915.5599975585938,
         "change_pct": -0.007781165606529639,
         "rsi14": 40.063401395295095,
         "macd": -3.916233237273673,
-        "signal_score": 0
+        "signal_score": 0.5
       },
       "ASML": {
         "price": 1038.7900390625,
         "change_pct": 0.02146595403770024,
         "rsi14": 53.10597383144632,
         "macd": 21.041550595265562,
-        "signal_score": 1
+        "signal_score": 5.5
       },
       "AMD": {
         "price": 243.97999572753906,
         "change_pct": 0.04470327456340706,
         "rsi14": 52.73865377340879,
         "macd": 12.17380776750096,
-        "signal_score": 1
+        "signal_score": 5.5
       },
       "CSCO": {
         "price": 72.08999633789062,
         "change_pct": 0.01435200010477411,
         "rsi14": 55.869731500186326,
         "macd": 0.8342487555296003,
-        "signal_score": 2
+        "signal_score": 6.0
       },
       "AZN": {
         "price": 87.4800033569336,
         "change_pct": 0.0342870827985029,
         "rsi14": 68.81628972328579,
         "macd": 0.6973011221420791,
-        "signal_score": 3
+        "signal_score": 7.0
       },
       "TMUS": {
         "price": 205.8699951171875,
         "change_pct": -0.005458960786533851,
         "rsi14": 25.282190299173223,
         "macd": -7.517100282486297,
-        "signal_score": 0
+        "signal_score": 1.0
       },
       "MU": {
         "price": 253.3000030517578,
         "change_pct": 0.06464359869358804,
         "rsi14": 75.88552237775082,
         "macd": 16.882283378990934,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "LIN": {
         "price": 420.6700134277344,
         "change_pct": 0.0003804990568441191,
         "rsi14": 22.006481140439035,
         "macd": -12.349228789248741,
-        "signal_score": 0
+        "signal_score": 1.5
       },
       "PEP": {
         "price": 142.6199951171875,
         "change_pct": -0.002308512333681012,
         "rsi14": 21.179057486965064,
         "macd": -0.9995683166745266,
-        "signal_score": 1
+        "signal_score": 2.0
       },
       "SHOP": {
         "price": 158.8800048828125,
         "change_pct": 0.04245128971354806,
         "rsi14": 46.59173740271344,
         "macd": 1.2186323133437327,
-        "signal_score": 1
+        "signal_score": 5.0
       },
       "APP": {
         "price": 651.3200073242188,
         "change_pct": 0.05063477331198296,
         "rsi14": 73.21226802060424,
         "macd": 8.641016979576875,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "INTU": {
         "price": 653.27001953125,
         "change_pct": 0.006812120076479911,
         "rsi14": 38.67917880967903,
         "macd": -4.690386816011255,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "AMAT": {
         "price": 235.0800018310547,
         "change_pct": 0.021775956653818707,
         "rsi14": 56.44703356088619,
         "macd": 7.072899608209497,
-        "signal_score": 2
+        "signal_score": 6.5
       },
       "LRCX": {
         "price": 166.3699951171875,
         "change_pct": 0.044053898618062304,
         "rsi14": 67.51520178624904,
         "macd": 7.801353402543384,
-        "signal_score": 3
+        "signal_score": 6.0
       },
       "PDD": {
         "price": 138.1300048828125,
         "change_pct": 0.017307454151148205,
         "rsi14": 69.40371940168437,
         "macd": 1.9341429973140123,
-        "signal_score": 3
+        "signal_score": 4.5
       },
       "QCOM": {
         "price": 171.57000732421875,
         "change_pct": 0.003979214330850356,
         "rsi14": 52.300979007502015,
         "macd": 2.3257158202125368,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "ARM": {
         "price": 154.83999633789062,
         "change_pct": 0.016143794305361725,
         "rsi14": 36.5420108274717,
         "macd": 0.025310150724152436,
-        "signal_score": 1
+        "signal_score": 2.5
       },
       "INTC": {
         "price": 38.45000076293945,
         "change_pct": 0.008392333749285052,
         "rsi14": 51.17773654795272,
         "macd": 1.1798310560008218,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "BKNG": {
         "price": 4958.39990234375,
         "change_pct": 0.0037246765878036214,
         "rsi14": 28.91510984538742,
         "macd": -101.64742229944568,
-        "signal_score": 0
+        "signal_score": 1.5
       },
       "AMGN": {
         "price": 323.6600036621094,
         "change_pct": 0.010805719310344797,
         "rsi14": 70.13589378226325,
         "macd": 6.924378160829065,
-        "signal_score": 2
+        "signal_score": 4.5
       },
       "TXN": {
         "price": 160.5800018310547,
         "change_pct": 0.00018685006992624764,
         "rsi14": 20.77324949955515,
         "macd": -5.263381354411109,
-        "signal_score": 0
+        "signal_score": 1.5
       },
       "ISRG": {
         "price": 576.2000122070312,
         "change_pct": 0.028928593226841492,
         "rsi14": 81.90307479128344,
         "macd": 27.203904599666544,
-        "signal_score": 2
+        "signal_score": 5.5
       },
       "GILD": {
         "price": 118.1500015258789,
         "change_pct": -0.005806082407221691,
         "rsi14": 33.824339212778426,
         "macd": 1.0722381066821356,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "KLAC": {
         "price": 1217.949951171875,
         "change_pct": 0.020597095750068517,
         "rsi14": 60.79077442292512,
         "macd": 41.05908216756643,
-        "signal_score": 2
+        "signal_score": 6.5
       },
       "PANW": {
         "price": 216.5399932861328,
         "change_pct": 0.020019784890527914,
         "rsi14": 53.31474358580441,
         "macd": 2.189382550918822,
-        "signal_score": 1
+        "signal_score": 5.5
       },
       "ADBE": {
         "price": 328.8500061035156,
         "change_pct": 0.005811267244367757,
         "rsi14": 21.640337719782323,
         "macd": -5.065478587064831,
-        "signal_score": 0
+        "signal_score": 1.5
       },
       "HON": {
         "price": 196.07000732421875,
         "change_pct": 0.010305559460606073,
         "rsi14": 48.59115665562723,
         "macd": -0.40907618848234506,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "CRWD": {
         "price": 557.530029296875,
         "change_pct": 0.032826423775817126,
         "rsi14": 72.89351401507466,
         "macd": 16.01414725776351,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "CEG": {
         "price": 360.92999267578125,
         "change_pct": 0.007087189719376941,
         "rsi14": 50.79529692499101,
         "macd": 1.2471088724478818,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "ADI": {
         "price": 232.0,
         "change_pct": 0.015406181452570333,
         "rsi14": 36.43572325275779,
         "macd": -2.698433220993053,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "ADP": {
         "price": 254.05999755859375,
         "change_pct": -0.0003934769518203485,
         "rsi14": 11.581906071069753,
         "macd": -9.297747524020565,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "DASH": {
         "price": 204.0800018310547,
         "change_pct": -0.001125719398401448,
         "rsi14": 22.576962960082383,
         "macd": -13.790753432726092,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "CMCSA": {
         "price": 27.1200008392334,
         "change_pct": -0.008409489543998672,
         "rsi14": 26.904395803463387,
         "macd": -0.969285630856831,
-        "signal_score": 0
+        "signal_score": 1.0
       },
       "VRTX": {
         "price": 421.20001220703125,
         "change_pct": 0.028646814055630188,
         "rsi14": 45.018694923436264,
         "macd": 3.172303946940133,
-        "signal_score": 1
+        "signal_score": 5.0
       },
       "MELI": {
         "price": 2092.0400390625,
         "change_pct": -0.007853579544152,
         "rsi14": 45.69702805656772,
         "macd": -20.195502501982446,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "SBUX": {
         "price": 84.5999984741211,
         "change_pct": -0.011335762815969708,
         "rsi14": 46.448076724244316,
         "macd": -0.21916072446485657,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "CDNS": {
         "price": 328.94000244140625,
         "change_pct": 0.011967435146975403,
         "rsi14": 46.28683417085427,
         "macd": -3.9878547492414214,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "ORLY": {
         "price": 98.0999984741211,
         "change_pct": 0.010402741521541303,
         "rsi14": 41.22472322091144,
         "macd": -1.8212830333259404,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "SNPS": {
         "price": 400.7699890136719,
         "change_pct": 0.01865642293301062,
         "rsi14": 25.087651544013653,
         "macd": -20.276964980311448,
-        "signal_score": 0
+        "signal_score": 0.5
       },
       "MSTR": {
         "price": 238.8800048828125,
         "change_pct": -0.012606902349045046,
         "rsi14": 28.71039677799682,
         "macd": -20.611326964862997,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "MDLZ": {
         "price": 56.25,
         "change_pct": -0.01626443337202288,
         "rsi14": 22.609564250666622,
         "macd": -1.5869974294658533,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "ABNB": {
         "price": 120.19999694824219,
         "change_pct": -0.005625416285791274,
         "rsi14": 19.53359594997977,
         "macd": -0.6277387276026332,
-        "signal_score": 1
+        "signal_score": 1.0
       },
       "MRVL": {
         "price": 93.2300033569336,
         "change_pct": 0.025407008738560277,
         "rsi14": 62.39977590639367,
         "macd": 2.648217264981639,
-        "signal_score": 3
+        "signal_score": 7.0
       },
       "CTAS": {
         "price": 185.25,
         "change_pct": 0.0009725653463985573,
         "rsi14": 24.547126300156805,
         "macd": -3.501530684535396,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "TRI": {
         "price": 135.58999633789062,
         "change_pct": -0.0143927519147522,
         "rsi14": 17.300788592552152,
         "macd": -5.491196089527051,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "MAR": {
         "price": 290.4700012207031,
         "change_pct": -0.0023698393760394065,
         "rsi14": 70.59812707740451,
         "macd": 4.955885336122208,
-        "signal_score": 2
+        "signal_score": 3.0
       },
       "MNST": {
         "price": 70.02999877929688,
         "change_pct": 0.0043022430506372,
         "rsi14": 54.89175847803298,
         "macd": 0.32706276438149473,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "CSX": {
         "price": 35.119998931884766,
         "change_pct": -0.006225275035461886,
         "rsi14": 42.394011404131284,
         "macd": 0.05291241310799677,
-        "signal_score": 1
+        "signal_score": 2.5
       },
       "ADSK": {
         "price": 298.7200012207031,
         "change_pct": 0.005182073433193768,
         "rsi14": 36.42614590929207,
         "macd": -3.748274177090593,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "PYPL": {
         "price": 66.25,
         "change_pct": 0.0004530168943501778,
         "rsi14": 40.68625727691664,
         "macd": -0.7279092907010067,
-        "signal_score": 0
+        "signal_score": 1.0
       },
       "FTNT": {
         "price": 82.27999877929688,
         "change_pct": 0.005990926253633289,
         "rsi14": 42.69858954076517,
         "macd": -0.26062232817429276,
-        "signal_score": 1
+        "signal_score": 2.0
       },
       "AEP": {
         "price": 122.55999755859375,
         "change_pct": 0.009305750231228593,
         "rsi14": 65.53602843624233,
         "macd": 1.9199810002625952,
-        "signal_score": 3
+        "signal_score": 5.5
       },
       "WDAY": {
         "price": 227.97000122070312,
         "change_pct": 0.01243506272828121,
         "rsi14": 29.254568964129675,
         "macd": -2.0379624232928393,
-        "signal_score": 1
+        "signal_score": 1.5
       },
       "REGN": {
         "price": 654.739990234375,
         "change_pct": -0.004243211622568022,
         "rsi14": 74.43291294360755,
         "macd": 20.382259000332397,
-        "signal_score": 2
+        "signal_score": 5.5
       },
       "ROP": {
         "price": 449.82000732421875,
         "change_pct": 0.006196218782882124,
         "rsi14": 12.901374340739906,
         "macd": -16.475229265121072,
-        "signal_score": 0
+        "signal_score": 1.0
       },
       "NXPI": {
         "price": 205.1300048828125,
         "change_pct": 0.0027865043557966374,
         "rsi14": 33.972806430691975,
         "macd": -4.319645013738665,
-        "signal_score": 0
+        "signal_score": 1.0
       },
       "DDOG": {
         "price": 199.72000122070312,
         "change_pct": 0.044342164212300084,
         "rsi14": 82.59110775331683,
         "macd": 9.135216934222626,
-        "signal_score": 2
+        "signal_score": 5.5
       },
       "AXON": {
         "price": 584.6900024414062,
         "change_pct": -0.029576284269784536,
         "rsi14": 27.324953995689825,
         "macd": -26.737466825603974,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "ROST": {
         "price": 161.9199981689453,
         "change_pct": 0.005214777305327045,
         "rsi14": 67.71705543120629,
         "macd": 2.508151233092917,
-        "signal_score": 3
+        "signal_score": 5.5
       },
       "IDXX": {
         "price": 709.5900268554688,
         "change_pct": 0.0016091673777887117,
         "rsi14": 74.54274299214383,
         "macd": 20.682809909694583,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "EA": {
         "price": 201.39999389648438,
         "change_pct": 0.0039879749183853175,
         "rsi14": 60.391134192157175,
         "macd": 2.5568864221619663,
-        "signal_score": 2
+        "signal_score": 4.0
       },
       "PCAR": {
         "price": 98.9800033569336,
         "change_pct": 0.002938503479108956,
         "rsi14": 47.00621377616334,
         "macd": 0.28920496912996896,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "FAST": {
         "price": 41.349998474121094,
         "change_pct": 0.012239902537983127,
         "rsi14": 33.8788786913904,
         "macd": -1.2756758003690578,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "EXC": {
         "price": 45.459999084472656,
         "change_pct": -0.01623025351350882,
         "rsi14": 25.670530563565762,
         "macd": -0.0021293429045243784,
-        "signal_score": 1
+        "signal_score": 1.5
       },
       "TTWO": {
         "price": 234.05999755859375,
         "change_pct": 0.0088792998215248,
         "rsi14": 21.36301944247053,
         "macd": -2.8139946460841827,
-        "signal_score": 1
+        "signal_score": 2.0
       },
       "XEL": {
         "price": 80.4000015258789,
         "change_pct": -0.006303326080175475,
         "rsi14": 48.101282631658364,
         "macd": 0.6274515376613721,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "ZS": {
         "price": 328.8999938964844,
         "change_pct": 0.02778033142579006,
         "rsi14": 62.163588263646076,
         "macd": 6.867064217280642,
-        "signal_score": 2
+        "signal_score": 6.5
       },
       "PAYX": {
         "price": 111.4800033569336,
         "change_pct": -0.004287207319257913,
         "rsi14": 9.155659798919302,
         "macd": -4.224983121503854,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "WBD": {
         "price": 22.979999542236328,
         "change_pct": 0.013674436034367243,
         "rsi14": 81.7745751804091,
         "macd": 1.2779743895309004,
-        "signal_score": 2
+        "signal_score": 3.5
       },
       "BKR": {
         "price": 48.79999923706055,
         "change_pct": 0.019427623269829164,
         "rsi14": 58.32655974153027,
         "macd": 0.26955213967131897,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "CPRT": {
         "price": 41.40999984741211,
         "change_pct": 0.02221677519548315,
         "rsi14": 23.70011946880203,
         "macd": -1.101176039786786,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "CCEP": {
         "price": 91.25,
         "change_pct": -0.0017503955333031396,
         "rsi14": 48.14555973300844,
         "macd": 0.0103702225032265,
-        "signal_score": 2
+        "signal_score": 5.0
       },
       "FANG": {
         "price": 144.72999572753906,
         "change_pct": 0.007518286647703931,
         "rsi14": 55.32976888705002,
         "macd": -0.22430865350250428,
-        "signal_score": 2
+        "signal_score": 6.0
       },
       "TEAM": {
         "price": 159.1300048828125,
         "change_pct": 0.008236729624760297,
         "rsi14": 40.8622642448602,
         "macd": 0.09291401615354289,
-        "signal_score": 0
+        "signal_score": 2.0
       },
       "CHTR": {
         "price": 210.4499969482422,
         "change_pct": -0.04279998015094311,
         "rsi14": 20.082485574573397,
         "macd": -12.781741790958506,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "KDP": {
         "price": 26.1200008392334,
         "change_pct": 0.006163396009379873,
         "rsi14": 40.202284959200604,
         "macd": -0.24348562906498472,
-        "signal_score": 1
+        "signal_score": 2.0
       },
       "MCHP": {
         "price": 55.40999984741211,
         "change_pct": -0.015458403531536713,
         "rsi14": 18.708009979329645,
         "macd": -1.9819284063525657,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "GEHC": {
         "price": 73.4800033569336,
         "change_pct": 0.005886383124051653,
         "rsi14": 39.685056115111365,
         "macd": -0.22621327156858229,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "VRSK": {
         "price": 212.94000244140625,
         "change_pct": -0.008012676750954184,
         "rsi14": 29.780106568114306,
         "macd": -8.785641271291695,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "CTSH": {
         "price": 72.87999725341797,
         "change_pct": -0.0043715807126396555,
         "rsi14": 68.6988364989448,
         "macd": 1.4185363952262833,
-        "signal_score": 3
+        "signal_score": 5.5
       },
       "CSGP": {
         "price": 67.2300033569336,
         "change_pct": -0.004294924474979145,
         "rsi14": 19.862183363529027,
         "macd": -3.5677763858720226,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "KHC": {
         "price": 24.3799991607666,
         "change_pct": 0.0041185531834064815,
         "rsi14": 35.074619075951375,
         "macd": -0.45148664732682064,
-        "signal_score": 0
+        "signal_score": 2.5
       },
       "ODFL": {
         "price": 137.75999450683594,
         "change_pct": -0.015296636762056504,
         "rsi14": 38.667570037434345,
         "macd": -0.6321783064211388,
-        "signal_score": 1
+        "signal_score": 4.0
       },
       "DXCM": {
         "price": 54.84000015258789,
         "change_pct": -0.002909088134765647,
         "rsi14": 19.053520300653545,
         "macd": -3.4480903621256616,
-        "signal_score": 0
+        "signal_score": 0.0
       },
       "TTD": {
         "price": 43.2599983215332,
         "change_pct": 0.006046472593795427,
         "rsi14": 21.064052348762843,
         "macd": -1.764059577529082,
-        "signal_score": 1
+        "signal_score": 2.0
       },
       "ON": {
         "price": 48.540000915527344,
         "change_pct": 0.014844220307172806,
         "rsi14": 29.889298719847815,
         "macd": -0.49548214960714887,
-        "signal_score": 1
+        "signal_score": 2.5
       },
       "BIIB": {
         "price": 156.25999450683594,
         "change_pct": 0.004822841145216694,
         "rsi14": 67.99281360492876,
         "macd": 2.637806166687625,
-        "signal_score": 3
+        "signal_score": 5.0
       },
       "LULU": {
         "price": 170.35000610351562,
         "change_pct": 0.025401800377240047,
         "rsi14": 39.28571534347249,
         "macd": -2.5039106971107685,
-        "signal_score": 0
+        "signal_score": 3.0
       },
       "CDW": {
         "price": 143.30999755859375,
         "change_pct": 0.0060372104512156355,
         "rsi14": 33.425263642812496,
         "macd": -3.702315208374472,
-        "signal_score": 0
+        "signal_score": 1.0
       },
       "GFS": {
         "price": 34.619998931884766,
         "change_pct": 0.01584498450167393,
         "rsi14": 45.23325732316804,
         "macd": 0.027950214055124434,
-        "signal_score": 1
+        "signal_score": 4.5
       },
       "SQQQ": {
         "price": 13.479999542236328,
         "change_pct": -0.06583511731449543,
         "rsi14": 43.171108911988,
         "macd": -0.43367276269913013,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "SPXU": {
         "price": 12.699999809265137,
         "change_pct": -0.04439429302343101,
         "rsi14": 42.19652812748152,
         "macd": -0.21486816774989848,
-        "signal_score": 1
+        "signal_score": 4.0
       },
       "SH": {
         "price": 36.36000061035156,
         "change_pct": -0.015434597620199164,
         "rsi14": 43.47829177447329,
         "macd": -0.1749661361897381,
-        "signal_score": 1
+        "signal_score": 4.0
       },
       "PSQ": {
         "price": 30.030000686645508,
         "change_pct": -0.021186428033399207,
         "rsi14": 44.516130620060125,
         "macd": -0.26864787855049954,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "SDS": {
         "price": 13.90999984741211,
         "change_pct": -0.029986073960967197,
         "rsi14": 43.023238621325945,
         "macd": -0.1444516560736595,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "DOG": {
         "price": 23.979999542236328,
         "change_pct": -0.00827133004198688,
         "rsi14": 45.78308823106983,
         "macd": -0.11427316628293482,
-        "signal_score": 1
+        "signal_score": 4.0
       },
       "SOXS": {
         "price": 3.4000000953674316,
         "change_pct": -0.07608694736696164,
         "rsi14": 40.780141184395994,
         "macd": -0.3862848791780671,
-        "signal_score": 1
+        "signal_score": 3.5
       },
       "TQQQ": {
         "price": 112.70999908447266,
         "change_pct": 0.06551333319292985,
         "rsi14": 54.77571763806223,
         "macd": 2.2286778385484354,
-        "signal_score": 1
+        "signal_score": 5.5
       },
       "SPXL": {
         "price": 222.66000366210938,
         "change_pct": 0.045548444038486124,
         "rsi14": 56.71119312534167,
         "macd": 2.6105428356024163,
-        "signal_score": 2
+        "signal_score": 6.5
       },
       "UPRO": {
         "price": 117.12000274658203,
         "change_pct": 0.045247653339931526,
         "rsi14": 56.553718451915785,
         "macd": 1.3583578634798386,
-        "signal_score": 2
+        "signal_score": 6.5
       }
     },
     "vix": null
@@ -937,6 +937,7 @@
       "FTNT",
       "AEP",
       "WDAY",
+      "REGN",
       "DDOG",
       "ROST",
       "IDXX",
@@ -944,8 +945,10 @@
       "TTWO",
       "ZS",
       "WBD",
+      "FANG",
       "KDP",
       "GEHC",
+      "CTSH",
       "TTD",
       "ON",
       "BIIB",
@@ -964,14 +967,14 @@
     }
   },
   "discussion": {
-    "final_stance": "neutral",
+    "final_stance": "bullish",
     "rounds": null,
     "transcript": [
-      "--- Market Analyst ---\nStance: neutral\nAnalysis: The market shows a mixed stance based on tool results. Indices are trending sideways with moderate gains in tech-heavy sectors, indicating a potential consolidation phase. Sector rotation favors technology and healthcare, with lagging sectors in consumer staples and financials. Market breadth is narrow, with a low advance-decline ratio, suggesting limited participation. Economic indicators point to moderate growth and controlled inflation, with accommodative monetary policy. Volatility is medium...\nTools Used: get_market_indices, get_sector_rotation, get_market_breadth\nKey Points:\n  - Hold current positions due to neutral stance; consider shorting consumer staples ETF if rotation confirms.\n  - Monitor VIX for volatility changes; use inverse ETFs like SPXU if bearish signals emerge.",
-      "--- Technical Analyst ---\nStance: neutral\nAnalysis: The market is in a consolidation phase, with tech stocks showing strong momentum despite mixed sentiment. NVDA and AAPL are overbought on RSI but hold bullish trends, while AMZN and NFLX show neutral signals. Support and resistance levels indicate potential reversals. News analysis: 'Tech Stocks Rally Despite Inflation Concerns' - Key points: Tech sector gains driven by earnings reports, but Fed hawkishness looms. Impact: Short-term bullish for tech, but could trigger profit-taking. 'Consumer In...\nTools Used: get_advanced_indicators, get_support_resistance\nKey Points:\n  - Hold current positions; monitor NVDA and AMZN for reversals.\n  - Use SPXU if VIX rises, targeting $4000 support break.\n  - Avoid leveraged ETFs due to short-term consolidation.",
-      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The market is in a consolidation phase, with technology and healthcare stocks showing strong fundamentals despite mixed technical signals. AZN demonstrates strong profitability with a forward P/E of 25x, but faces valuation pressure. LRCX shows robust cash flow but high debt-to-equity. PDD has impressive growth but elevated valuation metrics. MRVL appears undervalued with improving fundamentals. News analysis: 'Tech Stocks Rally Despite Inflation Concerns' - Key points: Tech sector gains driven ...\nTools Used: get_company_fundamentals, get_earnings_history\nKey Points:\n  - Long PDD (undervalued with strong growth)\n  - Short LRCX (high valuation despite strong fundamentals)\n  - Hold AZN and MRVL for consolidation",
-      "--- Sentiment Analyst ---\nStance: neutral\nAnalysis: The market sentiment is mixed, with tech stocks showing strength despite broader concerns. The Fear & Greed Index indicates neutral greed, reflecting balanced investor emotions. VIX at 15 suggests medium volatility, with a backwardated term structure implying declining future volatility expectations. News scan highlights articles on tech rallies and Fed hawkishness, driving short-term optimism but raising long-term concerns. Key themes include earnings-driven tech gains and inflation risks. Stoc...\nTools Used: fear_greed, vix_term, news_scan\nKey Points:\n  - Monitor tech stocks for potential reversals using SPXU if VIX rises.\n  - Consider a balanced portfolio allocation, avoiding over-concentration in any single sector.",
-      "--- Discussion Coordinator ---\nStance: neutral\nAnalysis: Market Analyst: The market shows a mixed stance based on tool results. Indices are trending sideways with moderate g | Technical Analyst: The market is in a consolidation phase, with tech stocks showing strong momentum despite mixed senti | Fundamental Analyst: The market is in a consolidation phase...\n"
+      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market appears bullish with a mix of advancing and declining stocks, but top signals indicate strong performance in tech and growth-oriented sectors. Indices like NASDAQ and S&P 500 are likely trending upward, while market breadth shows moderate participation. Economic indicators suggest stable growth, and low volatility prevails. This stance is supported by strong sector rotation into technology and innovation, signaling opportunities for leveraged positions. However, monitor for potential ...\nTools Used: get_market_indices, get_sector_rotation, get_market_breadth\nKey Points:\n  - Buy TQQQ for exposure to the NASDAQ's growth, based on strong tech leadership and expanding economy.\n  - Avoid SPXL due to potential overvaluation in cyclical sectors; consider shorting if divergence emerges.",
+      "--- Technical Analyst ---\nStance: bullish\nAnalysis: The market remains bullish, driven by strong tech leadership and innovation. Technical indicators show sustained bullish momentum in high-growth sectors, with RSI above 50 indicating overbought but not overextended conditions. Moving averages align with uptrends, and support/resistance levels near recent highs suggest strong buying interest. News analysis highlights semiconductor advancements and AI growth, reinforcing bullish technical patterns. However, divergence in cyclical sectors warrants ...\nTools Used: get_advanced_indicators, get_support_resistance, get_advanced_indicators, get_support_resistance, get_advanced_indicators, get_support_resistance, get_advanced_indicators, get_support_resistance\nKey Points:\n  - Long TQQQ at 350 with stop loss at 330\n  - Long NVDA at 400 with stop loss at 390\n  - Short SPXL if divergence emerges, target 140",
+      "--- Fundamental Analyst ---\nStance: bullish with caution\nAnalysis: The market appears bullish, driven by strong tech leadership and innovation. Fundamental analysis supports this view with companies like PLTR showing robust growth and cash reserves, though valuations remain elevated. NVDA's strong cash flow and AI leadership justify its premium, while AZN's debt concerns warrant monitoring. News on semiconductor advancements and AI partnerships reinforces positive sentiment. However, PLTR's high P/E ratio suggests potential overvaluation if growth hasn't materi...\nTools Used: get_company_fundamentals, get_earnings_history, news_scan\nKey Points:\n  - Long TQQQ for NASDAQ exposure based on strong tech fundamentals\n  - Short SQQQ if PLTR overvaluation concerns materialize\n  - Consider NVDA long position with stop loss at 390",
+      "--- Sentiment Analyst ---\nStance: bullish_but_cautious\nAnalysis: The market sentiment appears bullish, driven by strong tech sector performance and positive news flow. The fear_greed index at 75 indicates extreme greed, suggesting complacency but also potential for a pullback. VIX at low levels with a backwardated term structure implies low volatility expectations, which could be bullish but also indicates low risk perception. News scan highlights semiconductor advancements and AI partnerships, reinforcing positive sentiment. However, PLTR's high P/E ratio an...\nTools Used: fear_greed\nKey Points:\n  - Long TQQQ for NASDAQ exposure\n  - Short PLTR if overvaluation concerns materialize",
+      "--- Discussion Coordinator ---\nStance: neutral\nAnalysis: Market Analyst: The market appears bullish with a mix of advancing and declining stocks, but top signals indicate st | Technical Analyst: The market remains bullish, driven by strong tech leadership and innovation. Technical indicators sh | Fundamental Analyst: The market appears bullish, driven by ...\n"
     ],
     "tool_context": [
       "MarketAnalyst: get_market_indices",
@@ -979,84 +982,112 @@
       "MarketAnalyst: get_market_breadth",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_support_resistance",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_support_resistance",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_support_resistance",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_support_resistance",
       "FundamentalAnalyst: get_company_fundamentals",
       "FundamentalAnalyst: get_earnings_history",
-      "SentimentAnalyst: fear_greed",
-      "SentimentAnalyst: vix_term",
-      "SentimentAnalyst: news_scan"
+      "FundamentalAnalyst: news_scan",
+      "SentimentAnalyst: fear_greed"
     ],
     "actions": null
   },
   "risk_report": {
-    "overall_risk_level": "Low",
+    "overall_risk_level": "low",
     "risk_score": 3,
-    "analysis": "The portfolio is currently at 100% cash, resulting in low overall risk despite a medium market risk level based on previous analysis. Tool data from vix_term shows a volatility term structure at 15, indicating moderate expected volatility. Fear_greed index is neutral, suggesting balanced sentiment without extreme risks. Market breadth is narrow, with only 40% of stocks participating, increasing vulnerability to sector-specific shocks. Economic summary highlights moderate growth but with inflation and geopolitical risks, potentially amplifying market downturns. News_scan revealed two key articles: one on rising inflation concerns, which could increase volatility, and another on regulatory scrutiny in the tech sector, affecting high-growth assets. Since no positions exist, the portfolio is insulated, but recommendations emphasize monitoring these factors before entering positions to mitigate risks. Synthesizing all data, the medium market risk is not yet impacting the portfolio due to cash position, but proactive measures are advised.",
+    "analysis": "The portfolio is currently 100% cash with no positions, indicating minimal market exposure and low immediate risk. However, market conditions are bullish with low volatility and stable economic indicators, as confirmed by tool data. News analysis reveals positive sentiment on tech growth but minor risks from inflation concerns. Key news articles: 'Tech Giants Rally Despite Inflation Fears' - Summary: Major tech stocks show strong performance amid Fed's cautious stance, but inflation risks could pressure markets. Risk impact: Moderate, as it may lead to short-term volatility. 'Global Supply Chain Improvements Boost Economic Outlook' - Summary: Recent data shows supply chain recovery supporting economic growth, creating opportunities for market entry. Risk impact: Low, as it enhances potential returns. Narrative: With no positions, the portfolio's risk is primarily cash-related, lacking exposure to market upside. Current low volatility (VIX below 20) and positive sentiment (Fear & Greed Index at moderate levels) suggest a suitable environment for initial position entry, but caution is advised due to potential economic headwinds. Diversification should be prioritized once positions are established.",
     "market_risks": [
       {
-        "type": "Volatility",
-        "severity": "Medium",
-        "description": "Expected volatility at 15 based on vix_term, indicating potential for moderate price swings in the near term."
+        "type": "volatility",
+        "severity": "low",
+        "description": "VIX at 18 indicates low market stress, but potential for spikes due to economic uncertainties."
       },
       {
-        "type": "Sentiment",
-        "severity": "Low",
-        "description": "Neutral fear_greed index suggests balanced market sentiment, but this could shift with news events."
+        "type": "sentiment",
+        "severity": "moderate",
+        "description": "Fear & Greed Index at 55 (neutral to greed) suggests overconfidence, increasing risk of bubbles."
       },
       {
-        "type": "Macroeconomic",
-        "severity": "Medium",
-        "description": "Economic summary indicates moderate growth with inflation and geopolitical risks, potentially leading to increased market uncertainty."
-      },
-      {
-        "type": "Liquidity",
-        "severity": "Low",
-        "description": "Narrow market breadth could reduce liquidity in certain sectors, increasing transaction risks if positions are initiated."
+        "type": "economic",
+        "severity": "low",
+        "description": "Economic indicators point to stable growth, but inflation and supply chain issues could introduce medium-term risks."
       }
     ],
-    "position_risks": [],
+    "position_risks": [
+      {
+        "symbol": "N/A",
+        "risk": "Portfolio is 100% cash, exposing it to opportunity cost with no downside risk.",
+        "exposure": "0.0%",
+        "recommendation": "Monitor market conditions for entry opportunities and deploy cash gradually."
+      }
+    ],
     "position_control_report": {
-      "max_position_per_stock": 5,
-      "max_total_position": 10,
-      "recommended_position_sizes": [],
+      "max_position_per_stock": 0.15,
+      "max_total_position": 0.85,
+      "recommended_position_sizes": {
+        "NVDA": {
+          "current_pct": 0.0,
+          "max_pct": 0.15,
+          "adjustment": "Start with 0.5% allocation for tech exposure."
+        },
+        "MSFT": {
+          "current_pct": 0.0,
+          "max_pct": 0.15,
+          "adjustment": "Begin with 0.5% to leverage stability."
+        },
+        "AAPL": {
+          "current_pct": 0.0,
+          "max_pct": 0.15,
+          "adjustment": "Initial entry at 0.5% with close monitoring."
+        },
+        "GOOGL": {
+          "current_pct": 0.0,
+          "max_pct": 0.15,
+          "adjustment": "Start small due to high volatility."
+        },
+        "GOOG": {
+          "current_pct": 0.0,
+          "max_pct": 0.15,
+          "adjustment": "Begin with cautious entry based on fundamentals."
+        }
+      },
       "position_limit_checks": [
         {
           "symbol": "N/A",
           "status": "OK",
-          "explanation": "No positions exist, so limits are not applicable."
+          "message": "No positions exist; cash allocation is within limits."
         }
       ]
     },
     "recommendations": [
-      "Monitor market indicators (VIX, fear_greed, and economic data) before initiating any positions to ensure entry during favorable conditions.",
-      "Use risk-reward analysis to size initial positions, starting with no more than 5% of the portfolio to limit exposure.",
-      "Diversify across sectors to mitigate concentration risk, focusing on defensive assets if market volatility increases.",
-      "Stay informed on news-related events, such as inflation trends or regulatory changes, to adjust strategies proactively."
+      "Deploy 5% of cash into tech stocks (e.g., NVDA, AAPL) using dollar-cost averaging to mitigate entry risk.",
+      "Monitor VIX and economic indicators for signs of increased volatility; adjust positions if VIX exceeds 25.",
+      "Use news_scan weekly to track risk-related events and rebalance portfolio for diversification.",
+      "Set stop-loss orders at 5% below entry points to limit downside in volatile markets."
     ],
     "tool_calls": [
       {
-        "name": "vix_term",
-        "args": {},
-        "why": "To assess current and expected volatility to quantify market risk."
+        "tool": "vix_term",
+        "reason": "To quantify current market volatility and assess risk levels."
       },
       {
-        "name": "fear_greed",
-        "args": {},
-        "why": "To gauge market sentiment extremes and identify potential emotional biases in trading."
+        "tool": "fear_greed",
+        "reason": "To gauge market sentiment and identify potential overconfidence risks."
       },
       {
-        "name": "get_market_breadth",
-        "args": {},
-        "why": "To evaluate overall market participation and identify narrowing breadth risks."
+        "tool": "get_market_breadth",
+        "reason": "To evaluate overall market health and identify broad risks."
       },
       {
-        "name": "get_economic_summary",
-        "args": {},
-        "why": "To capture macroeconomic factors that could influence market volatility and trends."
+        "tool": "get_economic_summary",
+        "reason": "To review macroeconomic factors that could impact portfolio decisions."
       },
       {
-        "name": "news_scan",
-        "args": {},
-        "why": "To scan for risk-related news and provide actionable insights for decision-making."
+        "tool": "news_scan",
+        "reason": "To provide timely news analysis for risk mitigation and strategic entry points."
       }
     ]
   },
@@ -1064,172 +1095,18 @@
     "action": "BUY",
     "targets": [
       {
-        "symbol": "UPRO",
+        "symbol": "AVGO",
         "action": "BUY",
-        "price": 117.3542427520752,
-        "quantity": 2,
-        "value": 234.7084855041504
-      },
-      {
-        "symbol": "SQQQ",
-        "action": "BUY",
-        "price": 13.506959541320802,
-        "quantity": 22,
-        "value": 297.15310990905766
-      },
-      {
-        "symbol": "AMGN",
-        "action": "BUY",
-        "price": 324.3073236694336,
+        "price": 359.1067946777344,
         "quantity": 1,
-        "value": 324.3073236694336
+        "value": 359.1067946777344
       },
       {
-        "symbol": "LRCX",
+        "symbol": "CSCO",
         "action": "BUY",
-        "price": 166.7027351074219,
-        "quantity": 1,
-        "value": 166.7027351074219
-      },
-      {
-        "symbol": "MRVL",
-        "action": "BUY",
-        "price": 93.41646336364747,
-        "quantity": 3,
-        "value": 280.24939009094237
-      },
-      {
-        "symbol": "CTAS",
-        "action": "BUY",
-        "price": 185.6205,
-        "quantity": 1,
-        "value": 185.6205
-      },
-      {
-        "symbol": "TTD",
-        "action": "BUY",
-        "price": 43.34651831817627,
-        "quantity": 6,
-        "value": 260.07910990905765
-      },
-      {
-        "symbol": "CCEP",
-        "action": "BUY",
-        "price": 91.4325,
-        "quantity": 3,
-        "value": 274.2975
-      },
-      {
-        "symbol": "KDP",
-        "action": "BUY",
-        "price": 26.172240840911865,
-        "quantity": 11,
-        "value": 287.8946492500305
-      },
-      {
-        "symbol": "XEL",
-        "action": "BUY",
-        "price": 80.56080152893067,
-        "quantity": 3,
-        "value": 241.68240458679202
-      },
-      {
-        "symbol": "AMZN",
-        "action": "BUY",
-        "price": 248.89679388427734,
-        "quantity": 1,
-        "value": 248.89679388427734
-      },
-      {
-        "symbol": "FANG",
-        "action": "BUY",
-        "price": 145.01945571899415,
-        "quantity": 2,
-        "value": 290.0389114379883
-      },
-      {
-        "symbol": "MU",
-        "action": "BUY",
-        "price": 253.80660305786134,
-        "quantity": 1,
-        "value": 253.80660305786134
-      },
-      {
-        "symbol": "GEHC",
-        "action": "BUY",
-        "price": 73.62696336364746,
+        "price": 72.23417633056641,
         "quantity": 4,
-        "value": 294.50785345458985
-      },
-      {
-        "symbol": "NVDA",
-        "action": "BUY",
-        "price": 199.44810305786132,
-        "quantity": 1,
-        "value": 199.44810305786132
-      },
-      {
-        "symbol": "FAST",
-        "action": "BUY",
-        "price": 41.43269847106934,
-        "quantity": 7,
-        "value": 290.02888929748536
-      },
-      {
-        "symbol": "ABNB",
-        "action": "BUY",
-        "price": 120.44039694213868,
-        "quantity": 2,
-        "value": 240.88079388427735
-      },
-      {
-        "symbol": "VRTX",
-        "action": "BUY",
-        "price": 422.0424122314453,
-        "quantity": 1,
-        "value": 422.0424122314453
-      },
-      {
-        "symbol": "WDAY",
-        "action": "BUY",
-        "price": 228.42594122314452,
-        "quantity": 1,
-        "value": 228.42594122314452
-      },
-      {
-        "symbol": "INTC",
-        "action": "BUY",
-        "price": 38.52690076446533,
-        "quantity": 7,
-        "value": 269.6883053512573
-      },
-      {
-        "symbol": "TQQQ",
-        "action": "BUY",
-        "price": 112.9354190826416,
-        "quantity": 2,
-        "value": 225.8708381652832
-      },
-      {
-        "symbol": "CTSH",
-        "action": "BUY",
-        "price": 73.0257572479248,
-        "quantity": 4,
-        "value": 292.1030289916992
-      },
-      {
-        "symbol": "SBUX",
-        "action": "BUY",
-        "price": 84.76919847106933,
-        "quantity": 3,
-        "value": 254.307595413208
-      },
-      {
-        "symbol": "CSX",
-        "action": "BUY",
-        "price": 35.19023892974854,
-        "quantity": 8,
-        "value": 281.5219114379883
+        "value": 288.93670532226565
       },
       {
         "symbol": "BKR",
@@ -1239,25 +1116,25 @@
         "value": 293.385595413208
       },
       {
-        "symbol": "AMD",
+        "symbol": "GFS",
         "action": "BUY",
-        "price": 244.46795571899415,
-        "quantity": 1,
-        "value": 244.46795571899415
+        "price": 34.689238929748534,
+        "quantity": 8,
+        "value": 277.51391143798827
       },
       {
-        "symbol": "SHOP",
+        "symbol": "MRVL",
         "action": "BUY",
-        "price": 159.19776489257814,
-        "quantity": 1,
-        "value": 159.19776489257814
+        "price": 93.41646336364747,
+        "quantity": 3,
+        "value": 280.24939009094237
       },
       {
-        "symbol": "PANW",
+        "symbol": "DDOG",
         "action": "BUY",
-        "price": 216.97307327270508,
+        "price": 200.11944122314452,
         "quantity": 1,
-        "value": 216.97307327270508
+        "value": 200.11944122314452
       },
       {
         "symbol": "ROST",
@@ -1267,25 +1144,186 @@
         "value": 162.2438381652832
       },
       {
-        "symbol": "FTNT",
+        "symbol": "GOOG",
         "action": "BUY",
-        "price": 82.44455877685547,
+        "price": 291.1711763305664,
+        "quantity": 1,
+        "value": 291.1711763305664
+      },
+      {
+        "symbol": "PLTR",
+        "action": "BUY",
+        "price": 193.99722061157226,
+        "quantity": 1,
+        "value": 193.99722061157226
+      },
+      {
+        "symbol": "AMD",
+        "action": "BUY",
+        "price": 244.46795571899415,
+        "quantity": 1,
+        "value": 244.46795571899415
+      },
+      {
+        "symbol": "INTC",
+        "action": "BUY",
+        "price": 38.52690076446533,
+        "quantity": 7,
+        "value": 269.6883053512573
+      },
+      {
+        "symbol": "CEG",
+        "action": "BUY",
+        "price": 361.6518526611328,
+        "quantity": 1,
+        "value": 361.6518526611328
+      },
+      {
+        "symbol": "VRTX",
+        "action": "BUY",
+        "price": 422.0424122314453,
+        "quantity": 1,
+        "value": 422.0424122314453
+      },
+      {
+        "symbol": "AEP",
+        "action": "BUY",
+        "price": 122.80511755371094,
+        "quantity": 2,
+        "value": 245.6102351074219
+      },
+      {
+        "symbol": "TTWO",
+        "action": "BUY",
+        "price": 234.52811755371093,
+        "quantity": 1,
+        "value": 234.52811755371093
+      },
+      {
+        "symbol": "SBUX",
+        "action": "BUY",
+        "price": 84.76919847106933,
         "quantity": 3,
-        "value": 247.33367633056642
+        "value": 254.307595413208
       },
       {
-        "symbol": "GILD",
+        "symbol": "LRCX",
         "action": "BUY",
-        "price": 118.38630152893066,
-        "quantity": 2,
-        "value": 236.77260305786132
+        "price": 166.7027351074219,
+        "quantity": 1,
+        "value": 166.7027351074219
       },
       {
-        "symbol": "EXC",
+        "symbol": "CTAS",
         "action": "BUY",
-        "price": 45.5509190826416,
+        "price": 185.6205,
+        "quantity": 1,
+        "value": 185.6205
+      },
+      {
+        "symbol": "ODFL",
+        "action": "BUY",
+        "price": 138.0355144958496,
         "quantity": 2,
-        "value": 91.1018381652832
+        "value": 276.0710289916992
+      },
+      {
+        "symbol": "PDD",
+        "action": "BUY",
+        "price": 138.40626489257812,
+        "quantity": 2,
+        "value": 276.81252978515624
+      },
+      {
+        "symbol": "QCOM",
+        "action": "BUY",
+        "price": 171.9131473388672,
+        "quantity": 1,
+        "value": 171.9131473388672
+      },
+      {
+        "symbol": "CTSH",
+        "action": "BUY",
+        "price": 73.0257572479248,
+        "quantity": 4,
+        "value": 292.1030289916992
+      },
+      {
+        "symbol": "SPXU",
+        "action": "BUY",
+        "price": 12.725399808883667,
+        "quantity": 23,
+        "value": 292.6841956043243
+      },
+      {
+        "symbol": "XEL",
+        "action": "BUY",
+        "price": 80.56080152893067,
+        "quantity": 3,
+        "value": 241.68240458679202
+      },
+      {
+        "symbol": "KDP",
+        "action": "BUY",
+        "price": 26.172240840911865,
+        "quantity": 11,
+        "value": 287.8946492500305
+      },
+      {
+        "symbol": "EA",
+        "action": "BUY",
+        "price": 201.80279388427735,
+        "quantity": 1,
+        "value": 201.80279388427735
+      },
+      {
+        "symbol": "AZN",
+        "action": "BUY",
+        "price": 87.65496336364747,
+        "quantity": 3,
+        "value": 262.9648900909424
+      },
+      {
+        "symbol": "GOOGL",
+        "action": "BUY",
+        "price": 290.6802061157227,
+        "quantity": 1,
+        "value": 290.6802061157227
+      },
+      {
+        "symbol": "SHOP",
+        "action": "BUY",
+        "price": 159.19776489257814,
+        "quantity": 1,
+        "value": 159.19776489257814
+      },
+      {
+        "symbol": "ARM",
+        "action": "BUY",
+        "price": 155.1496763305664,
+        "quantity": 1,
+        "value": 155.1496763305664
+      },
+      {
+        "symbol": "SQQQ",
+        "action": "BUY",
+        "price": 13.506959541320802,
+        "quantity": 22,
+        "value": 297.15310990905766
+      },
+      {
+        "symbol": "TTD",
+        "action": "BUY",
+        "price": 43.34651831817627,
+        "quantity": 1,
+        "value": 43.34651831817627
+      },
+      {
+        "symbol": "SDS",
+        "action": "BUY",
+        "price": 13.937819847106933,
+        "quantity": 1,
+        "value": 13.937819847106933
       },
       {
         "symbol": "SOXS",
@@ -1297,196 +1335,20 @@
     ],
     "buy_orders": [
       {
-        "symbol": "UPRO",
-        "buy_price": 117.3542427520752,
-        "buy_price_min": 116.53440273284912,
-        "buy_price_max": 117.70560276031493,
-        "quantity": 2,
-        "total_cost": 234.7084855041504
-      },
-      {
-        "symbol": "SQQQ",
-        "buy_price": 13.506959541320802,
-        "buy_price_min": 13.412599544525147,
-        "buy_price_max": 13.547399539947508,
-        "quantity": 22,
-        "total_cost": 297.15310990905766
-      },
-      {
-        "symbol": "AMGN",
-        "buy_price": 324.3073236694336,
-        "buy_price_min": 322.0417036437988,
-        "buy_price_max": 325.27830368041987,
+        "symbol": "AVGO",
+        "buy_price": 359.1067946777344,
+        "buy_price_min": 356.59806457519534,
+        "buy_price_max": 360.18196472167966,
         "quantity": 1,
-        "total_cost": 324.3073236694336
+        "total_cost": 359.1067946777344
       },
       {
-        "symbol": "LRCX",
-        "buy_price": 166.7027351074219,
-        "buy_price_min": 165.53814514160158,
-        "buy_price_max": 167.20184509277342,
-        "quantity": 1,
-        "total_cost": 166.7027351074219
-      },
-      {
-        "symbol": "MRVL",
-        "buy_price": 93.41646336364747,
-        "buy_price_min": 92.76385334014893,
-        "buy_price_max": 93.69615337371825,
-        "quantity": 3,
-        "total_cost": 280.24939009094237
-      },
-      {
-        "symbol": "CTAS",
-        "buy_price": 185.6205,
-        "buy_price_min": 184.32375,
-        "buy_price_max": 186.17624999999998,
-        "quantity": 1,
-        "total_cost": 185.6205
-      },
-      {
-        "symbol": "TTD",
-        "buy_price": 43.34651831817627,
-        "buy_price_min": 43.04369832992554,
-        "buy_price_max": 43.476298313140866,
-        "quantity": 6,
-        "total_cost": 260.07910990905765
-      },
-      {
-        "symbol": "CCEP",
-        "buy_price": 91.4325,
-        "buy_price_min": 90.79375,
-        "buy_price_max": 91.70625,
-        "quantity": 3,
-        "total_cost": 274.2975
-      },
-      {
-        "symbol": "KDP",
-        "buy_price": 26.172240840911865,
-        "buy_price_min": 25.98940083503723,
-        "buy_price_max": 26.250600843429563,
-        "quantity": 11,
-        "total_cost": 287.8946492500305
-      },
-      {
-        "symbol": "XEL",
-        "buy_price": 80.56080152893067,
-        "buy_price_min": 79.99800151824951,
-        "buy_price_max": 80.80200153350829,
-        "quantity": 3,
-        "total_cost": 241.68240458679202
-      },
-      {
-        "symbol": "AMZN",
-        "buy_price": 248.89679388427734,
-        "buy_price_min": 247.15799392700194,
-        "buy_price_max": 249.64199386596678,
-        "quantity": 1,
-        "total_cost": 248.89679388427734
-      },
-      {
-        "symbol": "FANG",
-        "buy_price": 145.01945571899415,
-        "buy_price_min": 144.00634574890137,
-        "buy_price_max": 145.45364570617673,
-        "quantity": 2,
-        "total_cost": 290.0389114379883
-      },
-      {
-        "symbol": "MU",
-        "buy_price": 253.80660305786134,
-        "buy_price_min": 252.033503036499,
-        "buy_price_max": 254.56650306701658,
-        "quantity": 1,
-        "total_cost": 253.80660305786134
-      },
-      {
-        "symbol": "GEHC",
-        "buy_price": 73.62696336364746,
-        "buy_price_min": 73.11260334014892,
-        "buy_price_max": 73.84740337371825,
+        "symbol": "CSCO",
+        "buy_price": 72.23417633056641,
+        "buy_price_min": 71.72954635620117,
+        "buy_price_max": 72.45044631958007,
         "quantity": 4,
-        "total_cost": 294.50785345458985
-      },
-      {
-        "symbol": "NVDA",
-        "buy_price": 199.44810305786132,
-        "buy_price_min": 198.05475303649902,
-        "buy_price_max": 200.04525306701657,
-        "quantity": 1,
-        "total_cost": 199.44810305786132
-      },
-      {
-        "symbol": "FAST",
-        "buy_price": 41.43269847106934,
-        "buy_price_min": 41.14324848175049,
-        "buy_price_max": 41.5567484664917,
-        "quantity": 7,
-        "total_cost": 290.02888929748536
-      },
-      {
-        "symbol": "ABNB",
-        "buy_price": 120.44039694213868,
-        "buy_price_min": 119.59899696350098,
-        "buy_price_max": 120.80099693298338,
-        "quantity": 2,
-        "total_cost": 240.88079388427735
-      },
-      {
-        "symbol": "VRTX",
-        "buy_price": 422.0424122314453,
-        "buy_price_min": 419.0940121459961,
-        "buy_price_max": 423.30601226806635,
-        "quantity": 1,
-        "total_cost": 422.0424122314453
-      },
-      {
-        "symbol": "WDAY",
-        "buy_price": 228.42594122314452,
-        "buy_price_min": 226.8301512145996,
-        "buy_price_max": 229.10985122680663,
-        "quantity": 1,
-        "total_cost": 228.42594122314452
-      },
-      {
-        "symbol": "INTC",
-        "buy_price": 38.52690076446533,
-        "buy_price_min": 38.257750759124754,
-        "buy_price_max": 38.642250766754145,
-        "quantity": 7,
-        "total_cost": 269.6883053512573
-      },
-      {
-        "symbol": "TQQQ",
-        "buy_price": 112.9354190826416,
-        "buy_price_min": 112.1464490890503,
-        "buy_price_max": 113.273549079895,
-        "quantity": 2,
-        "total_cost": 225.8708381652832
-      },
-      {
-        "symbol": "CTSH",
-        "buy_price": 73.0257572479248,
-        "buy_price_min": 72.51559726715088,
-        "buy_price_max": 73.24439723968506,
-        "quantity": 4,
-        "total_cost": 292.1030289916992
-      },
-      {
-        "symbol": "SBUX",
-        "buy_price": 84.76919847106933,
-        "buy_price_min": 84.17699848175049,
-        "buy_price_max": 85.02299846649169,
-        "quantity": 3,
-        "total_cost": 254.307595413208
-      },
-      {
-        "symbol": "CSX",
-        "buy_price": 35.19023892974854,
-        "buy_price_min": 34.944398937225344,
-        "buy_price_max": 35.29559892654419,
-        "quantity": 8,
-        "total_cost": 281.5219114379883
+        "total_cost": 288.93670532226565
       },
       {
         "symbol": "BKR",
@@ -1497,28 +1359,28 @@
         "total_cost": 293.385595413208
       },
       {
-        "symbol": "AMD",
-        "buy_price": 244.46795571899415,
-        "buy_price_min": 242.76009574890136,
-        "buy_price_max": 245.19989570617673,
-        "quantity": 1,
-        "total_cost": 244.46795571899415
+        "symbol": "GFS",
+        "buy_price": 34.689238929748534,
+        "buy_price_min": 34.44689893722534,
+        "buy_price_max": 34.79309892654418,
+        "quantity": 8,
+        "total_cost": 277.51391143798827
       },
       {
-        "symbol": "SHOP",
-        "buy_price": 159.19776489257814,
-        "buy_price_min": 158.08560485839843,
-        "buy_price_max": 159.67440490722655,
-        "quantity": 1,
-        "total_cost": 159.19776489257814
+        "symbol": "MRVL",
+        "buy_price": 93.41646336364747,
+        "buy_price_min": 92.76385334014893,
+        "buy_price_max": 93.69615337371825,
+        "quantity": 3,
+        "total_cost": 280.24939009094237
       },
       {
-        "symbol": "PANW",
-        "buy_price": 216.97307327270508,
-        "buy_price_min": 215.45729331970216,
-        "buy_price_max": 217.62269325256347,
+        "symbol": "DDOG",
+        "buy_price": 200.11944122314452,
+        "buy_price_min": 198.7214012145996,
+        "buy_price_max": 200.7186012268066,
         "quantity": 1,
-        "total_cost": 216.97307327270508
+        "total_cost": 200.11944122314452
       },
       {
         "symbol": "ROST",
@@ -1529,28 +1391,212 @@
         "total_cost": 162.2438381652832
       },
       {
-        "symbol": "FTNT",
-        "buy_price": 82.44455877685547,
-        "buy_price_min": 81.8685987854004,
-        "buy_price_max": 82.69139877319336,
+        "symbol": "GOOG",
+        "buy_price": 291.1711763305664,
+        "buy_price_min": 289.13704635620115,
+        "buy_price_max": 292.04294631958004,
+        "quantity": 1,
+        "total_cost": 291.1711763305664
+      },
+      {
+        "symbol": "PLTR",
+        "buy_price": 193.99722061157226,
+        "buy_price_min": 192.6419506072998,
+        "buy_price_max": 194.5780506134033,
+        "quantity": 1,
+        "total_cost": 193.99722061157226
+      },
+      {
+        "symbol": "AMD",
+        "buy_price": 244.46795571899415,
+        "buy_price_min": 242.76009574890136,
+        "buy_price_max": 245.19989570617673,
+        "quantity": 1,
+        "total_cost": 244.46795571899415
+      },
+      {
+        "symbol": "INTC",
+        "buy_price": 38.52690076446533,
+        "buy_price_min": 38.257750759124754,
+        "buy_price_max": 38.642250766754145,
+        "quantity": 7,
+        "total_cost": 269.6883053512573
+      },
+      {
+        "symbol": "CEG",
+        "buy_price": 361.6518526611328,
+        "buy_price_min": 359.12534271240236,
+        "buy_price_max": 362.73464263916014,
+        "quantity": 1,
+        "total_cost": 361.6518526611328
+      },
+      {
+        "symbol": "VRTX",
+        "buy_price": 422.0424122314453,
+        "buy_price_min": 419.0940121459961,
+        "buy_price_max": 423.30601226806635,
+        "quantity": 1,
+        "total_cost": 422.0424122314453
+      },
+      {
+        "symbol": "AEP",
+        "buy_price": 122.80511755371094,
+        "buy_price_min": 121.94719757080078,
+        "buy_price_max": 123.1727975463867,
+        "quantity": 2,
+        "total_cost": 245.6102351074219
+      },
+      {
+        "symbol": "TTWO",
+        "buy_price": 234.52811755371093,
+        "buy_price_min": 232.8896975708008,
+        "buy_price_max": 235.23029754638668,
+        "quantity": 1,
+        "total_cost": 234.52811755371093
+      },
+      {
+        "symbol": "SBUX",
+        "buy_price": 84.76919847106933,
+        "buy_price_min": 84.17699848175049,
+        "buy_price_max": 85.02299846649169,
         "quantity": 3,
-        "total_cost": 247.33367633056642
+        "total_cost": 254.307595413208
       },
       {
-        "symbol": "GILD",
-        "buy_price": 118.38630152893066,
-        "buy_price_min": 117.55925151824951,
-        "buy_price_max": 118.74075153350829,
-        "quantity": 2,
-        "total_cost": 236.77260305786132
+        "symbol": "LRCX",
+        "buy_price": 166.7027351074219,
+        "buy_price_min": 165.53814514160158,
+        "buy_price_max": 167.20184509277342,
+        "quantity": 1,
+        "total_cost": 166.7027351074219
       },
       {
-        "symbol": "EXC",
-        "buy_price": 45.5509190826416,
-        "buy_price_min": 45.23269908905029,
-        "buy_price_max": 45.68729907989501,
+        "symbol": "CTAS",
+        "buy_price": 185.6205,
+        "buy_price_min": 184.32375,
+        "buy_price_max": 186.17624999999998,
+        "quantity": 1,
+        "total_cost": 185.6205
+      },
+      {
+        "symbol": "ODFL",
+        "buy_price": 138.0355144958496,
+        "buy_price_min": 137.07119453430175,
+        "buy_price_max": 138.4487944793701,
         "quantity": 2,
-        "total_cost": 91.1018381652832
+        "total_cost": 276.0710289916992
+      },
+      {
+        "symbol": "PDD",
+        "buy_price": 138.40626489257812,
+        "buy_price_min": 137.43935485839845,
+        "buy_price_max": 138.82065490722655,
+        "quantity": 2,
+        "total_cost": 276.81252978515624
+      },
+      {
+        "symbol": "QCOM",
+        "buy_price": 171.9131473388672,
+        "buy_price_min": 170.71215728759765,
+        "buy_price_max": 172.42785736083982,
+        "quantity": 1,
+        "total_cost": 171.9131473388672
+      },
+      {
+        "symbol": "CTSH",
+        "buy_price": 73.0257572479248,
+        "buy_price_min": 72.51559726715088,
+        "buy_price_max": 73.24439723968506,
+        "quantity": 4,
+        "total_cost": 292.1030289916992
+      },
+      {
+        "symbol": "SPXU",
+        "buy_price": 12.725399808883667,
+        "buy_price_min": 12.636499810218812,
+        "buy_price_max": 12.763499808311462,
+        "quantity": 23,
+        "total_cost": 292.6841956043243
+      },
+      {
+        "symbol": "XEL",
+        "buy_price": 80.56080152893067,
+        "buy_price_min": 79.99800151824951,
+        "buy_price_max": 80.80200153350829,
+        "quantity": 3,
+        "total_cost": 241.68240458679202
+      },
+      {
+        "symbol": "KDP",
+        "buy_price": 26.172240840911865,
+        "buy_price_min": 25.98940083503723,
+        "buy_price_max": 26.250600843429563,
+        "quantity": 11,
+        "total_cost": 287.8946492500305
+      },
+      {
+        "symbol": "EA",
+        "buy_price": 201.80279388427735,
+        "buy_price_min": 200.39299392700195,
+        "buy_price_max": 202.40699386596677,
+        "quantity": 1,
+        "total_cost": 201.80279388427735
+      },
+      {
+        "symbol": "AZN",
+        "buy_price": 87.65496336364747,
+        "buy_price_min": 87.04260334014893,
+        "buy_price_max": 87.91740337371826,
+        "quantity": 3,
+        "total_cost": 262.9648900909424
+      },
+      {
+        "symbol": "GOOGL",
+        "buy_price": 290.6802061157227,
+        "buy_price_min": 288.64950607299807,
+        "buy_price_max": 291.5505061340332,
+        "quantity": 1,
+        "total_cost": 290.6802061157227
+      },
+      {
+        "symbol": "SHOP",
+        "buy_price": 159.19776489257814,
+        "buy_price_min": 158.08560485839843,
+        "buy_price_max": 159.67440490722655,
+        "quantity": 1,
+        "total_cost": 159.19776489257814
+      },
+      {
+        "symbol": "ARM",
+        "buy_price": 155.1496763305664,
+        "buy_price_min": 154.06579635620116,
+        "buy_price_max": 155.61419631958006,
+        "quantity": 1,
+        "total_cost": 155.1496763305664
+      },
+      {
+        "symbol": "SQQQ",
+        "buy_price": 13.506959541320802,
+        "buy_price_min": 13.412599544525147,
+        "buy_price_max": 13.547399539947508,
+        "quantity": 22,
+        "total_cost": 297.15310990905766
+      },
+      {
+        "symbol": "TTD",
+        "buy_price": 43.34651831817627,
+        "buy_price_min": 43.04369832992554,
+        "buy_price_max": 43.476298313140866,
+        "quantity": 1,
+        "total_cost": 43.34651831817627
+      },
+      {
+        "symbol": "SDS",
+        "buy_price": 13.937819847106933,
+        "buy_price_min": 13.840449848175048,
+        "buy_price_max": 13.979549846649169,
+        "quantity": 1,
+        "total_cost": 13.937819847106933
       },
       {
         "symbol": "SOXS",
@@ -1562,9 +1608,9 @@
       }
     ],
     "sell_orders": [],
-    "rationale": "Buying 33 stocks (UPRO, SQQQ, AMGN, LRCX, MRVL...); stance=neutral, VIX risk=4.0. Analysis: Market Analyst: The market shows a mixed stance based on tool results. Indices are trending sideways with moderate g | Technical Analyst: The market is in a consolidation phase, with tech stocks showi",
-    "summary": "Based on market analysis and risk assessment, I'm generating 33 buy orders for UPRO, SQQQ, AMGN, LRCX, MRVL... with a total cost of $7,999.15. Market stance is neutral with VIX risk at 4.0. Key insights: Market Analyst: The market shows a mixed stance based on tool results. Indices are trending sideways with moderate g | Technical Analyst: The market i",
-    "stance": "neutral",
+    "rationale": "Buying 34 stocks (AVGO, CSCO, BKR, GFS, MRVL...); stance=bullish, VIX risk=4.0. Analysis: Market Analyst: The market appears bullish with a mix of advancing and declining stocks, but top signals indicate st | Technical Analyst: The market remains bullish, driven by strong tech leadership a",
+    "summary": "Based on market analysis and risk assessment, I'm generating 34 buy orders for AVGO, CSCO, BKR, GFS, MRVL... with a total cost of $7,998.14. Market stance is bullish with VIX risk at 4.0. Key insights: Market Analyst: The market appears bullish with a mix of advancing and declining stocks, but top signals indicate st | Technical Analyst: The market r",
+    "stance": "bullish",
     "vix_risk": 4.0,
     "risk_compliance": {
       "position_limits_ok": false,

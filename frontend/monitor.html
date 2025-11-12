@@ -1011,6 +1011,22 @@
         .view-conversations-btn:hover {
             background: #5568d3;
         }
+        
+        /* Agent Filter Buttons */
+        .agent-filter-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .agent-filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            opacity: 0.9;
+        }
+        
+        .agent-filter-btn.active {
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
 
         /* Tabs */
         .tabs { display:flex; gap:10px; }
@@ -1339,12 +1355,33 @@
                         <h2>
                             💬 AI Agent Conversations (Live)
                         </h2>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                             <span class="position-count" id="convCount">—</span>
                             <button id="showNewsBtn" onclick="showNewsModal()" style="padding: 6px 12px; background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; border-radius: 6px; color: #6366f1; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
                                 📰 Show News
                             </button>
                         </div>
+                    </div>
+                    <!-- Agent Tool Results Filter Buttons -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; padding: 0 4px;">
+                        <button class="agent-filter-btn active" data-agent="all" onclick="filterAgentTools('all')" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            📋 All
+                        </button>
+                        <button class="agent-filter-btn" data-agent="TechnicalAnalyst" onclick="filterAgentTools('TechnicalAnalyst')" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            🔬 Technical
+                        </button>
+                        <button class="agent-filter-btn" data-agent="FundamentalAnalyst" onclick="filterAgentTools('FundamentalAnalyst')" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            📑 Fundamental
+                        </button>
+                        <button class="agent-filter-btn" data-agent="MarketAnalyst" onclick="filterAgentTools('MarketAnalyst')" style="padding: 6px 12px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            📈 Market
+                        </button>
+                        <button class="agent-filter-btn" data-agent="SentimentAnalyst" onclick="filterAgentTools('SentimentAnalyst')" style="padding: 6px 12px; background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; border-radius: 6px; color: #fbbf24; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            😊 Sentiment
+                        </button>
+                        <button class="agent-filter-btn" data-agent="RiskAnalyst" onclick="filterAgentTools('RiskAnalyst')" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            ⚠️ Risk
+                        </button>
                     </div>
                     <div id="conversationsOverview" style="max-height: 500px; overflow-y: auto;"></div>
                 </div>
@@ -1493,6 +1530,67 @@
         const API_BASE = (typeof window !== 'undefined' && window.API_CONFIG) 
             ? window.API_CONFIG.apiUrl 
             : 'http://127.0.0.1:8000';
+        
+        // Read-only mode detection: If accessing via IP address (shared), enable read-only mode
+        // Localhost access (127.0.0.1 or localhost) = Full control
+        // IP address access (e.g., 192.168.4.24) = Read-only mode
+        const hostname = window.location.hostname;
+        const isReadOnlyMode = hostname !== 'localhost' && 
+                               hostname !== '127.0.0.1' && 
+                               hostname !== '' &&
+                               /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+        
+        // Update API URL display in footer
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiUrlElement = document.getElementById('apiUrl');
+            if (apiUrlElement) {
+                apiUrlElement.textContent = API_BASE;
+            }
+            
+            // Enable read-only mode for shared websites (IP access)
+            if (isReadOnlyMode) {
+                // Hide/disable trading controls
+                const startTradeBtn = document.getElementById('startTradeBtn');
+                if (startTradeBtn) {
+                    startTradeBtn.style.display = 'none';
+                }
+                
+                const initBtn = document.querySelector('button[onclick="initSystem()"]');
+                if (initBtn) {
+                    initBtn.style.display = 'none';
+                }
+                
+                const autoDemoLoop = document.getElementById('autoDemoLoop');
+                if (autoDemoLoop) {
+                    autoDemoLoop.closest('label').style.display = 'none';
+                }
+                
+                // Disable auto-trade (prevent it from starting)
+                window.READ_ONLY_MODE = true;
+                
+                // Update auto trade status to show read-only
+                const autoTradeStatus = document.getElementById('autoTradeStatus');
+                if (autoTradeStatus) {
+                    autoTradeStatus.textContent = 'Read-Only Mode (Shared)';
+                    autoTradeStatus.style.color = '#fbbf24'; // Yellow/orange color
+                }
+                
+                // Add read-only indicator to header
+                const headerControls = document.querySelector('.header-controls');
+                if (headerControls) {
+                    const readOnlyBadge = document.createElement('span');
+                    readOnlyBadge.textContent = '🔒 Read-Only';
+                    readOnlyBadge.style.cssText = 'color: #fbbf24; font-size: 12px; margin-left: 12px; font-weight: 600;';
+                    readOnlyBadge.title = 'This is a shared website. Trading controls are disabled for security.';
+                    headerControls.insertBefore(readOnlyBadge, headerControls.firstChild);
+                }
+                
+                console.log('[Read-Only Mode] Enabled: Shared website access detected. Trading controls disabled.');
+            } else {
+                window.READ_ONLY_MODE = false;
+                console.log('[Full Control Mode] Enabled: Localhost access detected. All controls available.');
+            }
+        });
         const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh (continuous, independent of trading cycle)
         const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (trading hours)
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
@@ -2303,6 +2401,12 @@
         }
 
         async function initSystem() {
+            // Prevent initialization in read-only mode
+            if (window.READ_ONLY_MODE) {
+                alert('⚠️ Read-Only Mode: System initialization is disabled on shared websites for security.\n\nPlease access via localhost for full control.');
+                return;
+            }
+            
             // 检查是否有进行中的操作
             const conflicts = [];
             if (isTradingExecuting) {
@@ -2736,6 +2840,13 @@
         }
         
         function startAutoTrade() {
+            // Prevent auto-trade in read-only mode
+            if (window.READ_ONLY_MODE) {
+                console.log('[Auto Trade] Read-only mode: Auto-trade disabled');
+                updateAutoTradeStatus('Read-Only Mode (Disabled)');
+                return;
+            }
+            
             if (tradeCheckTimer) {
                 clearInterval(tradeCheckTimer);
             }
@@ -3648,6 +3759,47 @@
             renderConversationsInline(convData.conversations || []);
         }
 
+        // Global variable to store current agent filter
+        let currentAgentFilter = 'all';
+        
+        // Filter agent tools function
+        function filterAgentTools(agentName) {
+            currentAgentFilter = agentName;
+            
+            // Update button states
+            document.querySelectorAll('.agent-filter-btn').forEach(btn => {
+                if (btn.dataset.agent === agentName) {
+                    btn.classList.add('active');
+                    // Increase opacity for active button
+                    const currentBg = window.getComputedStyle(btn).backgroundColor;
+                    const match = currentBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                    if (match) {
+                        const r = match[1], g = match[2], b = match[3];
+                        const opacity = match[4] ? parseFloat(match[4]) : 0.2;
+                        btn.style.background = `rgba(${r}, ${g}, ${b}, ${Math.min(opacity * 2, 0.6)})`;
+                    }
+                    btn.style.borderWidth = '2px';
+                    btn.style.fontWeight = '600';
+                } else {
+                    btn.classList.remove('active');
+                    // Reset to default opacity
+                    const currentBg = window.getComputedStyle(btn).backgroundColor;
+                    const match = currentBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                    if (match) {
+                        const r = match[1], g = match[2], b = match[3];
+                        btn.style.background = `rgba(${r}, ${g}, ${b}, 0.2)`;
+                    }
+                    btn.style.borderWidth = '1px';
+                    btn.style.fontWeight = '500';
+                }
+            });
+            
+            // Re-render conversations with filter
+            if (window.currentConversations) {
+                renderConversationsOverview(window.currentConversations);
+            }
+        }
+        
         // Render conversations on Overview
         function renderConversationsOverview(conversations) {
             // 保存conversations到全局变量，供新闻模态框使用
@@ -3655,11 +3807,43 @@
             const container = document.getElementById('conversationsOverview');
             const count = document.getElementById('convCount');
             if (!container) return;
-            // 过滤掉 tool 类型的条目，只显示 discussion 条目
-            const filteredConversations = conversations.filter(c => (c.type || 'discussion') !== 'tool');
-            if (count) count.textContent = `${filteredConversations.length} items`;
+            
+            // Apply agent filter
+            let filteredConversations = conversations;
+            if (currentAgentFilter !== 'all') {
+                // Filter by agent name (case-insensitive partial match)
+                filteredConversations = conversations.filter(c => {
+                    const agent = (c.agent || c.agent_name || 'Unknown').toLowerCase();
+                    const filterLower = currentAgentFilter.toLowerCase();
+                    // Match exact or partial (e.g., "TechnicalAnalyst" matches "technical")
+                    return agent.includes(filterLower) || filterLower.includes(agent);
+                });
+            }
+            
+            // If filtering for specific agent, show only tool results
+            // Otherwise, show all (discussion + tools)
+            if (currentAgentFilter !== 'all') {
+                // Show only tool results for the selected agent
+                filteredConversations = filteredConversations.filter(c => (c.type || 'discussion') === 'tool');
+            } else {
+                // Show all: discussion entries + tool entries
+                // Keep all entries
+            }
+            
+            if (count) {
+                const toolCount = filteredConversations.filter(c => (c.type || 'discussion') === 'tool').length;
+                const discussionCount = filteredConversations.filter(c => (c.type || 'discussion') !== 'tool').length;
+                if (currentAgentFilter !== 'all') {
+                    count.textContent = `${toolCount} tools`;
+                } else {
+                    count.textContent = `${discussionCount} discussions, ${toolCount} tools`;
+                }
+            }
             if (filteredConversations.length === 0) {
-                container.innerHTML = `<div class="empty-conversations"><p>No conversations yet.</p></div>`;
+                const emptyMessage = currentAgentFilter !== 'all' 
+                    ? `No tool results found for ${currentAgentFilter}. Try selecting a different agent or click "All" to see all conversations.`
+                    : 'No conversations yet.';
+                container.innerHTML = `<div class="empty-conversations"><p>${emptyMessage}</p></div>`;
                 return;
             }
             container.innerHTML = `
@@ -3700,9 +3884,10 @@
                         // Parse tool information if it's a tool entry
                         let toolHtml = '';
                         let toolResultHtml = '';
+                        let toolInfo = null; // Initialize toolInfo outside the if block
                         if (entry_type === 'tool') {
                             // 尝试解析工具信息
-                            const toolInfo = parseToolInfo(content);
+                            toolInfo = parseToolInfo(content);
                             if (toolInfo) {
                                 toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
                                 if (toolInfo.result) {
@@ -3852,9 +4037,50 @@
                             }
                         }
                         
-                        // 只显示discussion类型的entry，并且只显示summary，不显示工具结果
-                        if (entry_type !== 'discussion' || !analysisText) {
-                            return ''; // 跳过非discussion或没有analysis的entry
+                        // If filtering by agent, show tool results; otherwise show discussions
+                        if (currentAgentFilter !== 'all') {
+                            // Show only tool results when filtering
+                            if (entry_type !== 'tool') {
+                                return ''; // Skip non-tool entries when filtering
+                            }
+                            // Display tool result
+                            // Get tool name from parsed info or entry
+                            let toolName = c.tool_name || 'Unknown Tool';
+                            if (toolInfo && toolInfo.name) {
+                                toolName = toolInfo.name;
+                            } else {
+                                // Try to extract from content
+                                const toolMatch = content.match(/Tool used:\s*([^:]+)/);
+                                if (toolMatch) {
+                                    toolName = toolMatch[1].trim();
+                                }
+                            }
+                            // If no tool HTML was generated, create a basic one
+                            if (!toolHtml && !toolResultHtml) {
+                                toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
+                                toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                    <div style="font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content)}</div>
+                                </div>`;
+                            }
+                            return `
+                                <div class="conversation-item" style="border-left-color: #f59e0b;">
+                                    <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <span class="conversation-agent">${agentIcon} ${agent}</span>
+                                        </div>
+                                        <span class="conversation-date" style="font-size: 11px; color: #94a3b8;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
+                                    </div>
+                                    ${toolHtml || `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`}
+                                    ${toolResultHtml || `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
+                                        <div style="font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content)}</div>
+                                    </div>`}
+                                </div>
+                            `;
+                        } else {
+                            // Show discussions (original behavior)
+                            if (entry_type !== 'discussion' || !analysisText) {
+                                return ''; // 跳过非discussion或没有analysis的entry
+                            }
                         }
                         
                         // 获取工具名称（如果有），每个工具分开显示
@@ -7039,6 +7265,11 @@
             // Auto Trade automatic management: automatically enable/disable based on market status
             // No longer depends on checkbox, system automatically detects market status and manages
             async function checkAndManageAutoTrade() {
+                // Skip auto-trade management in read-only mode
+                if (window.READ_ONLY_MODE) {
+                    return;
+                }
+                
                 try {
                     const isOpen = await isMarketOpen();
                     
@@ -7125,6 +7356,12 @@
         // - Scenario 3-4: Market closed, plan tomorrow's trades
         // - Scenario 5: Multi-day simulation, execute based on daily market status
         async function startTradingCycle() {
+            // Prevent trading in read-only mode
+            if (window.READ_ONLY_MODE) {
+                alert('⚠️ Read-Only Mode: Trading is disabled on shared websites for security.\n\nPlease access via localhost for full control.');
+                return;
+            }
+            
             // Check if button is disabled (prevent duplicate clicks)
             const btn = document.getElementById('startTradeBtn');
             if (btn && btn.disabled) {

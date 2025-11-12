@@ -29,7 +29,8 @@ def run_market_analyst(market_json: Dict[str, Any]) -> Dict[str, Any]:
         # 同时考虑 signal_score：即使不是 uptrend，如果 signal_score 足够高也推荐
         try:
             signal_score = float(sd.get("signal_score", 0))
-            if (t == "uptrend" and vix_risk <= 7.0) or (signal_score > 3.0 and vix_risk <= 7.0):
+            # signal_score 范围现在是 0-10，使用 5.0 作为高信号阈值（相当于原来的 2.0-3.0）
+            if (t == "uptrend" and vix_risk <= 7.0) or (signal_score > 5.0 and vix_risk <= 7.0):
                 rec_buy.append(sym)
         except Exception:
             # 如果无法获取 signal_score，使用原来的逻辑

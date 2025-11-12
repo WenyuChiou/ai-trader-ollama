@@ -1394,7 +1394,14 @@
                 <div class="trades-section" id="executionDetailsSection">
                     <div class="section-header">
                         <h2>📋 Execution Details</h2>
-                        <span class="position-count" id="executionCount">0 trades</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="position-count" id="executionCount">0 trades</span>
+                            <div id="executionPagination" style="display: none; gap: 8px; align-items: center;">
+                                <button id="executionPrevPage" onclick="changeExecutionPage(-1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">← Prev</button>
+                                <span id="executionPageInfo" style="font-size: 12px; color: #94a3b8;">Page 1</span>
+                                <button id="executionNextPage" onclick="changeExecutionPage(1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">Next →</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="table-container" style="max-height: 500px; overflow-y: auto;">
                         <table>
@@ -1458,7 +1465,14 @@
                 <div class="trades-section">
                     <div class="section-header">
                         <h2>Trade Details</h2>
-                        <span class="position-count" id="tradesCount">0 trades</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="position-count" id="tradesCount">0 trades</span>
+                            <div id="tradesPagination" style="display: none; gap: 8px; align-items: center;">
+                                <button id="tradesPrevPage" onclick="changeTradesPage(-1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">← Prev</button>
+                                <span id="tradesPageInfo" style="font-size: 12px; color: #94a3b8;">Page 1</span>
+                                <button id="tradesNextPage" onclick="changeTradesPage(1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">Next →</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="table-container">
                         <table>
@@ -6565,6 +6579,11 @@
 
         function renderTrades(trades) {
             const tbody = document.getElementById('tradesBody');
+            const countEl = document.getElementById('tradesCount');
+            const paginationEl = document.getElementById('tradesPagination');
+            const pageInfoEl = document.getElementById('tradesPageInfo');
+            const prevBtn = document.getElementById('tradesPrevPage');
+            const nextBtn = document.getElementById('tradesNextPage');
             
             // 前端去重（额外保护）- 不依赖timestamp，因为可能为空
             const seen = new Set();
@@ -6583,14 +6602,46 @@
                 return true;
             });
             
-            document.getElementById('tradesCount').textContent = `${uniqueTrades.length} trades`;
+            // 保存所有交易数据用于分页
+            tradesAllTrades = uniqueTrades;
+            
+            if (countEl) {
+                countEl.textContent = `${uniqueTrades.length} trades`;
+            }
             
             if (uniqueTrades.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 40px; color: #6b7280;">No trades yet. Run a trading cycle to generate orders.</td></tr>`;
+                if (paginationEl) paginationEl.style.display = 'none';
                 return;
             }
             
-            tbody.innerHTML = uniqueTrades.map(t => {
+            // 分页：每页显示50条
+            const totalPages = Math.ceil(uniqueTrades.length / TRADES_PAGE_SIZE);
+            const startIdx = (tradesPage - 1) * TRADES_PAGE_SIZE;
+            const endIdx = startIdx + TRADES_PAGE_SIZE;
+            const pageTrades = uniqueTrades.slice(startIdx, endIdx);
+            
+            // 显示分页控件
+            if (paginationEl && totalPages > 1) {
+                paginationEl.style.display = 'flex';
+                if (pageInfoEl) {
+                    pageInfoEl.textContent = `Page ${tradesPage} / ${totalPages} (${uniqueTrades.length} total)`;
+                }
+                if (prevBtn) {
+                    prevBtn.disabled = tradesPage <= 1;
+                    prevBtn.style.opacity = tradesPage <= 1 ? '0.5' : '1';
+                    prevBtn.style.cursor = tradesPage <= 1 ? 'not-allowed' : 'pointer';
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = tradesPage >= totalPages;
+                    nextBtn.style.opacity = tradesPage >= totalPages ? '0.5' : '1';
+                    nextBtn.style.cursor = tradesPage >= totalPages ? 'not-allowed' : 'pointer';
+                }
+            } else if (paginationEl) {
+                paginationEl.style.display = 'none';
+            }
+            
+            tbody.innerHTML = pageTrades.map(t => {
                 const side = (t.side || t.action || '').toUpperCase();
                 const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
                 
@@ -6641,11 +6692,198 @@
             }).join('');
         }
 
+        // Pagination state for Execution Details
+        let executionPage = 1;
+        let executionAllTrades = [];
+        const EXECUTION_PAGE_SIZE = 50;
+        
+        // Pagination state for Trade History
+        let tradesPage = 1;
+        let tradesAllTrades = [];
+        const TRADES_PAGE_SIZE = 50;
+        
+        // Change Execution Details page
+        function changeExecutionPage(delta) {
+            if (!executionAllTrades || executionAllTrades.length === 0) return;
+            const totalPages = Math.ceil(executionAllTrades.length / EXECUTION_PAGE_SIZE);
+            executionPage = Math.max(1, Math.min(totalPages, executionPage + delta));
+            // 重新渲染当前页（使用已保存的数据）
+            const tbody = document.getElementById('executionDetailsBody');
+            if (!tbody) return;
+            
+            const startIdx = (executionPage - 1) * EXECUTION_PAGE_SIZE;
+            const endIdx = startIdx + EXECUTION_PAGE_SIZE;
+            const pageTrades = executionAllTrades.slice(startIdx, endIdx);
+            
+            // 渲染当前页的订单
+            tbody.innerHTML = pageTrades.map(t => {
+                const side = (t.side || t.action || '').toUpperCase();
+                const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
+                const ts = t.filled_at || t.placed_at || t.timestamp || '';
+                let timeDisplay = '-';
+                if (ts) {
+                    try {
+                        const dateObj = new Date(ts);
+                        timeDisplay = dateObj.toLocaleString('en-US', {
+                            month: '2-digit', day: '2-digit', hour: '2-digit',
+                            minute: '2-digit', second: '2-digit', hour12: false
+                        });
+                    } catch (e) {
+                        timeDisplay = ts;
+                    }
+                }
+                const fillPrice = t.fill_price || t.price || null;
+                const priceDisplay = fillPrice ? `$${Number(fillPrice).toFixed(2)}` : '-';
+                const status = (t.status || 'UNKNOWN').toUpperCase();
+                const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
+                const orderDate = t.order_date || t.date || '';
+                const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const isTomorrowOrder = orderDate && orderDate >= tomorrow;
+                const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">TOMORROW</span>' : '';
+                const orderDateDisplay = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+                let realizedPnlDisplay = '-';
+                if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
+                    const pnl = Number(t.realized_pnl);
+                    const pnlPct = t.realized_pnl_pct !== undefined && t.realized_pnl_pct !== null ? Number(t.realized_pnl_pct) : null;
+                    const pnlClass = pnl >= 0 ? 'trade-profit' : 'trade-loss';
+                    const pnlSign = pnl >= 0 ? '+' : '';
+                    const pnlPctStr = pnlPct !== null ? ` (${pnlSign}${pnlPct.toFixed(2)}%)` : '';
+                    realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
+                }
+                return `
+                    <tr ${isTomorrowOrder ? 'style="background-color: #fff7ed;"' : ''}>
+                        <td>${timeDisplay}</td>
+                        <td>${orderDateDisplay}${tomorrowBadge}</td>
+                        <td class="symbol-cell">${t.symbol || '-'}</td>
+                        <td class="${sideClass}">${side || '-'}</td>
+                        <td>${t.quantity ?? '-'}</td>
+                        <td>${priceDisplay}</td>
+                        <td>${realizedPnlDisplay}</td>
+                        <td><span class="status-pill ${statusClass}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // 更新分页控件
+            const paginationEl = document.getElementById('executionPagination');
+            const pageInfoEl = document.getElementById('executionPageInfo');
+            const prevBtn = document.getElementById('executionPrevPage');
+            const nextBtn = document.getElementById('executionNextPage');
+            if (paginationEl && totalPages > 1) {
+                paginationEl.style.display = 'flex';
+                if (pageInfoEl) {
+                    pageInfoEl.textContent = `Page ${executionPage} / ${totalPages} (${executionAllTrades.length} total)`;
+                }
+                if (prevBtn) {
+                    prevBtn.disabled = executionPage <= 1;
+                    prevBtn.style.opacity = executionPage <= 1 ? '0.5' : '1';
+                    prevBtn.style.cursor = executionPage <= 1 ? 'not-allowed' : 'pointer';
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = executionPage >= totalPages;
+                    nextBtn.style.opacity = executionPage >= totalPages ? '0.5' : '1';
+                    nextBtn.style.cursor = executionPage >= totalPages ? 'not-allowed' : 'pointer';
+                }
+            }
+        }
+        
+        // Change Trade History page
+        function changeTradesPage(delta) {
+            if (!tradesAllTrades || tradesAllTrades.length === 0) return;
+            const totalPages = Math.ceil(tradesAllTrades.length / TRADES_PAGE_SIZE);
+            tradesPage = Math.max(1, Math.min(totalPages, tradesPage + delta));
+            // 重新渲染当前页（使用已保存的数据）
+            const tbody = document.getElementById('tradesBody');
+            if (!tbody) return;
+            
+            const startIdx = (tradesPage - 1) * TRADES_PAGE_SIZE;
+            const endIdx = startIdx + TRADES_PAGE_SIZE;
+            const pageTrades = tradesAllTrades.slice(startIdx, endIdx);
+            
+            // 渲染当前页的订单
+            tbody.innerHTML = pageTrades.map(t => {
+                const side = (t.side || t.action || '').toUpperCase();
+                const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
+                const ts = t.filled_at || t.placed_at || t.timestamp || '';
+                let timeDisplay = '-';
+                if (ts) {
+                    try {
+                        const dateObj = new Date(ts);
+                        timeDisplay = dateObj.toLocaleString();
+                    } catch (e) {
+                        timeDisplay = ts;
+                    }
+                }
+                const fillPrice = t.fill_price || t.price || null;
+                const limitPrice = t.limit_price || null;
+                const priceRange = t.price_range || t.details?.price_range || null;
+                const fillPriceDisplay = fillPrice ? `$${Number(fillPrice).toFixed(2)}` : '-';
+                const limitPriceDisplay = limitPrice ? `$${Number(limitPrice).toFixed(2)}` : '-';
+                const priceRangeDisplay = priceRange ? `$${Number(priceRange.min || 0).toFixed(2)} - $${Number(priceRange.max || 0).toFixed(2)}` : '-';
+                const status = t.status || 'UNKNOWN';
+                const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
+                const orderDate = t.order_date || t.date || '';
+                const orderDateDisplay = orderDate ? new Date(orderDate).toLocaleDateString() : '-';
+                let realizedPnlDisplay = '-';
+                if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
+                    const pnl = Number(t.realized_pnl);
+                    const pnlPct = t.realized_pnl_pct !== undefined && t.realized_pnl_pct !== null ? Number(t.realized_pnl_pct) : null;
+                    const pnlClass = pnl >= 0 ? 'trade-profit' : 'trade-loss';
+                    const pnlSign = pnl >= 0 ? '+' : '';
+                    const pnlPctStr = pnlPct !== null ? ` (${pnlSign}${pnlPct.toFixed(2)}%)` : '';
+                    realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
+                }
+                return `
+                    <tr>
+                        <td>${timeDisplay}</td>
+                        <td>${orderDateDisplay}</td>
+                        <td class="symbol-cell">${t.symbol || '-'}</td>
+                        <td class="${sideClass}">${side || '-'}</td>
+                        <td>${t.quantity ?? '-'}</td>
+                        <td>${limitPriceDisplay}</td>
+                        <td>${fillPriceDisplay}</td>
+                        <td>${priceRangeDisplay}</td>
+                        <td>${realizedPnlDisplay}</td>
+                        <td><span class="status-pill ${statusClass}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // 更新分页控件
+            const paginationEl = document.getElementById('tradesPagination');
+            const pageInfoEl = document.getElementById('tradesPageInfo');
+            const prevBtn = document.getElementById('tradesPrevPage');
+            const nextBtn = document.getElementById('tradesNextPage');
+            if (paginationEl && totalPages > 1) {
+                paginationEl.style.display = 'flex';
+                if (pageInfoEl) {
+                    pageInfoEl.textContent = `Page ${tradesPage} / ${totalPages} (${tradesAllTrades.length} total)`;
+                }
+                if (prevBtn) {
+                    prevBtn.disabled = tradesPage <= 1;
+                    prevBtn.style.opacity = tradesPage <= 1 ? '0.5' : '1';
+                    prevBtn.style.cursor = tradesPage <= 1 ? 'not-allowed' : 'pointer';
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = tradesPage >= totalPages;
+                    nextBtn.style.opacity = tradesPage >= totalPages ? '0.5' : '1';
+                    nextBtn.style.cursor = tradesPage >= totalPages ? 'not-allowed' : 'pointer';
+                }
+            }
+        }
+        
         // Render execution details (simplified version for Overview page)
         function renderExecutionDetails(trades) {
             const tbody = document.getElementById('executionDetailsBody');
             const countEl = document.getElementById('executionCount');
+            const paginationEl = document.getElementById('executionPagination');
+            const pageInfoEl = document.getElementById('executionPageInfo');
+            const prevBtn = document.getElementById('executionPrevPage');
+            const nextBtn = document.getElementById('executionNextPage');
             if (!tbody) return;
+            
+            // 保存所有交易数据用于分页
+            executionAllTrades = trades || [];
             
             // 去重：使用 symbol|side|quantity|price 作为唯一键
             const seen = new Set();
@@ -6725,13 +6963,37 @@
             
             if (displayCount === 0) {
                 tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;">No execution records yet.</td></tr>`;
+                if (paginationEl) paginationEl.style.display = 'none';
                 return;
             }
             
-            // 显示最近的订单（最多15条）
-            const recentTrades = displayTrades.slice(0, 15);
+            // 分页：每页显示50条
+            const totalPages = Math.ceil(displayTrades.length / EXECUTION_PAGE_SIZE);
+            const startIdx = (executionPage - 1) * EXECUTION_PAGE_SIZE;
+            const endIdx = startIdx + EXECUTION_PAGE_SIZE;
+            const pageTrades = displayTrades.slice(startIdx, endIdx);
             
-            tbody.innerHTML = recentTrades.map(t => {
+            // 显示分页控件
+            if (paginationEl && totalPages > 1) {
+                paginationEl.style.display = 'flex';
+                if (pageInfoEl) {
+                    pageInfoEl.textContent = `Page ${executionPage} / ${totalPages} (${displayTrades.length} total)`;
+                }
+                if (prevBtn) {
+                    prevBtn.disabled = executionPage <= 1;
+                    prevBtn.style.opacity = executionPage <= 1 ? '0.5' : '1';
+                    prevBtn.style.cursor = executionPage <= 1 ? 'not-allowed' : 'pointer';
+                }
+                if (nextBtn) {
+                    nextBtn.disabled = executionPage >= totalPages;
+                    nextBtn.style.opacity = executionPage >= totalPages ? '0.5' : '1';
+                    nextBtn.style.cursor = executionPage >= totalPages ? 'not-allowed' : 'pointer';
+                }
+            } else if (paginationEl) {
+                paginationEl.style.display = 'none';
+            }
+            
+            tbody.innerHTML = pageTrades.map(t => {
                 const side = (t.side || t.action || '').toUpperCase();
                 const sideClass = side === 'BUY' ? 'trade-buy' : side === 'SELL' ? 'trade-sell' : '';
                 // Prioritize using filled_at (fill time), then placed_at (order time), finally use timestamp
@@ -7149,8 +7411,10 @@
                 renderExecutionDetails(tradesData || []);  // Update execution details (including tomorrow's pending orders)
                 
                 // 如果当前在Trade History页面，也更新交易数据
-                const tradesPage = document.getElementById('tradesPage');
-                if (tradesPage && tradesPage.style.display !== 'none') {
+                const tradesPageEl = document.getElementById('tradesPage');
+                if (tradesPageEl && tradesPageEl.style.display !== 'none') {
+                    // 重置分页到第一页
+                    tradesPage = 1;
                     renderTrades(tradesData || []);
                 }
                 
@@ -7935,6 +8199,8 @@
                 if (allocationPage) allocationPage.style.display = 'none';
                 if (tradesPage) {
                     tradesPage.style.display = 'block';
+                    // 重置分页到第一页
+                    tradesPage = 1;
                     // 加载交易数据
                     fetchTrades(TRADES_LIMIT).then(trades => {
                         renderTrades(trades);

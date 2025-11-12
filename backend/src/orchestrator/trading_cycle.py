@@ -911,18 +911,18 @@ def execute_daily_trade(
     
     # Process trading decisions (only if no existing pending orders, or in multi-day simulation)
     if not existing_pending_orders or (end is not None):
-        # === OPTIMIZATION: Position limits and cooldown checks ===
-        from src.data.trade_history_tracker import TradeHistoryTracker
+        # === OPTIMIZATION: Position limits (移除 cooldown 检查) ===
         from src.utils.config_loader import load_config
         
         # Load configuration for limits
         config = load_config()
         MAX_POSITIONS = config.get("max_positions", 10)  # Maximum number of different stocks
-        TRADE_COOLDOWN_HOURS = config.get("trade_cooldown_hours", 24.0)  # 24-hour cooldown
+        # 移除 TRADE_COOLDOWN_HOURS（不再使用冷却期限制）
+        # TRADE_COOLDOWN_HOURS = config.get("trade_cooldown_hours", 24.0)  # 已移除
         MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)  # Keep 20% cash
         
-        # Initialize trade history tracker
-        trade_history = TradeHistoryTracker(root="data/logs")
+        # 移除 trade history tracker（不再需要冷却期检查）
+        # trade_history = TradeHistoryTracker(root="data/logs")  # 已移除
         
         # Check current position count
         current_position_count = len(portfolio._positions)
@@ -939,22 +939,26 @@ def execute_daily_trade(
         buy_orders = decision.get("buy_orders", [])
         
         # Filter buy orders based on optimization rules
+        # 移除硬条件限制：不再检查 cooldown 和 max_orders_per_cycle
+        # 只保留现金检查（这是必要的安全措施）
         filtered_buy_orders = []
         for order in buy_orders:
             symbol = order.get("symbol")
             
-            # Check 1: Position limit
+            # Check 1: Position limit (保留，但只检查是否已有持仓，不限制数量)
             if current_position_count >= MAX_POSITIONS:
                 # Check if we already have this position
                 if symbol not in portfolio._positions:
+                    # 如果已达到最大持仓数且没有该股票持仓，跳过
+                    # 但如果已有该股票持仓，允许加仓
                     execution_errors.append(f"BUY {symbol} skipped: max positions reached ({current_position_count}/{MAX_POSITIONS})")
                     continue
             
-            # Check 2: Cooldown period
-            can_trade, hours_remaining = trade_history.can_trade(symbol, TRADE_COOLDOWN_HOURS)
-            if not can_trade:
-                execution_errors.append(f"BUY {symbol} skipped: cooldown period active ({hours_remaining:.1f} hours remaining)")
-                continue
+            # 移除 Check 2: Cooldown period（不再检查冷却期）
+            # can_trade, hours_remaining = trade_history.can_trade(symbol, TRADE_COOLDOWN_HOURS)
+            # if not can_trade:
+            #     execution_errors.append(f"BUY {symbol} skipped: cooldown period active ({hours_remaining:.1f} hours remaining)")
+            #     continue
             
             filtered_buy_orders.append(order)
         
@@ -962,13 +966,13 @@ def execute_daily_trade(
         # 这里先按照 buy_price * quantity（金额）排序，确保资金充足时优先买入
         from math import floor
         
-        # OPTIMIZATION: 限制单次交易周期创建的订单数量（避免过多pending订单）
-        MAX_ORDERS_PER_CYCLE = config.get("max_orders_per_cycle", 20)  # 默认最多20个订单
+        # 移除订单数量限制：不再限制 max_orders_per_cycle
+        # MAX_ORDERS_PER_CYCLE = config.get("max_orders_per_cycle", 20)
         buy_orders_sorted = sorted(filtered_buy_orders, key=lambda x: x.get("total_cost", 0.0), reverse=True)
-        buy_orders_sorted = buy_orders_sorted[:MAX_ORDERS_PER_CYCLE]  # 只保留前N个订单
+        # buy_orders_sorted = buy_orders_sorted[:MAX_ORDERS_PER_CYCLE]  # 移除限制
         
-        if len(filtered_buy_orders) > MAX_ORDERS_PER_CYCLE:
-            print(f"[OPTIMIZATION] Limited buy orders from {len(filtered_buy_orders)} to {MAX_ORDERS_PER_CYCLE} (max_orders_per_cycle)")
+        # if len(filtered_buy_orders) > MAX_ORDERS_PER_CYCLE:
+        #     print(f"[OPTIMIZATION] Limited buy orders from {len(filtered_buy_orders)} to {MAX_ORDERS_PER_CYCLE} (max_orders_per_cycle)")
         
         # 掛單策略：開盤前掛限價單（使用更合理的限价策略）
         # CRITICAL: 累计跟踪已使用的现金，确保订单总金额不超过可用现金

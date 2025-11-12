@@ -1886,7 +1886,9 @@ async def get_agent_conversations(
         # Also try to load from memory if available
         try:
             from src.data.memory_manager import MemoryManager
-            memory_manager = MemoryManager(root="data/logs")
+            # Use the same logs directory we found above
+            memory_root = str(log_file.parent) if log_file else "data/logs"
+            memory_manager = MemoryManager(root=memory_root)
             
             # Get recent memories (load more days to ensure we have enough data)
             recent_memories = memory_manager.load_recent_memories(days=30)  # Load 30 days, then filter

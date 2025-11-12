@@ -1681,7 +1681,24 @@ async def get_recent_trades(limit: int = 100):
         import json
         from datetime import datetime
 
-        logs_dir = Path("data/logs")
+        # Try multiple possible paths for logs directory
+        possible_logs_dirs = [
+            Path("data/logs"),  # Project root
+            Path("backend/data/logs"),  # From backend directory
+            Path(__file__).parent.parent.parent / "data" / "logs",  # Absolute from backend
+        ]
+        
+        logs_dir = None
+        for path in possible_logs_dirs:
+            if path.exists():
+                logs_dir = path
+                break
+        
+        if not logs_dir:
+            # If none exist, use project root as default
+            logs_dir = Path("data/logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+        
         trades_file = logs_dir / "trades.jsonl"
         filled_file = logs_dir / "filled_orders.jsonl"
         pending_file = logs_dir / "pending_orders.jsonl"
@@ -1833,10 +1850,22 @@ async def get_agent_conversations(
         from pathlib import Path
         
         # Load from discussion_actions.jsonl
-        log_file = Path("data/logs/discussion_actions.jsonl")
+        # Try multiple possible paths
+        possible_paths = [
+            Path("data/logs/discussion_actions.jsonl"),  # Project root
+            Path("backend/data/logs/discussion_actions.jsonl"),  # From backend directory
+            Path(__file__).parent.parent.parent / "data" / "logs" / "discussion_actions.jsonl",  # Absolute from backend
+        ]
+        
+        log_file = None
+        for path in possible_paths:
+            if path.exists():
+                log_file = path
+                break
+        
         conversations = []
         
-        if log_file.exists():
+        if log_file and log_file.exists():
             with log_file.open("r", encoding="utf-8") as f:
                 lines = f.readlines()
                 # Read last N lines

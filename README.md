@@ -1647,9 +1647,26 @@ For detailed deployment guide, see: [📖 GitHub Deployment Guide](docs/GITHUB_D
 
 **For detailed guide, see**: [📖 Public Access Guide](docs/PUBLIC_ACCESS_GUIDE.md)
 
+### 🤔 FAQ: Do I still need LAN sharing after deploying to Railway?
+
+**Answer**: **Not required, but you can keep it for quick local testing.**
+
+If you've deployed to **GitHub Pages + Railway**:
+- ✅ **Public access**: Anyone can access via `https://username.github.io/...`
+- ❌ **LAN sharing**: Not required (public access covers all scenarios)
+
+**But you can keep LAN sharing for**:
+- 🏠 Quick local testing (without waiting for GitHub Pages deployment)
+- 🏢 Office-only sharing (without exposing to public internet)
+- 💻 Development debugging (quickly share with colleagues)
+
+**Recommendation**: Use **GitHub Pages + Railway** as the main method. Keep LAN sharing as an optional backup for quick local testing.
+
+**For detailed scenarios, see**: [📖 Deployment Scenarios Guide](docs/DEPLOYMENT_SCENARIOS.md)
+
 ### Local Sharing (Same Network)
 
-If you only want to share on local network:
+If you only want to share on local network (or for quick testing):
 
 1. **Start Backend (Allow LAN Access)**
    ```powershell

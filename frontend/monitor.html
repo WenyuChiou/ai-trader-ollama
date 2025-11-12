@@ -1531,14 +1531,17 @@
             ? window.API_CONFIG.apiUrl 
             : 'http://127.0.0.1:8000';
         
-        // Read-only mode detection: If accessing via IP address (shared), enable read-only mode
+        // Read-only mode detection: Enable read-only for shared access (IP or GitHub Pages)
         // Localhost access (127.0.0.1 or localhost) = Full control
         // IP address access (e.g., 192.168.4.24) = Read-only mode
+        // GitHub Pages access (github.io) = Read-only mode (user wants to control trading locally)
         const hostname = window.location.hostname;
-        const isReadOnlyMode = hostname !== 'localhost' && 
+        const isIPAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+        const isGitHubPages = hostname.includes('github.io');
+        const isReadOnlyMode = (hostname !== 'localhost' && 
                                hostname !== '127.0.0.1' && 
-                               hostname !== '' &&
-                               /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+                               hostname !== '') &&
+                               (isIPAddress || isGitHubPages);
         
         // Update API URL display in footer
         document.addEventListener('DOMContentLoaded', () => {
@@ -1547,9 +1550,9 @@
                 apiUrlElement.textContent = API_BASE;
             }
             
-            // Enable read-only mode for shared websites (IP access)
+            // Enable read-only mode for shared websites (IP or GitHub Pages access)
             if (isReadOnlyMode) {
-                // Hide/disable trading controls
+                // Hide/disable all trading controls
                 const startTradeBtn = document.getElementById('startTradeBtn');
                 if (startTradeBtn) {
                     startTradeBtn.style.display = 'none';
@@ -1565,13 +1568,19 @@
                     autoDemoLoop.closest('label').style.display = 'none';
                 }
                 
+                // Hide Auto Trade status label (since trading is disabled)
+                const autoTradeLabel = document.querySelector('span:has(#autoTradeStatus)');
+                if (autoTradeLabel && autoTradeLabel.textContent.includes('Auto Trade')) {
+                    autoTradeLabel.style.display = 'none';
+                }
+                
                 // Disable auto-trade (prevent it from starting)
                 window.READ_ONLY_MODE = true;
                 
-                // Update auto trade status to show read-only
+                // Update auto trade status to show read-only (if element still exists)
                 const autoTradeStatus = document.getElementById('autoTradeStatus');
                 if (autoTradeStatus) {
-                    autoTradeStatus.textContent = 'Read-Only Mode (Shared)';
+                    autoTradeStatus.textContent = 'Read-Only Mode';
                     autoTradeStatus.style.color = '#fbbf24'; // Yellow/orange color
                 }
                 
@@ -1581,11 +1590,16 @@
                     const readOnlyBadge = document.createElement('span');
                     readOnlyBadge.textContent = '🔒 Read-Only';
                     readOnlyBadge.style.cssText = 'color: #fbbf24; font-size: 12px; margin-left: 12px; font-weight: 600;';
-                    readOnlyBadge.title = 'This is a shared website. Trading controls are disabled for security.';
+                    if (isGitHubPages) {
+                        readOnlyBadge.title = 'GitHub Pages: View-only mode. Trading controls disabled. Use localhost for full control.';
+                    } else {
+                        readOnlyBadge.title = 'Shared website: Trading controls disabled for security. Use localhost for full control.';
+                    }
                     headerControls.insertBefore(readOnlyBadge, headerControls.firstChild);
                 }
                 
-                console.log('[Read-Only Mode] Enabled: Shared website access detected. Trading controls disabled.');
+                const accessType = isGitHubPages ? 'GitHub Pages' : 'shared website';
+                console.log(`[Read-Only Mode] Enabled: ${accessType} access detected. Trading controls disabled.`);
             } else {
                 window.READ_ONLY_MODE = false;
                 console.log('[Full Control Mode] Enabled: Localhost access detected. All controls available.');

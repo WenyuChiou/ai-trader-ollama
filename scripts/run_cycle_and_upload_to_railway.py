@@ -72,7 +72,8 @@ def upload_to_railway():
         import json
         from pathlib import Path
         
-        RAILWAY_URL = "https://web-production-b42d6.up.railway.app"
+        # Get Railway URL from environment variable or use default
+        RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-b42d6.up.railway.app")
         
         # Find and read data files
         DATA_DIRS = [Path("data/logs"), Path("backend/data/logs")]

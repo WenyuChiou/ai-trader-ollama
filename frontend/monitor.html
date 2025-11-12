@@ -1587,17 +1587,18 @@
         
         // Update API URL display in footer
         document.addEventListener('DOMContentLoaded', () => {
-            // Ensure API_BASE is updated from config.js
+            // Force update API URL display after DOM is ready
             updateApiBase();
             
-            const apiUrlElement = document.getElementById('apiUrl');
-            if (apiUrlElement) {
-                // Use the most up-to-date API URL
-                const actualApiUrl = (typeof window !== 'undefined' && window.API_CONFIG) 
-                    ? window.API_CONFIG.apiUrl 
-                    : API_BASE;
-                apiUrlElement.textContent = actualApiUrl;
-            }
+            // Also update after a short delay to ensure config.js is fully loaded
+            setTimeout(() => {
+                const actualApiUrl = getApiBase();
+                const apiUrlElement = document.getElementById('apiUrl');
+                if (apiUrlElement) {
+                    apiUrlElement.textContent = actualApiUrl;
+                    console.log('[API Config] Final API URL:', actualApiUrl);
+                }
+            }, 200);
             
             // Enable read-only mode for shared websites (IP or GitHub Pages access)
             if (isReadOnlyMode) {

@@ -1572,17 +1572,23 @@ https://WenyuChiou.github.io/ai-trader-ollama/monitor.html
 
 #### Backend Deployment Options
 
-**Option 1: Railway (Recommended)**
-- Free tier, auto-deployment
-- Connect GitHub repository
+**Option 1: Railway (Recommended) ⭐⭐⭐⭐⭐**
+- $5/month free credit (usually enough)
+- 24/7 running (no sleep)
+- Auto-deployment
+- Fixed URL
 
-**Option 2: Render**
+**Option 2: Render (Completely Free) ⭐⭐⭐⭐**
 - Free tier available
-- Supports auto-deployment
+- Auto-deployment
+- ⚠️ Sleeps after 15 min inactivity (slow wake-up)
 
-**Option 3: Heroku**
-- Credit card verification required
-- Stable and reliable
+**Option 3: Fly.io (Free Tier) ⭐⭐⭐**
+- Free tier available
+- Global deployment
+- Requires Dockerfile
+
+**For complete free deployment options, see**: [📖 Free Deployment Options Guide](docs/FREE_DEPLOYMENT_OPTIONS.md)
 
 For detailed deployment guide, see: [📖 GitHub Deployment Guide](docs/GITHUB_DEPLOYMENT.md)
 

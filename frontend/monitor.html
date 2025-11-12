@@ -1526,10 +1526,34 @@
     <script src="config.js"></script>
     <script>
         // Configuration
-        // Use config.js if available, otherwise fallback to localhost
-        const API_BASE = (typeof window !== 'undefined' && window.API_CONFIG) 
-            ? window.API_CONFIG.apiUrl 
-            : 'http://127.0.0.1:8000';
+        // Helper function to get current API URL (always uses latest from config.js)
+        function getApiBase() {
+            if (typeof window !== 'undefined' && window.API_CONFIG) {
+                return window.API_CONFIG.apiUrl;
+            }
+            // Fallback to localhost if config.js not loaded
+            return 'http://127.0.0.1:8000';
+        }
+        
+        // Initialize API_BASE (will be updated when config.js loads)
+        let API_BASE = getApiBase();
+        
+        // Make API_BASE available globally and update it
+        window.API_BASE = API_BASE;
+        
+        // Function to update API_BASE from config (called after config.js loads)
+        function updateApiBase() {
+            API_BASE = getApiBase();
+            window.API_BASE = API_BASE;
+            // Update footer display
+            const apiUrlElement = document.getElementById('apiUrl');
+            if (apiUrlElement) {
+                apiUrlElement.textContent = API_BASE;
+            }
+        }
+        
+        // Try to get API URL immediately (config.js should be loaded by now)
+        updateApiBase();
         
         // Read-only mode detection: Enable read-only for shared access (IP or GitHub Pages)
         // Localhost access (127.0.0.1 or localhost) = Full control
@@ -1545,17 +1569,16 @@
         
         // Update API URL display in footer
         document.addEventListener('DOMContentLoaded', () => {
+            // Ensure API_BASE is updated from config.js
+            updateApiBase();
+            
             const apiUrlElement = document.getElementById('apiUrl');
             if (apiUrlElement) {
-                // Ensure we use the correct API URL (from config.js)
+                // Use the most up-to-date API URL
                 const actualApiUrl = (typeof window !== 'undefined' && window.API_CONFIG) 
                     ? window.API_CONFIG.apiUrl 
                     : API_BASE;
                 apiUrlElement.textContent = actualApiUrl;
-                // Update API_BASE if config.js loaded after this script
-                if (typeof window !== 'undefined' && window.API_CONFIG) {
-                    window.API_BASE = window.API_CONFIG.apiUrl;
-                }
             }
             
             // Enable read-only mode for shared websites (IP or GitHub Pages access)
@@ -2335,7 +2358,7 @@
         // Fetch equity history
         async function fetchEquityHistory(options = {}) {
             try {
-                const response = await fetch(`${API_BASE}/api/portfolio/equity-history?limit=60`, {
+                const response = await fetch(`${getApiBase()}/api/portfolio/equity-history?limit=60`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2378,7 +2401,7 @@
         // Fetch backend status
         async function fetchBackendStatus(options = {}) {
             try {
-                const response = await fetch(`${API_BASE}/`, {
+                const response = await fetch(`${getApiBase()}/`, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -2415,7 +2438,7 @@
 
         async function isMarketOpen() {
             try {
-                const r = await fetch(`${API_BASE}/api/market/is-open`, { 
+                const r = await fetch(`${getApiBase()}/api/market/is-open`, { 
                     mode: 'cors',  // 明确指定 CORS 模式
                     signal: AbortSignal.timeout(5000) 
                 });
@@ -2532,7 +2555,7 @@
                 
                 // 执行初始化
                 console.log('[Init] Calling API to initialize system...');
-                const r = await fetch(`${API_BASE}/api/system/init`, { method: 'POST' });
+                const r = await fetch(`${getApiBase()}/api/system/init`, { method: 'POST' });
                 const data = await r.json();
                 
                 if (r.ok && data.ok) {
@@ -2586,7 +2609,7 @@
             
             // Check if there are pending orders, show warning
             try {
-                const tradesResponse = await fetch(`${API_BASE}/api/trades/recent?limit=10`);
+                const tradesResponse = await fetch(`${getApiBase()}/api/trades/recent?limit=10`);
                 if (tradesResponse.ok) {
                     const tradesData = await tradesResponse.json();
                     const pendingOrders = (tradesData.trades || []).filter(t => 
@@ -2648,7 +2671,7 @@
             
             try {
                 console.log('[Trade Cycle] Executing trading cycle...');
-                const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
+                const response = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
                     method: 'POST',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -2913,7 +2936,7 @@
                         try {
                             // First, check if there are pending orders for tomorrow (lightweight check)
                             // We'll use a separate endpoint if available, or check the execute-trade response
-                            const response = await fetch(`${API_BASE}/api/trading/execute-trade`, { 
+                            const response = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
                                 method: 'POST',
                                 mode: 'cors',
                                 headers: {
@@ -3032,7 +3055,7 @@
         // Fetch agent status
         async function fetchAgentStatus(options = {}) {
             try {
-                const response = await fetch(`${API_BASE}/api/agents/status`, {
+                const response = await fetch(`${getApiBase()}/api/agents/status`, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -3060,7 +3083,7 @@
         // Fetch tools list
         async function fetchToolsList(options = {}) {
             try {
-                const response = await fetch(`${API_BASE}/api/tools/list`, {
+                const response = await fetch(`${getApiBase()}/api/tools/list`, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -3087,7 +3110,7 @@
         // Fetch system info (LLM model, config)
         async function fetchSystemInfo(options = {}) {
             try {
-                const response = await fetch(`${API_BASE}/api/system/info`, {
+                const response = await fetch(`${getApiBase()}/api/system/info`, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -3114,7 +3137,7 @@
         // Fetch agent conversations
         async function fetchConversations(limit = 100, options = {}) {
             try {
-                const response = await fetch(`${API_BASE}/api/agents/conversations?limit=${limit}&include_demo=false`, {
+                const response = await fetch(`${getApiBase()}/api/agents/conversations?limit=${limit}&include_demo=false`, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -5551,7 +5574,7 @@
             
             // 尝试获取 VIX 数据
             try {
-                const vixResponse = await fetch(`${API_BASE}/api/vix/term`);
+                const vixResponse = await fetch(`${getApiBase()}/api/vix/term`);
                 if (vixResponse.ok) {
                     const vix = await vixResponse.json();
                     vixLevel = vix.vix || 0;
@@ -5568,7 +5591,7 @@
             
             // 尝试获取 Fear & Greed 数据
             try {
-                const fgResponse = await fetch(`${API_BASE}/api/fear-greed`);
+                const fgResponse = await fetch(`${getApiBase()}/api/fear-greed`);
                 let fg = null;
                 
                 // 尝试解析响应（无论状态码如何）
@@ -6487,7 +6510,7 @@
         // Trades API
         async function fetchTrades(limit = 100, options = {}) {
             try {
-                const resp = await fetch(`${API_BASE}/api/trades/recent?limit=${limit}`, { 
+                const resp = await fetch(`${getApiBase()}/api/trades/recent?limit=${limit}`, { 
                     signal: options.signal || AbortSignal.timeout(8000) 
                 });
                 if (!resp.ok) return [];
@@ -6742,8 +6765,8 @@
                 
                 // 尝试多个端点，只要有一个成功就认为后端可用
                 const healthCheckEndpoints = [
-                    `${API_BASE}/`,
-                    `${API_BASE}/api/market/is-open`,
+                    `${getApiBase()}/`,
+                    `${getApiBase()}/api/market/is-open`,
                 ];
                 
                 for (const endpoint of healthCheckEndpoints) {
@@ -7225,7 +7248,7 @@
         async function checkPendingOrders() {
             try {
                 console.log('[Order Check] Calling /api/trading/check-pending-orders...');
-                const response = await fetch(`${API_BASE}/api/trading/check-pending-orders`, {
+                const response = await fetch(`${getApiBase()}/api/trading/check-pending-orders`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -65,64 +65,71 @@ This uploads:
 
 ## Automatic Daily Updates
 
-### Option 1: GitHub Actions (Recommended)
+### ⚠️ Important Limitation
 
-Create `.github/workflows/daily_update.yml`:
+**Railway cannot run trading cycles automatically** because:
+- Railway backend needs Ollama access
+- Ollama is running locally (not on Railway)
+- Trading cycles require LLM calls which need local Ollama
 
-```yaml
-name: Daily Data Update
+**Solution:** Run trading cycles locally, then upload to Railway.
 
-on:
-  schedule:
-    - cron: '0 0 * * *'  # Daily at 00:00 UTC (adjust timezone as needed)
-  workflow_dispatch:  # Allow manual trigger
+---
 
-jobs:
-  update:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
-      - name: Install dependencies
-        run: |
-          pip install -r backend/requirements.txt
-      
-      - name: Run trading cycle and upload
-        env:
-          RAILWAY_URL: ${{ secrets.RAILWAY_URL }}
-        run: |
-          python scripts/run_cycle_and_upload_to_railway.py
-```
+### Option 1: Local Scheduled Task (Recommended for Auto Updates)
 
-**Note:** This requires:
-- Railway backend to have Ollama access (or use external LLM API)
-- Railway backend to be running 24/7
-- Proper environment variables configured
+**Windows Task Scheduler:**
 
-### Option 2: Railway Cron Service
+1. Create a scheduled task that runs daily:
+   ```powershell
+   # Create task (run once to set up)
+   $Action = New-ScheduledTaskAction -Execute "python" -Argument "scripts\run_cycle_and_upload_to_railway.py" -WorkingDirectory "C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama"
+   $Trigger = New-ScheduledTaskTrigger -Daily -At "09:00"  # Adjust time as needed
+   $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+   Register-ScheduledTask -TaskName "AI-Trader-Daily-Update" -Action $Action -Trigger $Trigger -Settings $Settings
+   ```
 
-Railway doesn't have built-in cron, but you can:
+2. **Requirements:**
+   - Computer must be on at scheduled time
+   - Ollama must be running
+   - Backend API must be running (optional, script runs cycle directly)
 
-1. **Use Railway's Cron Service** (if available in your plan)
-2. **Use external cron service** (e.g., cron-job.org, EasyCron) to call Railway API endpoint
-3. **Use GitHub Actions** (as shown above)
-
-### Option 3: Local Scheduled Task (Windows)
-
-For local automation:
-
+**Manual setup script:**
 ```powershell
-# Create scheduled task
+# Run this once to create the scheduled task
 powershell -ExecutionPolicy Bypass -File scripts/schedule_daily_update.ps1
 ```
 
-This will run `run_cycle_and_upload_to_railway.py` daily at a specified time.
+---
+
+### Option 2: GitHub Actions (Limited - Requires Railway with Ollama)
+
+**Note:** This only works if Railway backend has Ollama access (not the case currently).
+
+GitHub Actions workflow (`.github/workflows/daily_update.yml`) is already created, but it requires:
+- Railway backend with Ollama service
+- Or Railway backend using external LLM API (not Ollama)
+
+**Current setup:** Railway cannot access local Ollama, so this won't work for running cycles.
+
+**Alternative use:** GitHub Actions can be used to:
+- Trigger data upload (if data already exists)
+- Generate static reports
+- But cannot run trading cycles (needs Ollama)
+
+---
+
+### Option 3: Manual Update (Current Method)
+
+**Daily workflow:**
+1. Run trading cycle locally (when convenient)
+2. Run upload script:
+   ```powershell
+   python scripts/run_cycle_and_upload_to_railway.py
+   ```
+3. GitHub Pages updates automatically (frontend auto-refreshes)
+
+**Best for:** When you want control over when cycles run, or when computer is not always on.
 
 ---
 

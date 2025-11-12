@@ -128,7 +128,7 @@
 <body>
     <div class="container">
         <h1>📊 AI-Trader Daily Report</h1>
-        <p class="subtitle">Last updated: <span class="update-time">2025-11-12 00:15:20 UTC</span></p>
+        <p class="subtitle">Last updated: <span class="update-time">2025-11-12 00:15:51 UTC</span></p>
         
         <div class="stats-grid">
             <div class="stat-card">
@@ -152,19 +152,19 @@
                 <div class="stat-label">Total Trades</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">0</div>
+                <div class="stat-value">6</div>
                 <div class="stat-label">Agents Active</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">0</div>
+                <div class="stat-value">30</div>
                 <div class="stat-label">Conversations</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">0</div>
+                <div class="stat-value">25</div>
                 <div class="stat-label">Tool Calls</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">0</div>
+                <div class="stat-value">9</div>
                 <div class="stat-label">Unique Tools</div>
             </div>
         </div>
@@ -198,14 +198,1182 @@
             <h2>🤖 Active Agents</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 12px;">
 
+                <div style="padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.3);">
+                    <span style="font-size: 20px;">🤖</span>
+                    <span style="margin-left: 8px; font-weight: 600;">DiscussionCoordinator</span>
+                </div>
+
+                <div style="padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.3);">
+                    <span style="font-size: 20px;">💼</span>
+                    <span style="margin-left: 8px; font-weight: 600;">FundamentalAnalyst</span>
+                </div>
+
+                <div style="padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.3);">
+                    <span style="font-size: 20px;">🌐</span>
+                    <span style="margin-left: 8px; font-weight: 600;">MarketAnalyst</span>
+                </div>
+
+                <div style="padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.3);">
+                    <span style="font-size: 20px;">😊</span>
+                    <span style="margin-left: 8px; font-weight: 600;">SentimentAnalyst</span>
+                </div>
+
+                <div style="padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.3);">
+                    <span style="font-size: 20px;">📈</span>
+                    <span style="margin-left: 8px; font-weight: 600;">TechnicalAnalyst</span>
+                </div>
+
+                <div style="padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.3);">
+                    <span style="font-size: 20px;">🤖</span>
+                    <span style="margin-left: 8px; font-weight: 600;">TraderAgent</span>
+                </div>
+
             </div>
         </div>
         
         <div class="section">
             <h2>🛠️ Tool Results by Agent</h2>
 
-            <div style="color: #94a3b8; text-align: center; padding: 40px;">
-                <p>No tool results yet. Run a trading cycle to generate tool calls.</p>
+            <div class="tool-section">
+                <div class="agent-header">
+                    <span class="agent-icon">💼</span>
+                    <span class="agent-name">FundamentalAnalyst</span>
+                    <span class="tool-count">(2 tool calls)</span>
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_company_fundamentals <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(1 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_company_fundamentals</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "sector": "Technology",
+  "industry": "Semiconductors",
+  "fundamentals": {
+    "valuation": {
+      "market_cap": 4702867030016,
+      "enterprise_value": 4647595016192,
+      "pe_ratio": 54.875,
+      "forward_pe": 46.8835,
+      "peg_ratio": null,
+      "price_to_book": 46.963287,
+      "price_to_sales": 28.464619,
+      "ev_to_revenue": 28.13,
+      "ev_to_ebitda": 47.289
+    },
+    "profitability": {
+      "profit_margins": 0.52414,
+      "operating_margins": 0.60842997,
+      "return_on_assets": 0.53094,
+      "return_on_equity": 1.09417,
+      "revenue": 165217992704,
+      "revenue_per_share": 6.755,
+      "gross_profits": 115399999488,
+      "ebitda": 98280996864,
+      "net_income": 86597001216,
+      "eps_trailing": 3.52,
+      "eps_forward": 4.12
+    },
+    "growth": {
+      "revenue_growth": 0.556,
+      "earnings_growth": 0.612,
+      "earnings_quarterly_growth": 0.592
+    },
+    "financial_health": {
+      "total_cash": 56790999040,
+      "total_debt": 10597999616,
+      "debt_to_equity": 10.584,
+      "current_ratio": 4.214,
+      "quick_ratio": 3.488,
+      "free_cashflow": 52436750336,
+      "operating_cashflow": 77035003904
+    },
+    "dividend": {
+      "dividend_rate": 0.04,
+      "dividend_yield": 0.02,
+      "payout_ratio": 0.0114,
+      "five_year_avg_dividend_yield": 0.06
+    },
+    "analyst_ratings": {
+      "target_price": 230.77684,
+      "target_high": 350.0,
+      "target_low": 100.0,
+      "recommendation": "strong_buy",
+      "number_of_analysts": 57
+    }
+  }
+}</div>
+                    </div>
+
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_earnings_history <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(1 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_earnings_history</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "earnings_dates": [
+    {
+      "date": "2025-11-19",
+      "eps_estimate": 1.25,
+      "reported_eps": null,
+      "surprise": null
+    },
+    {
+      "date": "2025-08-27",
+      "eps_estimate": 1.01,
+      "reported_eps": 1.05,
+      "surprise": 4.05
+    },
+    {
+      "date": "2025-05-28",
+      "eps_estimate": 0.81,
+      "reported_eps": 0.76,
+      "surprise": -5.9
+    },
+    {
+      "date": "2025-02-26",
+      "eps_estimate": 0.85,
+      "reported_eps": 0.89,
+      "surprise": 5.25
+    }
+  ],
+  "quarterly_earnings": [
+    {
+      "quarter": "2025-Q3",
+      "revenue": 46743000000.0,
+      "earnings": 26422000000.0
+    },
+    {
+      "quarter": "2025-Q2",
+      "revenue": 44062000000.0,
+      "earnings": 18775000000.0
+    },
+    {
+      "quarter": "2025-Q1",
+      "revenue": 39331000000.0,
+      "earnings": 22091000000.0
+    },
+    {
+      "quarter": "2024-Q4",
+      "revenue": 35082000000.0,
+      "earnings": 19309000000.0
+    }
+  ],
+  "annual_earnings": [
+    {
+      "year": 2025,
+      "revenue": 130497000000.0,
+      "earnings": 72880000000.0
+    },
+    {
+      "year": 2024,
+      "revenue": 60922000000.0,
+      "earnings": 29760000000.0
+    },
+    {
+      "year": 2023,
+      "revenue": 26974000000.0,
+      "earnings": 4368000000.0
+    }
+  ]
+}</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="tool-section">
+                <div class="agent-header">
+                    <span class="agent-icon">🌐</span>
+                    <span class="agent-name">MarketAnalyst</span>
+                    <span class="tool-count">(7 tool calls)</span>
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_economic_summary <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(1 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_economic_summary</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">=== US Economic Indicators (FRED) ===
+
+GDP (Billions $): 30,485.73 (as of 2025-04-01)
+Unemployment Rate (%): 4.30 (as of 2025-08-01)
+CPI (Consumer Price Index): 324.37 (as of 2025-09-01)
+Federal Funds Rate (%): 4.09 (as of 2025-10-01)
+10-Year Treasury Rate (%): 4.11 (as of 2025-11-07)
+Nonfarm Payrolls (Thousands): 159,540.00 (as of 2025-08-01)
+Consumer Sentiment Index: 55.10 (as of 2025-09-01)
+Housing Starts (Thousands): 1,307.00 (as of 2025-08-01)
+
+Data source: Federal Reserve Economic Data (FRED)
+Retrieved: 2025-11-12 00:12:19</div>
+                    </div>
+
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_market_breadth <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(2 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_market_breadth</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "date": "2025-11-12",
+  "total_stocks": 10,
+  "advancing": 6,
+  "declining": 4,
+  "unchanged": 0,
+  "advance_decline_ratio": 1.5,
+  "market_sentiment": "neutral"
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_market_breadth</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "date": "2025-11-12",
+  "total_stocks": 10,
+  "advancing": 6,
+  "declining": 4,
+  "unchanged": 0,
+  "advance_decline_ratio": 1.5,
+  "market_sentiment": "neutral"
+}</div>
+                    </div>
+
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_market_indices <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(2 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_market_indices</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "date": "2025-11-12",
+  "indices": [
+    {
+      "name": "S&P 500",
+      "symbol": "^GSPC",
+      "price": 6846.61,
+      "change": 14.18,
+      "change_pct": 0.21
+    },
+    {
+      "name": "Dow Jones",
+      "symbol": "^DJI",
+      "price": 47927.96,
+      "change": 559.33,
+      "change_pct": 1.18
+    },
+    {
+      "name": "NASDAQ",
+      "symbol": "^IXIC",
+      "price": 23468.3,
+      "change": -58.87,
+      "change_pct": -0.25
+    },
+    {
+      "name": "Russell 2000",
+      "symbol": "^RUT",
+      "price": 2458.28,
+      "change": 2.63,
+      "change_pct": 0.11
+    },
+    {
+      "name": "VIX",
+      "symbol": "^VIX",
+      "price": 17.28,
+      "change": -0.32,
+      "change_pct": -1.82
+    }
+  ]
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_market_indices</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "date": "2025-11-12",
+  "indices": [
+    {
+      "name": "S&P 500",
+      "symbol": "^GSPC",
+      "price": 6846.61,
+      "change": 14.18,
+      "change_pct": 0.21
+    },
+    {
+      "name": "Dow Jones",
+      "symbol": "^DJI",
+      "price": 47927.96,
+      "change": 559.33,
+      "change_pct": 1.18
+    },
+    {
+      "name": "NASDAQ",
+      "symbol": "^IXIC",
+      "price": 23468.3,
+      "change": -58.87,
+      "change_pct": -0.25
+    },
+    {
+      "name": "Russell 2000",
+      "symbol": "^RUT",
+      "price": 2458.28,
+      "change": 2.63,
+      "change_pct": 0.11
+    },
+    {
+      "name": "VIX",
+      "symbol": "^VIX",
+      "price": 17.28,
+      "change": -0.32,
+      "change_pct": -1.82
+    }
+  ]
+}</div>
+                    </div>
+
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_sector_rotation <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(2 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_sector_rotation</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "period": "1mo",
+  "date": "2025-11-12",
+  "sectors": [
+    {
+      "sector": "Healthcare",
+      "etf": "XLV",
+      "return_pct": 6.15,
+      "last_price": 150.68
+    },
+    {
+      "sector": "Energy",
+      "etf": "XLE",
+      "return_pct": 5.96,
+      "last_price": 91.53
+    },
+    {
+      "sector": "Technology",
+      "etf": "XLK",
+      "return_pct": 2.75,
+      "last_price": 293.01
+    },
+    {
+      "sector": "Consumer Discretionary",
+      "etf": "XLY",
+      "return_pct": 2.43,
+      "last_price": 239.55
+    },
+    {
+      "sector": "Real Estate",
+      "etf": "XLRE",
+      "return_pct": 1.93,
+      "last_price": 41.7
+    },
+    {
+      "sector": "Industrials",
+      "etf": "XLI",
+      "return_pct": 1.84,
+      "last_price": 154.24
+    },
+    {
+      "sector": "Financials",
+      "etf": "XLF",
+      "return_pct": 1.04,
+      "last_price": 53.21
+    },
+    {
+      "sector": "Communication Services",
+      "etf": "XLC",
+      "return_pct": 0.32,
+      "last_price": 114.2
+    },
+    {
+      "sector": "Consumer Staples",
+      "etf": "XLP",
+      "return_pct": -0.53,
+      "last_price": 77.43
+    },
+    {
+      "sector": "Materials",
+      "etf": "XLB",
+      "return_pct": -0.79,
+      "last_price": 87.53
+    },
+    {
+      "sector": "Utilities",
+      "etf": "XLU",
+      "return_pct": -1.3,
+      "last_price": 89.71
+    }
+  ],
+  "top_sector": {
+    "sector": "Healthcare",
+    "etf": "XLV",
+    "return_pct": 6.15,
+    "last_price": 150.68
+  },
+  "bottom_sector": {
+    "sector": "Utilities",
+    "etf": "XLU",
+    "return_pct": -1.3,
+    "last_price": 89.71
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_sector_rotation</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "period": "1mo",
+  "date": "2025-11-12",
+  "sectors": [
+    {
+      "sector": "Healthcare",
+      "etf": "XLV",
+      "return_pct": 6.15,
+      "last_price": 150.68
+    },
+    {
+      "sector": "Energy",
+      "etf": "XLE",
+      "return_pct": 5.96,
+      "last_price": 91.53
+    },
+    {
+      "sector": "Technology",
+      "etf": "XLK",
+      "return_pct": 2.75,
+      "last_price": 293.01
+    },
+    {
+      "sector": "Consumer Discretionary",
+      "etf": "XLY",
+      "return_pct": 2.43,
+      "last_price": 239.55
+    },
+    {
+      "sector": "Real Estate",
+      "etf": "XLRE",
+      "return_pct": 1.93,
+      "last_price": 41.7
+    },
+    {
+      "sector": "Industrials",
+      "etf": "XLI",
+      "return_pct": 1.84,
+      "last_price": 154.24
+    },
+    {
+      "sector": "Financials",
+      "etf": "XLF",
+      "return_pct": 1.04,
+      "last_price": 53.21
+    },
+    {
+      "sector": "Communication Services",
+      "etf": "XLC",
+      "return_pct": 0.32,
+      "last_price": 114.2
+    },
+    {
+      "sector": "Consumer Staples",
+      "etf": "XLP",
+      "return_pct": -0.53,
+      "last_price": 77.43
+    },
+    {
+      "sector": "Materials",
+      "etf": "XLB",
+      "return_pct": -0.79,
+      "last_price": 87.53
+    },
+    {
+      "sector": "Utilities",
+      "etf": "XLU",
+      "return_pct": -1.3,
+      "last_price": 89.71
+    }
+  ],
+  "top_sector": {
+    "sector": "Healthcare",
+    "etf": "XLV",
+    "return_pct": 6.15,
+    "last_price": 150.68
+  },
+  "bottom_sector": {
+    "sector": "Utilities",
+    "etf": "XLU",
+    "return_pct": -1.3,
+    "last_price": 89.71
+  }
+}</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="tool-section">
+                <div class="agent-header">
+                    <span class="agent-icon">😊</span>
+                    <span class="agent-name">SentimentAnalyst</span>
+                    <span class="tool-count">(1 tool calls)</span>
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 fear_greed <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(1 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">fear_greed</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "value": 31,
+  "label": "Fear",
+  "previous_close": null,
+  "one_week_ago": null,
+  "one_month_ago": null,
+  "one_year_ago": null,
+  "asof": "2025-11-07T00:00:00+00:00",
+  "source": "feargreedmeter",
+  "extracted_date": "2025-11-07",
+  "days_ago": 5
+}</div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="tool-section">
+                <div class="agent-header">
+                    <span class="agent-icon">📈</span>
+                    <span class="agent-name">TechnicalAnalyst</span>
+                    <span class="tool-count">(15 tool calls)</span>
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_advanced_indicators <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(12 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "PDD",
+  "period": "3mo",
+  "last_price": 137.11000061035156,
+  "indicators": {
+    "rsi_14": 68.08617246236003,
+    "macd": {
+      "macd": 1.8882651761514637,
+      "signal": 1.7969916986661278,
+      "histogram": 0.09127347748533587
+    },
+    "bollinger_bands": {
+      "upper": 141.1837116599738,
+      "middle": 134.0179988861084,
+      "lower": 126.85228611224298,
+      "position": 0.715749767107624
+    },
+    "adx": {
+      "adx": 28.44149580664845,
+      "plus_di": 39.47774799723576,
+      "minus_di": 20.48130408303341
+    },
+    "stochastic": {
+      "k": 73.83389287958589,
+      "d": 76.1376473921182
+    },
+    "atr_14": 2.7900009155273438,
+    "obv": 116033500.0,
+    "volume": {
+      "current": 7472600.0,
+      "avg_20": 5940780.0,
+      "ratio": 1.2578482960150015
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NFLX",
+  "period": "3mo",
+  "last_price": 1136.43994140625,
+  "indicators": {
+    "rsi_14": 56.90306826359575,
+    "macd": {
+      "macd": -21.552085577063963,
+      "signal": -25.166032632174367,
+      "histogram": 3.6139470551104047
+    },
+    "bollinger_bands": {
+      "upper": 1233.5127916117292,
+      "middle": 1132.2414916992188,
+      "lower": 1030.9701917867085,
+      "position": 0.5207287242815005
+    },
+    "adx": {
+      "adx": 35.43238029605747,
+      "plus_di": 22.870005208720887,
+      "minus_di": 20.479284241195863
+    },
+    "stochastic": {
+      "k": 95.77823792319114,
+      "d": 56.169166204806224
+    },
+    "atr_14": 25.544974190848215,
+    "obv": -34395900.0,
+    "volume": {
+      "current": 2790900.0,
+      "avg_20": 4847535.0,
+      "ratio": 0.5757359152641497
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "UPRO",
+  "period": "3mo",
+  "last_price": 117.93000030517578,
+  "indicators": {
+    "rsi_14": 61.05609946110797,
+    "macd": {
+      "macd": 1.4489148585350335,
+      "signal": 1.7397509959216344,
+      "histogram": -0.29083613738660086
+    },
+    "bollinger_bands": {
+      "upper": 122.56690328062324,
+      "middle": 114.8950008392334,
+      "lower": 107.22309839784357,
+      "position": 0.6977996650197601
+    },
+    "adx": {
+      "adx": 15.943452135578047,
+      "plus_di": 30.59397121629824,
+      "minus_di": 25.02436281162967
+    },
+    "stochastic": {
+      "k": 71.71314297004223,
+      "d": 56.905722634960284
+    },
+    "atr_14": 3.6678559439522878,
+    "obv": 29715300.0,
+    "volume": {
+      "current": 9427200.0,
+      "avg_20": 5672680.0,
+      "ratio": 1.6618600026795096
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "BIIB",
+  "period": "3mo",
+  "last_price": 159.55999755859375,
+  "indicators": {
+    "rsi_14": 69.932645574953,
+    "macd": {
+      "macd": 3.0124799811794105,
+      "signal": 2.25907451774488,
+      "histogram": 0.7534054634345306
+    },
+    "bollinger_bands": {
+      "upper": 159.60018592599468,
+      "middle": 150.15149993896483,
+      "lower": 140.70281395193498,
+      "position": 0.9978733356439141
+    },
+    "adx": {
+      "adx": 8.10639219152796,
+      "plus_di": 23.419349898375657,
+      "minus_di": 20.272175003266344
+    },
+    "stochastic": {
+      "k": 98.22323715776339,
+      "d": 92.95990649446247
+    },
+    "atr_14": 5.038569859095982,
+    "obv": 9153100.0,
+    "volume": {
+      "current": 1504500.0,
+      "avg_20": 1625945.0,
+      "ratio": 0.9253080516253624
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "FANG",
+  "period": "3mo",
+  "last_price": 148.14999389648438,
+  "indicators": {
+    "rsi_14": 58.978264299324024,
+    "macd": {
+      "macd": 0.30971987664668177,
+      "signal": -0.12861656798219437,
+      "histogram": 0.4383364446288761
+    },
+    "bollinger_bands": {
+      "upper": 147.91382389490218,
+      "middle": 142.41449890136718,
+      "lower": 136.91517390783218,
+      "position": 1.0214726354470627
+    },
+    "adx": {
+      "adx": 8.638048016837445,
+      "plus_di": 25.405414600802324,
+      "minus_di": 18.530403646437435
+    },
+    "stochastic": {
+      "k": 85.93503106000216,
+      "d": 67.29544217067347
+    },
+    "atr_14": 4.228572300502232,
+    "obv": 470800.0,
+    "volume": {
+      "current": 1432400.0,
+      "avg_20": 1706565.0,
+      "ratio": 0.8393468751556489
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "ISRG",
+  "period": "3mo",
+  "last_price": 572.1699829101562,
+  "indicators": {
+    "rsi_14": 69.19870764824897,
+    "macd": {
+      "macd": 27.819022523798594,
+      "signal": 24.73755827675473,
+      "histogram": 3.081464247043865
+    },
+    "bollinger_bands": {
+      "upper": 615.0999034436377,
+      "middle": 522.4335067749023,
+      "lower": 429.7671101061669,
+      "position": 0.7683630632204915
+    },
+    "adx": {
+      "adx": 71.88476359557228,
+      "plus_di": 24.1673501911045,
+      "minus_di": 7.827014466898681
+    },
+    "stochastic": {
+      "k": 86.97821604479672,
+      "d": 93.58163865367385
+    },
+    "atr_14": 14.154283796037946,
+    "obv": 21493600.0,
+    "volume": {
+      "current": 1608500.0,
+      "avg_20": 2723365.0,
+      "ratio": 0.5906296071220714
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "SBUX",
+  "period": "3mo",
+  "last_price": 86.41999816894531,
+  "indicators": {
+    "rsi_14": 52.33265421872546,
+    "macd": {
+      "macd": 0.030131036173770553,
+      "signal": -0.26729011731152275,
+      "histogram": 0.2974211534852933
+    },
+    "bollinger_bands": {
+      "upper": 88.26021038730137,
+      "middle": 84.15549964904785,
+      "lower": 80.05078891079434,
+      "position": 0.7758414251695801
+    },
+    "adx": {
+      "adx": 19.953986571263563,
+      "plus_di": 24.60138480451525,
+      "minus_di": 24.487465266380333
+    },
+    "stochastic": {
+      "k": 88.27222629655726,
+      "d": 78.95286393798064
+    },
+    "atr_14": 2.5085716247558594,
+    "obv": -100005800.0,
+    "volume": {
+      "current": 9528300.0,
+      "avg_20": 10903225.0,
+      "ratio": 0.8738974019154883
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "MNST",
+  "period": "3mo",
+  "last_price": 71.91000366210938,
+  "indicators": {
+    "rsi_14": 58.68358320930289,
+    "macd": {
+      "macd": 0.5751054893361243,
+      "signal": 0.38431260289901265,
+      "histogram": 0.19079288643711162
+    },
+    "bollinger_bands": {
+      "upper": 72.0232645174296,
+      "middle": 68.75900115966797,
+      "lower": 65.49473780190635,
+      "position": 0.9826513913084075
+    },
+    "adx": {
+      "adx": 25.973287344321793,
+      "plus_di": 30.0,
+      "minus_di": 21.333331214058422
+    },
+    "stochastic": {
+      "k": 89.46589753980525,
+      "d": 69.38675867210911
+    },
+    "atr_14": 1.7142868041992188,
+    "obv": 74841200.0,
+    "volume": {
+      "current": 7129900.0,
+      "avg_20": 5835740.0,
+      "ratio": 1.2217645063008291
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "period": "3mo",
+  "last_price": 193.16000366210938,
+  "indicators": {
+    "rsi_14": 59.02466895092383,
+    "macd": {
+      "macd": 3.1015743101723956,
+      "signal": 3.743436354519649,
+      "histogram": -0.6418620443472536
+    },
+    "bollinger_bands": {
+      "upper": 210.44971541616343,
+      "middle": 191.5760009765625,
+      "lower": 172.7022865369616,
+      "position": 0.5419631941188879
+    },
+    "adx": {
+      "adx": 23.839872680003086,
+      "plus_di": 39.99999468797568,
+      "minus_di": 28.29415228458214
+    },
+    "stochastic": {
+      "k": 42.81851118595824,
+      "d": 45.95973177636512
+    },
+    "atr_14": 8.207142421177455,
+    "obv": -74631700.0,
+    "volume": {
+      "current": 175777200.0,
+      "avg_20": 187356115.0,
+      "ratio": 0.938198360912853
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "period": "3mo",
+  "last_price": 193.16000366210938,
+  "indicators": {
+    "rsi_14": 59.02466895092383,
+    "macd": {
+      "macd": 3.1015743101723956,
+      "signal": 3.743436354519649,
+      "histogram": -0.6418620443472536
+    },
+    "bollinger_bands": {
+      "upper": 210.44971541616343,
+      "middle": 191.5760009765625,
+      "lower": 172.7022865369616,
+      "position": 0.5419631941188879
+    },
+    "adx": {
+      "adx": 23.839872680003086,
+      "plus_di": 39.99999468797568,
+      "minus_di": 28.29415228458214
+    },
+    "stochastic": {
+      "k": 42.81851118595824,
+      "d": 45.95973177636512
+    },
+    "atr_14": 8.207142421177455,
+    "obv": -74631700.0,
+    "volume": {
+      "current": 175777200.0,
+      "avg_20": 187356115.0,
+      "ratio": 0.938198360912853
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "period": "3mo",
+  "last_price": 193.16000366210938,
+  "indicators": {
+    "rsi_14": 59.02466895092383,
+    "macd": {
+      "macd": 3.1015743101723956,
+      "signal": 3.743436354519649,
+      "histogram": -0.6418620443472536
+    },
+    "bollinger_bands": {
+      "upper": 210.44971541616343,
+      "middle": 191.5760009765625,
+      "lower": 172.7022865369616,
+      "position": 0.5419631941188879
+    },
+    "adx": {
+      "adx": 23.839872680003086,
+      "plus_di": 39.99999468797568,
+      "minus_di": 28.29415228458214
+    },
+    "stochastic": {
+      "k": 42.81851118595824,
+      "d": 45.95973177636512
+    },
+    "atr_14": 8.207142421177455,
+    "obv": -74631700.0,
+    "volume": {
+      "current": 175777200.0,
+      "avg_20": 187356115.0,
+      "ratio": 0.938198360912853
+    }
+  }
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_advanced_indicators</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "period": "3mo",
+  "last_price": 193.16000366210938,
+  "indicators": {
+    "rsi_14": 59.02466895092383,
+    "macd": {
+      "macd": 3.1015743101723956,
+      "signal": 3.743436354519649,
+      "histogram": -0.6418620443472536
+    },
+    "bollinger_bands": {
+      "upper": 210.44971541616343,
+      "middle": 191.5760009765625,
+      "lower": 172.7022865369616,
+      "position": 0.5419631941188879
+    },
+    "adx": {
+      "adx": 23.839872680003086,
+      "plus_di": 39.99999468797568,
+      "minus_di": 28.29415228458214
+    },
+    "stochastic": {
+      "k": 42.81851118595824,
+      "d": 45.95973177636512
+    },
+    "atr_14": 8.207142421177455,
+    "obv": -74631700.0,
+    "volume": {
+      "current": 175777200.0,
+      "avg_20": 187356115.0,
+      "ratio": 0.938198360912853
+    }
+  }
+}</div>
+                    </div>
+
+                </div>
+
+                <div class="tool-group">
+                    <h3>🔧 get_support_resistance <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">(3 calls)</span></h3>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_support_resistance</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "current_price": 193.16000366210938,
+  "resistances": [
+    212.19000244140625,
+    211.33999633789062,
+    195.6199951171875
+  ],
+  "supports": [
+    129.14376150329426,
+    132.9032778793795,
+    140.84205843661482
+  ],
+  "nearest_resistance": 212.19000244140625,
+  "nearest_support": 140.84205843661482
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_support_resistance</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "current_price": 193.16000366210938,
+  "resistances": [
+    212.19000244140625,
+    211.33999633789062,
+    195.6199951171875
+  ],
+  "supports": [
+    129.14376150329426,
+    132.9032778793795,
+    140.84205843661482
+  ],
+  "nearest_resistance": 212.19000244140625,
+  "nearest_support": 140.84205843661482
+}</div>
+                    </div>
+
+                    <div class="tool-item">
+                        <div class="tool-item-header">
+                            <span class="tool-name">get_support_resistance</span>
+                            <span class="tool-date">2025-11-12</span>
+                        </div>
+                        <div class="tool-result">{
+  "symbol": "NVDA",
+  "current_price": 193.16000366210938,
+  "resistances": [
+    212.19000244140625,
+    211.33999633789062,
+    195.6199951171875
+  ],
+  "supports": [
+    129.14376150329426,
+    132.9032778793795,
+    140.84205843661482
+  ],
+  "nearest_resistance": 212.19000244140625,
+  "nearest_support": 140.84205843661482
+}</div>
+                    </div>
+
+                </div>
+
             </div>
 
         </div>
@@ -213,7 +1381,7 @@
         <div class="section">
             <h2>📊 Equity History (Last 30 Days)</h2>
             <div style="color: #94a3b8; font-size: 14px;">
-                <p>Total records: 1</p>
+                <p>Total records: 2</p>
                 <p style="margin-top: 8px;">Latest value: <span style="color: #22d3ee; font-weight: 600;">$10,000.00</span></p>
             </div>
         </div>

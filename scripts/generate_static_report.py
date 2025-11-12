@@ -35,7 +35,14 @@ except ImportError:
 def load_recent_trades(limit: int = 50) -> List[Dict[str, Any]]:
     """Load recent trades from logs"""
     trades = []
-    logs_dir = Path("backend/data/logs") if (ROOT / "backend").exists() else Path("data/logs")
+    # Check both possible locations
+    logs_dir = None
+    for possible_dir in [Path("data/logs"), Path("backend/data/logs")]:
+        if (ROOT / possible_dir).exists():
+            logs_dir = ROOT / possible_dir
+            break
+    if logs_dir is None:
+        logs_dir = Path("data/logs")  # Default fallback
     
     # Try multiple log files
     for log_file in [logs_dir / "trades.jsonl", logs_dir / "filled_orders.jsonl"]:
@@ -58,7 +65,14 @@ def load_recent_trades(limit: int = 50) -> List[Dict[str, Any]]:
 def load_recent_conversations(limit: int = 30) -> List[Dict[str, Any]]:
     """Load recent conversations"""
     conversations = []
-    logs_dir = Path("backend/data/logs") if (ROOT / "backend").exists() else Path("data/logs")
+    # Check both possible locations
+    logs_dir = None
+    for possible_dir in [Path("data/logs"), Path("backend/data/logs")]:
+        if (ROOT / possible_dir).exists():
+            logs_dir = ROOT / possible_dir
+            break
+    if logs_dir is None:
+        logs_dir = Path("data/logs")  # Default fallback
     convo_file = logs_dir / "discussion_actions.jsonl"
     
     if convo_file.exists():
@@ -80,7 +94,14 @@ def load_recent_conversations(limit: int = 30) -> List[Dict[str, Any]]:
 def load_tool_results(limit: int = 100) -> Dict[str, List[Dict[str, Any]]]:
     """Load tool results grouped by agent and tool name"""
     tool_results = {}  # {agent: {tool_name: [results]}}
-    logs_dir = Path("backend/data/logs") if (ROOT / "backend").exists() else Path("data/logs")
+    # Check both possible locations
+    logs_dir = None
+    for possible_dir in [Path("data/logs"), Path("backend/data/logs")]:
+        if (ROOT / possible_dir).exists():
+            logs_dir = ROOT / possible_dir
+            break
+    if logs_dir is None:
+        logs_dir = Path("data/logs")  # Default fallback
     convo_file = logs_dir / "discussion_actions.jsonl"
     
     if convo_file.exists():
@@ -131,7 +152,14 @@ def load_tool_results(limit: int = 100) -> Dict[str, List[Dict[str, Any]]]:
 def load_equity_history(limit: int = 60) -> List[Dict[str, Any]]:
     """Load equity history"""
     try:
-        logs_dir = Path("backend/data/logs") if (ROOT / "backend").exists() else Path("data/logs")
+        # Check both possible locations
+        logs_dir = None
+        for possible_dir in [Path("data/logs"), Path("backend/data/logs")]:
+            if (ROOT / possible_dir).exists():
+                logs_dir = ROOT / possible_dir
+                break
+        if logs_dir is None:
+            logs_dir = Path("data/logs")  # Default fallback
         equity_tracker = EquityTracker(root=str(logs_dir))
         records = equity_tracker.load_equity_history(limit=limit)
         return records

@@ -6941,6 +6941,9 @@
                 displayTrades = [...tomorrowOrders, ...pendingTrades.filter(t => !tomorrowOrders.includes(t))];
             }
             
+            // 保存所有交易数据用于分页（在去重和分组之后）
+            executionAllTrades = displayTrades;
+            
             // 更新计数（显示FILLED和PENDING数量）
             const totalCount = filledTrades.length + pendingTrades.length;
             const filledCount = filledTrades.length;
@@ -7408,6 +7411,8 @@
                 }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
+                // 重置分页到第一页
+                executionPage = 1;
                 renderExecutionDetails(tradesData || []);  // Update execution details (including tomorrow's pending orders)
                 
                 // 如果当前在Trade History页面，也更新交易数据

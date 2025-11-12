@@ -2764,6 +2764,8 @@
                 isTradingExecuting = false;  // Ensure flag is reset regardless of success or failure
                 // Update conversation status back to Idle (agent status indicator)
                 updateConversationStatus(false);
+                // Resume auto-refresh after trading cycle completes
+                console.log('[Trade Cycle] Trading cycle completed, auto-refresh will resume');
                 
                 // Restore button state (based on actual market status)
                 if (btn) {
@@ -7302,6 +7304,11 @@
         function startAutoRefresh() {
             stopAutoRefresh();
             refreshTimer = setInterval(() => {
+                // Pause auto-refresh during trading execution to avoid ERR_NETWORK_CHANGED errors
+                if (isTradingExecuting) {
+                    console.debug('[Auto Refresh] Paused during trading execution (backend is busy)');
+                    return;
+                }
                 if (!isRefreshing) {
                     // Skip health check during auto refresh to avoid frequent error messages
                     refreshData(false, true);  // skipHealthCheck = true

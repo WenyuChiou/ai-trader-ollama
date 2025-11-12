@@ -10,6 +10,12 @@
 [![Ollama](https://img.shields.io/badge/Ollama-deepseek-r1-orange.svg)](https://ollama.ai/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+### 🌐 **Live Demo**
+
+> **View the dashboard online**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
+> 
+> 🔒 **Read-Only Mode**: The public website is in read-only mode for security. Trading controls are disabled. Use localhost for full control.
+
 ---
 
 ## 📚 Table of Contents
@@ -1227,6 +1233,9 @@ max_cost = 12 * 122.50 = $1,470
 
 ## 📡 API Endpoints
 
+<details>
+<summary><b>Complete API Reference (Developer Only - Click to expand)</b></summary>
+
 ### Portfolio & Trading
 
 | Method | Endpoint | Description |
@@ -1264,8 +1273,6 @@ curl http://localhost:8000/api/portfolio/real-time
 }
 ```
 
----
-
 ### Market Data
 
 | Method | Endpoint | Description |
@@ -1275,8 +1282,6 @@ curl http://localhost:8000/api/portfolio/real-time
 | `GET` | `/api/market/price/{symbol}` | Current price for symbol |
 | `GET` | `/api/vix/term` | VIX term structure |
 
----
-
 ### Orders
 
 | Method | Endpoint | Description |
@@ -1284,8 +1289,6 @@ curl http://localhost:8000/api/portfolio/real-time
 | `GET` | `/api/orders/pending` | Get pending orders |
 | `POST` | `/api/orders/check-fills` | Check and execute pending orders |
 | `GET` | `/api/orders/history` | Order history |
-
----
 
 ### Conversations & Logs
 
@@ -1295,14 +1298,12 @@ curl http://localhost:8000/api/portfolio/real-time
 | `GET` | `/api/trades/history` | Trade log |
 | `GET` | `/api/logs/list` | List all log files |
 
----
-
 ### Full API Documentation
 
 For complete API documentation with request/response schemas:
 ```bash
 # Start API server
-python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000
+python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000
 
 # Access Swagger UI
 http://localhost:8000/docs
@@ -1310,6 +1311,12 @@ http://localhost:8000/docs
 # Access ReDoc
 http://localhost:8000/redoc
 ```
+
+</details>
+
+**Quick Access**: All API endpoints are available via Swagger UI at `http://localhost:8000/docs` when the backend is running.
+
+For complete API documentation, see: [📖 API Reference](docs/API_REFERENCE.md)
 
 ---
 

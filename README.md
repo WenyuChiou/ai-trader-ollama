@@ -343,6 +343,218 @@ Invoke-WebRequest -Uri http://localhost:8000/api/status | Select-Object -ExpandP
 - Port 8000 not in use
 - Browser shows "This site can't be reached"
 
+**5. Local Deployment Guide**
+
+<details>
+<summary><strong>📖 Complete Local Setup Tutorial (Click to expand)</strong></summary>
+
+### Step-by-Step Local Deployment
+
+This guide will help you set up the AI-Trader system on your local machine for full control and testing.
+
+#### **Prerequisites Checklist**
+
+- [ ] Python 3.10+ installed
+- [ ] Ollama installed and running
+- [ ] `deepseek-r1` model pulled in Ollama
+- [ ] Git installed (for cloning repository)
+- [ ] Internet connection (for market data and news)
+
+#### **Step 1: Clone and Navigate to Project**
+
+```powershell
+# Clone the repository
+git clone https://github.com/WenyuChiou/ai-trader-ollama.git
+
+# Navigate to project root
+cd ai-trader-ollama
+
+# Verify you're in the correct directory
+# You should see: backend/, frontend/, scripts/, prompts/, etc.
+dir
+```
+
+#### **Step 2: Install Python Dependencies**
+
+```powershell
+# Install backend dependencies
+cd backend
+pip install -r requirements.txt
+
+# Return to project root
+cd ..
+```
+
+#### **Step 3: Set Up Ollama**
+
+```powershell
+# Terminal 1: Start Ollama service (keep this running)
+ollama serve
+
+# Terminal 2: Pull the required model
+ollama pull deepseek-r1
+
+# Verify model is available
+ollama list
+```
+
+#### **Step 4: Initialize System Data**
+
+```powershell
+# From project root directory
+python scripts/init_data.py
+
+# This creates:
+# - backend/data/logs/portfolio_state.json (initial $10,000)
+# - backend/data/logs/equity_history.jsonl
+# - backend/data/logs/discussion_actions.jsonl
+# - backend/data/logs/trades.jsonl
+```
+
+#### **Step 5: Start Backend API Server**
+
+**Open Terminal 1 (Backend API):**
+
+```powershell
+# From project root directory
+cd "path\to\ai-trader-ollama"
+
+# Start API server
+python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Expected Output:**
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process
+INFO:     Started server process
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+```
+
+**Verify Backend is Running:**
+- Open browser: `http://localhost:8000/docs` (should show API documentation)
+- Or test: `http://localhost:8000/api/status`
+
+#### **Step 6: Start Frontend Server**
+
+**Open Terminal 2 (Frontend Server):**
+
+```powershell
+# Navigate to frontend directory
+cd frontend
+
+# Start HTTP server
+python -m http.server 3000 --bind 0.0.0.0
+```
+
+**Expected Output:**
+```
+Serving HTTP on 0.0.0.0 port 3000 (http://0.0.0.0:3000/) ...
+```
+
+**Verify Frontend is Running:**
+- Open browser: `http://localhost:3000/monitor.html`
+
+#### **Step 7: Access Dashboard**
+
+**Local Access (Full Control):**
+- Dashboard: `http://localhost:3000/monitor.html`
+- API Docs: `http://localhost:8000/docs`
+- API Status: `http://localhost:8000/api/status`
+
+**Network Access (Same WiFi):**
+```powershell
+# Get your IP address
+ipconfig | findstr IPv4
+
+# Example output:
+#    IPv4 地址 . . . . . . . . . . . . : 192.168.4.24
+
+# Access from other devices on same network:
+# Dashboard: http://192.168.4.24:3000/monitor.html
+# API: http://192.168.4.24:8000/docs
+```
+
+#### **Step 8: Configure Firewall (First Time Only)**
+
+If accessing from other devices, allow ports in Windows Firewall:
+
+```powershell
+# Allow port 8000 (Backend API)
+New-NetFirewallRule -DisplayName "AI-Trader API" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+
+# Allow port 3000 (Frontend)
+New-NetFirewallRule -DisplayName "AI-Trader Frontend" -Direction Inbound -LocalPort 3000 -Protocol TCP -Action Allow
+```
+
+Or use the provided script:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_firewall.ps1
+```
+
+#### **Step 9: Run Your First Trading Cycle**
+
+1. Open dashboard: `http://localhost:3000/monitor.html`
+2. Click **"Initialize"** button (if first time)
+3. Click **"Start Trading"** button to run one trading cycle
+4. Or enable **"Auto Trade"** checkbox for automatic trading
+
+#### **Complete Command Summary**
+
+**Terminal 1 - Backend API:**
+```powershell
+cd "C:\path\to\ai-trader-ollama"
+python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Terminal 2 - Frontend Server:**
+```powershell
+cd "C:\path\to\ai-trader-ollama\frontend"
+python -m http.server 3000 --bind 0.0.0.0
+```
+
+**Terminal 3 - Ollama (if not running as service):**
+```powershell
+ollama serve
+```
+
+#### **Troubleshooting**
+
+**Problem: Port already in use**
+```powershell
+# Find process using port 8000
+netstat -ano | findstr :8000
+
+# Kill process (replace PID with actual process ID)
+taskkill /PID <PID> /F
+```
+
+**Problem: Cannot access from network**
+- Check firewall rules (Step 8)
+- Verify `--host 0.0.0.0` and `--bind 0.0.0.0` are used
+- Ensure devices are on same network
+
+**Problem: API not responding**
+- Check Ollama is running: `ollama list`
+- Check backend terminal for errors
+- Verify model is pulled: `ollama pull deepseek-r1`
+
+**Problem: Frontend shows connection errors**
+- Verify backend is running on port 8000
+- Check browser console for specific errors
+- Ensure `frontend/config.js` has correct API URL
+
+#### **Next Steps**
+
+- ✅ System is now running locally
+- ✅ You have full control (trading enabled on localhost)
+- ✅ Access dashboard at `http://localhost:3000/monitor.html`
+- ✅ Run trading cycles manually or enable Auto Trade
+- ✅ Monitor tool results, conversations, and portfolio performance
+
+</details>
+
 **5. Access Dashboard**
 
 **Local Access**:

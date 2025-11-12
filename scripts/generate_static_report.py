@@ -468,14 +468,17 @@ def generate_html_report(output_path: Path) -> None:
                     <h3>🔧 {tool_name} <span style="color: #94a3b8; font-size: 14px; font-weight: normal;">({len(tool_calls)} calls)</span></h3>
 """
                 
-                # Show latest 3 results per tool (most recent first)
-                for tool_call in tool_calls[-3:][::-1]:
+                # Show latest 15 results per tool (most recent first)
+                for tool_call in tool_calls[-15:][::-1]:
                     result_text = tool_call.get("result", "")
                     date_str = tool_call.get("date", tool_call.get("timestamp", ""))[:10] if tool_call.get("date") or tool_call.get("timestamp") else "N/A"
                     
                     # Truncate very long results
-                    if len(result_text) > 2000:
-                        result_text = result_text[:2000] + "\n... (truncated, showing first 2000 characters)"
+                    # News tools get more space (5000 chars), others get 3000 chars
+                    is_news_tool = tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news", "business_rss"]
+                    max_length = 5000 if is_news_tool else 3000
+                    if len(result_text) > max_length:
+                        result_text = result_text[:max_length] + f"\n... (truncated, showing first {max_length} characters)"
                     
                     html += f"""
                     <div class="tool-item">

@@ -2293,7 +2293,7 @@
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
                 try {
-                    const response = await fetch(`${API_BASE}/api/portfolio/real-time`, {
+                    const response = await fetch(`${getApiBase()}/api/portfolio/real-time`, {
                         method: 'GET',
                         mode: 'cors',  // Explicitly specify CORS mode
                         headers: {

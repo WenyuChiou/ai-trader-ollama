@@ -3902,6 +3902,8 @@
             if (count) {
                 const toolCount = filteredConversations.filter(c => (c.type || 'discussion') === 'tool').length;
                 const discussionCount = filteredConversations.filter(c => (c.type || 'discussion') !== 'tool').length;
+                // Debug: log conversation types
+                console.log('[Conversations] Total:', filteredConversations.length, 'Discussions:', discussionCount, 'Tools:', toolCount);
                 if (currentAgentFilter !== 'all') {
                     count.textContent = `${toolCount} tools`;
                 } else {
@@ -6958,6 +6960,9 @@
                 const systemInfo = results[5].status === 'fulfilled' ? results[5].value : null;
                 const convData = results[6].status === 'fulfilled' ? results[6].value : { conversations: [], total: 0, has_more: false };
                 const tradesData = results[7].status === 'fulfilled' ? results[7].value : [];
+                
+                // Debug: log fetched data
+                console.log('[Refresh] Conversations fetched:', convData.conversations?.length || 0, 'Trades fetched:', tradesData?.length || 0);
                 
                 // 保存到全局变量，供订单状态卡片使用
                 window.lastTradesData = tradesData;

@@ -40,7 +40,7 @@
   },
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
-  "discussion_tool_budget": 10,
+  "discussion_tool_budget": 15,
   
   "llm": {
     "default_model": "deepseek-r1",

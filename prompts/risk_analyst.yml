@@ -137,5 +137,4 @@ user: |
   - Assess market sentiment (fear_greed)
   - Review economic conditions (get_economic_summary)
   - Scan for risk-related news (news_scan)
-  
   Provide specific, actionable risk mitigation strategies.

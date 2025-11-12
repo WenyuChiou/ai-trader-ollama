@@ -529,13 +529,15 @@ async def execute_trade_direct():
             existing_orders = order_manager.load_pending_orders(order_date=tomorrow_str)
             
             if existing_orders:
+                # 如果有 pending orders，视为已有规划，直接返回，不继续执行交易周期
+                log_print(f"[TRADING CYCLE] Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.")
                 response = JSONResponse(
                     status_code=200,
                     content={
                         "ok": True,
                         "message": f"Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.",
                         "result": {
-                            "placed_orders": [],
+                            "placed_orders": existing_orders,  # 返回实际的 pending orders
                             "conversations_count": 0,
                             "is_planning": True,
                             "order_date": tomorrow_str

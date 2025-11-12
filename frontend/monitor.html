@@ -1545,14 +1545,32 @@
         function updateApiBase() {
             API_BASE = getApiBase();
             window.API_BASE = API_BASE;
-            // Update footer display
-            const apiUrlElement = document.getElementById('apiUrl');
-            if (apiUrlElement) {
-                apiUrlElement.textContent = API_BASE;
-            }
+            // Update footer display - try multiple times to ensure it updates
+            const updateDisplay = () => {
+                const apiUrlElement = document.getElementById('apiUrl');
+                if (apiUrlElement) {
+                    apiUrlElement.textContent = API_BASE;
+                    console.log('[API Config] Updated API URL display to:', API_BASE);
+                }
+            };
+            updateDisplay();
+            // Also try after a short delay in case DOM isn't ready
+            setTimeout(updateDisplay, 100);
         }
         
-        // Try to get API URL immediately (config.js should be loaded by now)
+        // Wait for config.js to load, then update
+        // Use multiple strategies to ensure config.js is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                // Wait a bit more for config.js to fully initialize
+                setTimeout(updateApiBase, 50);
+            });
+        } else {
+            // DOM already loaded, but config.js might still be loading
+            setTimeout(updateApiBase, 100);
+        }
+        
+        // Also try immediately (config.js should be loaded by now)
         updateApiBase();
         
         // Read-only mode detection: Enable read-only for shared access (IP or GitHub Pages)

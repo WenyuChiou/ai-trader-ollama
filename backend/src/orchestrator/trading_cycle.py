@@ -227,6 +227,29 @@ def execute_daily_trade(
         except Exception:
             pass
 
+    # Ensure we have price coverage for all held positions (fallback to available data)
+    if portfolio:
+        for symbol, pos in portfolio._positions.items():
+            price = last_prices.get(symbol)
+            if price is None or price <= 0:
+                fallback_price = None
+                stock_data = stocks.get(symbol)
+                if isinstance(stock_data, dict):
+                    fallback_price = (
+                        stock_data.get("price")
+                        or stock_data.get("last_price")
+                        or stock_data.get("close")
+                    )
+                if fallback_price is None:
+                    mv_prices = market_view.get("last_prices") if isinstance(market_view, dict) else None
+                    fallback_price = mv_prices.get(symbol) if isinstance(mv_prices, dict) else None
+                if fallback_price is None:
+                    fallback_price = pos.avg_cost
+                try:
+                    last_prices[symbol] = float(fallback_price)
+                except (TypeError, ValueError):
+                    last_prices[symbol] = float(pos.avg_cost)
+
     # ---- (1.5) 加載歷史記憶（長短記憶）----
     historical_memories = []
     try:
@@ -600,6 +623,40 @@ def execute_daily_trade(
     executed_trades = []
     execution_errors = []
     placed_orders = []  # 記錄掛單
+    new_orders_count = 0  # 記錄本次新創建的訂單數量（不包括existing_pending_orders）
+    
+    # 检查是否有大量pending订单，如果有，取消今日的pending订单，只保留明日的订单
+    # 这个机制可以防止pending订单堆积
+    if not end:  # 只在实时模式下执行（不在多日模拟中执行）
+        all_pending_orders = order_manager.load_pending_orders()  # 加载所有pending订单
+        today_str = date.today().isoformat()
+
+        # 自动清理前几个交易日遗留的订单，防止无限累积
+        stale_dates = sorted({
+            o.get("order_date")
+            for o in all_pending_orders
+            if o.get("order_date") and o.get("order_date") < today_str
+        })
+        for stale_date in stale_dates:
+            cancelled = order_manager.cancel_orders(order_date=stale_date)
+            if cancelled > 0:
+                print(f"[TRADING CYCLE] Removed {cancelled} stale pending orders from {stale_date}")
+
+        from src.utils.trading_days import get_next_trading_day
+        tomorrow_str = get_next_trading_day(date.today(), days_ahead=1).isoformat()
+        
+        today_orders = [o for o in all_pending_orders if o.get("order_date") == today_str]
+        tomorrow_orders = [o for o in all_pending_orders if o.get("order_date") == tomorrow_str]
+        
+        # 如果今日有pending订单，且总pending订单数量较多（>= 5），取消今日的订单
+        if len(today_orders) > 0 and len(all_pending_orders) >= 5:
+            print(f"[TRADING CYCLE] ⚠️ Found {len(all_pending_orders)} total pending orders ({len(today_orders)} for today, {len(tomorrow_orders)} for tomorrow)")
+            print(f"[TRADING CYCLE] Cancelling {len(today_orders)} today's pending orders, keeping {len(tomorrow_orders)} tomorrow's orders")
+            cancelled_count = order_manager.cancel_orders(order_date=today_str)
+            if cancelled_count > 0:
+                print(f"[TRADING CYCLE] ✅ Cancelled {cancelled_count} today's pending orders")
+                # 重新加载pending订单（排除已取消的今日订单）
+                existing_pending_orders = order_manager.load_pending_orders(order_date=today)
     
     # 处理pending订单的逻辑：
     # 1. 如果市场开盘且有pending订单：先尝试结算这些订单，然后决定是否创建新订单
@@ -751,7 +808,37 @@ def execute_daily_trade(
                                 "message": f"Still have {len(existing_pending_orders)} pending orders for {today} after settlement. No new orders created to avoid conflicts."
                             }
                     else:
-                        print(f"[TRADING CYCLE] All pending orders settled. Proceeding to create new orders if needed.")
+                        print(f"[TRADING CYCLE] All pending orders settled.")
+                        # CRITICAL FIX: 在实时模式下，如果今天已经创建过订单（即使已全部成交），
+                        # 不应该再次创建新订单，避免每小时重复创建
+                        # 检查今天是否有已成交的订单（filled_orders）
+                        filled_file = Path("data/logs/filled_orders.jsonl")
+                        today_has_filled_orders = False
+                        if filled_file.exists() and not end:  # 只在实时模式下检查
+                            try:
+                                with filled_file.open("r", encoding="utf-8") as f:
+                                    for line in f:
+                                        if line.strip():
+                                            filled_order = json.loads(line)
+                                            if filled_order.get("order_date") == today and filled_order.get("status") == "FILLED":
+                                                today_has_filled_orders = True
+                                                break
+                            except Exception:
+                                pass
+                        
+                        if today_has_filled_orders and not end:
+                            print(f"[TRADING CYCLE] ⚠️ Today already has filled orders. Skipping new order creation to prevent hourly duplicates.")
+                            return {
+                                "placed_orders": [],
+                                "executed_trades": executed_trades,
+                                "execution_errors": [],
+                                "conversations_count": len(convo.get("entries", [])),
+                                "is_planning": False,
+                                "order_date": today,
+                                "message": f"Today already has filled orders. No new orders created to prevent hourly duplicates."
+                            }
+                        else:
+                            print(f"[TRADING CYCLE] Proceeding to create new orders if needed.")
             except Exception as e:
                 print(f"[TRADING CYCLE] Warning: Failed to check pending orders: {e}")
                 import traceback
@@ -772,6 +859,8 @@ def execute_daily_trade(
             print(f"[TRADING CYCLE] Skipping order creation - {len(existing_pending_orders)} pending orders already exist for {today}")
             # 将现有pending订单设置为placed_orders，这样验证函数可以检查
             placed_orders = existing_pending_orders
+            # CRITICAL FIX: 记录这是现有订单，不是新创建的
+            new_orders_count = 0  # 没有创建新订单
             # 继续执行，返回完整结果（包括讨论、分析等）
             # 不要提前返回，让代码继续执行到最后的return语句
     
@@ -910,7 +999,37 @@ def execute_daily_trade(
             print(f"[TRADING CYCLE] Debug: Top 10 stocks by signal_score: {[(s, d.get('signal_score', 0)) for s, d in top_10]}")
     
     # Process trading decisions (only if no existing pending orders, or in multi-day simulation)
-    if not existing_pending_orders or (end is not None):
+    # CRITICAL FIX: 在实时模式下，额外检查今天是否已经有pending或filled订单
+    # 如果有，就不应该再创建新订单，避免每小时重复创建
+    should_create_orders = False
+    if end is not None:
+        # 多日模拟模式：允许创建订单
+        should_create_orders = True
+    elif not existing_pending_orders:
+        # 实时模式：检查今天是否已经有filled订单
+        filled_file = Path("data/logs/filled_orders.jsonl")
+        today_has_any_orders = False
+        if filled_file.exists():
+            try:
+                with filled_file.open("r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            filled_order = json.loads(line)
+                            if filled_order.get("order_date") == today:
+                                today_has_any_orders = True
+                                break
+            except Exception:
+                pass
+        
+        # 如果今天没有任何订单（pending或filled），才允许创建新订单
+        should_create_orders = not today_has_any_orders
+        if today_has_any_orders:
+            print(f"[TRADING CYCLE] ⚠️ Today already has orders (filled or pending). Skipping new order creation to prevent hourly duplicates.")
+    else:
+        # 有pending订单，不创建新订单
+        should_create_orders = False
+    
+    if should_create_orders:
         # === OPTIMIZATION: Position limits (移除 cooldown 检查) ===
         from src.utils.config_loader import load_config
         
@@ -1027,6 +1146,7 @@ def execute_daily_trade(
                         order_date=today,
                     )
                     placed_orders.append(placed_order)
+                    new_orders_count += 1  # 记录新创建的BUY订单
                     
                     # 注意：訂單已掛單，但尚未執行
                     # 實際執行會在收盤後通過 check_order_fills() 檢查
@@ -1051,7 +1171,13 @@ def execute_daily_trade(
         print(f"[CASH SUMMARY] Total orders cost: ${total_orders_cost:.2f}, Remaining cash: ${remaining_cash:.2f} (from ${available_for_trading:.2f} available)")
         
         # 记录实际创建的买入订单数量（用于更新 Trader Agent summary）
-        actual_buy_orders_count = len(placed_orders)
+        # CRITICAL FIX: 只统计新创建的BUY订单，不包括existing_pending_orders
+        # 由于BUY订单在SELL订单之前创建，我们可以通过计算BUY订单数量来得到
+        # 只统计在should_create_orders=True时创建的BUY订单
+        if should_create_orders:
+            actual_buy_orders_count = len([o for o in placed_orders if o.get("action") == "BUY" and o.get("order_id")])  # 新创建的BUY订单都有order_id
+        else:
+            actual_buy_orders_count = 0  # 没有创建新订单
         
         # 执行卖出订单
         sell_orders = decision.get("sell_orders", [])
@@ -1086,6 +1212,7 @@ def execute_daily_trade(
                         order_date=today,
                     )
                     placed_orders.append(placed_order)
+                    new_orders_count += 1  # 记录新创建的SELL订单
                     
                     # 注意：訂單已掛單，但尚未執行
                     # 實際執行會在收盤後通過 check_order_fills() 檢查
@@ -1105,7 +1232,14 @@ def execute_daily_trade(
                     )
         
         # 记录实际创建的卖出订单数量
-        actual_sell_orders_count = len([o for o in placed_orders if o.get("action") == "SELL"])
+        # CRITICAL FIX: 只统计新创建的SELL订单，不包括existing_pending_orders
+        # 由于new_orders_count包含了所有新创建的订单（BUY+SELL），我们需要单独统计SELL
+        # 但这里我们只统计在should_create_orders=True时创建的SELL订单
+        # 如果should_create_orders=False，actual_sell_orders_count应该为0（因为没有创建新订单）
+        if should_create_orders:
+            actual_sell_orders_count = len([o for o in placed_orders if o.get("action") == "SELL" and o.get("order_id")])  # 新创建的SELL订单都有order_id
+        else:
+            actual_sell_orders_count = 0  # 没有创建新订单
     
     # 写入Trader Agent的conversation entry（在订单创建后，以便反映实际创建的订单数量）
     try:
@@ -1348,10 +1482,15 @@ def execute_daily_trade(
         
         # 记录每日净值（用于前端图表）
         # CRITICAL: 使用更新后的 portfolio 状态记录净值
+        # CRITICAL FIX: 确保 positions_detail 字段存在，equity_tracker 需要它
+        if "positions_detail" not in portfolio_snapshot:
+            portfolio_snapshot["positions_detail"] = updated_positions_info
+        
         equity_tracker.record_daily_equity(
             date_str=equity_date,
             portfolio_snapshot=portfolio_snapshot,
         )
+        print(f"[EQUITY] ✅ Recorded equity for {equity_date}: ${portfolio_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
         # 不影响主流程，继续执行

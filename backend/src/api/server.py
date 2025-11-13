@@ -724,14 +724,18 @@ async def check_pending_orders():
         
         order_manager = OrderManager(root="data/logs")
         
-        # 检查市场是否开盘
-        is_market_open = order_manager._is_market_open()
-        if not is_market_open:
+        # 检查市场状态（允许在收盘后执行结算）
+        now = datetime.now()
+        is_market_open = order_manager._is_market_open(check_datetime=now)
+        market_close_time = dt_time(16, 0)
+        if not is_market_open and now.time() < market_close_time:
             return {
                 "ok": True,
-                "message": "Market is closed, no order checking needed",
+                "message": "Market not open yet, skipping pending order check",
                 "settled_count": 0
             }
+        if not is_market_open:
+            log_print(f"[Check Pending Orders] Market closed, performing end-of-day settlement for {date.today().isoformat()}")
         
         # 获取今天的pending订单
         today = date.today().isoformat()
@@ -879,6 +883,7 @@ async def check_pending_orders():
         
         # 检查并结算订单
         settled_count = 0
+        rejected_count = 0
         
         if not pending_orders:
             # 即使没有pending订单，也检查是否需要恢复持仓
@@ -913,8 +918,20 @@ async def check_pending_orders():
                 continue
             
             try:
-                # 使用实时价格检查订单
+                # CRITICAL FIX: 在市场收盘后，不应该再尝试结算订单
+                # 如果市场已收盘，直接跳过订单结算，等待收盘后的清理逻辑处理
+                if not is_market_open:
+                    log_print(f"[Check Pending Orders] Market closed, skipping order {order_id} settlement (will be rejected at end-of-day cleanup)")
+                    continue
+                
+                # 使用实时价格检查订单（只在市场开盘时）
                 fill_result = order_manager.check_order_fill(order, today, use_realtime=True)
+                
+                # CRITICAL FIX: 再次检查市场状态，防止在市场收盘后执行订单
+                # 如果市场已收盘，不应该执行订单，即使fill_result显示filled
+                if not is_market_open:
+                    log_print(f"[Check Pending Orders] Market closed during order check, skipping order {order_id} execution")
+                    continue
                 
                 # 如果订单已成交，执行交易
                 if fill_result.get("filled", False):
@@ -945,6 +962,25 @@ async def check_pending_orders():
                 import traceback
                 traceback.print_exc()
                 pass
+        
+        if not is_market_open:
+            remaining_orders = order_manager.load_pending_orders(order_date=today)
+            if remaining_orders:
+                log_print(f"[Check Pending Orders] Cancelling {len(remaining_orders)} orders that remained pending after market close")
+                for order in remaining_orders:
+                    fill_result = {
+                        "filled": False,
+                        "fill_price": None,
+                        "fill_reason": "Order expired at end of trading day without fill",
+                        "daily_high": None,
+                        "daily_low": None,
+                        "current_price": None,
+                    }
+                    order_manager.mark_order_filled(order, fill_result)
+                    rejected_count += 1
+                log_print(f"[Check Pending Orders] ✅ Marked {rejected_count} orders as REJECTED after market close")
+        
+        pending_after_settlement = order_manager.load_pending_orders(order_date=today)
         
         if settled_count > 0:
             # 保存更新后的portfolio状态
@@ -1132,9 +1168,10 @@ async def check_pending_orders():
         
         return {
             "ok": True,
-            "message": f"Checked {len(pending_orders)} pending orders, {settled_count} filled",
+            "message": f"Checked {len(pending_orders)} pending orders, {settled_count} filled, {rejected_count} rejected",
             "settled_count": settled_count,
-            "pending_count": len(pending_orders) - settled_count
+            "rejected_count": rejected_count,
+            "pending_count": len(pending_after_settlement)
         }
     except Exception as e:
         import traceback
@@ -1271,9 +1308,39 @@ async def get_real_time_portfolio():
                 try:
                     from src.data.real_time_tracker import RealTimeTracker
                     tracker = RealTimeTracker(root="data/logs")
-                    snapshot = tracker.update_and_record(portfolio)
+                    # CRITICAL FIX: 强制记录净值，确保前端能看到最新变化
+                    # 即使净值变化小于1%，也要记录（但限制频率：每15分钟最多记录一次）
+                    snapshot = tracker.update_and_record(portfolio, force_record=False)
                     if snapshot:
                         snapshot["ok"] = True
+                        # 额外检查：如果距离上次记录超过15分钟，强制记录一次
+                        from src.data.equity_tracker import EquityTracker
+                        equity_tracker = EquityTracker(root="data/logs")
+                        latest_equity = equity_tracker.get_latest_equity()
+                        if latest_equity:
+                            latest_timestamp_str = latest_equity.get("timestamp", "")
+                            if latest_timestamp_str:
+                                try:
+                                    if "Z" in latest_timestamp_str:
+                                        latest_timestamp = datetime.fromisoformat(latest_timestamp_str.replace("Z", "+00:00"))
+                                    else:
+                                        latest_timestamp = datetime.fromisoformat(latest_timestamp_str)
+                                    now_utc = datetime.now(timezone.utc)
+                                    if latest_timestamp.tzinfo:
+                                        time_diff = now_utc - latest_timestamp
+                                    else:
+                                        latest_timestamp_utc = latest_timestamp.replace(tzinfo=timezone.utc)
+                                        time_diff = now_utc - latest_timestamp_utc
+                                    
+                                    # 如果距离上次记录超过15分钟，强制记录一次
+                                    if time_diff.total_seconds() >= 900:  # 15分钟 = 900秒
+                                        equity_tracker.record_daily_equity(
+                                            date_str=date.today().isoformat(),
+                                            portfolio_snapshot=snapshot,
+                                        )
+                                        log_print(f"[REALTIME] Force recorded equity (15min interval): ${snapshot.get('total_value', 0):.2f}")
+                                except Exception as e:
+                                    log_print(f"[REALTIME] Error checking last record time: {e}")
                         return {"ok": True, **snapshot}
                 except (ImportError, ModuleNotFoundError) as e:
                     # Fallback if yfinance or other deps missing
@@ -1877,53 +1944,101 @@ async def get_agent_conversations(
         conversations = []
         
         if log_file and log_file.exists():
-            with log_file.open("r", encoding="utf-8") as f:
-                lines = f.readlines()
-                # Read last N lines
-                for line in lines[-limit * 2:]:  # Get more lines, then filter
+            try:
+                # CRITICAL FIX: Optimize file reading - read from end instead of loading entire file
+                # This prevents memory issues and connection resets with large files
+                with log_file.open("r", encoding="utf-8") as f:
+                    # Read file in chunks from the end (more efficient for large files)
+                    # Read last 500 lines max to avoid memory issues
                     try:
-                        entry = json.loads(line.strip())
-                        if date:
-                            entry_date = entry.get("date", entry.get("timestamp", ""))
-                            if entry_date and not entry_date.startswith(date):
+                        # Use seek to read from end
+                        f.seek(0, 2)  # Seek to end
+                        file_size = f.tell()
+                        
+                        # Read backwards in chunks
+                        chunk_size = min(8192, file_size)  # 8KB chunks
+                        position = max(0, file_size - chunk_size * 10)  # Read last ~80KB
+                        f.seek(position)
+                        lines = f.readlines()
+                        
+                        # Process lines in reverse (newest first)
+                        for line in reversed(lines[-limit * 3:]):  # Get more lines, then filter
+                            if len(conversations) >= limit * 2:  # Stop if we have enough
+                                break
+                            try:
+                                entry = json.loads(line.strip())
+                                if not entry:  # Skip empty entries
+                                    continue
+                                if date:
+                                    entry_date = entry.get("date", entry.get("timestamp", ""))
+                                    if entry_date and not entry_date.startswith(date):
+                                        continue
+                                # Exclude demo entries unless explicitly requested
+                                if not include_demo and entry.get("type") == "demo":
+                                    continue
+                                conversations.append(entry)
+                            except (json.JSONDecodeError, ValueError, TypeError):
                                 continue
-                        # Exclude demo entries unless explicitly requested
-                        if not include_demo and entry.get("type") == "demo":
-                            continue
-                        conversations.append(entry)
-                    except json.JSONDecodeError:
-                        continue
+                    except (OSError, IOError) as e:
+                        # Fallback: if seek fails, use simple readlines but limit
+                        log_print(f"[WARN] Failed to read file efficiently: {e}, using fallback")
+                        f.seek(0)
+                        lines = f.readlines()
+                        for line in reversed(lines[-limit * 3:]):
+                            if len(conversations) >= limit * 2:
+                                break
+                            try:
+                                entry = json.loads(line.strip())
+                                if not entry:
+                                    continue
+                                if date:
+                                    entry_date = entry.get("date", entry.get("timestamp", ""))
+                                    if entry_date and not entry_date.startswith(date):
+                                        continue
+                                if not include_demo and entry.get("type") == "demo":
+                                    continue
+                                conversations.append(entry)
+                            except (json.JSONDecodeError, ValueError, TypeError):
+                                continue
+            except Exception as e:
+                log_print(f"[WARN] Failed to read conversation file: {e}")
+                conversations = []
         
-        # Also try to load from memory if available
-        try:
-            from src.data.memory_manager import MemoryManager
-            # Use the same logs directory we found above
-            memory_root = str(log_file.parent) if log_file else "data/logs"
-            memory_manager = MemoryManager(root=memory_root)
-            
-            # Get recent memories (load more days to ensure we have enough data)
-            recent_memories = memory_manager.load_recent_memories(days=30)  # Load 30 days, then filter
-            memory_count = 0
-            for memory in recent_memories:
-                if memory_count >= limit:  # Stop if we've reached the limit
-                    break
-                discussion = memory.get("discussion", {})
-                if discussion:
-                    transcript = discussion.get("transcript", [])
-                    if transcript:
-                        # Extract individual messages from transcript
-                        for msg in transcript:
-                            if isinstance(msg, dict) and memory_count < limit:
-                                conversations.append({
-                                    "date": memory.get("date", ""),
-                                    "type": "memory",
-                                    "agent": msg.get("agent", "Unknown"),
-                                    "content": msg.get("content", msg.get("message", "")),
-                                    "round": msg.get("round"),
-                                })
-                                memory_count += 1
-        except Exception as e:
-            log_print(f"[WARN] Failed to load from memory: {e}")
+        # Also try to load from memory if available (but limit to avoid performance issues)
+        # CRITICAL FIX: Only load from memory if we don't have enough conversations from file
+        if len(conversations) < limit:
+            try:
+                from src.data.memory_manager import MemoryManager
+                # Use the same logs directory we found above
+                memory_root = str(log_file.parent) if log_file else "data/logs"
+                memory_manager = MemoryManager(root=memory_root)
+                
+                # CRITICAL FIX: Reduce days to avoid loading too much data
+                # Only load last 7 days instead of 30 to prevent memory issues
+                recent_memories = memory_manager.load_recent_memories(days=7)  # Reduced from 30 to 7
+                memory_count = 0
+                max_memory_items = limit - len(conversations)  # Only fill up to limit
+                
+                for memory in recent_memories:
+                    if memory_count >= max_memory_items:  # Stop if we've reached the limit
+                        break
+                    discussion = memory.get("discussion", {})
+                    if discussion:
+                        transcript = discussion.get("transcript", [])
+                        if transcript:
+                            # Extract individual messages from transcript
+                            for msg in transcript:
+                                if isinstance(msg, dict) and memory_count < max_memory_items:
+                                    conversations.append({
+                                        "date": memory.get("date", ""),
+                                        "type": "memory",
+                                        "agent": msg.get("agent", "Unknown"),
+                                        "content": msg.get("content", msg.get("message", "")),
+                                        "round": msg.get("round"),
+                                    })
+                                    memory_count += 1
+            except Exception as e:
+                log_print(f"[WARN] Failed to load from memory: {e}")
 
         # Sort by date (newest first)
         conversations.sort(

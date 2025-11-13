@@ -1680,11 +1680,15 @@
         const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (trading hours)
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
+        const EQUITY_CHART_UPDATE_INTERVAL = 3600000; // 1 hour (3600000 ms) for equity chart update
         const CONVERSATIONS_LIMIT = 30; // Limit conversation count (optimization: reduce DOM operations)
         const TRADES_LIMIT = 100; // Limit trade count (increased to 100 to ensure complete order data display)
         let refreshTimer = null;
         let orderCheckTimer = null; // Order check timer
         let equityHistory = [];
+        let lastEquityChartUpdate = 0; // Timestamp of last equity chart update
+        let hasCheckedAfterClose = false; // Track if we've already checked pending orders after market close today
+        let lastCheckedDate = null; // Track the date when we last checked after close (to reset daily)
         let demoTimer = null;
         let agentStatusTimer = null;
         let lastMarketStatus = null; // Last market status (for detecting status changes)
@@ -3174,13 +3178,14 @@
         // Fetch agent conversations
         async function fetchConversations(limit = 100, options = {}) {
             try {
+                // CRITICAL FIX: Increase timeout for conversations endpoint (may process large files)
                 const response = await fetch(`${getApiBase()}/api/agents/conversations?limit=${limit}&include_demo=false`, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    signal: options.signal || AbortSignal.timeout(10000),
+                    signal: options.signal || AbortSignal.timeout(30000),  // Increased from 10s to 30s
                 });
 
                 if (!response.ok) {
@@ -6616,6 +6621,10 @@
             }
             
             // 分页：每页显示50条
+            // 同步 window.tradesPage（如果存在且需要重置）
+            if (window.tradesPage !== undefined && window.tradesPage === 1) {
+                tradesPage = 1;
+            }
             const totalPages = Math.ceil(uniqueTrades.length / TRADES_PAGE_SIZE);
             const startIdx = (tradesPage - 1) * TRADES_PAGE_SIZE;
             const endIdx = startIdx + TRADES_PAGE_SIZE;
@@ -6701,6 +6710,8 @@
         let tradesPage = 1;
         let tradesAllTrades = [];
         const TRADES_PAGE_SIZE = 50;
+        // Make tradesPage accessible globally for scrollToSection
+        window.tradesPage = tradesPage;
         
         // Change Execution Details page
         function changeExecutionPage(delta) {
@@ -6792,6 +6803,10 @@
             if (!tradesAllTrades || tradesAllTrades.length === 0) return;
             const totalPages = Math.ceil(tradesAllTrades.length / TRADES_PAGE_SIZE);
             tradesPage = Math.max(1, Math.min(totalPages, tradesPage + delta));
+            // 同步更新全局变量
+            if (window.tradesPage !== undefined) {
+                window.tradesPage = tradesPage;
+            }
             // 重新渲染当前页（使用已保存的数据）
             const tbody = document.getElementById('tradesBody');
             if (!tbody) return;
@@ -7382,14 +7397,90 @@
                     });
                 }
                 
+                // CRITICAL FIX: 净值图表每小时更新一次，但价格系统每30秒更新
+                // 检查是否需要更新净值图表（每小时一次）
+                const nowTimestamp = Date.now();
+                const shouldUpdateEquityChart = (nowTimestamp - lastEquityChartUpdate) >= EQUITY_CHART_UPDATE_INTERVAL;
+                
+                // 如果portfolio数据存在，将最新值添加到equity history用于图表显示
+                // 但只在需要更新图表时才添加新点（每小时一次）
+                if (portfolio && portfolio.total_value !== undefined && shouldUpdateEquityChart) {
+                    // 获取当前时间戳
+                    const timestamp = new Date().toISOString();
+                    const today = timestamp.split('T')[0];
+                    
+                    // 检查equity history的最后一条记录是否是最新的
+                    let needsUpdate = true;
+                    if (history && history.length > 0) {
+                        const lastRecord = history[history.length - 1];
+                        const lastValue = lastRecord.total_value || lastRecord.value || 0;
+                        const lastTimestamp = lastRecord.timestamp;
+                        
+                        // 如果最后一条记录的时间戳很新（1小时内），且值相同，不需要更新
+                        if (lastTimestamp) {
+                            const lastTime = new Date(lastTimestamp);
+                            const timeDiff = (nowTimestamp - new Date(lastTimestamp).getTime()) / 1000 / 60; // 分钟
+                            if (timeDiff < 60 && Math.abs(lastValue - portfolio.total_value) < 1) {
+                                needsUpdate = false;
+                            }
+                        }
+                    }
+                    
+                    // 如果需要更新，添加最新点到history（每小时一次）
+                    if (needsUpdate) {
+                        const latestPoint = {
+                            date: today,
+                            timestamp: timestamp,
+                            value: portfolio.total_value,
+                            total_value: portfolio.total_value,
+                            cash: portfolio.cash || 0,
+                            equity_value: portfolio.equity_value || 0,
+                            total_pnl: portfolio.total_pnl || 0,
+                            total_pnl_pct: portfolio.total_pnl_pct || 0,
+                        };
+                        
+                        // 如果最后一条记录的时间戳相同或更早，替换它；否则添加新点
+                        if (history && history.length > 0) {
+                            const lastRecord = history[history.length - 1];
+                            const lastTimestamp = lastRecord.timestamp;
+                            if (lastTimestamp && new Date(lastTimestamp) >= new Date(timestamp)) {
+                                // 最后一条记录更新，替换它
+                                history[history.length - 1] = latestPoint;
+                            } else {
+                                // 添加新点
+                                history.push(latestPoint);
+                            }
+                        } else {
+                            // 没有历史记录，创建新数组
+                            history = [latestPoint];
+                        }
+                        
+                        // 更新全局变量
+                        equityHistory = history;
+                        lastEquityChartUpdate = nowTimestamp; // 更新最后图表更新时间
+                        console.log('[Refresh] Added/updated latest portfolio point to equity history (hourly update):', latestPoint);
+                    }
+                }
+                
                 // Non-trading hours: display historical data and last snapshot, don't update real-time data
                 if (isMarketOpen && portfolio) {
                     // Trading hours: real-time update all data
                     console.log('[Refresh] Market open - updating all data');
-                    renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值
-                    renderPositions(portfolio);     // 更新持仓表格
-                    await renderEquityChart();      // 更新净值曲线图（使用已获取的history数据）
-                    renderDistributionChart(portfolio); // 更新持仓圆饼图
+                    renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值（每30秒）
+                    renderPositions(portfolio);     // 更新持仓表格（每30秒）
+                    
+                    // 净值图表每小时更新一次
+                    if (shouldUpdateEquityChart) {
+                        await renderEquityChart();      // 更新净值曲线图（每小时一次）
+                        console.log('[Refresh] Equity chart updated (hourly)');
+                    } else {
+                        // 不更新图表，但确保图表存在
+                        if (!equityChart) {
+                            await renderEquityChart();
+                        }
+                    }
+                    
+                    renderDistributionChart(portfolio); // 更新持仓圆饼图（每30秒）
                 } else {
                     // Non-trading hours: display historical data and portfolio snapshot
                     if (portfolio) {
@@ -7406,8 +7497,16 @@
                             console.log('[Refresh] Last equity record:', lastRecord);
                         }
                     }
-                    // 无论是否有portfolio，都显示净值图表
-                    await renderEquityChart();  // 显示净值曲线图（使用已获取的history数据）
+                    // 非交易时段，净值图表每小时更新一次
+                    if (shouldUpdateEquityChart) {
+                        await renderEquityChart();  // 显示净值曲线图（每小时一次）
+                        console.log('[Refresh] Equity chart updated (hourly)');
+                    } else {
+                        // 不更新图表，但确保图表存在
+                        if (!equityChart) {
+                            await renderEquityChart();
+                        }
+                    }
                 }
                 renderBackendStatus(backendStatus, agentStatus, toolsList, systemInfo);
                 renderConversationsOverview(convData.conversations || []);  // 始终显示对话内容
@@ -7607,7 +7706,7 @@
         function startOrderCheck() {
             stopOrderCheck();
             console.log(`[Order Check] Starting order check timer (every ${ORDER_CHECK_INTERVAL/1000} seconds)`);
-            // Only check orders during trading hours
+            // Check orders during trading hours, and also check once after market close to settle remaining orders
             orderCheckTimer = setInterval(async () => {
                 try {
                     const response = await fetch(`${getApiBase()}/api/market/is-open`, {
@@ -7617,9 +7716,25 @@
                         const data = await response.json();
                         if (data.is_open) {
                             console.log('[Order Check] Market is open, checking pending orders...');
+                            // Reset flag when market opens (new trading day)
+                            hasCheckedAfterClose = false;
                             await checkPendingOrders();
                         } else {
-                            console.debug('[Order Check] Market is closed, skipping order check');
+                            // Market is closed - check once to settle remaining pending orders
+                            // Reset flag if it's a new day
+                            const today = new Date().toDateString();
+                            if (lastCheckedDate !== today) {
+                                hasCheckedAfterClose = false;
+                                lastCheckedDate = today;
+                            }
+                            
+                            if (!hasCheckedAfterClose) {
+                                console.log('[Order Check] Market is closed, checking pending orders for end-of-day settlement...');
+                                await checkPendingOrders();
+                                hasCheckedAfterClose = true; // Mark as checked to avoid repeated calls
+                            } else {
+                                console.debug('[Order Check] Market is closed, already checked for settlement');
+                            }
                         }
                     }
                 } catch (err) {
@@ -7627,7 +7742,7 @@
                 }
             }, ORDER_CHECK_INTERVAL);
             
-            // Execute check once immediately (if market is open)
+            // Execute check once immediately
             (async () => {
                 try {
                     const response = await fetch(`${getApiBase()}/api/market/is-open`, {
@@ -7638,6 +7753,11 @@
                         if (data.is_open) {
                             console.log('[Order Check] Initial check: Market is open, checking pending orders...');
                             await checkPendingOrders();
+                        } else {
+                            // Market is closed - check once for end-of-day settlement
+                            console.log('[Order Check] Initial check: Market is closed, checking pending orders for settlement...');
+                            await checkPendingOrders();
+                            hasCheckedAfterClose = true;
                         }
                     }
                 } catch (err) {
@@ -7655,6 +7775,10 @@
         
         function startAutoRefresh() {
             stopAutoRefresh();
+            // 初始化图表更新时间（首次加载时立即更新图表）
+            if (lastEquityChartUpdate === 0) {
+                lastEquityChartUpdate = Date.now();
+            }
             refreshTimer = setInterval(() => {
                 // Pause auto-refresh during trading execution to avoid ERR_NETWORK_CHANGED errors
                 if (isTradingExecuting) {
@@ -8197,17 +8321,27 @@
             if (sectionId === 'trade-history-section') {
                 // 切换到 Trade History 页面
                 const dashboardPage = document.getElementById('dashboardPage');
-                const tradesPage = document.getElementById('tradesPage');
+                const tradesPageEl = document.getElementById('tradesPage');
                 const allocationPage = document.getElementById('allocationPage');
                 
                 if (dashboardPage) dashboardPage.style.display = 'none';
                 if (allocationPage) allocationPage.style.display = 'none';
-                if (tradesPage) {
-                    tradesPage.style.display = 'block';
-                    // 重置分页到第一页
-                    tradesPage = 1;
-                    // 加载交易数据
+                if (tradesPageEl) {
+                    tradesPageEl.style.display = 'block';
+                    // 重置分页到第一页（直接设置，renderTrades会处理）
+                    // 注意：tradesPage 是局部变量，需要通过 changeTradesPage 或直接设置
+                    // 但由于作用域问题，我们直接调用 renderTrades，它会使用当前的 tradesPage 值
+                    // 如果需要在切换时重置，可以在 renderTrades 内部处理
+                    // 加载交易数据（重置分页到第一页）
+                    // 通过 window.tradesPage 来重置，避免作用域问题
+                    if (window.tradesPage !== undefined) {
+                        window.tradesPage = 1;
+                    }
                     fetchTrades(TRADES_LIMIT).then(trades => {
+                        // 确保分页已重置
+                        if (window.tradesPage !== undefined && window.tradesPage !== 1) {
+                            window.tradesPage = 1;
+                        }
                         renderTrades(trades);
                     }).catch(err => {
                         console.error('Failed to load trade history:', err);
@@ -8265,4 +8399,5 @@
         });
     </script>
 </body>
+</html>
 </html>

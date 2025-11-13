@@ -140,6 +140,18 @@ class OrderManager:
         target_dt = datetime.strptime(target_date, "%Y-%m-%d").date()
         is_today = target_dt == date.today()
         
+        # CRITICAL FIX: 如果目标日期是今天但市场已收盘，且use_realtime=True，不应该检查订单
+        # 因为收盘后的订单不应该被标记为filled
+        if is_today and not is_market_open_now and use_realtime:
+            return {
+                "filled": False,
+                "fill_price": None,
+                "fill_reason": f"Market is closed (current time: {check_datetime.strftime('%Y-%m-%d %H:%M:%S')}). Orders cannot be filled after market close.",
+                "daily_high": None,
+                "daily_low": None,
+                "current_price": None,
+            }
+        
         # 如果目标日期不是今天，直接使用历史数据（用于多日模拟）
         if not is_today:
             # 在多日模拟中，使用历史数据检查订单
@@ -493,12 +505,20 @@ class OrderManager:
         order["daily_low"] = fill_result["daily_low"]
         order["filled_at"] = datetime.now().isoformat()
         
+        # CRITICAL FIX: 保存完整的fill_result对象，用于后续查询和分析
+        order["fill_result"] = fill_result
+        
         # 如果是SELL订单且有已实现损益，记录到订单中
         if order.get("action") == "SELL" and realized_pnl:
             order["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
             order["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
             order["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
             order["proceeds"] = realized_pnl.get("proceeds", 0.0)
+            # 同时保存到fill_result中，方便查询
+            order["fill_result"]["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
+            order["fill_result"]["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
+            order["fill_result"]["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
+            order["fill_result"]["proceeds"] = realized_pnl.get("proceeds", 0.0)
         
         # 保存到已成交文件
         with self.filled_orders_file.open("a", encoding="utf-8") as f:
@@ -514,4 +534,53 @@ class OrderManager:
         with self.pending_orders_file.open("w", encoding="utf-8") as f:
             for o in updated_pending:
                 f.write(json.dumps(o, ensure_ascii=False) + "\n")
+    
+    def cancel_orders(
+        self,
+        order_date: Optional[str] = None,
+        order_ids: Optional[List[str]] = None,
+    ) -> int:
+        """
+        取消订单
+        
+        参数:
+        - order_date: 取消指定日期的所有订单（如果提供）
+        - order_ids: 取消指定ID的订单列表（如果提供）
+        
+        返回:
+        - 取消的订单数量
+        """
+        all_orders = self.load_pending_orders()
+        original_count = len(all_orders)
+        
+        # 过滤要保留的订单
+        if order_date:
+            # 取消指定日期的所有订单
+            filtered_orders = [
+                o for o in all_orders
+                if o.get("order_date") != order_date
+            ]
+            print(f"[ORDER CANCEL] Cancelling all orders for {order_date}: {original_count - len(filtered_orders)} orders")
+        elif order_ids:
+            # 取消指定ID的订单
+            filtered_orders = [
+                o for o in all_orders
+                if o.get("order_id") not in order_ids
+            ]
+            print(f"[ORDER CANCEL] Cancelling {original_count - len(filtered_orders)} orders by ID")
+        else:
+            # 如果没有指定条件，不取消任何订单
+            print(f"[ORDER CANCEL] No cancellation criteria provided, no orders cancelled")
+            return 0
+        
+        # 保存更新后的订单列表
+        with self.pending_orders_file.open("w", encoding="utf-8") as f:
+            for o in filtered_orders:
+                f.write(json.dumps(o, ensure_ascii=False) + "\n")
+        
+        cancelled_count = original_count - len(filtered_orders)
+        if cancelled_count > 0:
+            print(f"[ORDER CANCEL] Cancelled {cancelled_count} orders, {len(filtered_orders)} orders remaining")
+        
+        return cancelled_count
 

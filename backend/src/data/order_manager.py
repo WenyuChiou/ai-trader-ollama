@@ -30,7 +30,6 @@ class OrderManager:
         quantity: int,
         limit_price: float,
         price_range: Dict[str, float],
-        order_date: str,
     ) -> Dict[str, Any]:
         """
         挂单（创建限价单）
@@ -43,7 +42,6 @@ class OrderManager:
         - quantity: 数量
         - limit_price: 限价（使用价格范围边界）
         - price_range: 价格范围 {"min": ..., "max": ...}
-        - order_date: 挂单日期 (YYYY-MM-DD)
         
         返回:
         - 挂单信息
@@ -51,22 +49,36 @@ class OrderManager:
         # 加载所有订单
         all_orders = self.load_pending_orders()
         
-        # 移除同一日期、同一symbol和action的旧订单（确保只保留一份）
-        filtered_orders = [
-            o for o in all_orders
-            if not (o.get("symbol") == symbol and o.get("action") == action and o.get("order_date") == order_date)
-        ]
+        # 获取当前时间戳
+        now = datetime.now()
+        placed_at = now.isoformat()
+        order_date = now.date().isoformat()  # 从placed_at提取日期，用于去重
         
-        # 创建新订单
+        # 移除同一日期、同一symbol和action的旧订单（确保只保留一份）
+        # 使用placed_at的日期部分来判断
+        filtered_orders = []
+        for o in all_orders:
+            o_placed_at = o.get("placed_at", "")
+            if o_placed_at:
+                try:
+                    o_date = datetime.fromisoformat(o_placed_at.replace('Z', '+00:00').replace('+00:00', '')).date().isoformat()
+                except:
+                    o_date = o.get("order_date", "")  # 兼容旧数据
+            else:
+                o_date = o.get("order_date", "")  # 兼容旧数据
+            
+            if not (o.get("symbol") == symbol and o.get("action") == action and o_date == order_date):
+                filtered_orders.append(o)
+        
+        # 创建新订单（不再包含order_date字段）
         order = {
-            "order_id": f"{symbol}_{action}_{order_date}_{datetime.now().timestamp()}",
+            "order_id": f"{symbol}_{action}_{order_date}_{now.timestamp()}",
             "symbol": symbol,
             "action": action,
             "quantity": quantity,
             "limit_price": limit_price,
             "price_range": price_range,
-            "order_date": order_date,
-            "placed_at": datetime.now().isoformat(),
+            "placed_at": placed_at,
             "status": "PENDING",  # PENDING -> FILLED / REJECTED
         }
         
@@ -78,7 +90,7 @@ class OrderManager:
             for o in filtered_orders:
                 f.write(json.dumps(o, ensure_ascii=False) + "\n")
         
-        print(f"[ORDER PLACED] {action} {symbol} x{quantity} @ ${limit_price:.2f} (range: ${price_range['min']:.2f}-${price_range['max']:.2f}) [date: {order_date}]")
+        print(f"[ORDER PLACED] {action} {symbol} x{quantity} @ ${limit_price:.2f} (range: ${price_range['min']:.2f}-${price_range['max']:.2f}) [placed_at: {placed_at}]")
         
         return order
     
@@ -470,7 +482,13 @@ class OrderManager:
             }
     
     def load_pending_orders(self, order_date: Optional[str] = None) -> List[Dict[str, Any]]:
-        """加载待处理订单"""
+        """
+        加载待处理订单
+        
+        参数:
+        - order_date: 可选，过滤指定日期的订单（YYYY-MM-DD）。如果为None，返回所有订单。
+                      现在从placed_at字段提取日期，兼容旧的order_date字段。
+        """
         if not self.pending_orders_file.exists():
             return []
         
@@ -480,8 +498,24 @@ class OrderManager:
                 for line in f:
                     if line.strip():
                         order = json.loads(line)
-                        if order_date is None or order.get("order_date") == order_date:
+                        if order_date is None:
                             orders.append(order)
+                        else:
+                            # 优先从placed_at提取日期，兼容旧的order_date字段
+                            placed_at = order.get("placed_at", "")
+                            if placed_at:
+                                try:
+                                    order_placed_date = datetime.fromisoformat(placed_at.replace('Z', '+00:00').replace('+00:00', '')).date().isoformat()
+                                    if order_placed_date == order_date:
+                                        orders.append(order)
+                                except:
+                                    # 如果解析失败，使用旧的order_date字段（兼容性）
+                                    if order.get("order_date") == order_date:
+                                        orders.append(order)
+                            else:
+                                # 如果没有placed_at，使用旧的order_date字段（兼容性）
+                                if order.get("order_date") == order_date:
+                                    orders.append(order)
         except Exception:
             pass
         
@@ -569,11 +603,23 @@ class OrderManager:
         
         # 过滤要保留的订单
         if order_date:
-            # 取消指定日期的所有订单
-            filtered_orders = [
-                o for o in all_orders
-                if o.get("order_date") != order_date
-            ]
+            # 取消指定日期的所有订单（使用placed_at的日期部分，兼容旧的order_date字段）
+            filtered_orders = []
+            for o in all_orders:
+                placed_at = o.get("placed_at", "")
+                if placed_at:
+                    try:
+                        order_placed_date = datetime.fromisoformat(placed_at.replace('Z', '+00:00').replace('+00:00', '')).date().isoformat()
+                        if order_placed_date != order_date:
+                            filtered_orders.append(o)
+                    except:
+                        # 如果解析失败，使用旧的order_date字段（兼容性）
+                        if o.get("order_date") != order_date:
+                            filtered_orders.append(o)
+                else:
+                    # 如果没有placed_at，使用旧的order_date字段（兼容性）
+                    if o.get("order_date") != order_date:
+                        filtered_orders.append(o)
             print(f"[ORDER CANCEL] Cancelling all orders for {order_date}: {original_count - len(filtered_orders)} orders")
         elif order_ids:
             # 取消指定ID的订单

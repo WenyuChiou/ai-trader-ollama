@@ -77,6 +77,23 @@ def _default_window() -> Tuple[str, str]:
     return (start.isoformat(), end.isoformat())
 
 
+def _get_order_date(order: Dict[str, Any]) -> Optional[str]:
+    """
+    从订单中提取日期（优先从placed_at提取，兼容旧的order_date字段）
+    
+    返回:
+    - 订单日期 (YYYY-MM-DD) 或 None
+    """
+    placed_at = order.get("placed_at", "")
+    if placed_at:
+        try:
+            return datetime.fromisoformat(placed_at.replace('Z', '+00:00').replace('+00:00', '')).date().isoformat()
+        except:
+            pass
+    # 兼容旧的order_date字段
+    return order.get("order_date")
+
+
 def _top_by_signal(stocks: Dict[str, Dict[str, float]], k: int = 5) -> List[Tuple[str, float]]:
     items: List[Tuple[str, float]] = []
     for s, d in (stocks or {}).items():
@@ -300,7 +317,7 @@ def execute_daily_trade(
                 for line in f:
                     if line.strip():
                         order = json.loads(line)
-                        if order.get("order_date") == order_date:
+                        if _get_order_date(order) == order_date:
                             filled_orders.append(order)
         except Exception:
             pass
@@ -619,14 +636,15 @@ def execute_daily_trade(
 
         # 自动清理前几个交易日遗留的订单，防止无限累积
         stale_dates = sorted({
-            o.get("order_date")
+            _get_order_date(o)
             for o in all_pending_orders
-            if o.get("order_date") and o.get("order_date") < today_str
+            if _get_order_date(o) and _get_order_date(o) < today_str
         })
         for stale_date in stale_dates:
-            cancelled = order_manager.cancel_orders(order_date=stale_date)
-            if cancelled > 0:
-                print(f"[TRADING CYCLE] Removed {cancelled} stale pending orders from {stale_date}")
+            if stale_date:
+                cancelled = order_manager.cancel_orders(order_date=stale_date)
+                if cancelled > 0:
+                    print(f"[TRADING CYCLE] Removed {cancelled} stale pending orders from {stale_date}")
 
         # 重新加载（排除已清理的旧订单）
         all_pending_orders = order_manager.load_pending_orders()
@@ -634,8 +652,8 @@ def execute_daily_trade(
         from src.utils.trading_days import get_next_trading_day
         tomorrow_str = get_next_trading_day(date.today(), days_ahead=1).isoformat()
         
-        today_orders = [o for o in all_pending_orders if o.get("order_date") == today_str]
-        tomorrow_orders = [o for o in all_pending_orders if o.get("order_date") == tomorrow_str]
+        today_orders = [o for o in all_pending_orders if _get_order_date(o) == today_str]
+        tomorrow_orders = [o for o in all_pending_orders if _get_order_date(o) == tomorrow_str]
         
         # CRITICAL: 如果市场关闭，清理今天的pending订单（因为市场订单不应该有pending状态）
         if not is_market_open_for_simulation and len(today_orders) > 0:
@@ -817,7 +835,7 @@ def execute_daily_trade(
                                     for line in f:
                                         if line.strip():
                                             filled_order = json.loads(line)
-                                            if filled_order.get("order_date") == today and filled_order.get("status") == "FILLED":
+                                            if _get_order_date(filled_order) == today and filled_order.get("status") == "FILLED":
                                                 today_has_filled_orders = True
                                                 break
                             except Exception:
@@ -851,11 +869,18 @@ def execute_daily_trade(
                     "message": f"Error checking pending orders. No new orders created for safety."
                 }
         else:
-            # 市场收盘后，如果有pending订单（明天的订单），不创建新订单
-            # 但仍然返回完整的结果，包括讨论和分析
-            print(f"[TRADING CYCLE] Skipping order creation - {len(existing_pending_orders)} pending orders already exist for {today}")
-            # 将现有pending订单设置为placed_orders，这样验证函数可以检查
-            placed_orders = existing_pending_orders
+            # 市场收盘后，如果有pending订单，应该清理它们（因为市场订单不应该有pending状态）
+            # CRITICAL FIX: 市场关闭时，清理今天的pending订单，不返回它们
+            if len(existing_pending_orders) > 0:
+                print(f"[TRADING CYCLE] Market is closed. Cancelling {len(existing_pending_orders)} today's pending orders (market orders should not be pending when market is closed).")
+                cancelled_count = order_manager.cancel_orders(order_date=today)
+                if cancelled_count > 0:
+                    print(f"[TRADING CYCLE] Cancelled {cancelled_count} today's pending orders")
+                    # 重新加载pending订单（应该为空）
+                    existing_pending_orders = order_manager.load_pending_orders(order_date=today)
+            
+            # 市场关闭时，不返回任何pending订单
+            placed_orders = []
             # CRITICAL FIX: 记录这是现有订单，不是新创建的
             new_orders_count = 0  # 没有创建新订单
             # 继续执行，返回完整结果（包括讨论、分析等）
@@ -1015,7 +1040,7 @@ def execute_daily_trade(
                         for line in f:
                             if line.strip():
                                 filled_order = json.loads(line)
-                                if filled_order.get("order_date") == today:
+                                if _get_order_date(filled_order) == today:
                                     today_has_any_orders = True
                                     break
                 except Exception:
@@ -1183,7 +1208,6 @@ def execute_daily_trade(
                             "min": current_price,
                             "max": current_price,
                         },
-                        order_date=today,
                     )
                     
                     # 立即标记为已成交（市价单保证成交）
@@ -1298,8 +1322,10 @@ def execute_daily_trade(
                             "min": current_price,
                             "max": current_price,
                         },
-                        order_date=today,
                     )
+                    
+                    # 更新投资组合（立即执行交易）- 先执行交易以获取realized_pnl
+                    realized_pnl = portfolio.sell(symbol, quantity, current_price)
                     
                     # 立即标记为已成交（市价单保证成交）
                     fill_result = {
@@ -1310,10 +1336,8 @@ def execute_daily_trade(
                         "daily_low": current_price,
                         "current_price": current_price,
                     }
-                    order_manager.mark_order_filled(placed_order, fill_result)
-                    
-                    # 更新投资组合（立即执行交易）
-                    portfolio.sell(symbol, quantity, current_price)
+                    # CRITICAL FIX: 传递realized_pnl给mark_order_filled，确保SELL订单正确记录已实现损益
+                    order_manager.mark_order_filled(placed_order, fill_result, realized_pnl=realized_pnl)
                     
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的SELL订单

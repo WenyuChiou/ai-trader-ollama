@@ -525,13 +525,24 @@ def run_multi_analyst_discussion(
             tool_calls_list = sentiment_result.get("tool_calls", [])
             
             # Fallback: Sentiment Analyst必须使用工具（情绪数据变化快，需要实时获取）
+            # CRITICAL: 确保news_scan被使用（新闻分析对情绪分析至关重要）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Sentiment analysis requires real-time data)")
                 tool_calls_list = [
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
                     {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
-                    {"name": "news_scan", "args": {"query": "market sentiment", "limit": 5}, "why": "Fallback: Get recent news sentiment"}
+                    {"name": "news_scan", "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 7}, "why": "Fallback: Get recent market news for sentiment analysis"}
                 ]
+            # 即使agent请求了工具，也确保news_scan被包含（如果还没有）
+            elif tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"] for tc in tool_calls_list)
+                if not has_news_tool and tool_calls_count + len(tool_calls_list) < tool_budget:
+                    print(f"   [INFO] Adding news_scan to tool calls (news analysis is important for sentiment)")
+                    tool_calls_list.append({
+                        "name": "news_scan", 
+                        "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 7}, 
+                        "why": "Added: News analysis is critical for sentiment assessment"
+                    })
             
             # 收集工具调用结果
             tool_results_summary = []
@@ -754,7 +765,8 @@ def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
         
         formatted.append(f"--- {analyst_name} ---")
         formatted.append(f"Stance: {stance}")
-        formatted.append(f"Analysis: {analysis[:500]}...")  # 限制长度
+        # 移除长度限制，显示完整分析内容
+        formatted.append(f"Analysis: {analysis}")
         
         if tools_used:
             formatted.append(f"Tools Used: {', '.join(tools_used)}")
@@ -1084,12 +1096,17 @@ Now provide your comprehensive 100-150 word analysis:"""
                 tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
                 cleaned_analysis += f" Based on comprehensive analysis of {', '.join(tools_used)}, the {analyst_type} outlook is assessed with detailed insights from tool results."
             
-            # 限制最大长度为 800 字符（约200字），确保不会过长
-            if len(cleaned_analysis) > 800:
-                cleaned_analysis = cleaned_analysis[:800] + "..."
+            # 移除长度限制，允许完整分析内容（前端有滚动条处理长文本）
+            # 只限制极端长度（超过5000字符）以避免内存问题
+            if len(cleaned_analysis) > 5000:
+                cleaned_analysis = cleaned_analysis[:5000] + "... (truncated due to extreme length)"
             result_dict["analysis"] = cleaned_analysis
         else:
-            result_dict["analysis"] = str(analysis_response)[:800] if len(str(analysis_response)) > 800 else str(analysis_response)
+            # 移除长度限制，允许完整分析（前端有滚动条处理长文本）
+            analysis_str = str(analysis_response)
+            if len(analysis_str) > 5000:
+                analysis_str = analysis_str[:5000] + "... (truncated due to extreme length)"
+            result_dict["analysis"] = analysis_str
         print(f"   [OK] Analysis generated from tool results ({len(result_dict['analysis'])} chars)")
     except Exception as e:
         print(f"   [WARN] Failed to generate analysis from tool results: {e}")
@@ -1336,7 +1353,8 @@ def _generate_fallback_coordinator_summary(
     
     return {
         "stance": final_stance,
-        "summary": summary[:500],  # 限制长度
+        # 移除长度限制，允许完整summary（前端有滚动条处理长文本）
+        "summary": summary if len(summary) <= 5000 else summary[:5000] + "... (truncated)",
         "consensus_points": [],
         "disagreements": [],
         "key_points": list(set(key_points))[:5],  # 去重并限制数量
@@ -1408,8 +1426,11 @@ def _extract_summary_from_text(
     
     # 模式1: 如果文本以 "Based on..." 或类似开头，直接使用整个响应
     if text_response.lower().startswith(('based on', 'the market', 'considering', 'after reviewing', 'after analyzing')):
-        # 使用整个响应作为summary（限制长度到300字符，约100-150字）
-        summary = text_response[:300].strip()
+        # 移除长度限制，使用完整响应作为summary（前端有滚动条处理长文本）
+        summary = text_response.strip()
+        # 只限制极端长度（超过3000字符）以避免内存问题
+        if len(summary) > 3000:
+            summary = summary[:3000] + "... (truncated due to extreme length)"
     else:
         # 模式2: 查找第一个有意义的段落（排除工具列表）
         paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
@@ -1426,19 +1447,27 @@ def _extract_summary_from_text(
             # 跳过 JSON 格式的段落
             if para.strip().startswith('{') or para.strip().startswith('['):
                 continue
-            summary = para[:300]  # 限制到300字符（约100-150字）
+            # 移除长度限制，使用完整段落（前端有滚动条处理长文本）
+            summary = para.strip()
+            # 只限制极端长度（超过3000字符）以避免内存问题
+            if len(summary) > 3000:
+                summary = summary[:3000] + "... (truncated due to extreme length)"
             break
         
         # 如果没找到合适的段落，使用整个响应（排除 JSON）
         if not summary:
-            # 移除 JSON 部分后使用
-            summary = text_response[:300].strip()
+            # 移除 JSON 部分后使用完整响应
+            summary = text_response.strip()
+            # 只限制极端长度（超过3000字符）以避免内存问题
+            if len(summary) > 3000:
+                summary = summary[:3000] + "... (truncated due to extreme length)"
     
     # 清理summary（移除多余的空白和换行）
     summary = re.sub(r'\s+', ' ', summary).strip()
-    # 限制到300字符（约100-150字），但如果太短（少于150字符），保留更多内容
-    if len(summary) > 300:
-        summary = summary[:300]
+    # 移除长度限制，允许完整summary（前端有滚动条处理长文本）
+    # 只限制极端长度（超过3000字符）以避免内存问题
+    if len(summary) > 3000:
+        summary = summary[:3000] + "... (truncated due to extreme length)"
     
     # 如果summary仍然为空或太短，使用fallback
     if len(summary) < 200:  # 最小长度要求200字符（约50字）

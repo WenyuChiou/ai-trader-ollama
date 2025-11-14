@@ -111,15 +111,24 @@ python scripts/init_data.py
 # Make sure you're in the project ROOT directory (not backend/)
 cd "path\to\ai-trader-ollama"
 
-# Method 1: Stable version (Recommended, with auto-restart)
+# Method 1: Background Service (Recommended - runs even after closing CMD)
+# Option A: Windows Service (requires NSSM)
+#   Right-click: scripts\start_api_service_admin.bat → "Run as administrator"
+
+# Option B: Task Scheduler (no additional software needed) ⭐ EASIEST
+#   Right-click: scripts\start_api_task_admin.bat → "Run as administrator"
+
+# Method 2: Stable version (with auto-restart, but requires window open)
 .\scripts\start_api_stable_bypass.ps1
 
-# Method 2: Fast restart (Daily use, quick restart)
+# Method 3: Fast restart (Daily use, quick restart)
 powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 
-# Method 3: Manual start (Development/Testing)
+# Method 4: Manual start (Development/Testing)
 python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**⚠️ Important**: Methods 2-4 require keeping the terminal window open. Use Method 1 for background operation.
 
 **4. Access Dashboard**
 
@@ -373,7 +382,7 @@ data/logs/
 ```json
 {
   "order_id": "order_123",
-  "order_date": "2025-01-28",
+  "placed_at": "2025-01-28T10:30:00",  # Note: order_date field has been removed, use placed_at instead
   "symbol": "NVDA",
   "action": "SELL",
   "quantity": 10,
@@ -660,15 +669,124 @@ python scripts/init_data.py
 
 ### Restart Backend API
 
-**Quick Restart**:
+**Quick Restart** (if API is running in a window):
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 ```
 
-**Stable Start** (with auto-restart):
+**If API is running as Windows Service**:
+```powershell
+# Restart service
+Restart-Service -Name AITraderAPI
+
+# Or use the service script
+powershell -ExecutionPolicy Bypass -File .\scripts\start_api_service.ps1
+# Then choose (R)estart
+```
+
+**If API is running as Scheduled Task**:
+```powershell
+# Restart task
+Stop-ScheduledTask -TaskName AITraderAPI
+Start-ScheduledTask -TaskName AITraderAPI
+
+# Or use the task script
+powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
+# Then choose (R)estart
+```
+
+**Stable Start** (with auto-restart, but requires window open):
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 ```
+
+### Run API in Background (Close CMD and Keep Running)
+
+**Option 1: Windows Service (Recommended, requires NSSM)**
+
+1. **Install NSSM** (automatic):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\scripts\install_nssm.ps1
+   ```
+   Or manually:
+   - Download from: https://nssm.cc/download
+   - Extract to `C:\nssm\`
+
+2. **Install Service** (requires administrator privileges):
+   
+   **Method A (Recommended)**: Right-click and run as administrator
+   ```
+   Right-click: scripts\start_api_service_admin.bat
+   Select: "Run as administrator"
+   ```
+   
+   **Method B**: Run in administrator PowerShell
+   ```powershell
+   # Open PowerShell as administrator, then run:
+   powershell -ExecutionPolicy Bypass -File .\scripts\start_api_service.ps1
+   ```
+   
+   **Note**: The script will automatically install NSSM if not found.
+
+3. **Manage Service**:
+   ```powershell
+   # Start
+   Start-Service -Name AITraderAPI
+   
+   # Stop
+   Stop-Service -Name AITraderAPI
+   
+   # Restart
+   Restart-Service -Name AITraderAPI
+   
+   # Check status
+   Get-Service -Name AITraderAPI
+   
+   # View logs
+   Get-Content logs\api_service.log -Tail 50
+   ```
+
+**Option 2: Task Scheduler (No additional software needed)**
+
+1. **Install Task** (requires administrator privileges):
+   
+   **Method A (Recommended)**: Right-click and run as administrator
+   ```
+   Right-click: scripts\start_api_task_admin.bat
+   Select: "Run as administrator"
+   ```
+   
+   **Method B**: Run in administrator PowerShell
+   ```powershell
+   # Open PowerShell as administrator, then run:
+   powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
+   ```
+
+2. **Manage Task**:
+   ```powershell
+   # Start
+   Start-ScheduledTask -TaskName AITraderAPI
+   
+   # Stop
+   Stop-ScheduledTask -TaskName AITraderAPI
+   
+   # Check status
+   Get-ScheduledTaskInfo -TaskName AITraderAPI
+   
+   # View logs
+   Get-Content logs\api_task.log -Tail 50
+   ```
+
+**Comparison**:
+
+| Method | Close CMD? | Auto-start on Boot? | Requires Software? |
+|--------|------------|---------------------|-------------------|
+| Windows Service | ✅ Yes | ✅ Yes | NSSM |
+| Task Scheduler | ✅ Yes | ✅ Yes (on logon) | No |
+| Stable Script | ❌ No | ❌ No | No |
+| Fast Restart | ❌ No | ❌ No | No |
+
+**Recommendation**: Use **Task Scheduler** (Option 2) if you don't want to install NSSM. Use **Windows Service** (Option 1) if you need more control and automatic startup on system boot.
 
 ---
 

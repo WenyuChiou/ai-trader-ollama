@@ -9,7 +9,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks, Re
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import random
 from pathlib import Path
 import json
@@ -43,6 +43,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Helper function to print to stderr (visible in uvicorn)
+def _get_order_date(order: dict) -> Optional[str]:
+    """
+    从订单中提取日期（优先从placed_at提取，兼容旧的order_date字段）
+    
+    返回:
+    - 订单日期 (YYYY-MM-DD) 或 None
+    """
+    placed_at = order.get("placed_at", "")
+    if placed_at:
+        try:
+            return datetime.fromisoformat(placed_at.replace('Z', '+00:00').replace('+00:00', '')).date().isoformat()
+        except:
+            pass
+    # 兼容旧的order_date字段
+    return order.get("order_date")
+
 def log_print(message):
     """Print to stderr so it's visible in uvicorn output"""
     print(message, file=sys.stderr, flush=True)
@@ -834,7 +850,7 @@ async def check_pending_orders():
                         for line in f:
                             if line.strip():
                                 filled_order = json.loads(line)
-                                if filled_order.get("order_date") == today and filled_order.get("status") == "FILLED":
+                                if _get_order_date(filled_order) == today and filled_order.get("status") == "FILLED":
                                     symbol = filled_order.get("symbol")
                                     action = filled_order.get("action", "").upper()
                                     quantity = filled_order.get("quantity", 0)
@@ -1060,7 +1076,7 @@ async def check_pending_orders():
                             for line in f:
                                 if line.strip():
                                     order = json.loads(line)
-                                    if order.get("order_date") == today and order.get("status") == "FILLED":
+                                    if _get_order_date(order) == today and order.get("status") == "FILLED":
                                         filled_orders_detail.append(order)
                     except Exception:
                         pass
@@ -1189,7 +1205,7 @@ async def check_pending_orders():
                                 for line in f:
                                     if line.strip():
                                         order = json.loads(line)
-                                        if order.get("order_date") == today and order.get("status") == "FILLED":
+                                        if _get_order_date(order) == today and order.get("status") == "FILLED":
                                             filled_orders.append(order)
                         except Exception:
                             pass
@@ -2505,7 +2521,9 @@ async def get_realized_pnl(
                     if order.get("action") == "SELL" and order.get("status") == "FILLED":
                         realized_pnl = order.get("realized_pnl")
                         if realized_pnl is not None:
-                            order_date = order.get("order_date") or order.get("filled_at", "")[:10]
+                            # order_date已移除，使用placed_at或filled_at的日期部分
+                            placed_at = order.get("placed_at") or order.get("filled_at", "")
+                            order_date = placed_at[:10] if placed_at else ""
                             
                             # 日期过滤
                             if date:

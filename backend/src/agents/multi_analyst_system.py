@@ -1354,7 +1354,9 @@ def _generate_fallback_coordinator_summary(
     return {
         "stance": final_stance,
         # 移除长度限制，允许完整summary（前端有滚动条处理长文本）
-        "summary": summary if len(summary) <= 5000 else summary[:5000] + "... (truncated)",
+        # CRITICAL FIX: 移除5000字符限制，允许完整summary（前端有滚动条处理长文本）
+        # 只限制极端长度（超过10000字符）以避免内存问题
+        "summary": summary if len(summary) <= 10000 else summary[:10000] + "... (truncated)",
         "consensus_points": [],
         "disagreements": [],
         "key_points": list(set(key_points))[:5],  # 去重并限制数量
@@ -1429,8 +1431,10 @@ def _extract_summary_from_text(
         # 移除长度限制，使用完整响应作为summary（前端有滚动条处理长文本）
         summary = text_response.strip()
         # 只限制极端长度（超过3000字符）以避免内存问题
-        if len(summary) > 3000:
-            summary = summary[:3000] + "... (truncated due to extreme length)"
+        # CRITICAL FIX: 移除3000字符限制，允许完整summary（前端有滚动条处理长文本）
+        # 只限制极端长度（超过10000字符）以避免内存问题
+        if len(summary) > 10000:
+            summary = summary[:10000] + "... (truncated due to extreme length)"
     else:
         # 模式2: 查找第一个有意义的段落（排除工具列表）
         paragraphs = [p.strip() for p in text_response.split('\n\n') if len(p.strip()) > 50]
@@ -1451,7 +1455,10 @@ def _extract_summary_from_text(
             summary = para.strip()
             # 只限制极端长度（超过3000字符）以避免内存问题
             if len(summary) > 3000:
-                summary = summary[:3000] + "... (truncated due to extreme length)"
+                # CRITICAL FIX: 移除3000字符限制，允许完整summary（前端有滚动条处理长文本）
+                # 只限制极端长度（超过10000字符）以避免内存问题
+                if len(summary) > 10000:
+                    summary = summary[:10000] + "... (truncated due to extreme length)"
             break
         
         # 如果没找到合适的段落，使用整个响应（排除 JSON）
@@ -1460,7 +1467,10 @@ def _extract_summary_from_text(
             summary = text_response.strip()
             # 只限制极端长度（超过3000字符）以避免内存问题
             if len(summary) > 3000:
-                summary = summary[:3000] + "... (truncated due to extreme length)"
+                # CRITICAL FIX: 移除3000字符限制，允许完整summary（前端有滚动条处理长文本）
+                # 只限制极端长度（超过10000字符）以避免内存问题
+                if len(summary) > 10000:
+                    summary = summary[:10000] + "... (truncated due to extreme length)"
     
     # 清理summary（移除多余的空白和换行）
     summary = re.sub(r'\s+', ' ', summary).strip()

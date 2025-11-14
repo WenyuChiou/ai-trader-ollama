@@ -116,7 +116,7 @@ def get_next_trading_day(start_date: Optional[date] = None, days_ahead: int = 1)
 
 def is_market_open(check_datetime: Optional[datetime] = None) -> bool:
     """
-    检查市场是否开盘（美股：周一至周五 9:30 AM - 4:00 PM EST，排除节假日）
+    检查市场是否开盘（美股：周一至周五 9:30 AM - 4:00 PM EST/EDT，排除节假日）
     
     参数:
     - check_datetime: 要检查的日期时间（如果为None，使用当前时间）
@@ -127,16 +127,66 @@ def is_market_open(check_datetime: Optional[datetime] = None) -> bool:
     if check_datetime is None:
         check_datetime = datetime.now()
     
+    # CRITICAL FIX: 转换为美东时间（EST/EDT）进行判断
+    try:
+        import pytz
+        # 获取美东时区（自动处理EST/EDT）
+        et_tz = pytz.timezone('America/New_York')
+        
+        # 如果check_datetime没有时区信息，需要先添加时区信息
+        if check_datetime.tzinfo is None:
+            # 获取本地时区（更可靠的方法）
+            try:
+                # 方法1: 使用datetime.now()的时区信息
+                local_now = datetime.now()
+                if local_now.tzinfo:
+                    # 如果系统有时区信息，使用它
+                    local_tz = local_now.tzinfo
+                else:
+                    # 方法2: 使用UTC偏移量计算
+                    import time
+                    offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
+                    from datetime import timedelta, timezone as dt_timezone
+                    local_tz = dt_timezone(timedelta(seconds=offset_seconds))
+                
+                check_datetime = check_datetime.replace(tzinfo=local_tz)
+            except Exception:
+                # 如果获取本地时区失败，假设是UTC
+                utc_tz = pytz.UTC
+                check_datetime = utc_tz.localize(check_datetime)
+        
+        # 转换为美东时间
+        et_time = check_datetime.astimezone(et_tz)
+    except ImportError:
+        # 如果没有pytz，使用UTC时间（需要手动调整）
+        # 这是一个fallback，建议安装pytz: pip install pytz
+        print("[WARNING] pytz not installed, using local time (may be incorrect)")
+        et_time = check_datetime
+    except Exception as e:
+        # 如果转换失败，使用原始时间（fallback）
+        print(f"[WARNING] Timezone conversion failed: {e}, using local time")
+        et_time = check_datetime
+    
     # 检查是否是交易日（排除周末和节假日）
-    check_date = check_datetime.date()
+    # 使用美东时间的日期
+    check_date = et_time.date()
     if not is_trading_day(check_date):
         return False
     
-    # 检查时间（使用本地时间，假设服务器在EST时区或用户配置的时区）
+    # 检查时间（使用美东时间）
     from datetime import time as dt_time
-    market_open = dt_time(9, 30)  # 9:30 AM
-    market_close = dt_time(16, 0)  # 4:00 PM
-    current_time = check_datetime.time()
+    market_open = dt_time(9, 30)  # 9:30 AM ET
+    market_close = dt_time(16, 0)  # 4:00 PM ET
+    current_time = et_time.time()
     
-    return market_open <= current_time <= market_close
+    # DEBUG: 打印时区信息（仅在市场关闭时打印，帮助调试时区问题）
+    is_open = market_open <= current_time <= market_close
+    if not is_open:
+        print(f"[MARKET STATUS] Market is CLOSED")
+        print(f"  - Local time: {check_datetime.strftime('%Y-%m-%d %H:%M:%S %Z') if check_datetime.tzinfo else check_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"  - Eastern time: {et_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        print(f"  - Current ET time: {current_time.strftime('%H:%M:%S')}")
+        print(f"  - Market hours: 9:30 AM - 4:00 PM ET")
+    
+    return is_open
 

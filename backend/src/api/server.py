@@ -33,6 +33,15 @@ _backend_dir = Path(__file__).resolve().parent.parent.parent  # Go up from src/a
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
+# CRITICAL: Helper function to get project root data/logs directory
+# This ensures all API endpoints use the same path regardless of working directory
+def get_project_logs_dir() -> Path:
+    """Get the project root data/logs directory path."""
+    _project_root = _backend_dir.parent  # project root
+    logs_dir = _project_root / "data" / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    return logs_dir
+
 # Configure logging to ensure print statements are visible in uvicorn
 # Uvicorn will show stderr output, so we'll use logging which goes to stderr
 logging.basicConfig(
@@ -305,44 +314,78 @@ async def get_agents_status():
         "Access-Control-Allow-Headers": "*",
     }
     try:
-        # Get status from event bus
+        # Get status from event bus (may only contain agents that have run)
         status = event_bus.get_all_agents_status()
         
-        # If empty, load from agents.yaml to show registered agents
-        if not status:
-            try:
-                from pathlib import Path
-                import yaml
-                import sys
-                
-                # Ensure we're in the backend directory
-                backend_dir = Path(__file__).parent.parent.parent
-                agents_file = backend_dir / "config" / "agents.yaml"
-                
-                if agents_file.exists():
-                    with agents_file.open("r", encoding="utf-8") as f:
-                        agents_config = yaml.safe_load(f)
-                        # agents.yaml structure: direct dict of agent_name -> config
-                        # OR nested under "agents" key
-                        agent_dict = agents_config
-                        if isinstance(agents_config, dict) and "agents" in agents_config:
+        # CRITICAL FIX: Always load agents.yaml to show all registered agents
+        # Merge with event_bus status so we show both registered agents and their runtime status
+        try:
+            from pathlib import Path
+            import yaml
+            import sys
+            
+            # Ensure we're in the backend directory
+            backend_dir = Path(__file__).parent.parent.parent
+            agents_file = backend_dir / "config" / "agents.yaml"
+            
+            if agents_file.exists():
+                with agents_file.open("r", encoding="utf-8") as f:
+                    agents_config = yaml.safe_load(f)
+                    log_print(f"[API] Loaded agents.yaml: {type(agents_config)}, keys: {list(agents_config.keys()) if isinstance(agents_config, dict) else 'N/A'}")
+                    
+                    # agents.yaml structure: direct dict of agent_name -> config
+                    # OR nested under "agents" key
+                    agent_dict = agents_config
+                    if isinstance(agents_config, dict):
+                        # Check if it's nested under "agents" key
+                        if "agents" in agents_config:
                             agent_dict = agents_config["agents"]
-                        
-                        if agent_dict and isinstance(agent_dict, dict):
-                            # Return agent names as keys with "idle" status
-                            agents = {}
-                            for agent_name in agent_dict.keys():
+                            log_print(f"[API] Found nested 'agents' key, using it")
+                        # Also check if it's a direct dict of agent_name -> config
+                        # (agents.yaml might have other top-level keys like "default_model", etc.)
+                        # In that case, filter out non-agent keys
+                        if agent_dict == agents_config:
+                            # Filter out non-agent keys (like "default_model", "ollama_host", etc.)
+                            # Agent keys should have "model" or "name" or "prompt_file" or similar agent config keys
+                            # Based on agents.yaml structure: each agent has "model", "name", "temperature", "prompt_file"
+                            original_count = len(agent_dict)
+                            agent_dict = {
+                                k: v for k, v in agents_config.items()
+                                if isinstance(v, dict) and (
+                                    "model" in v or "name" in v or "prompt_file" in v or
+                                    "role" in v or "tools" in v or 
+                                    "system_prompt" in v or "description" in v
+                                )
+                            }
+                            log_print(f"[API] Filtered agents: {original_count} -> {len(agent_dict)} (keys: {list(agent_dict.keys())})")
+                    
+                    if agent_dict and isinstance(agent_dict, dict):
+                        # Start with all registered agents from agents.yaml
+                        agents = {}
+                        for agent_name in agent_dict.keys():
+                            # If agent has runtime status from event_bus, use it; otherwise use "idle"
+                            if status and agent_name in status:
+                                agents[agent_name] = status[agent_name]
+                            else:
                                 agents[agent_name] = {"status": "idle", "last_activity": None}
-                            log_print(f"[API] Loaded {len(agents)} agents from agents.yaml")
-                            return JSONResponse(
-                                status_code=200,
-                                content=agents,
-                                headers=cors_headers
-                            )
-            except Exception as yaml_error:
-                log_print(f"[API] Error loading agents.yaml: {yaml_error}")
-                # Continue with empty status
+                        
+                        log_print(f"[API] Loaded {len(agents)} agents from agents.yaml (merged with {len(status) if status else 0} runtime status)")
+                        log_print(f"[API] Agent names: {list(agents.keys())}")
+                        return JSONResponse(
+                            status_code=200,
+                            content=agents,
+                            headers=cors_headers
+                        )
+                    else:
+                        log_print(f"[API] WARNING: agent_dict is not a dict or is empty: {agent_dict}")
+        except Exception as yaml_error:
+            import traceback
+            log_print(f"[API] Error loading agents.yaml: {yaml_error}")
+            log_print(f"[API] Traceback: {traceback.format_exc()}")
+            # Continue with event_bus status if available
         
+        # Fallback: return event_bus status if agents.yaml loading failed
+        log_print(f"[API] WARNING: Falling back to event_bus status (only {len(status) if status else 0} agents)")
         return JSONResponse(
             status_code=200,
             content=status if status else {},
@@ -619,7 +662,8 @@ async def get_equity_history(
     try:
         from src.data.equity_tracker import EquityTracker
         
-        equity_tracker = EquityTracker(root="data/logs")
+        # CRITICAL: Use project root data/logs directory
+        equity_tracker = EquityTracker(root=str(get_project_logs_dir()))
         records = equity_tracker.load_equity_history(
             start_date=start_date,
             end_date=end_date,
@@ -726,7 +770,8 @@ async def get_current_portfolio():
         
         # FALLBACK: If portfolio_state.json is empty or missing, try to recover from equity_history
         log_print(f"[PORTFOLIO/CURRENT] portfolio_state.json is empty or missing, trying to recover from equity_history")
-        equity_tracker = EquityTracker(root="data/logs")
+        # CRITICAL: Use project root data/logs directory
+        equity_tracker = EquityTracker(root=str(get_project_logs_dir()))
         latest = equity_tracker.get_latest_equity()
         
         if latest and latest.get("positions_detail"):
@@ -782,7 +827,8 @@ async def check_pending_orders():
         from pathlib import Path
         import json
         
-        order_manager = OrderManager(root="data/logs")
+        # CRITICAL: Use project root data/logs directory
+        order_manager = OrderManager(root=str(get_project_logs_dir()))
         
         # 检查市场状态（允许在收盘后执行结算）
         now = datetime.now()
@@ -802,7 +848,8 @@ async def check_pending_orders():
         pending_orders = order_manager.load_pending_orders(order_date=today)
         
         # 加载当前portfolio状态
-        portfolio_file = Path("data/logs/portfolio_state.json")
+        # CRITICAL: Use project root data/logs directory
+        portfolio_file = get_project_logs_dir() / "portfolio_state.json"
         if not portfolio_file.exists():
             return {
                 "ok": False,
@@ -838,7 +885,8 @@ async def check_pending_orders():
         # CRITICAL FIX: 如果portfolio中没有持仓，但filled_orders中有今天的订单，需要恢复portfolio状态
         # 但是，不应该重新执行订单（因为现金已经被扣除过了），而是应该从filled_orders计算正确的现金和持仓
         if len(current_portfolio._positions) == 0:
-            filled_file = Path("data/logs/filled_orders.jsonl")
+            # CRITICAL: Use project root data/logs directory
+            filled_file = get_project_logs_dir() / "filled_orders.jsonl"
             if filled_file.exists():
                 try:
                     # 计算已成交订单的总成本和总收益
@@ -959,7 +1007,8 @@ async def check_pending_orders():
             order_id = order.get("order_id", "unknown")
             
             # CRITICAL: 检查订单是否已经在 filled_orders 中（防止重复执行）
-            filled_file = Path("data/logs/filled_orders.jsonl")
+            # CRITICAL: Use project root data/logs directory
+            filled_file = get_project_logs_dir() / "filled_orders.jsonl"
             order_already_filled = False
             if filled_file.exists():
                 try:
@@ -1064,12 +1113,14 @@ async def check_pending_orders():
             
             # 写入对话记录，说明订单已成交
             try:
-                convo_file = Path("data/logs/discussion_actions.jsonl")
+                # CRITICAL: Use project root data/logs directory
+                convo_file = get_project_logs_dir() / "discussion_actions.jsonl"
                 convo_file.parent.mkdir(parents=True, exist_ok=True)
                 
                 # 获取已成交的订单详情
                 filled_orders_detail = []
-                filled_file = Path("data/logs/filled_orders.jsonl")
+                # CRITICAL: Use project root data/logs directory
+                filled_file = get_project_logs_dir() / "filled_orders.jsonl"
                 if filled_file.exists():
                     try:
                         with filled_file.open("r", encoding="utf-8") as f:
@@ -1181,7 +1232,8 @@ async def check_pending_orders():
                     }
                 
                 # 更新净值记录
-                equity_tracker = EquityTracker(root="data/logs")
+                # CRITICAL: Use project root data/logs directory
+                equity_tracker = EquityTracker(root=str(get_project_logs_dir()))
                 portfolio_snapshot = {
                     "cash": current_portfolio.cash,
                     "equity_value": equity_value,
@@ -1193,12 +1245,14 @@ async def check_pending_orders():
                 equity_tracker.record_daily_equity(today, portfolio_snapshot)
                 
                 # 更新每日记忆（如果存在）
-                memory_manager = MemoryManager(root="data/logs")
+                # CRITICAL: Use project root data/logs directory
+                memory_manager = MemoryManager(root=str(get_project_logs_dir()))
                 daily_memory = memory_manager.load_daily_memory(today)
                 if daily_memory:
                     # 获取已成交的订单（从filled_orders.jsonl读取）
                     filled_orders = []
-                    filled_file = Path("data/logs/filled_orders.jsonl")
+                    # CRITICAL: Use project root data/logs directory
+                    filled_file = get_project_logs_dir() / "filled_orders.jsonl"
                     if filled_file.exists():
                         try:
                             with filled_file.open("r", encoding="utf-8") as f:
@@ -1256,7 +1310,8 @@ async def get_real_time_portfolio():
         is_market_open = check_market_open(now)
         
         # Load portfolio state
-        state_file = Path("data/logs/portfolio_state.json")
+        # CRITICAL: Use project root data/logs directory
+        state_file = get_project_logs_dir() / "portfolio_state.json"
         if not state_file.exists():
             # Fallback to demo snapshot so the frontend can render
             from fastapi import Request
@@ -1313,7 +1368,8 @@ async def get_real_time_portfolio():
                 # 获取最新快照（不更新）
                 try:
                     from src.data.real_time_tracker import RealTimeTracker
-                    tracker = RealTimeTracker(root="data/logs")
+                    # CRITICAL: Use project root data/logs directory
+                    tracker = RealTimeTracker(root=str(get_project_logs_dir()))
                     snapshot = tracker.get_latest_snapshot()
                     if snapshot:
                         snapshot["ok"] = True
@@ -1367,7 +1423,8 @@ async def get_real_time_portfolio():
                 # 交易时段：更新实时数据
                 try:
                     from src.data.real_time_tracker import RealTimeTracker
-                    tracker = RealTimeTracker(root="data/logs")
+                    # CRITICAL: Use project root data/logs directory
+                    tracker = RealTimeTracker(root=str(get_project_logs_dir()))
                     # CRITICAL FIX: 强制记录净值，确保前端能看到最新变化
                     # 即使净值变化小于1%，也要记录（但限制频率：每30分钟最多记录一次）
                     snapshot = tracker.update_and_record(portfolio, force_record=False)
@@ -1375,7 +1432,8 @@ async def get_real_time_portfolio():
                         snapshot["ok"] = True
                         # 额外检查：如果距离上次记录超过30分钟，强制记录一次
                         from src.data.equity_tracker import EquityTracker
-                        equity_tracker = EquityTracker(root="data/logs")
+                        # CRITICAL: Use project root data/logs directory
+                        equity_tracker = EquityTracker(root=str(get_project_logs_dir()))
                         latest_equity = equity_tracker.get_latest_equity()
                         if latest_equity:
                             latest_timestamp_str = latest_equity.get("timestamp", "")
@@ -1474,7 +1532,8 @@ async def get_recent_snapshots(hours: int = 24):
     """Get recent real-time snapshots"""
     try:
         from src.data.real_time_tracker import RealTimeTracker
-        tracker = RealTimeTracker(root="data/logs")
+        # CRITICAL: Use project root data/logs directory
+        tracker = RealTimeTracker(root=str(get_project_logs_dir()))
         snapshots = tracker.get_recent_snapshots(hours=hours)
         return {"ok": True, "snapshots": snapshots, "count": len(snapshots)}
     except Exception as e:
@@ -1657,7 +1716,8 @@ async def demo_real_time_portfolio(volatility_bps: int = 15):
         import json
         from datetime import datetime
 
-        logs_dir = Path("data/logs")
+        # CRITICAL: Use project root data/logs directory
+        logs_dir = get_project_logs_dir()
         logs_dir.mkdir(parents=True, exist_ok=True)
 
         # Load portfolio state; create a demo one if not exists
@@ -1768,7 +1828,8 @@ async def demo_conversation_tick():
         import json
         from datetime import datetime
 
-        logs_dir = Path("data/logs")
+        # CRITICAL: Use project root data/logs directory
+        logs_dir = get_project_logs_dir()
         logs_dir.mkdir(parents=True, exist_ok=True)
         convo_file = logs_dir / "discussion_actions.jsonl"
 
@@ -1810,45 +1871,62 @@ async def get_recent_trades(limit: int = 100):
         import json
         from datetime import datetime
 
-        # Try multiple possible paths for logs directory
-        possible_logs_dirs = [
-            Path("data/logs"),  # Project root
-            Path("backend/data/logs"),  # From backend directory
-            Path(__file__).parent.parent.parent / "data" / "logs",  # Absolute from backend
-        ]
-        
-        logs_dir = None
-        for path in possible_logs_dirs:
-            if path.exists():
-                logs_dir = path
-                break
-        
-        if not logs_dir:
-            # If none exist, use project root as default
-            logs_dir = Path("data/logs")
-            logs_dir.mkdir(parents=True, exist_ok=True)
+        # CRITICAL: Use project root data/logs directory explicitly
+        logs_dir = get_project_logs_dir()
         
         trades_file = logs_dir / "trades.jsonl"
         filled_file = logs_dir / "filled_orders.jsonl"
         pending_file = logs_dir / "pending_orders.jsonl"
 
-        def read_jsonl(path: Path) -> list[dict]:
+        def read_jsonl(path: Path, max_lines: int = None) -> list[dict]:
+            """Read JSONL file, optionally only reading the last N lines for performance."""
             if not path.exists():
                 return []
             items: list[dict] = []
-            with path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    try:
-                        items.append(json.loads(line.strip()))
-                    except Exception:
-                        continue
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    if max_lines:
+                        # CRITICAL FIX: Optimize for large files - read from end
+                        # Read last max_lines * 2 to ensure we have enough after filtering
+                        f.seek(0, 2)  # Seek to end
+                        file_size = f.tell()
+                        if file_size == 0:
+                            return []
+                        
+                        # Read backwards in chunks
+                        chunk_size = min(8192, file_size)
+                        position = max(0, file_size - chunk_size * 20)  # Read last ~160KB
+                        f.seek(position)
+                        lines = f.readlines()
+                        # Only process the last max_lines
+                        for line in lines[-max_lines:] if len(lines) > max_lines else lines:
+                            if not line.strip():
+                                continue
+                            try:
+                                items.append(json.loads(line.strip()))
+                            except Exception:
+                                continue
+                    else:
+                        # Read entire file (for small files or when limit not specified)
+                        for line in f:
+                            if not line.strip():
+                                continue
+                            try:
+                                items.append(json.loads(line.strip()))
+                            except Exception:
+                                continue
+            except Exception as e:
+                # If file reading fails, return empty list
+                print(f"[WARNING] Failed to read {path}: {e}")
+                return []
             return items
 
-        trades = read_jsonl(trades_file)
-        filled = read_jsonl(filled_file)
-        pending = read_jsonl(pending_file)
+        # CRITICAL FIX: Only read last N lines from each file for performance
+        # Read 3x limit to ensure we have enough after merging and deduplication
+        read_limit = limit * 3
+        trades = read_jsonl(trades_file, max_lines=read_limit)
+        filled = read_jsonl(filled_file, max_lines=read_limit)
+        pending = read_jsonl(pending_file, max_lines=read_limit)
 
         # normalize and merge
         records: list[dict] = []
@@ -1988,18 +2066,9 @@ async def get_agent_conversations(
         from pathlib import Path
         
         # Load from discussion_actions.jsonl
-        # Try multiple possible paths
-        possible_paths = [
-            Path("data/logs/discussion_actions.jsonl"),  # Project root
-            Path("backend/data/logs/discussion_actions.jsonl"),  # From backend directory
-            Path(__file__).parent.parent.parent / "data" / "logs" / "discussion_actions.jsonl",  # Absolute from backend
-        ]
-        
-        log_file = None
-        for path in possible_paths:
-            if path.exists():
-                log_file = path
-                break
+        # CRITICAL: Use project root data/logs directory explicitly
+        logs_dir = get_project_logs_dir()
+        log_file = logs_dir / "discussion_actions.jsonl"
         
         conversations = []
         
@@ -2070,7 +2139,8 @@ async def get_agent_conversations(
             try:
                 from src.data.memory_manager import MemoryManager
                 # Use the same logs directory we found above
-                memory_root = str(log_file.parent) if log_file else "data/logs"
+                # CRITICAL: Use project root data/logs directory
+                memory_root = str(get_project_logs_dir())
                 memory_manager = MemoryManager(root=memory_root)
                 
                 # CRITICAL FIX: Reduce days to avoid loading too much data
@@ -2128,14 +2198,41 @@ async def get_agent_conversations(
 
 @app.get("/api/market/is-open")
 async def is_market_open():
-    """Market hour check: Trading days (Mon-Fri excluding holidays), 09:30-16:00 local time."""
+    """Market hour check: Trading days (Mon-Fri excluding holidays), 09:30-16:00 Eastern Time (EST/EDT)."""
     try:
         from src.utils.trading_days import is_market_open as check_market_open
+        import pytz
+        
         now = datetime.now()
         open_now = check_market_open(now)
+        
+        # Get Eastern Time for display
+        et_tz = pytz.timezone('America/New_York')
+        if now.tzinfo is None:
+            # Assume local time, convert to ET
+            try:
+                import time
+                offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
+                from datetime import timedelta, timezone as dt_timezone
+                local_tz = dt_timezone(timedelta(seconds=offset_seconds))
+                now_with_tz = now.replace(tzinfo=local_tz)
+            except:
+                now_with_tz = pytz.UTC.localize(now)
+        else:
+            now_with_tz = now
+        et_now = now_with_tz.astimezone(et_tz)
+        
         return JSONResponse(
             status_code=200,
-            content={"ok": True, "open": open_now, "now": now.isoformat()},
+            content={
+                "ok": True, 
+                "open": open_now, 
+                "now": now.isoformat(),
+                "local_time": now.strftime('%Y-%m-%d %H:%M:%S'),
+                "eastern_time": et_now.strftime('%Y-%m-%d %H:%M:%S %Z'),
+                "eastern_time_iso": et_now.isoformat(),
+                "market_hours": "9:30 AM - 4:00 PM ET"
+            },
             headers=CORS_HEADERS.copy()
         )
     except Exception as e:
@@ -2177,8 +2274,13 @@ async def system_init(force: bool = False):
     Args:
         force: If True, proceed without checking. If False, will create backup if portfolio has positions.
     """
-    logs_dir = Path("data/logs")
+    # CRITICAL: Use project root data/logs directory explicitly
+    # Determine project root: go up from backend/src/api/server.py to project root
+    _backend_dir = Path(__file__).resolve().parent.parent.parent  # backend/
+    _project_root = _backend_dir.parent  # project root
+    logs_dir = _project_root / "data" / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
+    log_print(f"[SYSTEM INIT] Using logs directory: {logs_dir}")
     
     # CRITICAL FIX: Check if portfolio has positions before initializing
     # If it does, create a backup automatically
@@ -2241,9 +2343,10 @@ async def system_init(force: bool = False):
     # Clear memory files (daily and weekly)
     try:
         from src.data.memory_manager import MemoryManager
-        memory_manager = MemoryManager(root="data/logs")
+        # CRITICAL: Use the same logs_dir path (project root data/logs)
+        memory_manager = MemoryManager(root=str(logs_dir))
         # Clear all memory files
-        memory_dir = Path("data/logs")
+        memory_dir = logs_dir
         for memory_file in memory_dir.glob("memory_*.jsonl"):
             try:
                 memory_file.unlink()
@@ -2343,7 +2446,8 @@ async def system_init(force: bool = False):
     }
     try:
         from src.data.equity_tracker import EquityTracker
-        equity_tracker = EquityTracker(root="data/logs")
+        # CRITICAL: Use the same logs_dir path (project root data/logs)
+        equity_tracker = EquityTracker(root=str(logs_dir))
         equity_tracker.record_daily_equity(date.today().isoformat(), snapshot)
     except Exception as e:
         log_print(f"[Init] Warning: Failed to record initial equity: {e}")
@@ -2352,6 +2456,7 @@ async def system_init(force: bool = False):
     response_data = {
         "ok": True,
         "message": "System initialized successfully",
+        "note": "First trade after initialization must be triggered manually. Auto-trading will resume after the first manual trade."
     }
     
     if backup_created:
@@ -2359,33 +2464,14 @@ async def system_init(force: bool = False):
         response_data["backup_filename"] = backup_filename
         response_data["warning"] = f"Portfolio backup created: {backup_filename}"
     
-    # If市場開盤且今日尚未交易，自動執行一次交易循環
-    result = None
-    try:
-        start = dt_time(9, 0)
-        end = dt_time(16, 0)
-        now = datetime.now()
-        is_open = (now.weekday() < 5) and (start <= now.time() <= end)
-        flag = logs_dir / "last_trade_date.txt"
-        today = now.strftime("%Y-%m-%d")
-        traded_today = flag.exists() and flag.read_text(encoding="utf-8").strip() == today
-        if is_open and not traded_today:
-            result = await execute_trading_cycle()
-            try:
-                flag.write_text(today, encoding="utf-8")
-            except Exception:
-                pass
-    except Exception as e:
-        log_print(f"[Init] Warning: Failed to execute trading cycle: {e}")
-        result = None
+    # CRITICAL: After initialization, do NOT automatically execute trading cycle
+    # User must manually trigger the first trade. After that, auto-trading will resume normally.
+    # This ensures user has control over the first trade after initialization.
+    log_print("[SYSTEM INIT] Initialization complete. First trade must be triggered manually.")
+    log_print("[SYSTEM INIT] Auto-trading will resume normally after the first manual trade.")
     
-    # Update response_data with trading result if available
-    if result:
-        response_data["trading_result"] = result
-        response_data["message"] = "System initialized and trading cycle executed"
-        response_data["auto_ran"] = True
-    else:
-        response_data["auto_ran"] = False
+    # No automatic trading after initialization - user must trigger first trade manually
+    response_data["auto_ran"] = False
     
     # Return with CORS headers
     return JSONResponse(
@@ -2411,8 +2497,8 @@ async def run_trading_loop():
             "message": "Market is closed. Trading only available Mon-Fri, 9:30 AM - 4:00 PM EST"
         }
     
-    logs_dir = Path("data/logs")
-    logs_dir.mkdir(parents=True, exist_ok=True)
+    # CRITICAL: Use project root data/logs directory explicitly
+    logs_dir = get_project_logs_dir()
     flag = logs_dir / "last_trade_date.txt"
     today = datetime.now().strftime("%Y-%m-%d")
     if flag.exists():
@@ -2589,22 +2675,8 @@ async def upload_data(data: dict):
         import json
         from pathlib import Path
         
-        # Try multiple possible paths for logs directory
-        possible_logs_dirs = [
-            Path("data/logs"),  # Project root
-            Path("backend/data/logs"),  # From backend directory
-            Path(__file__).parent.parent.parent / "data" / "logs",  # Absolute from backend
-        ]
-        
-        logs_dir = None
-        for path in possible_logs_dirs:
-            if path.exists():
-                logs_dir = path
-                break
-        
-        if not logs_dir:
-            logs_dir = Path("data/logs")
-            logs_dir.mkdir(parents=True, exist_ok=True)
+        # CRITICAL: Use project root data/logs directory explicitly
+        logs_dir = get_project_logs_dir()
         
         uploaded_counts = {}
         
@@ -2756,7 +2828,8 @@ def run_october_simulation_background():
         _simulation_status["error"] = None
         
         # 初始化
-        logs_dir = Path("data/logs")
+        # CRITICAL: Use project root data/logs directory
+        logs_dir = get_project_logs_dir()
         logs_dir.mkdir(parents=True, exist_ok=True)
         
         # 清空对话日誌
@@ -2798,7 +2871,8 @@ def run_october_simulation_background():
         
         # 結算函數
         def settle_orders(settle_date, logs_dir):
-            order_manager = OrderManager(root="data/logs")
+            # CRITICAL: Use project root data/logs directory
+            order_manager = OrderManager(root=str(get_project_logs_dir()))
             pending_orders = order_manager.load_pending_orders(order_date=settle_date)
             
             if not pending_orders:

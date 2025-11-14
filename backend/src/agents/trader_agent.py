@@ -94,6 +94,7 @@ def _calculate_position_size(
     
     # 检查当前持仓
     current_symbol_position = 0.0
+    current_qty = 0
     if current_positions:
         pos_info = current_positions.get(symbol)
         if pos_info:
@@ -107,40 +108,53 @@ def _calculate_position_size(
             if current_qty > 0 and current_price > 0:
                 current_value = current_qty * current_price
                 current_symbol_position = current_value / portfolio_value
+                print(f"[TRADER] {symbol}: Already has {current_qty} shares @ ${current_price:.2f}, position_pct={current_symbol_position:.2%}")
     
     # 计算目标仓位（考虑已有持仓）
     target_position_pct = dynamic_max_pct
     if current_symbol_position >= target_position_pct:
         # 已达到目标仓位
+        print(f"[TRADER] {symbol}: Skipping - already at target position (current={current_symbol_position:.2%}, target={target_position_pct:.2%})")
         return 0
     
     # 计算还需要买入的仓位百分比
     remaining_position_pct = target_position_pct - current_symbol_position
+    if current_qty > 0:
+        print(f"[TRADER] {symbol}: Current position={current_symbol_position:.2%}, target={target_position_pct:.2%}, remaining={remaining_position_pct:.2%}")
     
     # 计算目标市值（但不能超过可用现金）
     target_value = portfolio_value * remaining_position_pct
     
     # CRITICAL: 如果提供了可用现金，确保不超过可用现金
-    if available_cash is not None and available_cash >= 0:
+    # CRITICAL FIX: 如果可用现金为0或负数，直接返回0，不生成订单
+    if available_cash is not None:
+        if available_cash <= 0:
+            print(f"[TRADER] Skipping {symbol}: no available cash (available_cash=${available_cash:.2f})")
+            return 0
         # 限制目标市值不超过可用现金
         target_value = min(target_value, available_cash)
         if target_value <= 0:
-            print(f"[TRADER] Skipping {symbol}: no available cash (available_cash=${available_cash:.2f})")
+            print(f"[TRADER] Skipping {symbol}: target value <= 0 after cash limit (available_cash=${available_cash:.2f})")
             return 0
     
     # 计算数量（向下取整）
     quantity = floor(target_value / last_price)
     
-    # CRITICAL: 确保至少能买1股（如果价格合理且仓位百分比足够）
-    # 如果计算出的 quantity 为 0，但 remaining_position_pct 足够大，至少买1股
+    # CRITICAL FIX: 确保至少能买1股（如果价格合理且仓位百分比足够）
+    # 但必须确保有足够的可用现金
     if quantity == 0 and remaining_position_pct > 0:
         # 检查1股的价值是否在合理范围内（不超过目标仓位的150%）
         one_share_value = last_price / portfolio_value if portfolio_value > 0 else 0
         if one_share_value <= remaining_position_pct * 1.5:
-            # 如果提供了可用现金，确保1股的价格不超过可用现金
-            if available_cash is None or last_price <= available_cash:
+            # CRITICAL FIX: 如果提供了可用现金，必须确保1股的价格不超过可用现金
+            if available_cash is None:
                 quantity = 1
-                print(f"[TRADER] Ensuring minimum 1 share for {symbol} (position_pct={remaining_position_pct:.2%}, one_share_pct={one_share_value:.2%})")
+                print(f"[TRADER] Ensuring minimum 1 share for {symbol} (position_pct={remaining_position_pct:.2%}, one_share_pct={one_share_value:.2%}, no cash limit)")
+            elif last_price <= available_cash and available_cash > 0:
+                quantity = 1
+                print(f"[TRADER] Ensuring minimum 1 share for {symbol} (position_pct={remaining_position_pct:.2%}, one_share_pct={one_share_value:.2%}, available_cash=${available_cash:.2f})")
+            else:
+                print(f"[TRADER] Cannot buy 1 share of {symbol}: price=${last_price:.2f} > available_cash=${available_cash:.2f}")
     
     # 最终检查：如果提供了可用现金，确保总成本不超过可用现金
     if available_cash is not None and quantity > 0:
@@ -291,6 +305,26 @@ def run_trader(
     if current_positions is None:
         current_positions = {}
     
+    # CRITICAL: 打印接收到的仓位和现金信息（用于调试）
+    print(f"[TRADER] Received parameters:")
+    print(f"  - portfolio_value: ${portfolio_value:,.2f}")
+    print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: None (unlimited)")
+    print(f"  - current_positions count: {len(current_positions)}")
+    if current_positions:
+        total_position_value = sum(
+            pos_info.get("market_value", 0.0) if isinstance(pos_info, dict) else 0.0
+            for pos_info in current_positions.values()
+        )
+        print(f"  - Total position value: ${total_position_value:,.2f}")
+        for sym, pos_info in list(current_positions.items())[:5]:  # 只显示前5个
+            if isinstance(pos_info, dict):
+                qty = pos_info.get("quantity", 0)
+                market_value = pos_info.get("market_value", 0.0)
+                position_pct = pos_info.get("position_pct", 0.0)
+                print(f"    {sym}: {qty} shares, value=${market_value:.2f} ({position_pct:.1f}%)")
+    else:
+        print(f"  - No current positions")
+    
     buy_orders: List[Dict[str, Any]] = []
     sell_orders: List[Dict[str, Any]] = []
     
@@ -430,12 +464,31 @@ def run_trader(
         # CRITICAL: 跟踪累计使用的现金，确保总订单金额不超过可用现金
         remaining_cash = available_cash if available_cash is not None else float('inf')
         
+        # CRITICAL: 打印开始生成买入订单时的状态（用于调试）
+        print(f"[TRADER] Starting buy order generation:")
+        print(f"  - Available cash: ${remaining_cash:,.2f}" if remaining_cash != float('inf') else "  - Available cash: unlimited")
+        print(f"  - Current total position value: ${current_total_value:,.2f} ({current_total_position_pct:.1f}%)")
+        print(f"  - Available position space: {available_position_pct:.1f}%")
+        
         if available_position_pct <= 0:
             # 已达到总仓位上限，不买入新股票
+            print(f"[TRADER] Skipping all buy orders: available position space <= 0%")
             pass
         else:
             # 遍历所有推荐股票，计算每只股票的买入数量
             # 包括普通股票、杠杆ETF（做多）、反向ETF（做空）
+            # CRITICAL: 打印推荐股票列表和现有持仓的对比
+            if current_positions:
+                existing_symbols = set(current_positions.keys())
+                recommended_symbols = set(recs)
+                overlap = existing_symbols & recommended_symbols
+                new_symbols = recommended_symbols - existing_symbols
+                print(f"[TRADER] Recommended stocks: {len(recs)} total")
+                print(f"  - Already held: {len(overlap)} symbols ({', '.join(list(overlap)[:5])}{'...' if len(overlap) > 5 else ''})")
+                print(f"  - New symbols: {len(new_symbols)} symbols ({', '.join(list(new_symbols)[:5])}{'...' if len(new_symbols) > 5 else ''})")
+            else:
+                print(f"[TRADER] Recommended stocks: {len(recs)} total (no existing positions)")
+            
             for symbol in recs:
                 if symbol not in last_prices:
                     continue
@@ -473,16 +526,21 @@ def run_trader(
                     total_cost = buy_price * quantity
                     
                     # CRITICAL: 再次检查剩余现金（双重保险）
-                    if available_cash is not None and total_cost > remaining_cash:
-                        # 如果总成本超过剩余现金，减少数量
-                        max_affordable_qty = floor(remaining_cash / buy_price)
-                        if max_affordable_qty > 0:
-                            quantity = max_affordable_qty
-                            total_cost = buy_price * quantity
-                            print(f"[TRADER] Reduced {symbol} quantity to {quantity} due to remaining cash limit (remaining: ${remaining_cash:.2f})")
-                        else:
-                            print(f"[TRADER] Skipping {symbol}: insufficient remaining cash (need ${total_cost:.2f}, remaining ${remaining_cash:.2f})")
+                    # CRITICAL FIX: 如果剩余现金为0或负数，直接跳过
+                    if available_cash is not None:
+                        if remaining_cash <= 0:
+                            print(f"[TRADER] Skipping {symbol}: no remaining cash (remaining: ${remaining_cash:.2f})")
                             continue
+                        if total_cost > remaining_cash:
+                            # 如果总成本超过剩余现金，减少数量
+                            max_affordable_qty = floor(remaining_cash / buy_price)
+                            if max_affordable_qty > 0:
+                                quantity = max_affordable_qty
+                                total_cost = buy_price * quantity
+                                print(f"[TRADER] Reduced {symbol} quantity to {quantity} due to remaining cash limit (remaining: ${remaining_cash:.2f})")
+                            else:
+                                print(f"[TRADER] Skipping {symbol}: insufficient remaining cash (need ${total_cost:.2f}, remaining ${remaining_cash:.2f})")
+                                continue
                     
                     # CRITICAL: 扣除已使用的现金（在添加到订单列表前）
                     if available_cash is not None:
@@ -507,35 +565,91 @@ def run_trader(
                     
                     buy_orders.append(order_info)
     
-    # 检查是否有超限持仓需要卖出
-    if current_positions and rview:
+    # CRITICAL: 检查所有当前持仓，决定是否需要卖出
+    # 确保agent知道所有可卖出的持仓及其数量
+    if current_positions:
+        print(f"[TRADER] Checking {len(current_positions)} current positions for sell opportunities...")
+        
         for symbol, pos_info in current_positions.items():
             if isinstance(pos_info, dict):
                 qty = pos_info.get("quantity", 0)
+                avg_cost = pos_info.get("avg_cost", 0.0)
+                current_price = pos_info.get("current_price", last_prices.get(symbol, 0.0))
+                unrealized_pnl = pos_info.get("unrealized_pnl", 0.0)
+                unrealized_pnl_pct = pos_info.get("unrealized_pnl_pct", 0.0)
+                position_pct = pos_info.get("position_pct", 0.0)
             else:
                 qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                avg_cost = 0.0
+                current_price = last_prices.get(symbol, 0.0)
+                unrealized_pnl = 0.0
+                unrealized_pnl_pct = 0.0
+                position_pct = 0.0
             
-            if qty > 0 and symbol in last_prices:
-                sell_qty = _calculate_sell_size(
-                    symbol, qty, portfolio_value, last_prices[symbol], rview, current_positions
+            # 确保有持仓且价格有效
+            if qty <= 0 or symbol not in last_prices or last_prices[symbol] <= 0:
+                continue
+            
+            # 使用当前价格（如果持仓信息中没有）
+            if current_price <= 0:
+                current_price = last_prices[symbol]
+            
+            print(f"[TRADER] Position {symbol}: {qty} shares @ ${avg_cost:.2f} avg, current ${current_price:.2f}, P&L=${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%), position_pct={position_pct:.1f}%")
+            
+            # 决定卖出数量的逻辑：
+            # 1. 基于风险报告的仓位限制检查
+            sell_qty_from_risk = 0
+            if rview:
+                sell_qty_from_risk = _calculate_sell_size(
+                    symbol, qty, portfolio_value, current_price, rview, current_positions
                 )
-                if sell_qty > 0:
-                    current_price = last_prices[symbol]
-                    # 卖出价格范围（高卖）：期望比当前价格高 0.5%-2%
-                    sell_price_min = current_price * 1.005  # 至少高0.5%
-                    sell_price_max = current_price * 1.02   # 最高高2%
-                    sell_price = sell_price_min  # 用于计算的基准价格（保守估算）
-                    sell_orders.append({
-                        "symbol": symbol,
-                        "sell_price": sell_price,  # 用于计算的基准价格
-                        "sell_price_min": sell_price_min,  # 最低卖出价（范围下限）
-                        "sell_price_max": sell_price_max,  # 最高卖出价（范围上限，高卖）
-                        "quantity": sell_qty,
-                        "total_proceeds": sell_price * sell_qty,  # 基于基准价格估算
-                    })
+            
+            # 2. 基于持仓表现的卖出决策（可以考虑亏损持仓、盈利持仓等）
+            # 这里可以根据市场分析、持仓表现等因素决定是否卖出
+            # 例如：如果持仓亏损超过阈值，可以考虑卖出止损
+            # 或者：如果持仓盈利达到目标，可以考虑获利了结
+            
+            # 3. 基于市场分析的卖出决策
+            # 如果市场分析建议卖出某些股票（例如：技术分析显示趋势反转）
+            # 可以从mview或convo中提取卖出建议
+            
+            # 综合决定：优先考虑风险报告的建议，但也可以考虑其他因素
+            sell_qty = sell_qty_from_risk
+            
+            # 如果风险报告建议卖出，或者有其他卖出信号，生成卖出订单
+            if sell_qty > 0:
+                # 确保卖出数量不超过持仓数量
+                sell_qty = min(sell_qty, qty)
+                
+                # 卖出价格范围（市价单：使用当前价格）
+                sell_price = current_price  # 市价单：使用当前价格
+                sell_price_min = current_price  # 市价单：价格范围就是当前价格
+                sell_price_max = current_price
+                
+                sell_orders.append({
+                    "symbol": symbol,
+                    "sell_price": sell_price,  # 用于计算的基准价格
+                    "sell_price_min": sell_price_min,  # 最低卖出价（范围下限）
+                    "sell_price_max": sell_price_max,  # 最高卖出价（范围上限）
+                    "quantity": sell_qty,
+                    "total_proceeds": sell_price * sell_qty,  # 基于基准价格估算
+                    "current_position": qty,  # 记录当前持仓数量（用于验证）
+                    "avg_cost": avg_cost,  # 记录平均成本（用于计算realized_pnl）
+                    "unrealized_pnl": unrealized_pnl,  # 记录未实现损益（用于参考）
+                })
+                
+                if sell_qty_from_risk > 0:
                     risk_compliance["warnings"].append(
-                        f"{symbol} position exceeds limit, recommend selling {sell_qty} shares"
+                        f"{symbol} position exceeds limit, recommend selling {sell_qty} shares (current: {qty} shares)"
                     )
+                else:
+                    risk_compliance["warnings"].append(
+                        f"{symbol} sell order generated based on market analysis (selling {sell_qty} of {qty} shares)"
+                    )
+                
+                print(f"[TRADER] Generated SELL order for {symbol}: {sell_qty} shares @ ${sell_price:.2f} (current position: {qty} shares, P&L: ${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%))")
+            else:
+                print(f"[TRADER] No sell order for {symbol}: position within limits, qty={qty}")
     
     # 确定最终动作
     if buy_orders:
@@ -580,7 +694,8 @@ def run_trader(
         if isinstance(coordinator, dict):
             summary_text = coordinator.get("summary", "")
             if summary_text and len(summary_text.strip()) > 20:  # 确保summary有意义
-                coordinator_summary = summary_text[:200]  # 限制长度
+                # CRITICAL FIX: 移除200字符限制，允许完整提取coordinator_summary
+                coordinator_summary = summary_text
                 print(f"[TRADER] Found coordinator summary from convo.coordinator_summary ({len(coordinator_summary)} chars)")
         # 如果直接获取失败，尝试从discussion中获取
         if not coordinator_summary:
@@ -590,8 +705,9 @@ def run_trader(
                 if isinstance(coordinator, dict):
                     summary_text = coordinator.get("summary", "")
                     if summary_text and len(summary_text.strip()) > 20:
-                        coordinator_summary = summary_text[:200]
-                        print(f"[TRADER] Found coordinator summary from convo.discussion.coordinator_summary")
+                        # CRITICAL FIX: 移除200字符限制，允许完整提取coordinator_summary
+                        coordinator_summary = summary_text
+                        print(f"[TRADER] Found coordinator summary from convo.discussion.coordinator_summary ({len(coordinator_summary)} chars)")
         # 如果还是没有，尝试从discussion_history中提取
         if not coordinator_summary:
             discussion_history = convo.get("discussion_history", [])
@@ -599,8 +715,9 @@ def run_trader(
                 if entry.get("analyst") == "Discussion Coordinator":
                     analysis = entry.get("analysis", "")
                     if analysis and len(analysis.strip()) > 20:
-                        coordinator_summary = analysis[:200]
-                        print(f"[TRADER] Found coordinator summary from discussion_history")
+                        # CRITICAL FIX: 移除200字符限制，允许完整提取coordinator_summary
+                        coordinator_summary = analysis
+                        print(f"[TRADER] Found coordinator summary from discussion_history ({len(coordinator_summary)} chars)")
                         break
         if not coordinator_summary:
             print(f"[TRADER] WARNING: Could not find coordinator summary in convo")
@@ -635,7 +752,12 @@ def run_trader(
         trader_summary = f"Based on market analysis and risk assessment, I'm generating {buy_count} buy orders for {', '.join(buy_symbols)}{'...' if buy_count > 5 else ''} with a total cost of ${total_buy_cost:,.2f}. "
         trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
         if coordinator_summary:
-            trader_summary += f"Key insights: {coordinator_summary[:150]}"
+            # CRITICAL FIX: 移除150字符限制，允许完整显示coordinator_summary（前端有滚动条处理长文本）
+            # 只限制极端长度（超过5000字符）以避免内存问题
+            if len(coordinator_summary) > 5000:
+                trader_summary += f"Key insights: {coordinator_summary[:5000]}... (truncated)"
+            else:
+                trader_summary += f"Key insights: {coordinator_summary}"
         else:
             trader_summary += "Decision is based on technical signals, market sentiment, and risk management constraints."
     elif sell_orders and len(sell_orders) > 0:
@@ -645,14 +767,24 @@ def run_trader(
         trader_summary = f"Based on risk management and market conditions, I'm generating {sell_count} sell orders for {', '.join(sell_symbols)}{'...' if sell_count > 5 else ''} with expected proceeds of ${total_sell_proceeds:,.2f}. "
         trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
         if coordinator_summary:
-            trader_summary += f"Key insights: {coordinator_summary[:150]}"
+            # CRITICAL FIX: 移除150字符限制，允许完整显示coordinator_summary（前端有滚动条处理长文本）
+            # 只限制极端长度（超过5000字符）以避免内存问题
+            if len(coordinator_summary) > 5000:
+                trader_summary += f"Key insights: {coordinator_summary[:5000]}... (truncated)"
+            else:
+                trader_summary += f"Key insights: {coordinator_summary}"
         else:
             trader_summary += "Decision is based on risk reduction, position management, and market conditions."
     else:
         trader_summary = f"No trading orders generated. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
         trader_summary += "Current market conditions and risk assessment suggest maintaining current positions or waiting for better entry points."
         if coordinator_summary:
-            trader_summary += f" Analysis: {coordinator_summary[:150]}"
+            # CRITICAL FIX: 移除150字符限制，允许完整显示coordinator_summary（前端有滚动条处理长文本）
+            # 只限制极端长度（超过5000字符）以避免内存问题
+            if len(coordinator_summary) > 5000:
+                trader_summary += f" Analysis: {coordinator_summary[:5000]}... (truncated)"
+            else:
+                trader_summary += f" Analysis: {coordinator_summary}"
     
     # 严格JSON格式输出（交易决策必须严格遵守JSON格式，因为交易系统根据这个判断）
     # 确保所有字段都是JSON可序列化的类型
@@ -678,6 +810,10 @@ def run_trader(
                 "sell_price_max": float(order.get("sell_price_max", 0.0)),
                 "quantity": int(order.get("quantity", 0)),
                 "total_proceeds": float(order.get("total_proceeds", 0.0)),
+                # CRITICAL: Include position info for validation and P&L calculation
+                "current_position": int(order.get("current_position", 0)) if order.get("current_position") is not None else None,
+                "avg_cost": float(order.get("avg_cost", 0.0)) if order.get("avg_cost") is not None else None,
+                "unrealized_pnl": float(order.get("unrealized_pnl", 0.0)) if order.get("unrealized_pnl") is not None else None,
             }
             for order in sell_orders
         ],

@@ -5,6 +5,16 @@ from datetime import date, timedelta, datetime, timezone, time as dt_time
 from pathlib import Path  # 统一在文件顶部导入，避免函数内部重复导入导致的作用域问题
 import json  # 用于加载 portfolio_state.json
 
+# CRITICAL: Helper function to get project root data/logs directory
+# This ensures all trading cycle operations use the same path regardless of working directory
+def _get_project_logs_dir() -> Path:
+    """Get the project root data/logs directory path."""
+    _backend_dir = Path(__file__).resolve().parent.parent.parent  # backend/
+    _project_root = _backend_dir.parent  # project root
+    logs_dir = _project_root / "data" / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    return logs_dir
+
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
 
@@ -201,7 +211,8 @@ def execute_daily_trade(
     # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
     if portfolio is None:
         # CRITICAL: 尝试从 portfolio_state.json 加载现有状态，而不是创建新的空 Portfolio
-        portfolio_file = Path("data/logs/portfolio_state.json")
+        # CRITICAL: Use project root data/logs directory explicitly
+        portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
         if portfolio_file.exists():
             try:
                 with portfolio_file.open("r", encoding="utf-8") as f:
@@ -271,7 +282,8 @@ def execute_daily_trade(
     historical_memories = []
     try:
         from src.data.memory_manager import MemoryManager
-        memory_manager = MemoryManager(root="data/logs")
+        # CRITICAL: Use project root data/logs directory explicitly
+        memory_manager = MemoryManager(root=str(_get_project_logs_dir()))
         # 加載最近5天的記憶摘要（短期記憶）
         historical_memories = memory_manager.load_recent_memories(
             days=5,
@@ -286,7 +298,8 @@ def execute_daily_trade(
 
     # ---- (2) 检查当前订单状态（传递给agent）----
     from src.data.order_manager import OrderManager
-    order_manager = OrderManager(root="data/logs")
+    # CRITICAL: Use project root data/logs directory explicitly
+    order_manager = OrderManager(root=str(_get_project_logs_dir()))
     
     # 检查市场是否开盘（用于确定订单日期，排除周末和节假日）
     from src.utils.trading_days import is_market_open as check_market_open
@@ -310,7 +323,8 @@ def execute_daily_trade(
     
     # 获取filled订单
     filled_orders = []
-    filled_file = Path("data/logs/filled_orders.jsonl")
+    # CRITICAL: Use project root data/logs directory explicitly
+    filled_file = _get_project_logs_dir() / "filled_orders.jsonl"
     if filled_file.exists():
         try:
             with filled_file.open("r", encoding="utf-8") as f:
@@ -374,18 +388,8 @@ def execute_daily_trade(
         # Path 已经在文件顶部导入，不需要重复导入
         import os
         
-        # 選項1: 相對於當前工作目錄
-        logs_dir = Path("data/logs")
-        if not logs_dir.exists():
-            # 選項2: 相對於 backend 目錄
-            backend_root = Path(__file__).parent.parent.parent
-            logs_dir = backend_root / "data" / "logs"
-            if not logs_dir.exists():
-                # 選項3: 相對於項目根目錄
-                project_root = backend_root.parent if backend_root.name == "backend" else backend_root
-                logs_dir = project_root / "backend" / "data" / "logs"
-        
-        logs_dir.mkdir(parents=True, exist_ok=True)
+        # CRITICAL: Use project root data/logs directory explicitly
+        logs_dir = _get_project_logs_dir()
         convo_file = logs_dir / "discussion_actions.jsonl"
         
         transcript = convo.get("transcript", [])
@@ -591,7 +595,8 @@ def execute_daily_trade(
     # ---- (5) 掛單策略：開盤前掛限價單，收盤後檢查成交 ----
     from src.data.order_manager import OrderManager
     
-    order_manager = OrderManager(root="data/logs")
+    # CRITICAL: Use project root data/logs directory explicitly
+    order_manager = OrderManager(root=str(_get_project_logs_dir()))
     
     # 检查市场是否开盘，决定订单日期（排除周末和节假日）
     from src.utils.trading_days import is_market_open as check_market_open
@@ -621,6 +626,16 @@ def execute_daily_trade(
         is_market_open_for_simulation = False
         today = date.today().isoformat()
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
+        
+        # CRITICAL FIX: 市场关闭时，立即清理今天的pending订单（因为市场订单不应该有pending状态）
+        # 即使没有运行交易周期，也要清理pending订单
+        if len(existing_pending_orders) > 0:
+            print(f"[TRADING CYCLE] Market is closed. Immediately cancelling {len(existing_pending_orders)} today's pending orders (market orders should not be pending when market is closed).")
+            cancelled_count = order_manager.cancel_orders(order_date=today)
+            if cancelled_count > 0:
+                print(f"[TRADING CYCLE] Cancelled {cancelled_count} today's pending orders")
+                # 重新加载pending订单（应该为空）
+                existing_pending_orders = order_manager.load_pending_orders(order_date=today)
     
     executed_trades = []
     execution_errors = []
@@ -686,7 +701,8 @@ def execute_daily_trade(
             
             # 加载当前portfolio状态
             try:
-                portfolio_file = Path("data/logs/portfolio_state.json")
+                # CRITICAL: Use project root data/logs directory explicitly
+                portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
                 if portfolio_file.exists():
                     with portfolio_file.open("r", encoding="utf-8") as f:
                         state = json.load(f)
@@ -827,7 +843,8 @@ def execute_daily_trade(
                         # CRITICAL FIX: 在实时模式下，如果今天已经创建过订单（即使已全部成交），
                         # 不应该再次创建新订单，避免每小时重复创建
                         # 检查今天是否有已成交的订单（filled_orders）
-                        filled_file = Path("data/logs/filled_orders.jsonl")
+                        # CRITICAL: Use project root data/logs directory explicitly
+                        filled_file = _get_project_logs_dir() / "filled_orders.jsonl"
                         today_has_filled_orders = False
                         if filled_file.exists() and not end:  # 只在实时模式下检查
                             try:
@@ -1032,7 +1049,8 @@ def execute_daily_trade(
         # 实时模式：只有在市场开放时才检查是否可以创建订单
         if not existing_pending_orders:
             # 检查今天是否已经有filled订单
-            filled_file = Path("data/logs/filled_orders.jsonl")
+            # CRITICAL: Use project root data/logs directory explicitly
+            filled_file = _get_project_logs_dir() / "filled_orders.jsonl"
             today_has_any_orders = False
             if filled_file.exists():
                 try:
@@ -1182,20 +1200,69 @@ def execute_daily_trade(
                     # 使用当前市价重新计算成本和数量
                     estimated_cost = current_price * quantity
                     
-                    # 检查现金是否足够（使用市价）
-                    if estimated_cost > remaining_cash:
-                        max_affordable_qty = floor(remaining_cash / current_price)
+                    # CRITICAL: 使用实际portfolio.cash检查，确保现金同步
+                    # 双重检查：确保remaining_cash和portfolio.cash都足够
+                    if estimated_cost > portfolio.cash:
+                        max_affordable_qty = floor(portfolio.cash / current_price)
                         if max_affordable_qty > 0:
                             quantity = max_affordable_qty
                             estimated_cost = current_price * quantity
-                            print(f"[MARKET ORDER] Reduced {symbol} quantity to {quantity} due to cash limit (remaining cash: ${remaining_cash:.2f})")
+                            print(f"[MARKET ORDER] Reduced {symbol} quantity to {quantity} due to cash limit (portfolio cash: ${portfolio.cash:.2f})")
                         else:
-                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${estimated_cost:.2f}, remaining ${remaining_cash:.2f})")
+                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${estimated_cost:.2f}, portfolio cash: ${portfolio.cash:.2f})")
                             continue
                     
-                    # CRITICAL: 扣除已使用的现金（在创建订单前）
-                    remaining_cash -= estimated_cost
-                    print(f"[CASH TRACKING] Order for {symbol}: cost=${estimated_cost:.2f}, remaining cash=${remaining_cash:.2f}")
+                    # CRITICAL FIX: 同步remaining_cash和portfolio.cash
+                    # 如果remaining_cash和portfolio.cash不同步，使用portfolio.cash（更准确）
+                    if remaining_cash > portfolio.cash:
+                        remaining_cash = portfolio.cash
+                        print(f"[CASH SYNC] Synced remaining_cash to portfolio.cash: ${remaining_cash:.2f}")
+                    
+                    # 最终检查：确保有足够现金（使用更保守的值）
+                    final_check_cash = min(remaining_cash, portfolio.cash)
+                    if estimated_cost > final_check_cash:
+                        max_affordable_qty = floor(final_check_cash / current_price)
+                        if max_affordable_qty > 0:
+                            quantity = max_affordable_qty
+                            estimated_cost = current_price * quantity
+                            print(f"[MARKET ORDER] Final reduction: {symbol} quantity to {quantity} (final check cash: ${final_check_cash:.2f})")
+                        else:
+                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash after final check (need ${estimated_cost:.2f}, available: ${final_check_cash:.2f})")
+                            continue
+                    
+                    # CRITICAL FIX: 在调用portfolio.buy()之前，再次使用实际计算值检查现金
+                    # 使用实际的计算值：quantity * current_price（与portfolio.buy()内部计算一致）
+                    actual_cost = quantity * current_price
+                    if actual_cost > portfolio.cash:
+                        # 如果实际成本超过现金，再次减少数量
+                        max_affordable_qty = floor(portfolio.cash / current_price)
+                        if max_affordable_qty > 0:
+                            quantity = max_affordable_qty
+                            actual_cost = current_price * quantity
+                            estimated_cost = actual_cost
+                            print(f"[MARKET ORDER] Last-minute reduction: {symbol} quantity to {quantity} (actual cost: ${actual_cost:.2f}, portfolio cash: ${portfolio.cash:.2f})")
+                        else:
+                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash for actual cost (need ${actual_cost:.2f}, portfolio cash: ${portfolio.cash:.2f})")
+                            print(f"[MARKET ORDER] ERROR: Cannot afford even 1 share of {symbol} (price: ${current_price:.2f}, cash: ${portfolio.cash:.2f})")
+                            continue
+                    
+                    # CRITICAL: 先执行交易，成功后再创建订单
+                    # 如果portfolio.buy()失败（现金不足），不应该创建订单
+                    try:
+                        # 更新投资组合（立即执行交易）
+                        portfolio.buy(symbol, quantity, current_price)
+                    except ValueError as e:
+                        # 如果portfolio.buy()失败（通常是现金不足），跳过这个订单
+                        error_msg = str(e)
+                        execution_errors.append(f"BUY {symbol} skipped: portfolio.buy() failed - {error_msg}")
+                        print(f"[MARKET ORDER] ERROR: portfolio.buy() failed for {symbol}: {error_msg}")
+                        print(f"[MARKET ORDER] DEBUG: quantity={quantity}, current_price=${current_price:.2f}, cost=${actual_cost:.2f}, portfolio.cash=${portfolio.cash:.2f}")
+                        continue
+                    
+                    # 交易成功后，扣除已使用的现金（用于跟踪）
+                    # CRITICAL FIX: 使用实际成本（actual_cost）而不是estimated_cost，确保同步
+                    remaining_cash -= actual_cost
+                    print(f"[CASH TRACKING] Order for {symbol}: actual_cost=${actual_cost:.2f}, remaining cash=${remaining_cash:.2f}, portfolio cash=${portfolio.cash:.2f}")
                     
                     # 市价单：立即成交，不挂单
                     # 创建订单记录（标记为已成交）
@@ -1219,10 +1286,50 @@ def execute_daily_trade(
                         "daily_low": current_price,
                         "current_price": current_price,
                     }
-                    order_manager.mark_order_filled(placed_order, fill_result)
-                    
-                    # 更新投资组合（立即执行交易）
-                    portfolio.buy(symbol, quantity, current_price)
+                    # CRITICAL: 确保订单标记为FILLED（市价单必须立即成交）
+                    try:
+                        order_manager.mark_order_filled(placed_order, fill_result)
+                        # 确保订单状态是FILLED（双重保险）
+                        placed_order["status"] = "FILLED"
+                    except Exception as e:
+                        # 如果mark_order_filled失败，手动设置状态为FILLED并移除pending
+                        print(f"[MARKET ORDER] WARNING: mark_order_filled failed for {symbol}, manually setting status to FILLED: {e}")
+                        placed_order["status"] = "FILLED"
+                        placed_order["fill_price"] = current_price
+                        placed_order["fill_reason"] = "Market order executed immediately at current price"
+                        placed_order["filled_at"] = datetime.now().isoformat()
+                        placed_order["fill_result"] = fill_result
+                        
+                        # CRITICAL: 手动从pending中移除并写入filled
+                        try:
+                            # 1. 写入filled_orders.jsonl（使用order_manager的路径）
+                            filled_file = order_manager.filled_orders_file
+                            with filled_file.open("a", encoding="utf-8") as f:
+                                f.write(json.dumps(placed_order, ensure_ascii=False) + "\n")
+                            
+                            # 2. 从pending_orders.jsonl中移除（使用order_manager的路径）
+                            pending_file = order_manager.pending_orders_file
+                            if pending_file.exists():
+                                all_pending = []
+                                with pending_file.open("r", encoding="utf-8") as f:
+                                    for line in f:
+                                        if line.strip():
+                                            try:
+                                                o = json.loads(line)
+                                                if o.get("order_id") != placed_order.get("order_id"):
+                                                    all_pending.append(o)
+                                            except:
+                                                pass
+                                
+                                with pending_file.open("w", encoding="utf-8") as f:
+                                    for o in all_pending:
+                                        f.write(json.dumps(o, ensure_ascii=False) + "\n")
+                            
+                            print(f"[MARKET ORDER] Manually moved {symbol} order to filled_orders.jsonl and removed from pending")
+                        except Exception as e2:
+                            print(f"[MARKET ORDER] ERROR: Failed to manually process order: {e2}")
+                            import traceback
+                            traceback.print_exc()
                     
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的BUY订单
@@ -1311,8 +1418,19 @@ def execute_daily_trade(
                     limit_price = current_price
                     total_proceeds = current_price * quantity
                     
+                    # CRITICAL FIX: 先检查持仓，再创建订单和执行交易
+                    # 检查持仓是否足够
+                    current_position = portfolio.get_position(symbol)
+                    if not current_position or current_position.quantity < quantity:
+                        available_qty = current_position.quantity if current_position else 0
+                        execution_errors.append(f"SELL {symbol} skipped: insufficient shares (need {quantity}, have {available_qty})")
+                        continue
+                    
                     # 市价单：立即成交，不挂单
-                    # 创建订单记录（标记为已成交）
+                    # 先执行交易以获取realized_pnl（在创建订单前）
+                    realized_pnl = portfolio.sell(symbol, quantity, current_price)
+                    
+                    # 交易成功后，创建订单记录（标记为已成交）
                     placed_order = order_manager.place_order(
                         symbol=symbol,
                         action="SELL",
@@ -1324,9 +1442,6 @@ def execute_daily_trade(
                         },
                     )
                     
-                    # 更新投资组合（立即执行交易）- 先执行交易以获取realized_pnl
-                    realized_pnl = portfolio.sell(symbol, quantity, current_price)
-                    
                     # 立即标记为已成交（市价单保证成交）
                     fill_result = {
                         "filled": True,
@@ -1337,7 +1452,56 @@ def execute_daily_trade(
                         "current_price": current_price,
                     }
                     # CRITICAL FIX: 传递realized_pnl给mark_order_filled，确保SELL订单正确记录已实现损益
-                    order_manager.mark_order_filled(placed_order, fill_result, realized_pnl=realized_pnl)
+                    # CRITICAL: 确保订单标记为FILLED（市价单必须立即成交）
+                    try:
+                        order_manager.mark_order_filled(placed_order, fill_result, realized_pnl=realized_pnl)
+                        # 确保订单状态是FILLED（双重保险）
+                        placed_order["status"] = "FILLED"
+                    except Exception as e:
+                        # 如果mark_order_filled失败，手动设置状态为FILLED并移除pending
+                        print(f"[MARKET ORDER] WARNING: mark_order_filled failed for {symbol}, manually setting status to FILLED: {e}")
+                        placed_order["status"] = "FILLED"
+                        placed_order["fill_price"] = current_price
+                        placed_order["fill_reason"] = "Market order executed immediately at current price"
+                        placed_order["filled_at"] = datetime.now().isoformat()
+                        placed_order["fill_result"] = fill_result
+                        # 记录realized_pnl
+                        if realized_pnl:
+                            placed_order["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
+                            placed_order["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
+                            placed_order["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
+                            placed_order["proceeds"] = realized_pnl.get("proceeds", 0.0)
+                        
+                        # CRITICAL: 手动从pending中移除并写入filled
+                        try:
+                            # 1. 写入filled_orders.jsonl（使用order_manager的路径）
+                            filled_file = order_manager.filled_orders_file
+                            with filled_file.open("a", encoding="utf-8") as f:
+                                f.write(json.dumps(placed_order, ensure_ascii=False) + "\n")
+                            
+                            # 2. 从pending_orders.jsonl中移除（使用order_manager的路径）
+                            pending_file = order_manager.pending_orders_file
+                            if pending_file.exists():
+                                all_pending = []
+                                with pending_file.open("r", encoding="utf-8") as f:
+                                    for line in f:
+                                        if line.strip():
+                                            try:
+                                                o = json.loads(line)
+                                                if o.get("order_id") != placed_order.get("order_id"):
+                                                    all_pending.append(o)
+                                            except:
+                                                pass
+                                
+                                with pending_file.open("w", encoding="utf-8") as f:
+                                    for o in all_pending:
+                                        f.write(json.dumps(o, ensure_ascii=False) + "\n")
+                            
+                            print(f"[MARKET ORDER] Manually moved {symbol} order to filled_orders.jsonl and removed from pending")
+                        except Exception as e2:
+                            print(f"[MARKET ORDER] ERROR: Failed to manually process order: {e2}")
+                            import traceback
+                            traceback.print_exc()
                     
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的SELL订单
@@ -1585,8 +1749,10 @@ def execute_daily_trade(
         from src.data.memory_manager import MemoryManager
         from src.data.equity_tracker import EquityTracker
         
-        memory_manager = MemoryManager(root="data/logs")
-        equity_tracker = EquityTracker(root="data/logs")
+        # CRITICAL: Use project root data/logs directory explicitly
+        memory_manager = MemoryManager(root=str(_get_project_logs_dir()))
+        # CRITICAL: Use project root data/logs directory explicitly
+        equity_tracker = EquityTracker(root=str(_get_project_logs_dir()))
         
         # 使用 end 日期作为今天的日期（如果 end 是 None，使用当前日期）
         # 在多日模拟中，end 就是当天的日期，应该使用 end 来记录净值

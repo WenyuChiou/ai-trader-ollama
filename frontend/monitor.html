@@ -2499,46 +2499,46 @@
                 return;
             }
             
-            // 检查是否有进行中的操作
+            // Check for ongoing operations
             const conflicts = [];
             if (isTradingExecuting) {
-                conflicts.push('交易正在执行中');
+                conflicts.push('Trading cycle is executing');
             }
             if (typeof smartAutoTradeBusy !== 'undefined' && smartAutoTradeBusy) {
-                conflicts.push('自动交易正在运行中');
+                conflicts.push('Auto-trade is running');
             }
             
-            // 检查按钮状态
+            // Check button status
             const tradeBtn = document.getElementById('startTradeBtn');
             if (tradeBtn && (tradeBtn.textContent.includes('Trading...') || tradeBtn.textContent.includes('Planning...'))) {
-                conflicts.push('交易/计划正在进行中');
+                conflicts.push('Trading/Planning is in progress');
             }
             
-            // 检查自动交易定时器
+            // Check auto-trade timer
             if (tradeCheckTimer) {
-                conflicts.push('自动交易定时器正在运行');
+                conflicts.push('Auto-trade timer is running');
             }
             
-            // 如果有冲突，提示用户
+            // If conflicts exist, warn user
             if (conflicts.length > 0) {
-                const conflictMsg = `⚠️ 检测到进行中的操作：\n\n` +
+                const conflictMsg = `⚠️ Ongoing operations detected:\n\n` +
                                   conflicts.map(c => `• ${c}`).join('\n') +
-                                  `\n\n初始化会中断这些操作并清除所有数据。\n\n` +
-                                  `选择操作：\n` +
-                                  `1. 取消 - 等待操作完成后再初始化\n` +
-                                  `2. 强制初始化 - 立即中断并初始化（不推荐）`;
+                                  `\n\nInitialization will interrupt these operations and clear all data.\n\n` +
+                                  `Select action:\n` +
+                                  `1. Cancel - Wait for operations to complete before initializing\n` +
+                                  `2. Force initialization - Interrupt immediately and initialize (not recommended)`;
                 
-                const userChoice = confirm(conflictMsg + '\n\n点击"确定"强制初始化，点击"取消"中止。');
+                const userChoice = confirm(conflictMsg + '\n\nClick "OK" to force initialization, "Cancel" to abort.');
                 if (!userChoice) {
-                    alert('❌ 初始化已取消。请等待当前操作完成后再试。');
+                    alert('❌ Initialization cancelled. Please wait for current operations to complete and try again.');
                     return;
                 }
                 
-                // 用户选择强制初始化，显示额外警告
-                const forceConfirm = confirm(`⚠️ 强制初始化警告\n\n` +
-                                            `这将立即中断所有进行中的操作并清除所有数据。\n\n` +
-                                            `此操作无法撤销！\n\n` +
-                                            `确定要继续吗？`);
+                // User chose force initialization, show additional warning
+                const forceConfirm = confirm(`⚠️ Force Initialization Warning\n\n` +
+                                            `This will immediately interrupt all ongoing operations and clear all data.\n\n` +
+                                            `This action CANNOT be undone!\n\n` +
+                                            `Are you sure you want to continue?`);
                 if (!forceConfirm) {
                     return;
                 }

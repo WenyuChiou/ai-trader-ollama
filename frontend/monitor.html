@@ -3964,7 +3964,7 @@
                                     <span class="conversation-date">${date ? new Date(date).toLocaleString() : ''}</span>
                                 </div>
                                 ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
-                                <div class="conversation-content">${escapeHtml(content)}</div>
+                                <div class="conversation-content" style="white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${escapeHtml(content)}</div>
                             </div>
                         `;
                     }).join('')}

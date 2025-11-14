@@ -176,11 +176,12 @@ def is_market_open(check_datetime: Optional[datetime] = None) -> bool:
     # 检查时间（使用美东时间）
     from datetime import time as dt_time
     market_open = dt_time(9, 30)  # 9:30 AM ET
-    market_close = dt_time(16, 0)  # 4:00 PM ET
+    market_close = dt_time(16, 0)  # 4:00 PM ET (市场在4:00 PM关闭，不包括4:00 PM)
     current_time = et_time.time()
     
     # DEBUG: 打印时区信息（仅在市场关闭时打印，帮助调试时区问题）
-    is_open = market_open <= current_time <= market_close
+    # CRITICAL FIX: 市场在4:00 PM关闭，所以应该是 < 而不是 <=
+    is_open = market_open <= current_time < market_close
     if not is_open:
         print(f"[MARKET STATUS] Market is CLOSED")
         print(f"  - Local time: {check_datetime.strftime('%Y-%m-%d %H:%M:%S %Z') if check_datetime.tzinfo else check_datetime.strftime('%Y-%m-%d %H:%M:%S')}")

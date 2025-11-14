@@ -255,67 +255,30 @@ def run_trader(
     - 市场关闭时（is_market_open=False）：只能进行评估和分析，不能生成任何订单（buy_orders和sell_orders都应该是空的）
     - 系统采用市价交易，所有订单应该立即成交，不应该有PENDING状态
     """
-    vix = (mview.get("vix") or {}) if isinstance(mview, dict) else {}
-    vix_risk = float(vix.get("risk_score", 4.0))
-    # 更激进的阈值：降低 VIX 风险阈值，提高交易频率
-    stance = "cautious" if vix_risk > 7.5 else mview.get("market_sentiment", "neutral")  # 从6.0提高到7.5
-
-    recs = mview.get("recommended_stocks", []) if isinstance(mview, dict) else []
-    final_stance = (convo or {}).get("final_stance", "neutral")
-    
-    # 更激进：除了 Market Analyst 推荐的股票，还考虑所有 signal_score > 3.0 的股票（新范围 0-10）
-    stocks = mview.get("stocks", {}) if isinstance(mview, dict) else {}
-    all_symbols = list(stocks.keys())
-    
-    # 从所有股票中筛选出信号良好的股票（不依赖 Market Analyst 的推荐）
-    # signal_score 范围现在是 0-10，使用 3.0 作为阈值（相当于旧范围的 1.0）
-    additional_buys = []
-    for symbol, stock_data in stocks.items():
-        if isinstance(stock_data, dict):
+    # CRITICAL: 首先提取基本变量（用于市场关闭时的分析说明）
+    # 这些变量需要在市场状态检查之前定义，以便在市场关闭时也能使用
+    final_stance = "NEUTRAL"
+    vix_risk = 4.0
+    if convo and isinstance(convo, dict):
+        stance = convo.get("stance", "")
+        if stance and isinstance(stance, str):
+            final_stance = stance.upper()
+        vix_risk_val = convo.get("vix_risk")
+        if vix_risk_val is not None:
             try:
-                signal_score = float(stock_data.get("signal_score", 0))
-                # signal_score 范围现在是 0-10，使用 3.0 作为阈值（相当于原来的 1.0）
-                if signal_score > 3.0 and symbol not in recs:
-                    additional_buys.append(symbol)
-            except Exception:
+                vix_risk = float(vix_risk_val)
+            except (ValueError, TypeError):
                 pass
-    
-    # 合并推荐列表
-    if additional_buys:
-        recs = list(set(recs + additional_buys))  # 去重
-    
-    # 如果仍然没有推荐股票，使用 signal_score 最高的前10只股票（确保总是有一些交易机会）
-    # 即使 signal_score 很低，也至少选择一些股票（相对排名）
-    if not recs and stocks:
-        # 按 signal_score 排序，选择前10只（即使 signal_score 很低）
-        sorted_stocks = sorted(
-            stocks.items(),
-            key=lambda x: float(x[1].get("signal_score", 0)) if isinstance(x[1], dict) else 0,
-            reverse=True
-        )
-        # 至少选择前10只，即使 signal_score 为负或很低
-        recs = [symbol for symbol, _ in sorted_stocks[:10] if symbol in last_prices and last_prices.get(symbol, 0) > 0]
-        if recs:
-            print(f"[TRADER] No recommended stocks, using top {len(recs)} by signal_score: {recs[:5]}...")
-        else:
-            # 如果仍然没有，使用所有有价格的股票的前10只
-            available_stocks = [(s, d) for s, d in sorted_stocks if s in last_prices and last_prices.get(s, 0) > 0]
-            recs = [symbol for symbol, _ in available_stocks[:10]]
-            if recs:
-                print(f"[TRADER] Using top {len(recs)} available stocks (all have low signal_score): {recs[:5]}...")
-    
-    # 默认组合净值（如果没有提供）
-    if portfolio_value is None:
-        portfolio_value = 10000.0  # 默认初始净值
-    
-    # 默认当前持仓（如果没有提供）
-    if current_positions is None:
-        current_positions = {}
     
     # CRITICAL: 市场关闭时，不生成任何订单（只能评估和分析）
     # 系统采用市价交易，市场关闭时不应该有订单
     # CRITICAL FIX: 将市场状态检查移到最前面，在任何订单生成逻辑之前
     # 确保即使后续代码有bug，也不会在市场关闭时生成订单
+    # 这是第一道防线，必须最先执行
+    print(f"[TRADER] ===== MARKET STATUS CHECK (FIRST LINE OF DEFENSE) =====")
+    print(f"[TRADER] is_market_open parameter: {is_market_open} (type: {type(is_market_open)})")
+    print(f"[TRADER] is_market_open == False: {is_market_open == False}")
+    print(f"[TRADER] not is_market_open: {not is_market_open}")
     if not is_market_open:
         print(f"[TRADER] Market is CLOSED. Running analysis only - no trading orders will be generated.")
         print(f"[TRADER] This is expected behavior: market orders can only execute during trading hours (9:30 AM - 4:00 PM ET).")
@@ -407,6 +370,17 @@ def run_trader(
         "warnings": [],
     }
 
+    # 提取推荐股票列表（recs）
+    recs = []
+    if mview and isinstance(mview, dict):
+        recs = mview.get("recommended_stocks", [])
+        if not recs:
+            recs = mview.get("recs", [])
+    if not recs and convo and isinstance(convo, dict):
+        recs = convo.get("recommended_stocks", [])
+        if not recs:
+            recs = convo.get("recs", [])
+    
     # 反向ETF列表（用于做空市场）
     INVERSE_ETFS = ["SQQQ", "SPXU", "SH", "PSQ", "SDS", "DOG", "SOXS"]
     LEVERAGED_ETFS = ["TQQQ", "SPXL", "UPRO"]
@@ -467,6 +441,14 @@ def run_trader(
     # 包括：普通股票、杠杆ETF（做多）、反向ETF（做空）
     # CRITICAL: 即使 recs 为空或很少，在 neutral stance 时也应该生成一些订单
     # 确保至少有一些交易决策，避免完全 HOLD
+    
+    # 提取 stocks 数据（用于 fallback）
+    stocks = {}
+    if mview and isinstance(mview, dict):
+        stocks = mview.get("stocks", {})
+    if not stocks and market and isinstance(market, dict):
+        stocks = market.get("stocks", {})
+    
     if not recs and stocks and portfolio_value > 0:
         # Fallback: 如果仍然没有推荐股票，使用所有有价格的股票的前10只
         available_stocks = [

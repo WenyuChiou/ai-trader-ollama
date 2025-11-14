@@ -336,6 +336,67 @@ def run_trader(
     buy_orders: List[Dict[str, Any]] = []
     sell_orders: List[Dict[str, Any]] = []
     
+    # CRITICAL: 市场关闭时，不生成任何订单（只能评估和分析）
+    # 系统采用市价交易，市场关闭时不应该有订单
+    if not is_market_open:
+        print(f"[TRADER] Market is CLOSED. Running analysis only - no trading orders will be generated.")
+        print(f"[TRADER] This is expected behavior: market orders can only execute during trading hours (9:30 AM - 4:00 PM ET).")
+        # 继续执行分析逻辑，但不生成订单
+        # 仍然可以生成rationale和summary，说明分析结果
+        
+        # 提取coordinator summary（用于分析说明）
+        coordinator_summary = ""
+        if convo and isinstance(convo, dict):
+            coordinator = convo.get("coordinator_summary", {})
+            if isinstance(coordinator, dict):
+                summary_text = coordinator.get("summary", "")
+                if summary_text and len(summary_text.strip()) > 20:
+                    coordinator_summary = summary_text
+            if not coordinator_summary:
+                discussion = convo.get("discussion", {})
+                if isinstance(discussion, dict):
+                    coordinator = discussion.get("coordinator_summary", {})
+                    if isinstance(coordinator, dict):
+                        summary_text = coordinator.get("summary", "")
+                        if summary_text and len(summary_text.strip()) > 20:
+                            coordinator_summary = summary_text
+        
+        # 生成分析rationale（不包含交易订单）
+        rationale = f"Market is closed. Analysis completed but no trading orders generated (market orders only execute during trading hours: 9:30 AM - 4:00 PM ET). Market stance: {final_stance}, VIX risk: {vix_risk:.1f}"
+        if coordinator_summary:
+            if len(coordinator_summary) > 5000:
+                rationale += f" Analysis: {coordinator_summary[:5000]}... (truncated)"
+            else:
+                rationale += f" Analysis: {coordinator_summary}"
+        
+        # 生成分析summary（不包含交易订单）
+        trader_summary = f"Market is currently closed. I've completed market analysis and risk assessment. "
+        trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
+        trader_summary += "No trading orders can be generated when the market is closed, as we use market orders that execute immediately during trading hours only. "
+        trader_summary += "Analysis and evaluation can continue 24/7, but actual trading only occurs during market hours (9:30 AM - 4:00 PM ET, Monday-Friday, excluding holidays)."
+        if coordinator_summary:
+            if len(coordinator_summary) > 5000:
+                trader_summary += f" Key insights: {coordinator_summary[:5000]}... (truncated)"
+            else:
+                trader_summary += f" Key insights: {coordinator_summary}"
+        
+        # 返回分析结果（不包含任何订单）
+        return {
+            "action": "HOLD",
+            "targets": [],
+            "buy_orders": [],  # 市场关闭时，不生成任何买入订单
+            "sell_orders": [],  # 市场关闭时，不生成任何卖出订单
+            "rationale": rationale,
+            "summary": trader_summary,
+            "stance": final_stance,
+            "vix_risk": vix_risk,
+            "risk_compliance": {
+                "position_limits_ok": True,
+                "diversification_ok": True,
+                "warnings": [],
+            },
+        }
+    
     # 风险合规检查
     risk_compliance = {
         "position_limits_ok": True,

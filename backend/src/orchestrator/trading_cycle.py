@@ -991,6 +991,9 @@ def execute_daily_trade(
     
     print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, required reserve: ${required_cash_reserve:.2f}, available for trading: ${available_cash_for_trading:.2f}")
     
+    # CRITICAL: 传递市场状态给 Trader Agent，让它知道是否可以交易
+    # 市场关闭时：可以评估和分析，但不能生成订单
+    # 市场开放时：可以评估、分析和交易
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -1001,6 +1004,7 @@ def execute_daily_trade(
         portfolio_value=portfolio_value,
         position_config=position_config,  # 传入仓位配置
         available_cash=available_cash_for_trading,  # 传入可用现金
+        is_market_open=is_market_open_for_simulation,  # CRITICAL: 传递市场状态，让agent知道是否可以交易
     )
     
     # 注意：Trader Agent 的 conversation entry 将在订单创建后写入，以便反映实际创建的订单数量

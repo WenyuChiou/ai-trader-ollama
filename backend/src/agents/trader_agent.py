@@ -228,6 +228,7 @@ def run_trader(
     portfolio_value: Optional[float] = None,
     position_config: Optional[Dict[str, float]] = None,  # 新增：仓位配置参数
     available_cash: Optional[float] = None,  # 新增：可用现金（如果提供，用于限制买入）
+    is_market_open: bool = True,  # CRITICAL: 市场状态（True=市场开放可以交易，False=市场关闭只能评估）
 ) -> Dict[str, Any]:
     """
     Trader Agent: 决定是否买卖（包含买卖那些公司、部位、买进价格、卖出价格等）
@@ -240,6 +241,7 @@ def run_trader(
     - last_prices: 最新价格
     - current_positions: 当前持仓（可选）
     - portfolio_value: 当前组合净值（可选）
+    - is_market_open: 市场状态（True=市场开放可以交易，False=市场关闭只能评估）
     
     输出:
     - action: BUY / SELL / HOLD
@@ -247,6 +249,11 @@ def run_trader(
     - sell_orders: 卖出订单列表（包含 symbol, sell_price, quantity, total_proceeds）
     - rationale: 决策理由
     - risk_compliance: 风险合规检查
+    
+    重要说明：
+    - 市场开放时（is_market_open=True）：可以生成买卖订单并执行交易
+    - 市场关闭时（is_market_open=False）：只能进行评估和分析，不能生成任何订单（buy_orders和sell_orders都应该是空的）
+    - 系统采用市价交易，所有订单应该立即成交，不应该有PENDING状态
     """
     vix = (mview.get("vix") or {}) if isinstance(mview, dict) else {}
     vix_risk = float(vix.get("risk_score", 4.0))
@@ -307,6 +314,7 @@ def run_trader(
     
     # CRITICAL: 打印接收到的仓位和现金信息（用于调试）
     print(f"[TRADER] Received parameters:")
+    print(f"  - is_market_open: {is_market_open} ({'Market OPEN - can trade' if is_market_open else 'Market CLOSED - analysis only, no trading'})")
     print(f"  - portfolio_value: ${portfolio_value:,.2f}")
     print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: None (unlimited)")
     print(f"  - current_positions count: {len(current_positions)}")

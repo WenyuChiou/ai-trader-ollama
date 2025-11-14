@@ -994,6 +994,7 @@ def execute_daily_trade(
     # CRITICAL: 传递市场状态给 Trader Agent，让它知道是否可以交易
     # 市场关闭时：可以评估和分析，但不能生成订单
     # 市场开放时：可以评估、分析和交易
+    print(f"[TRADING CYCLE] Calling Trader Agent with is_market_open={is_market_open_for_simulation} (is_market_open={is_market_open})")
     decision = run_trader(
         market=market_view,
         mview=enriched_market,

@@ -1025,6 +1025,14 @@ def execute_daily_trade(
     if not is_market_open_for_simulation and (buy_orders_count > 0 or sell_orders_count > 0):
         print(f"[TRADING CYCLE] ⚠️ WARNING: Market is closed but Trader Agent generated {buy_orders_count} buy and {sell_orders_count} sell orders!")
         print(f"[TRADING CYCLE] This should not happen - Trader Agent should return empty orders when market is closed.")
+        # CRITICAL FIX: 如果市场关闭但Trader Agent仍然生成了订单，强制清空订单列表
+        print(f"[TRADING CYCLE] ⚠️ FORCING: Clearing orders because market is closed.")
+        decision["buy_orders"] = []
+        decision["sell_orders"] = []
+        decision["targets"] = []
+        decision["action"] = "HOLD"
+        buy_orders_count = 0
+        sell_orders_count = 0
     if buy_orders_count == 0 and sell_orders_count == 0:
         print(f"[TRADING CYCLE] ⚠️  Warning: No trading decisions generated. Decision keys: {list(decision.keys())}")
         if "rationale" in decision:

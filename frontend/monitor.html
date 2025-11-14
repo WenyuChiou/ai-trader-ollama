@@ -3198,8 +3198,12 @@
         // Fetch agent conversations
         async function fetchConversations(limit = 100, options = {}) {
             try {
+                const apiBase = getApiBase();
+                const url = `${apiBase}/api/agents/conversations?limit=${limit}&include_demo=false`;
+                console.log('[fetchConversations] Requesting:', url);
+                
                 // CRITICAL FIX: Increase timeout for conversations endpoint (may process large files)
-                const response = await fetch(`${getApiBase()}/api/agents/conversations?limit=${limit}&include_demo=false`, {
+                const response = await fetch(url, {
                     method: 'GET',
                     mode: 'cors',  // 明确指定 CORS 模式
                     headers: {
@@ -3209,10 +3213,12 @@
                 });
 
                 if (!response.ok) {
+                    console.warn('[fetchConversations] Response not OK:', response.status, response.statusText);
                     return { conversations: [], total: 0, has_more: false };
                 }
 
                 const data = await response.json();
+                console.log('[fetchConversations] Received:', data.count || 0, 'conversations, total:', data.total || 0);
                 if (data.ok) {
                     return {
                         conversations: data.conversations || [],
@@ -3222,7 +3228,8 @@
                 }
                 return { conversations: [], total: 0, has_more: false };
             } catch (err) {
-                // Silently handle errors to avoid console noise
+                // Log errors for debugging
+                console.error('[fetchConversations] Error:', err.message, 'URL:', `${getApiBase()}/api/agents/conversations?limit=${limit}&include_demo=false`);
                 if (err.name !== 'AbortError') {
                     // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));

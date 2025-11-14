@@ -153,7 +153,21 @@ class OrderManager:
             }
         
         # 如果目标日期不是今天，直接使用历史数据（用于多日模拟）
+        # CRITICAL FIX: 如果目标日期是过去的日期（不是今天也不是未来），且市场已收盘，
+        # 不应该在收盘后检查这些订单，除非是明确的历史回测场景
         if not is_today:
+            # 如果目标日期是过去的日期（昨天或更早），且市场已收盘，不应该检查订单
+            # 这些订单应该在目标日期的收盘后就已经被处理或拒绝了
+            if target_dt < date.today() and not is_market_open_now:
+                print(f"[Order Fill] ⏳ {symbol} {action} order for past date {target_date} (today: {date.today()}), market closed. Order should have been settled on {target_date}. Skipping check.")
+                return {
+                    "filled": False,
+                    "fill_price": None,
+                    "fill_reason": f"Order date {target_date} is in the past and market is closed. Order should have been settled on order date.",
+                    "daily_high": None,
+                    "daily_low": None,
+                    "current_price": None,
+                }
             # 在多日模拟中，使用历史数据检查订单
             # 跳过实时价格检查，直接进入历史数据检查
             pass

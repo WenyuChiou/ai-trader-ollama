@@ -2596,11 +2596,28 @@
                 
                 // 执行初始化
                 console.log('[Init] Calling API to initialize system...');
-                const r = await fetch(`${getApiBase()}/api/system/init`, { method: 'POST' });
+                // CRITICAL: Warn user before initializing (this will DELETE all data)
+                const confirmed = confirm(
+                    'WARNING: This will DELETE ALL trading data, orders, and portfolio positions!\n\n' +
+                    'This action cannot be undone.\n\n' +
+                    'A backup of portfolio_state.json will be created automatically if you have positions.\n\n' +
+                    'Are you sure you want to continue?'
+                );
+                if (!confirmed) {
+                    console.log('[System Init] Cancelled by user');
+                    return;
+                }
+                
+                const r = await fetch(`${getApiBase()}/api/system/init?force=true`, { method: 'POST' });
                 const data = await r.json();
                 
                 if (r.ok && data.ok) {
-                    alert('✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.');
+                    let message = '✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.';
+                    if (data.backup_created && data.backup_filename) {
+                        message += `\n\n⚠️ Backup created: ${data.backup_filename}`;
+                        message += '\n\nYou can restore your portfolio from the backup file if needed.';
+                    }
+                    alert(message);
                     
                     // 刷新数据
                     await refreshData(true);

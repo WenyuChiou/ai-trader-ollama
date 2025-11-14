@@ -6805,9 +6805,8 @@
                 const status = t.status || 'UNKNOWN';
                 const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
                 
-                // order_date已移除，使用placed_at的日期部分
+                // order_date已移除，使用placed_at的日期部分（仅用于判断明日订单，不显示）
                 const placedAt = t.placed_at || t.filled_at || '';
-                const orderDateDisplay = placedAt ? new Date(placedAt).toLocaleDateString() : '-';
                 
                 // 已实现损益（仅SELL订单且已成交）
                 let realizedPnlDisplay = '-';
@@ -6888,7 +6887,6 @@
                 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 const isTomorrowOrder = orderDate && orderDate >= tomorrow;
                 const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">TOMORROW</span>' : '';
-                const orderDateDisplay = placedAt ? new Date(placedAt).toLocaleDateString() : '-';
                 let realizedPnlDisplay = '-';
                 if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
                     const pnl = Number(t.realized_pnl);
@@ -6898,7 +6896,7 @@
                     const pnlPctStr = pnlPct !== null ? ` (${pnlSign}${pnlPct.toFixed(2)}%)` : '';
                     realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
                 }
-                // 将明日订单标记添加到Symbol列
+                // 将明日订单标记添加到Symbol列（不包含日期）
                 const symbolDisplay = `${t.symbol || '-'}${tomorrowBadge}`;
                 
                 return `
@@ -6976,9 +6974,8 @@
                 const priceRangeDisplay = priceRange ? `$${Number(priceRange.min || 0).toFixed(2)} - $${Number(priceRange.max || 0).toFixed(2)}` : '-';
                 const status = t.status || 'UNKNOWN';
                 const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
-                // order_date已移除，使用placed_at的日期部分
+                // order_date已移除，使用placed_at的日期部分（仅用于判断明日订单，不显示）
                 const placedAt = t.placed_at || t.filled_at || '';
-                const orderDateDisplay = placedAt ? new Date(placedAt).toLocaleDateString() : '-';
                 let realizedPnlDisplay = '-';
                 if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
                     const pnl = Number(t.realized_pnl);
@@ -7184,7 +7181,6 @@
                 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 const isTomorrowOrder = orderDate && orderDate >= tomorrow;
                 const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">TOMORROW</span>' : '';
-                const orderDateDisplay = placedAt ? new Date(placedAt).toLocaleDateString() : '-';
                 
                 // 已实现损益（仅SELL订单且已成交）
                 let realizedPnlDisplay = '-';

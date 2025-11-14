@@ -312,32 +312,10 @@ def run_trader(
     if current_positions is None:
         current_positions = {}
     
-    # CRITICAL: 打印接收到的仓位和现金信息（用于调试）
-    print(f"[TRADER] Received parameters:")
-    print(f"  - is_market_open: {is_market_open} ({'Market OPEN - can trade' if is_market_open else 'Market CLOSED - analysis only, no trading'})")
-    print(f"  - portfolio_value: ${portfolio_value:,.2f}")
-    print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: None (unlimited)")
-    print(f"  - current_positions count: {len(current_positions)}")
-    if current_positions:
-        total_position_value = sum(
-            pos_info.get("market_value", 0.0) if isinstance(pos_info, dict) else 0.0
-            for pos_info in current_positions.values()
-        )
-        print(f"  - Total position value: ${total_position_value:,.2f}")
-        for sym, pos_info in list(current_positions.items())[:5]:  # 只显示前5个
-            if isinstance(pos_info, dict):
-                qty = pos_info.get("quantity", 0)
-                market_value = pos_info.get("market_value", 0.0)
-                position_pct = pos_info.get("position_pct", 0.0)
-                print(f"    {sym}: {qty} shares, value=${market_value:.2f} ({position_pct:.1f}%)")
-    else:
-        print(f"  - No current positions")
-    
-    buy_orders: List[Dict[str, Any]] = []
-    sell_orders: List[Dict[str, Any]] = []
-    
     # CRITICAL: 市场关闭时，不生成任何订单（只能评估和分析）
     # 系统采用市价交易，市场关闭时不应该有订单
+    # CRITICAL FIX: 将市场状态检查移到最前面，在任何订单生成逻辑之前
+    # 确保即使后续代码有bug，也不会在市场关闭时生成订单
     if not is_market_open:
         print(f"[TRADER] Market is CLOSED. Running analysis only - no trading orders will be generated.")
         print(f"[TRADER] This is expected behavior: market orders can only execute during trading hours (9:30 AM - 4:00 PM ET).")
@@ -396,6 +374,31 @@ def run_trader(
                 "warnings": [],
             },
         }
+    
+    # CRITICAL: 如果执行到这里，说明 is_market_open=True（市场开放）
+    # 打印接收到的仓位和现金信息（用于调试）
+    print(f"[TRADER] Received parameters:")
+    print(f"  - is_market_open: {is_market_open} (Market OPEN - can trade)")
+    print(f"  - portfolio_value: ${portfolio_value:,.2f}")
+    print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: None (unlimited)")
+    print(f"  - current_positions count: {len(current_positions)}")
+    if current_positions:
+        total_position_value = sum(
+            pos_info.get("market_value", 0.0) if isinstance(pos_info, dict) else 0.0
+            for pos_info in current_positions.values()
+        )
+        print(f"  - Total position value: ${total_position_value:,.2f}")
+        for sym, pos_info in list(current_positions.items())[:5]:  # 只显示前5个
+            if isinstance(pos_info, dict):
+                qty = pos_info.get("quantity", 0)
+                market_value = pos_info.get("market_value", 0.0)
+                position_pct = pos_info.get("position_pct", 0.0)
+                print(f"    {sym}: {qty} shares, value=${market_value:.2f} ({position_pct:.1f}%)")
+    else:
+        print(f"  - No current positions")
+    
+    buy_orders: List[Dict[str, Any]] = []
+    sell_orders: List[Dict[str, Any]] = []
     
     # 风险合规检查
     risk_compliance = {

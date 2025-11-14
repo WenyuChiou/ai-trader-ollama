@@ -1,0 +1,45 @@
+
+@app.post("/api/data/upload")
+async def upload_data(data: dict):
+    """Upload data to Railway backend"""
+    try:
+        import json
+        from pathlib import Path
+        
+        logs_dir = Path("data/logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Upload conversations
+        if "conversations" in data:
+            convo_file = logs_dir / "discussion_actions.jsonl"
+            with convo_file.open("a", encoding="utf-8") as f:
+                for entry in data["conversations"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        # Upload trades
+        if "trades" in data:
+            trades_file = logs_dir / "trades.jsonl"
+            with trades_file.open("a", encoding="utf-8") as f:
+                for entry in data["trades"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        # Upload filled orders
+        if "filled_orders" in data:
+            filled_file = logs_dir / "filled_orders.jsonl"
+            with filled_file.open("a", encoding="utf-8") as f:
+                for entry in data["filled_orders"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        # Upload equity history
+        if "equity_history" in data:
+            equity_file = logs_dir / "equity_history.jsonl"
+            with equity_file.open("a", encoding="utf-8") as f:
+                for entry in data["equity_history"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        
+        return {"ok": True, "message": "Data uploaded successfully"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )

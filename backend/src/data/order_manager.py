@@ -189,7 +189,7 @@ class OrderManager:
                         # 成交价应该使用实际市价（current_price），而不是限价
                         if current_price <= limit_price:
                             fill_price = current_price  # 使用实际市价作为成交价
-                            print(f"[Order Fill] ✅ {symbol} BUY order FILLED: current ${current_price:.2f} <= limit {limit_price:.2f}, fill price: ${fill_price:.2f}")
+                            print(f"[Order Fill] {symbol} BUY order FILLED: current ${current_price:.2f} <= limit {limit_price:.2f}, fill price: ${fill_price:.2f}")
                             return {
                                 "filled": True,
                                 "fill_price": fill_price,
@@ -199,7 +199,7 @@ class OrderManager:
                                 "current_price": current_price,
                             }
                         else:
-                            print(f"[Order Fill] ⏳ {symbol} BUY order PENDING: current ${current_price:.2f} > limit {limit_price:.2f}")
+                            print(f"[Order Fill] {symbol} BUY order PENDING: current ${current_price:.2f} > limit {limit_price:.2f}")
                             return {
                                 "filled": False,
                                 "fill_price": None,
@@ -214,7 +214,7 @@ class OrderManager:
                         # 成交价应该使用实际市价（current_price），而不是限价
                         if current_price >= limit_price:
                             fill_price = current_price  # 使用实际市价作为成交价
-                            print(f"[Order Fill] ✅ {symbol} SELL order FILLED: current ${current_price:.2f} >= limit {limit_price:.2f}, fill price: ${fill_price:.2f}")
+                            print(f"[Order Fill] {symbol} SELL order FILLED: current ${current_price:.2f} >= limit {limit_price:.2f}, fill price: ${fill_price:.2f}")
                             return {
                                 "filled": True,
                                 "fill_price": fill_price,
@@ -224,7 +224,7 @@ class OrderManager:
                                 "current_price": current_price,
                             }
                         else:
-                            print(f"[Order Fill] ⏳ {symbol} SELL order PENDING: current ${current_price:.2f} < limit {limit_price:.2f}")
+                            print(f"[Order Fill] {symbol} SELL order PENDING: current ${current_price:.2f} < limit {limit_price:.2f}")
                             return {
                                 "filled": False,
                                 "fill_price": None,
@@ -235,7 +235,7 @@ class OrderManager:
                             }
             except Exception as e:
                 # 如果实时价格获取失败，回退到历史数据检查
-                print(f"[Order Fill] ❌ Failed to get real-time price for {symbol}, falling back to historical data: {e}")
+                print(f"[Order Fill] Failed to get real-time price for {symbol}, falling back to historical data: {e}")
         
         # 如果目标日期不是今天，直接使用历史数据（已在上面处理）
         # 如果目标日期是今天但市场未开盘，返回未成交
@@ -403,7 +403,7 @@ class OrderManager:
                     }
                 else:
                     # 未成交：当天的 Low 高于限价
-                    print(f"[Order Fill] ⏳ {symbol} BUY order PENDING: daily low ${daily_low:.2f} > limit {limit_price:.2f}")
+                    print(f"[Order Fill] {symbol} BUY order PENDING: daily low ${daily_low:.2f} > limit {limit_price:.2f}")
                     return {
                         "filled": False,
                         "fill_price": None,

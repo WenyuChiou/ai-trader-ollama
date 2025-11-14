@@ -108,6 +108,7 @@ def upload_to_railway():
         filled_file = find_data_file("filled_orders.jsonl")
         pending_file = find_data_file("pending_orders.jsonl")
         equity_file = find_data_file("equity_history.jsonl")
+        portfolio_file = find_data_file("portfolio_state.json")
         
         conversations = read_jsonl_file(convo_file) if convo_file else []
         trades = read_jsonl_file(trades_file) if trades_file else []
@@ -115,11 +116,21 @@ def upload_to_railway():
         pending_orders = read_jsonl_file(pending_file) if pending_file else []
         equity_history = read_jsonl_file(equity_file) if equity_file else []
         
+        # Read portfolio_state.json (not JSONL, so read differently)
+        portfolio_state = None
+        if portfolio_file and portfolio_file.exists():
+            try:
+                with open(portfolio_file, 'r', encoding='utf-8') as f:
+                    portfolio_state = json.load(f)
+            except Exception as e:
+                print(f"[WARNING] Failed to read portfolio_state.json: {e}")
+        
         print(f"   Found {len(conversations)} conversations")
         print(f"   Found {len(trades)} trades")
         print(f"   Found {len(filled_orders)} filled orders")
         print(f"   Found {len(pending_orders)} pending orders")
         print(f"   Found {len(equity_history)} equity history records")
+        print(f"   Found portfolio_state.json: {portfolio_state is not None}")
         
         # Prepare data
         data_dict = {}
@@ -133,6 +144,8 @@ def upload_to_railway():
             data_dict["pending_orders"] = pending_orders
         if equity_history:
             data_dict["equity_history"] = equity_history
+        if portfolio_state:
+            data_dict["portfolio_state"] = portfolio_state
         
         if not data_dict:
             print("\n[WARNING] No new data to upload")

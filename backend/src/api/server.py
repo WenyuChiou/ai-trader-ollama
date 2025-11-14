@@ -518,131 +518,68 @@ async def execute_trade_direct():
         
         log_print(f"[TRADING CYCLE] Tool budget: {tool_budget}, Rounds: {rounds}")
         
-        # 非交易时段：检查是否已有下一个交易日的订单计划
+        # CRITICAL FIX: 市场收盘后，允许运行对话（AI分析），但不执行交易
+        # 交易时段和收盘后都执行对话，但只有交易时段才执行交易
+        # execute_daily_trade 内部会检查 is_market_open_for_simulation 来决定是否执行交易
+        
         if not is_market_open:
-            # 计算下一个交易日的日期（排除周末和节假日）
-            from src.utils.trading_days import get_next_trading_day
-            next_trading_day = get_next_trading_day(date.today(), days_ahead=1)
-            tomorrow_str = next_trading_day.isoformat()
-            
-            order_manager = OrderManager(root="data/logs")
-            existing_orders = order_manager.load_pending_orders(order_date=tomorrow_str)
-            
-            if existing_orders:
-                # 如果有 pending orders，视为已有规划，直接返回，不继续执行交易周期
-                log_print(f"[TRADING CYCLE] Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.")
-                response = JSONResponse(
-                    status_code=200,
-                    content={
-                        "ok": True,
-                        "message": f"Market closed. Already have {len(existing_orders)} pending orders for tomorrow ({tomorrow_str}). No new planning needed.",
-                        "result": {
-                            "placed_orders": existing_orders,  # 返回实际的 pending orders
-                            "conversations_count": 0,
-                            "is_planning": True,
-                            "order_date": tomorrow_str
-                        }
-                    },
-                    headers={
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "POST, OPTIONS",
-                        "Access-Control-Allow-Headers": "*",
-                    }
-                )
-                return response
-            
-            # 非交易时段：规划明日交易
-            log_print(f"[TRADING CYCLE] Market closed. Planning trades for tomorrow ({tomorrow_str})")
-            try:
-                result = execute_daily_trade(
-                    rounds=rounds,
-                    auto_tools=True,
-                    tool_budget=tool_budget,
-                    universe=universe
-                )
-                
-                response = JSONResponse(
-                    status_code=200,
-                    content={
-                        "ok": True,
-                        "message": f"Planning completed for tomorrow ({tomorrow_str})",
-                        "result": result
-                    },
-                    headers={
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "POST, OPTIONS",
-                        "Access-Control-Allow-Headers": "*",
-                    }
-                )
-                return response
-            except Exception as e:
-                # 安全处理错误信息，移除emoji字符以避免Windows cp950编码问题
-                import traceback
-                error_msg = str(e)
-                # 移除emoji字符（Unicode范围）
-                import re
-                error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)  # 移除emoji
-                error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)  # 移除扩展emoji
-                
-                # 打印详细错误信息到服务器日志
-                log_print(f"[TRADING CYCLE] Error: {error_msg}")
-                log_print(f"[TRADING CYCLE] Traceback: {traceback.format_exc()}")
-                
-                return JSONResponse(
-                    status_code=500,
-                    content={"ok": False, "error": error_msg},
-                    headers={
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "POST, OPTIONS",
-                        "Access-Control-Allow-Headers": "*",
-                    }
-                )
+            # 市场关闭：只运行对话和分析，不执行交易
+            log_print(f"[TRADING CYCLE] Market is closed. Running analysis only (no trading)...")
         else:
-            # 交易时段：正常执行交易
+            # 市场开放：运行对话并执行交易
             log_print(f"[TRADING CYCLE] Market is open. Executing trading cycle...")
-            try:
-                result = execute_daily_trade(
-                    rounds=rounds,
-                    auto_tools=True,
-                    tool_budget=tool_budget,
-                    universe=universe
-                )
-                
-                response = JSONResponse(
-                    status_code=200,
-                    content={
-                        "ok": True,
-                        "result": result
-                    },
-                    headers={
+        
+        # 执行交易周期（包括对话和分析，交易执行由内部逻辑控制）
+        try:
+            result = execute_daily_trade(
+                rounds=rounds,
+                auto_tools=True,
+                tool_budget=tool_budget,
+                universe=universe
+            )
+            
+            # 根据市场状态返回不同的消息
+            if not is_market_open:
+                message = "Analysis completed (market closed, no trades executed)"
+            else:
+                message = "Trading cycle completed"
+            
+            response = JSONResponse(
+                status_code=200,
+                content={
+                    "ok": True,
+                    "message": message,
+                    "result": result
+                },
+                headers={
                         "Access-Control-Allow-Origin": "*",
                         "Access-Control-Allow-Methods": "POST, OPTIONS",
                         "Access-Control-Allow-Headers": "*",
                     }
                 )
-                return response
-            except Exception as e:
-                # 安全处理错误信息，移除emoji字符以避免Windows cp950编码问题
-                import traceback
-                error_msg = str(e)
-                # 移除emoji字符（Unicode范围）
-                import re
-                error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)  # 移除emoji
-                error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)  # 移除扩展emoji
-                
-                # 打印详细错误信息到服务器日志
-                log_print(f"[TRADING CYCLE] Error: {error_msg}")
-                log_print(f"[TRADING CYCLE] Traceback: {traceback.format_exc()}")
-                
-                return JSONResponse(
-                    status_code=500,
-                    content={"ok": False, "error": error_msg},
-                    headers={
-                        "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "POST, OPTIONS",
-                        "Access-Control-Allow-Headers": "*",
-                    }
-                )
+            return response
+        except Exception as e:
+            # 安全处理错误信息，移除emoji字符以避免Windows cp950编码问题
+            import traceback
+            error_msg = str(e)
+            # 移除emoji字符（Unicode范围）
+            import re
+            error_msg = re.sub(r'[\U0001F300-\U0001F9FF]', '', error_msg)  # 移除emoji
+            error_msg = re.sub(r'[\U0001FA00-\U0001FAFF]', '', error_msg)  # 移除扩展emoji
+            
+            # 打印详细错误信息到服务器日志
+            log_print(f"[TRADING CYCLE] Error: {error_msg}")
+            log_print(f"[TRADING CYCLE] Traceback: {traceback.format_exc()}")
+            
+            return JSONResponse(
+                status_code=500,
+                content={"ok": False, "error": error_msg},
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
     finally:
         # 无论成功失败，都要释放执行标志
         _trading_cycle_executing = False
@@ -687,25 +624,132 @@ async def get_equity_history(
 
 @app.get("/api/portfolio/current")
 async def get_current_portfolio():
-    """Get current portfolio status (from equity history)"""
+    """Get current portfolio status (from portfolio_state.json, fallback to equity_history if empty)"""
     try:
+        import json
+        from pathlib import Path
+        from src.data.portfolio import Portfolio, Position
         from src.data.equity_tracker import EquityTracker
         
+        # CRITICAL FIX: Load from portfolio_state.json, but if it's empty, try to recover from equity_history
+        # Use absolute path to ensure correct file location
+        _backend_dir = Path(__file__).resolve().parent.parent.parent  # Go up from src/api/server.py to backend/
+        state_file = _backend_dir.parent / "data" / "logs" / "portfolio_state.json"
+        
+        # Try to load from portfolio_state.json first
+        state = None
+        if state_file.exists():
+            log_print(f"[PORTFOLIO/CURRENT] Loading from: {state_file}")
+            with state_file.open("r", encoding="utf-8") as f:
+                state = json.load(f)
+            
+            positions_count = len(state.get("positions", {}))
+            log_print(f"[PORTFOLIO/CURRENT] Loaded state: cash={state.get('cash')}, positions={positions_count}")
+            
+            # If portfolio_state.json has positions, use it
+            if positions_count > 0:
+                # Create Portfolio object
+                portfolio = Portfolio(
+                    cash=float(state.get("cash", 10000.0)),
+                    initial_value=float(state.get("initial_value", 10000.0)),
+                )
+                
+                # Restore positions
+                positions = state.get("positions", {})
+                restored_count = 0
+                for symbol, pos_info in positions.items():
+                    if isinstance(pos_info, dict):
+                        quantity = int(pos_info.get("quantity", 0))
+                        avg_cost = float(pos_info.get("avg_cost", 0.0))
+                        total_cost = float(pos_info.get("total_cost", 0.0))
+                        if total_cost <= 0:
+                            total_cost = avg_cost * quantity
+                        
+                        if quantity > 0:
+                            portfolio._positions[symbol] = Position(
+                                symbol=symbol,
+                                quantity=quantity,
+                                avg_cost=avg_cost,
+                                total_cost=total_cost,
+                            )
+                            restored_count += 1
+                
+                log_print(f"[PORTFOLIO/CURRENT] Restored {restored_count} positions from portfolio_state.json")
+                
+                # Calculate current values
+                portfolio_value = portfolio.value({})  # Use empty prices for now (just cost basis)
+                equity_value = portfolio.equity_value({})
+                total_value = portfolio.cash + equity_value
+                
+                # Build response
+                positions_detail = {}
+                for symbol, pos in portfolio._positions.items():
+                    positions_detail[symbol] = {
+                        "quantity": pos.quantity,
+                        "avg_cost": pos.avg_cost,
+                        "total_cost": pos.total_cost,
+                        "market_value": pos.quantity * pos.avg_cost,  # Use avg_cost as fallback
+                    }
+                
+                portfolio_data = {
+                    "date": date.today().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "cash": round(portfolio.cash, 2),
+                    "equity_value": round(equity_value, 2),
+                    "total_value": round(total_value, 2),
+                    "total_pnl": round(total_value - portfolio.initial_value, 2),
+                    "total_pnl_pct": round(((total_value - portfolio.initial_value) / portfolio.initial_value * 100) if portfolio.initial_value > 0 else 0, 2),
+                    "positions": positions_detail,
+                    "positions_count": len(portfolio._positions),
+                }
+                
+                return {
+                    "ok": True,
+                    "portfolio": portfolio_data,
+                }
+        
+        # FALLBACK: If portfolio_state.json is empty or missing, try to recover from equity_history
+        log_print(f"[PORTFOLIO/CURRENT] portfolio_state.json is empty or missing, trying to recover from equity_history")
         equity_tracker = EquityTracker(root="data/logs")
         latest = equity_tracker.get_latest_equity()
         
-        if latest:
+        if latest and latest.get("positions_detail"):
+            # Recover from equity_history
+            positions_detail = latest.get("positions_detail", {})
+            cash = latest.get("cash", 10000.0)
+            total_value = latest.get("total_value", 10000.0)
+            equity_value = latest.get("equity_value", 0.0)
+            initial_value = latest.get("initial_value", 10000.0)
+            
+            log_print(f"[PORTFOLIO/CURRENT] Recovered from equity_history: cash={cash}, positions={len(positions_detail)}")
+            
+            portfolio_data = {
+                "date": latest.get("date", date.today().isoformat()),
+                "timestamp": latest.get("timestamp", datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')),
+                "cash": round(cash, 2),
+                "equity_value": round(equity_value, 2),
+                "total_value": round(total_value, 2),
+                "total_pnl": round(total_value - initial_value, 2),
+                "total_pnl_pct": round(((total_value - initial_value) / initial_value * 100) if initial_value > 0 else 0, 2),
+                "positions": positions_detail,
+                "positions_count": len(positions_detail),
+            }
+            
             return {
                 "ok": True,
-                "portfolio": latest,
+                "portfolio": portfolio_data,
+                "warning": "Recovered from equity_history (portfolio_state.json was empty or missing)",
             }
-        else:
-            return {
-                "ok": True,
-                "portfolio": None,
-                "message": "No portfolio data available",
-            }
+        
+        # No data available
+        return {
+            "ok": True,
+            "portfolio": None,
+            "message": "No portfolio data available",
+        }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
             content={"ok": False, "error": str(e)}
@@ -1309,11 +1353,11 @@ async def get_real_time_portfolio():
                     from src.data.real_time_tracker import RealTimeTracker
                     tracker = RealTimeTracker(root="data/logs")
                     # CRITICAL FIX: 强制记录净值，确保前端能看到最新变化
-                    # 即使净值变化小于1%，也要记录（但限制频率：每15分钟最多记录一次）
+                    # 即使净值变化小于1%，也要记录（但限制频率：每30分钟最多记录一次）
                     snapshot = tracker.update_and_record(portfolio, force_record=False)
                     if snapshot:
                         snapshot["ok"] = True
-                        # 额外检查：如果距离上次记录超过15分钟，强制记录一次
+                        # 额外检查：如果距离上次记录超过30分钟，强制记录一次
                         from src.data.equity_tracker import EquityTracker
                         equity_tracker = EquityTracker(root="data/logs")
                         latest_equity = equity_tracker.get_latest_equity()
@@ -1332,13 +1376,13 @@ async def get_real_time_portfolio():
                                         latest_timestamp_utc = latest_timestamp.replace(tzinfo=timezone.utc)
                                         time_diff = now_utc - latest_timestamp_utc
                                     
-                                    # 如果距离上次记录超过15分钟，强制记录一次
-                                    if time_diff.total_seconds() >= 900:  # 15分钟 = 900秒
+                                    # 如果距离上次记录超过30分钟，强制记录一次
+                                    if time_diff.total_seconds() >= 1800:  # 30分钟 = 1800秒
                                         equity_tracker.record_daily_equity(
                                             date_str=date.today().isoformat(),
                                             portfolio_snapshot=snapshot,
                                         )
-                                        log_print(f"[REALTIME] Force recorded equity (15min interval): ${snapshot.get('total_value', 0):.2f}")
+                                        log_print(f"[REALTIME] Force recorded equity (30min interval): ${snapshot.get('total_value', 0):.2f}")
                                 except Exception as e:
                                     log_print(f"[REALTIME] Error checking last record time: {e}")
                         return {"ok": True, **snapshot}
@@ -2101,7 +2145,7 @@ async def system_init_options():
     )
 
 @app.post("/api/system/init")
-async def system_init():
+async def system_init(force: bool = False):
     """Reset logs and initialize portfolio to defaults, then seed minimal data.
     
     This will DELETE ALL:
@@ -2110,16 +2154,73 @@ async def system_init():
     - Pending orders
     - Portfolio records
     - Memory files
+    
+    CRITICAL: This will overwrite portfolio_state.json!
+    If portfolio has positions, a backup will be created automatically.
+    
+    Args:
+        force: If True, proceed without checking. If False, will create backup if portfolio has positions.
     """
     logs_dir = Path("data/logs")
     logs_dir.mkdir(parents=True, exist_ok=True)
+    
+    # CRITICAL FIX: Check if portfolio has positions before initializing
+    # If it does, create a backup automatically
+    backup_created = False
+    backup_filename = None
+    portfolio_file = logs_dir / "portfolio_state.json"
+    if portfolio_file.exists():
+        try:
+            with portfolio_file.open("r", encoding="utf-8") as f:
+                existing_state = json.load(f)
+            existing_positions = existing_state.get("positions", {})
+            existing_cash = existing_state.get("cash", 0.0)
+            existing_total_value = existing_state.get("total_value", 0.0)
+            
+            if len(existing_positions) > 0 or existing_cash != 10000.0 or existing_total_value != 10000.0:
+                # Portfolio has data - create backup
+                from datetime import datetime
+                backup_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                backup_file = logs_dir / f"portfolio_state_backup_{backup_timestamp}.json"
+                
+                # Copy current state to backup
+                import shutil
+                shutil.copy2(portfolio_file, backup_file)
+                backup_created = True
+                backup_filename = backup_file.name
+                
+                log_print(f"[SYSTEM INIT] WARNING: Portfolio has {len(existing_positions)} positions, cash=${existing_cash:.2f}, total_value=${existing_total_value:.2f}")
+                log_print(f"[SYSTEM INIT] Backup created: {backup_file.name}")
+        except Exception as e:
+            log_print(f"[SYSTEM INIT] Warning: Failed to check/create backup: {e}")
     
     # Clear ALL log files including memory files
     files_to_clear = [
         "equity_history.jsonl", "filled_orders.jsonl", "pending_orders.jsonl",
         "trades.jsonl", "real_time_snapshots.jsonl", "monitoring.jsonl",
-        "discussion_actions.jsonl", "last_trade_date.txt"
+        "discussion_actions.jsonl", "last_trade_date.txt",
+        "events.jsonl",  # Events log
+        "demo_prices.json",  # Demo prices cache
+        "workflow_summary.json",  # Workflow summary
     ]
+    
+    # Also clear any .jsonl files that might exist (comprehensive cleanup)
+    for jsonl_file in logs_dir.glob("*.jsonl"):
+        if jsonl_file.name not in ["discussion_actions.jsonl"]:  # Will be recreated
+            try:
+                jsonl_file.unlink()
+                log_print(f"[SYSTEM INIT] Cleared: {jsonl_file.name}")
+            except Exception:
+                pass
+    
+    # Clear any .json files except portfolio_state.json (will be recreated) and backups
+    for json_file in logs_dir.glob("*.json"):
+        if json_file.name not in ["portfolio_state.json"] and "backup" not in json_file.name.lower():
+            try:
+                json_file.unlink()
+                log_print(f"[SYSTEM INIT] Cleared: {json_file.name}")
+            except Exception:
+                pass
     
     # Clear memory files (daily and weekly)
     try:
@@ -2164,8 +2265,25 @@ async def system_init():
                     monthly_file.unlink()
                 except Exception:
                     pass
+        
+        # Clear memory index directory
+        memory_index_dir = memory_dir / "memory" / "index"
+        if memory_index_dir.exists():
+            for index_file in memory_index_dir.glob("*.json"):
+                try:
+                    index_file.unlink()
+                except Exception:
+                    pass
     except Exception:
         pass
+    
+    # Clear any backup files (optional - keep them for safety, but can clear old ones)
+    # Uncomment below if you want to clear old backup files during init
+    # for backup_file in logs_dir.glob("portfolio_state_backup_*.json"):
+    #     try:
+    #         backup_file.unlink()
+    #     except Exception:
+    #         pass
     
     # Clear equity history (EquityTracker uses equity_history.jsonl)
     # This is already in files_to_clear, but ensure it's cleared
@@ -2176,12 +2294,13 @@ async def system_init():
         except Exception:
             pass
     
-    # Clear key log files
+    # Clear key log files (already handled by glob above, but keep for explicit list)
     for name in files_to_clear:
         p = logs_dir / name
         if p.exists():
             try:
                 p.unlink()
+                log_print(f"[SYSTEM INIT] Cleared: {name}")
             except Exception:
                 pass
     
@@ -2213,6 +2332,17 @@ async def system_init():
     except Exception as e:
         log_print(f"[Init] Warning: Failed to record initial equity: {e}")
     
+    # Return result with backup information
+    response_data = {
+        "ok": True,
+        "message": "System initialized successfully",
+    }
+    
+    if backup_created:
+        response_data["backup_created"] = True
+        response_data["backup_filename"] = backup_filename
+        response_data["warning"] = f"Portfolio backup created: {backup_filename}"
+    
     # If市場開盤且今日尚未交易，自動執行一次交易循環
     result = None
     try:
@@ -2233,20 +2363,19 @@ async def system_init():
         log_print(f"[Init] Warning: Failed to execute trading cycle: {e}")
         result = None
     
+    # Update response_data with trading result if available
+    if result:
+        response_data["trading_result"] = result
+        response_data["message"] = "System initialized and trading cycle executed"
+        response_data["auto_ran"] = True
+    else:
+        response_data["auto_ran"] = False
+    
     # Return with CORS headers
     return JSONResponse(
         status_code=200,
-        content={
-            "ok": True, 
-            "snapshot": snapshot, 
-            "auto_ran": bool(result is not None), 
-            "result": result
-        },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
+        content=response_data,
+        headers=CORS_HEADERS.copy()
     )
 
 
@@ -2331,6 +2460,110 @@ async def upload_data_options():
         }
     )
 
+@app.get("/api/trades/realized-pnl")
+async def get_realized_pnl(
+    date: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 100
+):
+    """查询历史已实现损益记录
+    
+    参数:
+    - date: 查询特定日期 (YYYY-MM-DD)
+    - start_date: 开始日期 (YYYY-MM-DD)
+    - end_date: 结束日期 (YYYY-MM-DD)
+    - limit: 返回记录数量限制
+    
+    返回:
+    - 已实现损益记录列表（仅SELL订单且有realized_pnl的）
+    """
+    try:
+        from pathlib import Path
+        import json
+        from datetime import datetime
+        
+        filled_orders_file = Path("data/logs/filled_orders.jsonl")
+        if not filled_orders_file.exists():
+            return {
+                "ok": True,
+                "realized_pnl_records": [],
+                "count": 0,
+                "total_realized_pnl": 0.0
+            }
+        
+        realized_pnl_records = []
+        total_realized_pnl = 0.0
+        
+        with filled_orders_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    order = json.loads(line.strip())
+                    # 只返回SELL订单且有已实现损益的
+                    if order.get("action") == "SELL" and order.get("status") == "FILLED":
+                        realized_pnl = order.get("realized_pnl")
+                        if realized_pnl is not None:
+                            order_date = order.get("order_date") or order.get("filled_at", "")[:10]
+                            
+                            # 日期过滤
+                            if date:
+                                if not order_date.startswith(date):
+                                    continue
+                            elif start_date or end_date:
+                                if start_date and order_date < start_date:
+                                    continue
+                                if end_date and order_date > end_date:
+                                    continue
+                            
+                            record = {
+                                "order_id": order.get("order_id"),
+                                "symbol": order.get("symbol"),
+                                "quantity": order.get("quantity"),
+                                "fill_price": order.get("fill_result", {}).get("fill_price") or order.get("fill_price"),
+                                "cost_basis": order.get("cost_basis") or order.get("fill_result", {}).get("cost_basis"),
+                                "proceeds": order.get("proceeds") or order.get("fill_result", {}).get("proceeds"),
+                                "realized_pnl": float(realized_pnl),
+                                "realized_pnl_pct": order.get("realized_pnl_pct", 0.0),
+                                "order_date": order_date,
+                                "filled_at": order.get("filled_at") or order.get("placed_at"),
+                                "timestamp": order.get("filled_at") or order.get("placed_at")
+                            }
+                            realized_pnl_records.append(record)
+                            total_realized_pnl += float(realized_pnl)
+                except (json.JSONDecodeError, ValueError, TypeError) as e:
+                    continue
+        
+        # 按日期和时间排序（最新的在前）
+        realized_pnl_records.sort(
+            key=lambda x: x.get("timestamp", "") or x.get("filled_at", ""),
+            reverse=True
+        )
+        
+        # 限制返回数量
+        realized_pnl_records = realized_pnl_records[:limit]
+        
+        return {
+            "ok": True,
+            "realized_pnl_records": realized_pnl_records,
+            "count": len(realized_pnl_records),
+            "total_realized_pnl": round(total_realized_pnl, 2),
+            "date_filter": {
+                "date": date,
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )
+
+
 @app.post("/api/data/upload")
 async def upload_data(data: dict):
     """Upload data to Railway backend from local files"""
@@ -2411,6 +2644,17 @@ async def upload_data(data: dict):
                     count += 1
             uploaded_counts["pending_orders"] = count
             log_print(f"[Upload] Uploaded {count} pending orders")
+        
+        # CRITICAL: Upload portfolio_state.json (overwrite, not append)
+        if "portfolio_state" in data and data["portfolio_state"]:
+            portfolio_file = logs_dir / "portfolio_state.json"
+            try:
+                with portfolio_file.open("w", encoding="utf-8") as f:
+                    json.dump(data["portfolio_state"], f, ensure_ascii=False, indent=2)
+                uploaded_counts["portfolio_state"] = True
+                log_print(f"[Upload] Uploaded portfolio_state.json")
+            except Exception as e:
+                log_print(f"[Upload] Warning: Failed to upload portfolio_state.json: {e}")
         
         return JSONResponse(
             status_code=200,

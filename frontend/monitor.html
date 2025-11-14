@@ -2594,7 +2594,7 @@
                 if (tradeBtn) {
                     tradeBtn.disabled = false;
                     const isOpen = await isMarketOpen().catch(() => false);
-                    tradeBtn.textContent = isOpen ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                    tradeBtn.textContent = isOpen ? '▶️ Start Trading' : '▶️ Run Analysis';
                 }
                 
                 // 执行初始化
@@ -2661,7 +2661,7 @@
                     setTimeout(async () => {
                         if (btn && !btn.disabled) {
                             const isOpen = await isMarketOpen().catch(() => false);
-                            btn.textContent = isOpen ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                            btn.textContent = isOpen ? '▶️ Start Trading' : '▶️ Run Analysis';
                         }
                     }, 2000);
                 }
@@ -2689,7 +2689,7 @@
             // Check market status (for display only, does not block execution)
             // Note: This applies to all 5 scenarios:
             // - Scenario 1-2: Market open (or simulated), execute real-time trading
-            // - Scenario 3-4: Market closed (or simulated), plan tomorrow's trades
+            // - Scenario 3-4: Market closed (or simulated), run analysis only (no trading)
             // - Scenario 5: Multi-day simulation, execute based on daily market status
             let marketStatus = 'unknown';
             try {
@@ -2698,7 +2698,7 @@
                 if (isOpen) {
                     console.log('[Trade Cycle] Market is open, executing live trading (Scenario 1-2 style)...');
                 } else {
-                    console.log('[Trade Cycle] Market is closed, planning tomorrow\'s trades (Scenario 3-4 style)...');
+                    console.log('[Trade Cycle] Market is closed, running analysis only (no trading)...');
                 }
             } catch (e) {
                 console.warn('[Trade Cycle] Failed to check market status, proceeding anyway:', e);
@@ -2758,7 +2758,7 @@
                     // Update market status based on actual API response
                     if (isPlanning) {
                         marketStatus = 'closed';
-                        console.log(`[Trade Cycle] Planning completed: ${orderCount} pending orders for tomorrow, ${convCount} conversations. ${message}`);
+                        console.log(`[Trade Cycle] Analysis completed: ${orderCount} orders, ${convCount} conversations. ${message}`);
                     } else {
                         marketStatus = 'open';
                         // 检查是否有订单生成
@@ -2786,7 +2786,7 @@
                             btn.textContent = '⏳ Already Running...';
                             setTimeout(() => {
                                 if (btn && !btn.disabled) {
-                                    btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                                    btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '▶️ Run Analysis';
                                 }
                             }, 3000);
                         }
@@ -2805,7 +2805,7 @@
                             btn.textContent = '❌ Error';
                             setTimeout(() => {
                                 if (btn && !btn.disabled) {
-                                    btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                                    btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '▶️ Run Analysis';
                                 }
                             }, 2000);
                         }
@@ -2866,12 +2866,12 @@
                     if (marketStatus === 'open') {
                         btn.textContent = '▶️ Start Trading';
                     } else if (marketStatus === 'closed') {
-                        btn.textContent = '📋 Plan Tomorrow';
+                        btn.textContent = '▶️ Run Analysis';
                     } else {
                         // 如果状态未知，重新检查
                         try {
                             const isOpen = await isMarketOpen();
-                            btn.textContent = isOpen ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                            btn.textContent = isOpen ? '▶️ Start Trading' : '▶️ Run Analysis';
                         } catch {
                             btn.textContent = '▶️ Start Trading';
                         }
@@ -2975,7 +2975,6 @@
                 smartAutoTradeBusy = true;
                 try {
                     const isOpen = await isMarketOpen();
-                    updateAutoTradeStatus(isOpen ? 'Trading Hours Running' : 'Non-Trading Hours Detecting');
                     
                     if (isOpen) {
                         // Trading hours: execute trade cycle
@@ -2989,102 +2988,46 @@
                             // Continue even if failed, retry next time
                         }
                     } else {
-                        // Non-trading hours: check if tomorrow is already planned
-                        // If not planned, execute planning; if already planned, skip and continue checking hourly
-                        console.log('[Auto Trade] Market is closed, checking if tomorrow is already planned...');
-                        updateAutoTradeStatus('Checking Tomorrow Planning Status');
-                        
-                        try {
-                            // First, check if there are pending orders for tomorrow (lightweight check)
-                            // We'll use a separate endpoint if available, or check the execute-trade response
-                            const response = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
-                                method: 'POST',
-                                mode: 'cors',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                // Use a generous timeout to allow LLM planning when after-hours
-                                signal: AbortSignal.timeout(600000),  // 10分钟超时
-                            });
-                            
-                            let data;
-                            try {
-                                data = await response.json();
-                            } catch (parseErr) {
-                                console.error('[Auto Trade] Response parse failed:', parseErr);
-                                updateAutoTradeStatus('Check Failed - Will Retry');
-                                return;
-                            }
-                            
-                            if (response.ok && data.ok) {
-                                const message = data.message || '';
-                                const isPlanning = data.result?.is_planning || false;
-                                const orderCount = data.result?.placed_orders?.length || 0;
-                                
-                                // Check if message contains "Already have" or "already planned"
-                                if (message.includes('Already have') || message.includes('already planned') || message.includes('No new planning needed')) {
-                                    console.log('[Auto Trade] Tomorrow is already planned, skipping:', message);
-                                    updateAutoTradeStatus(`Tomorrow Already Planned (${orderCount} orders) - Checking Hourly`);
-                                    // Don't stop auto trade - continue checking hourly in case plans change
-                                    // The timer will continue running and check again in 1 hour
-                                    return;
-                                } else if (isPlanning || orderCount > 0) {
-                                    // Just completed planning
-                                    console.log('[Auto Trade] Planning completed for tomorrow:', message);
-                                    updateAutoTradeStatus(`Tomorrow Planning Completed (${orderCount} orders) - Checking Hourly`);
-                                    // Don't stop auto trade - continue checking hourly
-                                    // The timer will continue running and check again in 1 hour
-                                    return;
-                                } else {
-                                    // No planning found, but API didn't execute planning (shouldn't happen, but handle it)
-                                    console.log('[Auto Trade] No planning found, but API response unclear:', message);
-                                    updateAutoTradeStatus('Status Unclear - Will Retry');
-                                    // Continue checking hourly
-                                    return;
-                                }
-                            } else {
-                                console.error('[Auto Trade] API returned error:', data.error || 'Unknown error');
-                                updateAutoTradeStatus('Execution Error - Will Retry');
-                                // Continue checking hourly even on error
-                            }
-                        } catch (e) {
-                            if (e.name === 'AbortError' || e.name === 'TimeoutError') {
-                                console.warn('[Auto Trade] Request timed out, but planning may have started. Will check again in 1 hour.');
-                                updateAutoTradeStatus('Timeout - Will Check Again');
-                            } else {
-                                console.error('[Auto Trade] Error during planning check:', e);
-                                updateAutoTradeStatus('Check Failed - Will Retry');
-                            }
-                            // If check fails, don't stop, let it retry next hour
-                        }
+                        // Non-trading hours: stop auto-trade (only manual trigger allowed)
+                        console.log('[Auto Trade] Market is closed, stopping auto-trade (manual only)');
+                        updateAutoTradeStatus('Market Closed - Manual Only');
+                        // Stop the timer when market is closed
+                        stopAutoTrade();
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
                     updateAutoTradeStatus('Status Detection Failed');
-                    // If unable to check market status, assume market is open and try to execute (should work during trading hours)
-                    try {
-                        console.log('[Auto Trade] Market status check failed, attempting trade cycle anyway...');
-                        await executeTradeCycle();
-                    } catch (tradeErr) {
-                        console.error('[Auto Trade] Trade cycle also failed:', tradeErr);
-                    }
+                    // If unable to check market status, assume market is closed and stop auto-trade
+                    stopAutoTrade();
                 }
                 finally {
                     smartAutoTradeBusy = false;
                 }
             }
             
-            // Trading hours: execute trade cycle every 1 hour (conversation/planning)
-            // Non-trading hours: check if tomorrow is planned every 1 hour, auto-plan if not
-            // Note: Data refresh continues every 30 seconds regardless of trading interval
-            const TRADING_INTERVAL = 60 * 60 * 1000;  // 1 hour (both trading and non-trading hours)
-            tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
-            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
-            console.log(`[Auto Trade] - Trading hours: Execute trade cycle every hour`);
-            console.log(`[Auto Trade] - Non-trading hours: Check tomorrow planning every hour, auto-plan if needed`);
-            console.log(`[Auto Trade] Note: Data refresh continues every ${REFRESH_INTERVAL / 1000} seconds`);
-            // Execute immediately once
-            smartAutoTrade();
+            // CRITICAL: Only start auto-trade if market is open
+            // Check market status first before starting timer
+            (async () => {
+                try {
+                    const isOpen = await isMarketOpen();
+                    if (isOpen) {
+                        // Trading hours: execute trade cycle every 30 minutes
+                        const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
+                        tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
+                        console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
+                        console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
+                        // Execute immediately once
+                        smartAutoTrade();
+                    } else {
+                        // Market is closed: do not start auto-trade
+                        console.log('[Auto Trade] Market is closed, auto-trade disabled (manual only)');
+                        updateAutoTradeStatus('Market Closed - Manual Only');
+                    }
+                } catch (e) {
+                    console.error('[Auto Trade] Error checking market status on startup:', e);
+                    updateAutoTradeStatus('Status Check Failed');
+                }
+            })();
         }
         
         function updateAutoTradeStatus(status) {
@@ -7559,7 +7502,7 @@
                     if (isMarketOpen) {
                         startBtn.textContent = '▶️ Start Trading';
                     } else {
-                        startBtn.textContent = '📋 Plan Tomorrow';
+                        startBtn.textContent = '▶️ Run Analysis';
                     }
                 }
                 
@@ -7839,10 +7782,11 @@
                             startAutoTrade();
                         }
                     } else {
-                        // Non-trading hours: if Auto Trade is running, let it handle itself (will re-evaluate if planning is needed on next check)
+                        // Non-trading hours: stop auto-trade (manual only)
                         if (tradeCheckTimer) {
-                            // Don't stop immediately, let smartAutoTrade handle it (it will check if already planned)
-                            // If already planned, smartAutoTrade will stop itself
+                            console.log('[Auto Refresh] Market is closed, stopping Auto Trade (manual only)');
+                            stopAutoTrade();
+                            updateAutoTradeStatus('Market Closed - Manual Only');
                         }
                     }
                     
@@ -7868,7 +7812,12 @@
                         console.log('[Auto Refresh] Market transitioned from closed to open, starting Auto Trade...');
                         startAutoTrade();
                     }
-                    // If market transitions from open to closed, let smartAutoTrade handle it (check if already planned)
+                    // If market transitions from open to closed, stop auto-trade
+                    if (!isOpen && lastMarketStatus === true && tradeCheckTimer) {
+                        console.log('[Auto Refresh] Market transitioned from open to closed, stopping Auto Trade...');
+                        stopAutoTrade();
+                        updateAutoTradeStatus('Market Closed - Manual Only');
+                    }
                     
                     lastMarketStatus = isOpen;
                 } catch (e) {
@@ -7912,7 +7861,7 @@
         // Manually start trading cycle (when user clicks button)
         // Applies to all 5 scenarios:
         // - Scenario 1-2: Market open, execute real-time trading
-        // - Scenario 3-4: Market closed, plan tomorrow's trades
+        // - Scenario 3-4: Market closed, run analysis only (no trading)
         // - Scenario 5: Multi-day simulation, execute based on daily market status
         async function startTradingCycle() {
             // Prevent trading in read-only mode

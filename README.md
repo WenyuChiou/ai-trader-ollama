@@ -313,6 +313,8 @@ data/logs/
 
 **Contains**: Net value (equity) history with P&L records
 
+**Recording Frequency**: Records are automatically saved every **30 minutes** during market hours.
+
 **Format** (JSONL - one record per line):
 ```json
 {
@@ -507,6 +509,8 @@ data/logs/
 
 ## 📈 Trading Workflow
 
+**Trading Frequency**: Automatic trading runs every **30 minutes** during market hours (9:30 AM - 4:00 PM EST).
+
 1. **Data Collection** (5-10 seconds)
    - Fetch market data for 118+ NASDAQ-100 stocks
    - Calculate technical indicators
@@ -526,15 +530,16 @@ data/logs/
 4. **Trading Decisions** (5-10 seconds)
    - Generate buy/sell orders
    - Apply position limits (max 15% per stock)
-   - Calculate price ranges for limit orders
+   - Use current market price for immediate execution
 
 5. **Order Execution**
-   - Market open: Execute immediately
-   - Market closed: Place pending orders
+   - **Market open**: Execute **market orders** immediately at current price (guaranteed fill)
+   - **Market closed**: Run analysis only, **no orders created**
+   - All orders are market orders (not limit orders) for guaranteed execution
 
 6. **Portfolio Update**
    - Update portfolio state
-   - Record equity history
+   - Record equity history (every 30 minutes)
    - Save memory snapshot
 
 ---
@@ -563,6 +568,7 @@ data/logs/
 ### Conversations & Logs
 - `GET /api/agents/conversations`: Get agent discussions
 - `GET /api/trades/history`: Trade log
+- `GET /api/trades/realized-pnl`: Historical realized P&L records (query by date, start_date, end_date, limit)
 
 ---
 

@@ -49,7 +49,7 @@ def run_multi_analyst_discussion(
     # 准备仓位信息（如果有）
     positions_text = ""
     if current_positions:
-        positions_text = "\n\n**📊 CURRENT PORTFOLIO POSITIONS**\n"
+        positions_text = "\n\n**CURRENT PORTFOLIO POSITIONS**\n"
         total_position_value = 0.0
         for symbol, pos_info in current_positions.items():
             if isinstance(pos_info, dict):
@@ -78,7 +78,7 @@ def run_multi_analyst_discussion(
             if available_cash is not None:
                 positions_text += f"  - Available Cash (after reserve): ${available_cash:.2f}\n"
         
-        positions_text += "\n**⚠️ CRITICAL: You MUST use position information (P&L and position %) when making recommendations:**\n"
+        positions_text += "\n**[WARN] CRITICAL: You MUST use position information (P&L and position %) when making recommendations:**\n"
         positions_text += "- Check position_pct for each holding (avoid over-concentration >15%)\n"
         positions_text += "- Consider unrealized_pnl_pct (large losses may need position reduction)\n"
         positions_text += "- Respect position limits and diversification requirements\n"
@@ -94,7 +94,7 @@ def run_multi_analyst_discussion(
         filled_orders = order_status.get("filled_orders", [])
         
         if pending_count > 0 or filled_count > 0:
-            order_status_text = f"\n\n**⚠️ IMPORTANT: Current Order Status for {order_date}**\n"
+            order_status_text = f"\n\n**[WARN] IMPORTANT: Current Order Status for {order_date}**\n"
             order_status_text += f"- Pending Orders: {pending_count}\n"
             order_status_text += f"- Filled Orders: {filled_count}\n"
             
@@ -118,7 +118,7 @@ def run_multi_analyst_discussion(
                     fill_price = order.get("fill_price", 0)
                     order_status_text += f"  - {action} {quantity} {symbol} @ ${fill_price:.2f} (FILLED)\n"
             
-            order_status_text += "\n**⚠️ Please consider these existing orders in your analysis. If there are pending orders, evaluate whether they should be adjusted, cancelled, or kept as-is based on current market conditions.**\n"
+            order_status_text += "\n**[WARN] Please consider these existing orders in your analysis. If there are pending orders, evaluate whether they should be adjusted, cancelled, or kept as-is based on current market conditions.**\n"
     
     # 用于记录所有工具调用
     all_tool_calls = []
@@ -137,7 +137,7 @@ def run_multi_analyst_discussion(
     print("="*80)
     
     # ===== 1. Market Analyst =====
-    print("\n[1/4] 🌐 Market Analyst 分析中...")
+    print("\n[1/4] Market Analyst analyzing...")
     # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
     if True:  # 总是运行，但只在有budget时调用工具
         try:
@@ -158,9 +158,9 @@ def run_multi_analyst_discussion(
             
             # 调试：打印原始响应（前500字符）
             if isinstance(market_response, dict):
-                print(f"   🔍 LLM Response (dict): {str(market_response)[:200]}...")
+                print(f"   [DEBUG] LLM Response (dict): {str(market_response)[:200]}...")
             else:
-                print(f"   🔍 LLM Response (str, first 300 chars): {str(market_response)[:300]}...")
+                print(f"   [DEBUG] LLM Response (str, first 300 chars): {str(market_response)[:300]}...")
             
             market_result = _parse_analyst_response(market_response)
             analyst_reports["market"] = market_result
@@ -170,7 +170,7 @@ def run_multi_analyst_discussion(
             
             # Fallback: Market Analyst必须使用工具（市场数据变化快，需要实时获取）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools (Market analysis requires real-time data)")
+                print(f"   [WARN] No tools requested, using fallback tools (Market analysis requires real-time data)")
                 tool_calls_list = [
                     {"name": "get_market_indices", "args": {}, "why": "Fallback: Get market indices"},
                     {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"},
@@ -180,14 +180,14 @@ def run_multi_analyst_discussion(
             # 收集工具调用结果
             tool_results_summary = []
             if use_tools and tool_calls_list:
-                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
+                print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
                 # 增加每个analyst的工具使用限制：从3个增加到5个
                 max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
                 for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   🔧 Executing: {tool_name}")
+                    print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -196,15 +196,15 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        print(f"   [OK] Tool {tool_name} executed successfully")
                         # 格式化工具结果用于反馈
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   ⚠️  Tool {tool_name} returned no result")
+                        print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
-                    print(f"   ℹ️  No tools requested by agent")
+                    print(f"   [INFO] No tools requested by agent")
             
             # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
             _generate_analysis_from_tools(
@@ -223,21 +223,21 @@ def run_multi_analyst_discussion(
             })
             _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
-            print(f"   ✅ Market Stance: {market_result.get('stance', 'N/A')}")
+            print(f"   [OK] Market Stance: {market_result.get('stance', 'N/A')}")
             analysis_text = market_result.get('analysis', '')
             if analysis_text:
                 analysis_preview = analysis_text[:100]
-                print(f"   💬 Analysis: {analysis_preview}...")
+                print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
             else:
-                print(f"   ⚠️  Analysis: No analysis provided (check LLM response)")
+                print(f"   [WARN] Analysis: No analysis provided (check LLM response)")
                 if "error" in market_result:
-                    print(f"   ⚠️  Error: {market_result.get('error', 'Unknown error')}")
+                    print(f"   [WARN] Error: {market_result.get('error', 'Unknown error')}")
         except Exception as e:
-            print(f"   ❌ Market Analyst error: {e}")
+            print(f"   [ERROR] Market Analyst error: {e}")
             analyst_reports["market"] = {"error": str(e), "stance": "neutral"}
     
     # ===== 2. Technical Analyst =====
-    print("\n[2/4] 📈 Technical Analyst 分析中...")
+    print("\n[2/4] Technical Analyst analyzing...")
     # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
     if True:  # 总是运行，但只在有budget时调用工具
         try:
@@ -264,11 +264,11 @@ def run_multi_analyst_discussion(
                 if is_single_tool_call:
                     print(f"   ℹ️  LLM returned single tool_call object (will be auto-wrapped)")
                 elif "tool_calls" not in technical_response or not technical_response.get("tool_calls"):
-                    print(f"   ⚠️  LLM response missing tool_calls field")
+                    print(f"   [WARN] LLM response missing tool_calls field")
             else:
                 print(f"   🔍 LLM Response (str, first 300 chars): {str(technical_response)[:300]}...")
                 if "tool_calls" not in str(technical_response).lower():
-                    print(f"   ⚠️  LLM response (str) may not contain tool_calls")
+                    print(f"   [WARN] LLM response (str) may not contain tool_calls")
             
             technical_result = _parse_analyst_response(technical_response)
             analyst_reports["technical"] = technical_result
@@ -278,7 +278,7 @@ def run_multi_analyst_discussion(
             
             # 如果tool_calls为空，打印警告
             if not tool_calls_list:
-                print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
+                print(f"   [WARN] Parsed result has no tool_calls - LLM may not have followed instructions")
             elif len(tool_calls_list) > 0:
                 # 检查是否是从单个tool_call包装的
                 if len(tool_calls_list) == 1 and isinstance(technical_response, dict) and "name" in technical_response:
@@ -291,7 +291,7 @@ def run_multi_analyst_discussion(
             # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
             # 如果没有调用工具，使用默认工具 - 分析尽可能多的股票（按signal_score排序）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools (Technical analysis requires indicators)")
+                print(f"   [WARN] No tools requested, using fallback tools (Technical analysis requires indicators)")
                 # 从market_view获取所有股票，按signal_score排序
                 stocks = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
                 
@@ -337,19 +337,19 @@ def run_multi_analyst_discussion(
                         break
                     tool_calls_list.append({"name": "get_support_resistance", "args": {"symbol": sym}, "why": f"Fallback: Get support/resistance levels for {sym}"})
                 
-                print(f"   📊 Fallback: Selected {len(selected_symbols)} stocks by signal_score for technical analysis")
+                print(f"   [FALLBACK] Selected {len(selected_symbols)} stocks by signal_score for technical analysis")
             
             # 收集工具调用结果
             tool_results_summary = []
             if use_tools and tool_calls_list:
-                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
+                print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
                 # 增加每个analyst的工具使用限制：从5个增加到8个（支持分析多个股票）
                 max_tools_per_analyst = min(8, tool_budget - tool_calls_count)
                 for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   🔧 Executing: {tool_name}")
+                    print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -358,14 +358,14 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   ⚠️  Tool {tool_name} returned no result")
+                        print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
-                    print(f"   ℹ️  No tools requested by agent")
+                    print(f"   [INFO] No tools requested by agent")
             
             # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
             _generate_analysis_from_tools(
@@ -384,15 +384,15 @@ def run_multi_analyst_discussion(
             })
             _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
-            print(f"   ✅ Technical Stance: {technical_result.get('stance', 'N/A')}")
+            print(f"   [OK] Technical Stance: {technical_result.get('stance', 'N/A')}")
             analysis_preview = technical_result.get('analysis', '')[:100] if technical_result.get('analysis') else 'No analysis'
-            print(f"   💬 Analysis: {analysis_preview}...")
+            print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
         except Exception as e:
-            print(f"   ❌ Technical Analyst error: {e}")
+            print(f"   [ERROR] Technical Analyst error: {e}")
             analyst_reports["technical"] = {"error": str(e), "stance": "neutral"}
     
     # ===== 3. Fundamental Analyst =====
-    print("\n[3/4] 💼 Fundamental Analyst 分析中...")
+    print("\n[3/4] Fundamental Analyst analyzing...")
     # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
     if True:  # 总是运行，但只在有budget时调用工具
         try:
@@ -419,11 +419,11 @@ def run_multi_analyst_discussion(
                 if is_single_tool_call:
                     print(f"   ℹ️  LLM returned single tool_call object (will be auto-wrapped)")
                 elif "tool_calls" not in fundamental_response or not fundamental_response.get("tool_calls"):
-                    print(f"   ⚠️  LLM response missing tool_calls field")
+                    print(f"   [WARN] LLM response missing tool_calls field")
             else:
                 print(f"   🔍 LLM Response (str, first 300 chars): {str(fundamental_response)[:300]}...")
                 if "tool_calls" not in str(fundamental_response).lower():
-                    print(f"   ⚠️  LLM response (str) may not contain tool_calls")
+                    print(f"   [WARN] LLM response (str) may not contain tool_calls")
             
             fundamental_result = _parse_analyst_response(fundamental_response)
             analyst_reports["fundamental"] = fundamental_result
@@ -433,7 +433,7 @@ def run_multi_analyst_discussion(
             
             # 如果tool_calls为空，打印警告
             if not tool_calls_list:
-                print(f"   ⚠️  Parsed result has no tool_calls - LLM may not have followed instructions")
+                print(f"   [WARN] Parsed result has no tool_calls - LLM may not have followed instructions")
             elif len(tool_calls_list) > 0:
                 # 检查是否是从单个tool_call包装的
                 if len(tool_calls_list) == 1 and isinstance(fundamental_response, dict) and "name" in fundamental_response:
@@ -442,7 +442,7 @@ def run_multi_analyst_discussion(
             # Fallback: Fundamental Analyst可选使用工具（如果已有数据可以基于现有分析）
             # 但建议获取最新数据，所以如果没有调用工具，使用默认工具
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools (Recommended: Get latest fundamental data)")
+                print(f"   [WARN] No tools requested, using fallback tools (Recommended: Get latest fundamental data)")
                 sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
                 tool_calls_list = []
                 for sym in sample_symbols:
@@ -451,14 +451,14 @@ def run_multi_analyst_discussion(
             # 收集工具调用结果
             tool_results_summary = []
             if use_tools and tool_calls_list:
-                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
+                print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
                 # 增加每个analyst的工具使用限制：从3个增加到5个
                 max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
                 for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   🔧 Executing: {tool_name}")
+                    print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -467,14 +467,14 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   ⚠️  Tool {tool_name} returned no result")
+                        print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
-                    print(f"   ℹ️  No tools requested by agent")
+                    print(f"   [INFO] No tools requested by agent")
             
             # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
             _generate_analysis_from_tools(
@@ -493,15 +493,15 @@ def run_multi_analyst_discussion(
             })
             _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
-            print(f"   ✅ Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
+            print(f"   [OK] Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
             analysis_preview = fundamental_result.get('analysis', '')[:100] if fundamental_result.get('analysis') else 'No analysis'
-            print(f"   💬 Analysis: {analysis_preview}...")
+            print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
         except Exception as e:
-            print(f"   ❌ Fundamental Analyst error: {e}")
+            print(f"   [ERROR] Fundamental Analyst error: {e}")
             analyst_reports["fundamental"] = {"error": str(e), "stance": "neutral"}
     
     # ===== 4. Sentiment Analyst =====
-    print("\n[4/4] 😊 Sentiment Analyst 分析中...")
+    print("\n[4/4] Sentiment Analyst analyzing...")
     # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
     if True:  # 总是运行，但只在有budget时调用工具
         try:
@@ -526,7 +526,7 @@ def run_multi_analyst_discussion(
             
             # Fallback: Sentiment Analyst必须使用工具（情绪数据变化快，需要实时获取）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                print(f"   ⚠️  No tools requested, using fallback tools (Sentiment analysis requires real-time data)")
+                print(f"   [WARN] No tools requested, using fallback tools (Sentiment analysis requires real-time data)")
                 tool_calls_list = [
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
                     {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
@@ -536,14 +536,14 @@ def run_multi_analyst_discussion(
             # 收集工具调用结果
             tool_results_summary = []
             if use_tools and tool_calls_list:
-                print(f"   🔧 Tools requested: {len(tool_calls_list)}")
+                print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
                 # 增加每个analyst的工具使用限制：从3个增加到5个
                 max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
                 for tool_call in tool_calls_list[:max_tools_per_analyst]:
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   🔧 Executing: {tool_name}")
+                    print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -552,14 +552,14 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   ✅ Tool {tool_name} executed successfully")
+                        print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   ⚠️  Tool {tool_name} returned no result")
+                        print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
-                    print(f"   ℹ️  No tools requested by agent")
+                    print(f"   [INFO] No tools requested by agent")
             
             # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
             _generate_analysis_from_tools(
@@ -578,16 +578,16 @@ def run_multi_analyst_discussion(
             })
             _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             
-            print(f"   ✅ Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
+            print(f"   [OK] Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
             analysis_preview = sentiment_result.get('analysis', '')[:100] if sentiment_result.get('analysis') else 'No analysis'
-            print(f"   💬 Analysis: {analysis_preview}...")
+            print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
         except Exception as e:
-            print(f"   ❌ Sentiment Analyst error: {e}")
+            print(f"   [ERROR] Sentiment Analyst error: {e}")
             analyst_reports["sentiment"] = {"error": str(e), "stance": "neutral"}
     
     # ===== 5. Discussion Coordinator: 统整所有观点 =====
     print("\n" + "="*80)
-    print("💬 Discussion Coordinator: 统整所有观点")
+    print("[COORDINATOR] Discussion Coordinator: Synthesizing all perspectives")
     print("="*80)
     
     coordinator_summary = None
@@ -612,26 +612,26 @@ def run_multi_analyst_discussion(
                 "key_points": coordinator_summary.get("key_points", []),
             })
             _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
-            print(f"   ✅ Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
+            print(f"   [OK] Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
             summary_text = coordinator_summary.get('summary', '')
             if summary_text and len(summary_text.strip()) > 0:
                 summary_preview = summary_text[:150]
-                print(f"   💬 Summary: {summary_preview}...")
+                print(f"   [SUMMARY] Summary: {summary_preview}...")
             else:
-                print(f"   ⚠️  Summary: Empty (using fallback)")
+                print(f"   [WARN] Summary: Empty (using fallback)")
                 # 如果summary为空，使用fallback
                 fallback = _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
                 coordinator_summary["summary"] = fallback.get("summary", "Coordinator synthesized all analyst perspectives.")
                 coordinator_summary["stance"] = fallback.get("stance", coordinator_summary.get("stance", "neutral"))
                 coordinator_summary["key_points"] = fallback.get("key_points", coordinator_summary.get("key_points", []))
-                print(f"   💬 Summary (fallback): {coordinator_summary['summary'][:150]}...")
+                print(f"   [SUMMARY] Summary (fallback): {coordinator_summary['summary'][:150]}...")
     except Exception as e:
-        print(f"   ❌ Discussion Coordinator error: {e}")
+        print(f"   [ERROR] Discussion Coordinator error: {e}")
         coordinator_summary = None
     
     # ===== 综合分析 =====
     print("\n" + "="*80)
-    print("📊 综合分析")
+    print("[ANALYSIS] Comprehensive Analysis")
     print("="*80)
     final_stance = _aggregate_stances(analyst_reports)
     
@@ -645,7 +645,7 @@ def run_multi_analyst_discussion(
     all_analysts = ["market", "technical", "fundamental", "sentiment"]
     missing_analysts = [a for a in all_analysts if a not in analyst_reports]
     if missing_analysts:
-        print(f"   ⚠️  Missing analysts: {', '.join(missing_analysts)}")
+        print(f"   [WARN] Missing analysts: {', '.join(missing_analysts)}")
     
     # 生成transcript（使用对话历史，显示完整的讨论流程）
     transcript_text = _format_discussion_history(discussion_history)
@@ -1090,9 +1090,9 @@ Now provide your comprehensive 100-150 word analysis:"""
             result_dict["analysis"] = cleaned_analysis
         else:
             result_dict["analysis"] = str(analysis_response)[:800] if len(str(analysis_response)) > 800 else str(analysis_response)
-        print(f"   ✅ Analysis generated from tool results ({len(result_dict['analysis'])} chars)")
+        print(f"   [OK] Analysis generated from tool results ({len(result_dict['analysis'])} chars)")
     except Exception as e:
-        print(f"   ⚠️  Failed to generate analysis from tool results: {e}")
+        print(f"   [WARN] Failed to generate analysis from tool results: {e}")
         # 即使失败，也生成一个基于工具结果的描述性分析
         tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
         if tool_results_summary:
@@ -1166,13 +1166,13 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     tool_args = tool_call.get("args", {})
     
     if not tool_name:
-        print(f"   ⚠️  Tool call missing name")
+        print(f"   [WARN] Tool call missing name")
         return None
     
     # 确保 tool_args 是字典类型
     if not isinstance(tool_args, dict):
         tool_args = {}
-        print(f"   ℹ️  Tool args was not a dict, resetting to empty dict")
+        print(f"   [INFO] Tool args was not a dict, resetting to empty dict")
     
     # 检查需要 symbol 的工具，如果没有提供则从 market_summary 中提取
     symbol_required_tools = ["get_advanced_indicators", "get_support_resistance", "get_company_fundamentals", 
@@ -1185,10 +1185,17 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
                 # 使用第一个样本股票作为默认 symbol
                 default_symbol = market_summary["sample_stocks"][0]
                 tool_args["symbol"] = default_symbol
-                print(f"   ℹ️  Auto-added symbol={default_symbol} to {tool_name}")
+                print(f"   [INFO] Auto-added symbol={default_symbol} to {tool_name}")
             else:
                 # 如果没有可用的 symbol，返回错误
                 return {"ok": False, "error": "symbol is required"}
+    
+    # CRITICAL FIX: 自动为 get_market_breadth 传入完整的 universe symbols
+    if tool_name == "get_market_breadth":
+        if not tool_args.get("symbols") and market_summary and market_summary.get("symbols"):
+            # 使用完整的 universe symbols（不是 sample_stocks）
+            tool_args["symbols"] = market_summary["symbols"]
+            print(f"   [INFO] Auto-added {len(market_summary['symbols'])} symbols to get_market_breadth (full universe)")
     
     # 处理 news_scan 工具：确保有 keywords
     if tool_name == "news_scan":
@@ -1212,27 +1219,27 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
             if not keywords:
                 keywords = ["market", "AI", "tariff", "stocks", "economy"]
             tool_args["keywords"] = keywords
-            print(f"   ℹ️  Auto-added keywords={keywords} to news_scan")
+            print(f"   [INFO] Auto-added keywords={keywords} to news_scan")
     
     # 检查工具是否存在
     if tool_name not in toolbox.list():
-        print(f"   ⚠️  Tool {tool_name} not found in toolbox")
+        print(f"   [WARN] Tool {tool_name} not found in toolbox")
         return {"error": f"Tool {tool_name} not available"}
     
     try:
         result = toolbox.invoke(tool_name, **tool_args)
         # 检查结果是否有效
         if result is None:
-            print(f"   ⚠️  Tool {tool_name} returned None")
+            print(f"   [WARN] Tool {tool_name} returned None")
             return {"error": "Tool returned None"}
         # 检查是否有错误字段
         if isinstance(result, dict) and "error" in result:
-            print(f"   ⚠️  Tool {tool_name} returned error: {result.get('error')}")
+            print(f"   [WARN] Tool {tool_name} returned error: {result.get('error')}")
         return result
     except Exception as e:
-        print(f"   ❌ Tool {tool_name} failed: {e}")
+        print(f"   [ERROR] Tool {tool_name} failed: {e}")
         import traceback
-        print(f"   📋 Traceback: {traceback.format_exc()[:200]}")
+        traceback.print_exc()
         return {"error": str(e)}
 
 
@@ -1551,7 +1558,7 @@ Example format:
         
         # 调试：打印原始响应
         if not text_response:
-            print(f"   ⚠️  Coordinator returned empty response, using fallback")
+            print(f"   [WARN] Coordinator returned empty response, using fallback")
             return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
         
         # 从文本中提取关键信息（stance, summary等）
@@ -1578,9 +1585,9 @@ Example format:
         
         return result
     except Exception as e:
-        print(f"   ⚠️  Coordinator parsing error: {e}")
+        print(f"   [WARN] Coordinator parsing error: {e}")
         import traceback
-        print(f"   📋 Traceback: {traceback.format_exc()[:300]}")
+        print(f"   [TRACEBACK] Traceback: {traceback.format_exc()[:300]}")
         # 返回fallback结果
         return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
 

@@ -146,9 +146,9 @@ def execute_daily_trade(
             "start": start,
             "end": market_data_end,
         })
-        print(f"[TRADING CYCLE] ✅ Market data fetched successfully: {len(market_view.get('stocks', {}))} stocks")
+        print(f"[TRADING CYCLE] Market data fetched successfully: {len(market_view.get('stocks', {}))} stocks")
     except Exception as e:
-        print(f"[TRADING CYCLE] ❌ Failed to fetch market data: {e}")
+        print(f"[TRADING CYCLE] Failed to fetch market data: {e}")
         # 如果获取失败，返回错误信息
         raise Exception(f"Failed to fetch market data: {e}")
     # market_view 典型：
@@ -209,12 +209,12 @@ def execute_daily_trade(
                                 avg_cost=avg_cost,
                                 total_cost=total_cost,
                             )
-                print(f"[TRADING CYCLE] ✅ Loaded portfolio from state: cash=${portfolio.cash:.2f}, positions={len(portfolio._positions)}")
+                print(f"[TRADING CYCLE] Loaded portfolio from state: cash=${portfolio.cash:.2f}, positions={len(portfolio._positions)}")
             except Exception as e:
-                print(f"[TRADING CYCLE] ⚠️ Warning: Failed to load portfolio state: {e}, using default Portfolio()")
+                print(f"[TRADING CYCLE] Warning: Failed to load portfolio state: {e}, using default Portfolio()")
                 portfolio = Portfolio()
         else:
-            print(f"[TRADING CYCLE] ⚠️ Portfolio state file not found, using default Portfolio()")
+            print(f"[TRADING CYCLE] Portfolio state file not found, using default Portfolio()")
             portfolio = Portfolio()
     if trade_logger is None:
         trade_logger = TradeLogger()
@@ -423,9 +423,9 @@ def execute_daily_trade(
                     }
                     with convo_file.open("a", encoding="utf-8") as f:
                         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                    print(f"[TRADING CYCLE] ✅ Wrote Coordinator from discussion_history (stance: {stance})")
+                    print(f"[TRADING CYCLE] Wrote Coordinator from discussion_history (stance: {stance})")
                 else:
-                    print(f"[TRADING CYCLE] ⚠️  Skipped duplicate Coordinator in discussion_history: {analyst_name}")
+                    print(f"[TRADING CYCLE] Skipped duplicate Coordinator in discussion_history: {analyst_name}")
                 continue  # 跳过，不重复处理
             
             stance = entry_data.get("stance", "neutral")
@@ -483,9 +483,9 @@ def execute_daily_trade(
                 }
                 with convo_file.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                print(f"[TRADING CYCLE] ✅ Wrote Coordinator from coordinator_summary (stance: {stance})")
+                print(f"[TRADING CYCLE] Wrote Coordinator from coordinator_summary (stance: {stance})")
         elif coordinator_summary and coordinator_found_in_history:
-            print(f"[TRADING CYCLE] ⚠️  Skipped writing coordinator_summary (Coordinator already exists in discussion_history)")
+            print(f"[TRADING CYCLE] Skipped writing coordinator_summary (Coordinator already exists in discussion_history)")
         
         # 寫入工具使用記錄（從tool_calls中提取）
         tool_calls = convo.get("tool_calls", [])
@@ -597,28 +597,13 @@ def execute_daily_trade(
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         is_market_open_for_simulation = True
     else:
-        # 收盘后：订单日期是下一个交易日的日期（规划下一个交易日的交易）
-        # 使用交易日检查工具，排除周末和节假日
-        from src.utils.trading_days import get_next_trading_day
-        next_trading_day = get_next_trading_day(date.today(), days_ahead=1)
-        today = next_trading_day.isoformat()
-        
-        # 检查是否已经有明天的订单计划（pending orders）
-        existing_pending_orders = order_manager.load_pending_orders(order_date=today)
-        if existing_pending_orders:
-            # 如果有 pending orders，视为已有规划，直接返回，不继续执行交易周期
-            print(f"[TRADING CYCLE] Market closed. Already have {len(existing_pending_orders)} pending orders for {today}. No new planning needed.")
-            # 返回现有订单，不继续执行
-            return {
-                "placed_orders": existing_pending_orders,
-                "executed_trades": [],
-                "execution_errors": [],
-                "conversations_count": 0,
-                "is_planning": True,
-                "order_date": today,
-                "message": f"Already have {len(existing_pending_orders)} pending orders for {today}. No new planning needed."
-            }
+        # CRITICAL FIX: 市场收盘后，允许运行对话（AI分析），但不执行交易
+        # 继续执行对话和分析，但跳过订单创建和执行
+        print(f"[TRADING CYCLE] Market closed. Running conversation/analysis only (no trading).")
+        # 设置标志，后续跳过订单执行
         is_market_open_for_simulation = False
+        today = date.today().isoformat()
+        existing_pending_orders = order_manager.load_pending_orders(order_date=today)
     
     executed_trades = []
     execution_errors = []
@@ -627,6 +612,7 @@ def execute_daily_trade(
     
     # 检查是否有大量pending订单，如果有，取消今日的pending订单，只保留明日的订单
     # 这个机制可以防止pending订单堆积
+    # CRITICAL: 无论市场是否开放，都要清理旧的pending订单
     if not end:  # 只在实时模式下执行（不在多日模拟中执行）
         all_pending_orders = order_manager.load_pending_orders()  # 加载所有pending订单
         today_str = date.today().isoformat()
@@ -642,19 +628,30 @@ def execute_daily_trade(
             if cancelled > 0:
                 print(f"[TRADING CYCLE] Removed {cancelled} stale pending orders from {stale_date}")
 
+        # 重新加载（排除已清理的旧订单）
+        all_pending_orders = order_manager.load_pending_orders()
+        
         from src.utils.trading_days import get_next_trading_day
         tomorrow_str = get_next_trading_day(date.today(), days_ahead=1).isoformat()
         
         today_orders = [o for o in all_pending_orders if o.get("order_date") == today_str]
         tomorrow_orders = [o for o in all_pending_orders if o.get("order_date") == tomorrow_str]
         
+        # CRITICAL: 如果市场关闭，清理今天的pending订单（因为市场订单不应该有pending状态）
+        if not is_market_open_for_simulation and len(today_orders) > 0:
+            print(f"[TRADING CYCLE] Market is closed. Cancelling {len(today_orders)} today's pending orders (market orders should not be pending).")
+            cancelled_count = order_manager.cancel_orders(order_date=today_str)
+            if cancelled_count > 0:
+                print(f"[TRADING CYCLE] Cancelled {cancelled_count} today's pending orders")
+                # 重新加载pending订单（排除已取消的今日订单）
+                existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         # 如果今日有pending订单，且总pending订单数量较多（>= 5），取消今日的订单
-        if len(today_orders) > 0 and len(all_pending_orders) >= 5:
+        elif len(today_orders) > 0 and len(all_pending_orders) >= 5:
             print(f"[TRADING CYCLE] ⚠️ Found {len(all_pending_orders)} total pending orders ({len(today_orders)} for today, {len(tomorrow_orders)} for tomorrow)")
             print(f"[TRADING CYCLE] Cancelling {len(today_orders)} today's pending orders, keeping {len(tomorrow_orders)} tomorrow's orders")
             cancelled_count = order_manager.cancel_orders(order_date=today_str)
             if cancelled_count > 0:
-                print(f"[TRADING CYCLE] ✅ Cancelled {cancelled_count} today's pending orders")
+                print(f"[TRADING CYCLE] Cancelled {cancelled_count} today's pending orders")
                 # 重新加载pending订单（排除已取消的今日订单）
                 existing_pending_orders = order_manager.load_pending_orders(order_date=today)
     
@@ -745,9 +742,9 @@ def execute_daily_trade(
                                     # 标记订单为已成交（传递已实现损益，仅SELL订单有值）
                                     order_manager.mark_order_filled(order, fill_result, realized_pnl=realized_pnl)
                                     settled_count += 1
-                                    print(f"[TRADING CYCLE] ✅ Order {order_id} executed successfully")
+                                    print(f"[TRADING CYCLE] Order {order_id} executed successfully")
                         except Exception as e:
-                            print(f"[TRADING CYCLE] ❌ Error processing order {order_id}: {e}")
+                            print(f"[TRADING CYCLE] Error processing order {order_id}: {e}")
                             pass
                     
                     if settled_count > 0:
@@ -773,7 +770,7 @@ def execute_daily_trade(
                             }
                         
                         portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
-                        print(f"[TRADING CYCLE] ✅ Settled {settled_count} orders, portfolio updated")
+                        print(f"[TRADING CYCLE] Settled {settled_count} orders, portfolio updated")
                         
                         # CRITICAL: 更新传入的 portfolio 参数，确保后续计算使用最新状态
                         # 这样在多日模拟中，净值计算会使用更新后的 portfolio
@@ -930,7 +927,7 @@ def execute_daily_trade(
                 position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
                 # min_position_per_stock 如果配置中没有，使用默认值
                 position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
-                print(f"[TRADING CYCLE] ✅ Loaded position limits from config.json:")
+                print(f"[TRADING CYCLE] Loaded position limits from config.json:")
                 print(f"  - max_position_per_stock: {position_config['max_position_per_stock']:.1%}")
                 print(f"  - max_total_position: {position_config['max_total_position']:.1%}")
                 print(f"  - min_position_per_stock: {position_config['min_position_per_stock']:.1%}")
@@ -1001,33 +998,40 @@ def execute_daily_trade(
     # Process trading decisions (only if no existing pending orders, or in multi-day simulation)
     # CRITICAL FIX: 在实时模式下，额外检查今天是否已经有pending或filled订单
     # 如果有，就不应该再创建新订单，避免每小时重复创建
+    # CRITICAL FIX: 市场关闭时，不允许创建订单
     should_create_orders = False
     if end is not None:
-        # 多日模拟模式：允许创建订单
+        # 多日模拟模式：允许创建订单（假设市场开放）
         should_create_orders = True
-    elif not existing_pending_orders:
-        # 实时模式：检查今天是否已经有filled订单
-        filled_file = Path("data/logs/filled_orders.jsonl")
-        today_has_any_orders = False
-        if filled_file.exists():
-            try:
-                with filled_file.open("r", encoding="utf-8") as f:
-                    for line in f:
-                        if line.strip():
-                            filled_order = json.loads(line)
-                            if filled_order.get("order_date") == today:
-                                today_has_any_orders = True
-                                break
-            except Exception:
-                pass
-        
-        # 如果今天没有任何订单（pending或filled），才允许创建新订单
-        should_create_orders = not today_has_any_orders
-        if today_has_any_orders:
-            print(f"[TRADING CYCLE] ⚠️ Today already has orders (filled or pending). Skipping new order creation to prevent hourly duplicates.")
+    elif is_market_open_for_simulation:
+        # 实时模式：只有在市场开放时才检查是否可以创建订单
+        if not existing_pending_orders:
+            # 检查今天是否已经有filled订单
+            filled_file = Path("data/logs/filled_orders.jsonl")
+            today_has_any_orders = False
+            if filled_file.exists():
+                try:
+                    with filled_file.open("r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip():
+                                filled_order = json.loads(line)
+                                if filled_order.get("order_date") == today:
+                                    today_has_any_orders = True
+                                    break
+                except Exception:
+                    pass
+            
+            # 如果今天没有任何订单（pending或filled），才允许创建新订单
+            should_create_orders = not today_has_any_orders
+            if today_has_any_orders:
+                print(f"[TRADING CYCLE] ⚠️ Today already has orders (filled or pending). Skipping new order creation to prevent hourly duplicates.")
+        else:
+            # 有pending订单，不创建新订单
+            should_create_orders = False
     else:
-        # 有pending订单，不创建新订单
+        # 市场关闭：不允许创建订单
         should_create_orders = False
+        print(f"[TRADING CYCLE] Market is closed. Skipping order creation (should_create_orders=False).")
     
     if should_create_orders:
         # === OPTIMIZATION: Position limits (移除 cooldown 检查) ===
@@ -1127,31 +1131,90 @@ def execute_daily_trade(
                             execution_errors.append(f"BUY {symbol} skipped: insufficient cash after reserve (need ${estimated_cost:.2f}, remaining ${remaining_cash:.2f})")
                             continue
                     
+                    # CRITICAL FIX: 市价交易 - 获取当前价格并立即成交
+                    # 只在市场开盘时执行市价交易（使用is_market_open_for_simulation检查）
+                    if not is_market_open_for_simulation:
+                        execution_errors.append(f"BUY {symbol} skipped: market is closed (market orders only execute during trading hours)")
+                        continue
+                    
+                    # 获取当前市价
+                    import yfinance as yf
+                    try:
+                        ticker = yf.Ticker(symbol)
+                        info = ticker.fast_info
+                        current_price = info.get("lastPrice") or info.get("regularMarketPrice")
+                        if not current_price:
+                            # 如果获取不到实时价格，使用buy_price作为后备
+                            current_price = buy_price
+                            print(f"[MARKET ORDER] Warning: Could not get real-time price for {symbol}, using buy_price ${current_price:.2f}")
+                        else:
+                            current_price = float(current_price)
+                    except Exception as e:
+                        # 如果获取价格失败，使用buy_price作为后备
+                        current_price = buy_price
+                        print(f"[MARKET ORDER] Warning: Failed to get real-time price for {symbol}: {e}, using buy_price ${current_price:.2f}")
+                    
+                    # 使用当前市价重新计算成本和数量
+                    estimated_cost = current_price * quantity
+                    
+                    # 检查现金是否足够（使用市价）
+                    if estimated_cost > remaining_cash:
+                        max_affordable_qty = floor(remaining_cash / current_price)
+                        if max_affordable_qty > 0:
+                            quantity = max_affordable_qty
+                            estimated_cost = current_price * quantity
+                            print(f"[MARKET ORDER] Reduced {symbol} quantity to {quantity} due to cash limit (remaining cash: ${remaining_cash:.2f})")
+                        else:
+                            execution_errors.append(f"BUY {symbol} skipped: insufficient cash (need ${estimated_cost:.2f}, remaining ${remaining_cash:.2f})")
+                            continue
+                    
                     # CRITICAL: 扣除已使用的现金（在创建订单前）
                     remaining_cash -= estimated_cost
                     print(f"[CASH TRACKING] Order for {symbol}: cost=${estimated_cost:.2f}, remaining cash=${remaining_cash:.2f}")
                     
-                    # 掛單：創建限價買單（使用 buy_price_min 作為限價）
-                    # Debug: Log the order_date being used
-                    print(f"[DEBUG] Creating order for {symbol} with order_date={today}, cost=${estimated_cost:.2f}, remaining_cash=${remaining_cash:.2f}")
+                    # 市价单：立即成交，不挂单
+                    # 创建订单记录（标记为已成交）
                     placed_order = order_manager.place_order(
                         symbol=symbol,
                         action="BUY",
                         quantity=quantity,
-                        limit_price=limit_price,  # 限價：使用價格範圍最低價
+                        limit_price=current_price,  # 市价单：使用当前价格
                         price_range={
-                            "min": buy_price_min,
-                            "max": buy_price_max,
+                            "min": current_price,
+                            "max": current_price,
                         },
                         order_date=today,
                     )
+                    
+                    # 立即标记为已成交（市价单保证成交）
+                    fill_result = {
+                        "filled": True,
+                        "fill_price": current_price,
+                        "fill_reason": "Market order executed immediately at current price",
+                        "daily_high": current_price,
+                        "daily_low": current_price,
+                        "current_price": current_price,
+                    }
+                    order_manager.mark_order_filled(placed_order, fill_result)
+                    
+                    # 更新投资组合（立即执行交易）
+                    portfolio.buy(symbol, quantity, current_price)
+                    
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的BUY订单
                     
-                    # 注意：訂單已掛單，但尚未執行
-                    # 實際執行會在收盤後通過 check_order_fills() 檢查
-                    market_status = "tomorrow" if not is_market_open and today != date.today().isoformat() else "today"
-                    print(f"[ORDER PLACED] BUY {symbol} x{quantity} @ limit ${limit_price:.2f} (order_date: {today}, cost=${estimated_cost:.2f}, remaining_cash=${remaining_cash:.2f})")
+                    # 记录已成交的交易
+                    executed_trades.append({
+                        "symbol": symbol,
+                        "action": "BUY",
+                        "quantity": quantity,
+                        "price": current_price,
+                        "amount": estimated_cost,
+                        "status": "FILLED",
+                        "order_id": placed_order.get("order_id"),
+                    })
+                    
+                    print(f"[MARKET ORDER] BUY {symbol} x{quantity} @ ${current_price:.2f} (FILLED immediately, cost=${estimated_cost:.2f}, remaining_cash=${remaining_cash:.2f})")
                     
                 except Exception as e:
                     execution_errors.append(f"BUY {symbol} order placement failed: {e}")
@@ -1197,26 +1260,76 @@ def execute_daily_trade(
                         execution_errors.append(f"SELL {symbol}: insufficient position (need {quantity}, have {pos.quantity if pos else 0})")
                         continue
                     
-                    # 掛單：創建限價賣單（使用 sell_price_max 作為限價，高賣策略）
-                    limit_price = sell_price_max  # 使用價格範圍最高價作為限價
+                    # CRITICAL FIX: 市价交易 - 获取当前价格并立即成交
+                    # 只在市场开盘时执行市价交易（使用is_market_open_for_simulation检查）
+                    if not is_market_open_for_simulation:
+                        execution_errors.append(f"SELL {symbol} skipped: market is closed (market orders only execute during trading hours)")
+                        continue
                     
+                    # 获取当前市价
+                    import yfinance as yf
+                    try:
+                        ticker = yf.Ticker(symbol)
+                        info = ticker.fast_info
+                        current_price = info.get("lastPrice") or info.get("regularMarketPrice")
+                        if not current_price:
+                            # 如果获取不到实时价格，使用sell_price作为后备
+                            current_price = sell_price
+                            print(f"[MARKET ORDER] Warning: Could not get real-time price for {symbol}, using sell_price ${current_price:.2f}")
+                        else:
+                            current_price = float(current_price)
+                    except Exception as e:
+                        # 如果获取价格失败，使用sell_price作为后备
+                        current_price = sell_price
+                        print(f"[MARKET ORDER] Warning: Failed to get real-time price for {symbol}: {e}, using sell_price ${current_price:.2f}")
+                    
+                    # 市价单：使用当前价格
+                    limit_price = current_price
+                    total_proceeds = current_price * quantity
+                    
+                    # 市价单：立即成交，不挂单
+                    # 创建订单记录（标记为已成交）
                     placed_order = order_manager.place_order(
                         symbol=symbol,
                         action="SELL",
                         quantity=quantity,
-                        limit_price=limit_price,  # 限價：使用價格範圍最高價
+                        limit_price=current_price,  # 市价单：使用当前价格
                         price_range={
-                            "min": sell_price_min,
-                            "max": sell_price_max,
+                            "min": current_price,
+                            "max": current_price,
                         },
                         order_date=today,
                     )
+                    
+                    # 立即标记为已成交（市价单保证成交）
+                    fill_result = {
+                        "filled": True,
+                        "fill_price": current_price,
+                        "fill_reason": "Market order executed immediately at current price",
+                        "daily_high": current_price,
+                        "daily_low": current_price,
+                        "current_price": current_price,
+                    }
+                    order_manager.mark_order_filled(placed_order, fill_result)
+                    
+                    # 更新投资组合（立即执行交易）
+                    portfolio.sell(symbol, quantity, current_price)
+                    
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的SELL订单
                     
-                    # 注意：訂單已掛單，但尚未執行
-                    # 實際執行會在收盤後通過 check_order_fills() 檢查
-                    print(f"[ORDER PLACED] SELL {symbol} x{quantity} @ limit ${limit_price:.2f} (will check fill after market close)")
+                    # 记录已成交的交易
+                    executed_trades.append({
+                        "symbol": symbol,
+                        "action": "SELL",
+                        "quantity": quantity,
+                        "price": current_price,
+                        "amount": total_proceeds,
+                        "status": "FILLED",
+                        "order_id": placed_order.get("order_id"),
+                    })
+                    
+                    print(f"[MARKET ORDER] SELL {symbol} x{quantity} @ ${current_price:.2f} (FILLED immediately, proceeds=${total_proceeds:.2f})")
                     
                 except Exception as e:
                     execution_errors.append(f"SELL {symbol} order placement failed: {e}")
@@ -1263,7 +1376,7 @@ def execute_daily_trade(
                         count=1,
                         flags=re.IGNORECASE
                     )
-                    print(f"[TRADING CYCLE] ✅ Updated Trader Agent summary: {mentioned_count} -> {actual_buy_orders_count} buy orders")
+                    print(f"[TRADING CYCLE] Updated Trader Agent summary: {mentioned_count} -> {actual_buy_orders_count} buy orders")
         
         trader_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
@@ -1279,7 +1392,7 @@ def execute_daily_trade(
         with convo_file.open("a", encoding="utf-8") as f:
             f.write(json.dumps(trader_entry, ensure_ascii=False) + "\n")
         
-        print(f"[TRADING CYCLE] ✅ Wrote Trader Agent conversation entry with summary (actual orders: {actual_buy_orders_count} buy, {actual_sell_orders_count} sell)")
+        print(f"[TRADING CYCLE] Wrote Trader Agent conversation entry with summary (actual orders: {actual_buy_orders_count} buy, {actual_sell_orders_count} sell)")
     except Exception as e:
         print(f"[TRADING CYCLE] ⚠️  Failed to write Trader Agent conversation entry: {e}")
     
@@ -1371,9 +1484,9 @@ def execute_daily_trade(
                                     # 标记订单为已成交（传递已实现损益，仅SELL订单有值）
                                     order_manager.mark_order_filled(order, fill_result, realized_pnl=realized_pnl)
                                     settled_count += 1
-                                    print(f"[TRADING CYCLE] ✅ Order {order_id} executed successfully")
+                                    print(f"[TRADING CYCLE] Order {order_id} executed successfully")
                         except Exception as e:
-                            print(f"[TRADING CYCLE] ❌ Error processing order {order_id}: {e}")
+                            print(f"[TRADING CYCLE] Error processing order {order_id}: {e}")
                             pass
                     
                     if settled_count > 0:
@@ -1399,7 +1512,7 @@ def execute_daily_trade(
                             }
                         
                         portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
-                        print(f"[TRADING CYCLE] ✅ Settled {settled_count} orders, portfolio updated")
+                        print(f"[TRADING CYCLE] Settled {settled_count} orders, portfolio updated")
                         
                         # CRITICAL: 更新传入的 portfolio 参数，确保后续计算使用最新状态
                         # 这样在多日模拟中，Day 2+ 能正确加载更新后的持仓
@@ -1407,7 +1520,7 @@ def execute_daily_trade(
                             portfolio.cash = current_portfolio.cash
                             portfolio.initial_value = current_portfolio.initial_value
                             portfolio._positions = current_portfolio._positions.copy()
-                            print(f"[TRADING CYCLE] ✅ Updated portfolio parameter with executed orders")
+                            print(f"[TRADING CYCLE] Updated portfolio parameter with executed orders")
         except Exception as e:
             print(f"[TRADING CYCLE] Warning: Failed to check pending orders: {e}")
             import traceback
@@ -1490,7 +1603,7 @@ def execute_daily_trade(
             date_str=equity_date,
             portfolio_snapshot=portfolio_snapshot,
         )
-        print(f"[EQUITY] ✅ Recorded equity for {equity_date}: ${portfolio_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
+        print(f"[EQUITY] Recorded equity for {equity_date}: ${portfolio_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
         # 不影响主流程，继续执行

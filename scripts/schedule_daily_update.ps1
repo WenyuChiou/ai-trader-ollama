@@ -2,6 +2,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\schedule_daily_update.ps1
 
 $TaskName = "AI-Trader-Daily-Update"
+# Choose script: run_cycle_and_upload_to_railway.py (runs cycle + upload) or upload_data_to_railway.py (upload only)
 $ScriptPath = "scripts\run_cycle_and_upload_to_railway.py"
 $WorkingDir = (Resolve-Path (Split-Path $PSScriptRoot -Parent)).Path
 
@@ -41,14 +42,30 @@ if ($existingTask) {
 
 # Get schedule time
 Write-Host "Schedule Configuration:" -ForegroundColor Cyan
-$timeInput = Read-Host "Enter time (HH:MM format, e.g., 09:00 for 9 AM)"
+$timeInput = Read-Host "Enter time (HH:MM format, e.g., 18:00 for 6 PM)"
+# Trim whitespace from input
+$timeInput = $timeInput.Trim()
 try {
     $scheduleTime = [DateTime]::ParseExact($timeInput, "HH:mm", $null)
 } catch {
-    Write-Host "[ERROR] Invalid time format. Using default: 09:00" -ForegroundColor Red
-    $scheduleTime = Get-Date "09:00"
+    Write-Host "[ERROR] Invalid time format. Using default: 18:00" -ForegroundColor Red
+    $scheduleTime = [DateTime]::ParseExact("18:00", "HH:mm", $null)
 }
 
+Write-Host ""
+Write-Host "Choose upload mode:" -ForegroundColor Cyan
+Write-Host "  1. Full cycle + upload (runs trading cycle, then uploads) - Recommended" -ForegroundColor White
+Write-Host "  2. Upload only (uploads existing data, no trading cycle) - Faster" -ForegroundColor White
+$modeChoice = Read-Host "Enter choice (1 or 2, default: 1)"
+if ($modeChoice -eq "2") {
+    $ScriptPath = "scripts\upload_data_to_railway.py"
+    Write-Host "[INFO] Selected: Upload only mode" -ForegroundColor Green
+} else {
+    $ScriptPath = "scripts\run_cycle_and_upload_to_railway.py"
+    Write-Host "[INFO] Selected: Full cycle + upload mode" -ForegroundColor Green
+}
+
+Write-Host ""
 $daysInput = Read-Host "Run on weekdays only? (y/n, default: y)"
 $weekdaysOnly = ($daysInput -ne "n")
 
@@ -61,8 +78,8 @@ $Action = New-ScheduledTaskAction `
 # Create trigger
 if ($weekdaysOnly) {
     # Weekdays only (Monday-Friday)
-    $Trigger = New-ScheduledTaskTrigger -Daily -At $scheduleTime.ToString("HH:mm")
-    $Trigger.DaysOfWeek = [System.DayOfWeek]::Monday, [System.DayOfWeek]::Tuesday, [System.DayOfWeek]::Wednesday, [System.DayOfWeek]::Thursday, [System.DayOfWeek]::Friday
+    # Use Weekly trigger with specific days instead of Daily
+    $Trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At $scheduleTime.ToString("HH:mm")
 } else {
     # Every day
     $Trigger = New-ScheduledTaskTrigger -Daily -At $scheduleTime.ToString("HH:mm")
@@ -78,13 +95,23 @@ $Settings = New-ScheduledTaskSettingsSet `
     -RestartInterval (New-TimeSpan -Minutes 5)
 
 # Create principal (run as current user)
+# Use RunLevel Limited to avoid permission issues, or Highest if user has admin rights
 $Principal = New-ScheduledTaskPrincipal `
     -UserId "$env:USERDOMAIN\$env:USERNAME" `
     -LogonType S4U `
-    -RunLevel Highest
+    -RunLevel Limited
 
 # Register task
 try {
+    # Check if running as administrator
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    
+    if (-not $isAdmin) {
+        Write-Host "[WARNING] Not running as administrator. Task registration may fail." -ForegroundColor Yellow
+        Write-Host "To fix: Right-click PowerShell and select 'Run as Administrator', then run this script again." -ForegroundColor Yellow
+        Write-Host ""
+    }
+    
     Register-ScheduledTask `
         -TaskName $TaskName `
         -Action $Action `
@@ -112,6 +139,14 @@ try {
     
 } catch {
     Write-Host "[ERROR] Failed to create scheduled task: $_" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Alternative: Manual daily run" -ForegroundColor Yellow
+    Write-Host "You can manually run the upload script daily:" -ForegroundColor White
+    Write-Host "  python $ScriptPath" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Or use the simplified script:" -ForegroundColor White
+    Write-Host "  powershell -ExecutionPolicy Bypass -File .\run_daily_upload.ps1" -ForegroundColor Gray
+    Write-Host ""
     exit 1
 }
 

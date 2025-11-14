@@ -65,6 +65,7 @@ class EquityTracker:
         positions = portfolio_snapshot.get("positions_detail", {})
         
         # CRITICAL: 检查净值是否异常下降（防止记录错误数据）
+        # 同时验证portfolio_state.json中的实际状态，确保数据一致性
         if self.equity_file.exists():
             try:
                 # 读取最后一条记录
@@ -74,6 +75,51 @@ class EquityTracker:
                         last_record = json.loads(lines[-1].strip())
                         last_value = float(last_record.get("total_value", 0))
                         last_positions = last_record.get("positions", {})
+                        
+                        # 验证portfolio_state.json中的实际状态
+                        portfolio_state_file = self.root / "portfolio_state.json"
+                        if portfolio_state_file.exists():
+                            try:
+                                with portfolio_state_file.open("r", encoding="utf-8") as pf:
+                                    portfolio_state = json.load(pf)
+                                portfolio_cash = float(portfolio_state.get("cash", 0))
+                                portfolio_positions = portfolio_state.get("positions", {})
+                                
+                                # 如果portfolio_state.json中的状态与要记录的状态不一致，使用portfolio_state.json的状态
+                                if portfolio_cash != current_cash or len(portfolio_positions) != len(positions):
+                                    print(f"[EQUITY WARNING] Portfolio state mismatch detected!")
+                                    print(f"[EQUITY WARNING] Recorded state: cash=${current_cash:.2f}, positions={len(positions)}")
+                                    print(f"[EQUITY WARNING] Portfolio file: cash=${portfolio_cash:.2f}, positions={len(portfolio_positions)}")
+                                    print(f"[EQUITY WARNING] Using portfolio_state.json values instead")
+                                    
+                                    # 使用portfolio_state.json中的实际状态
+                                    current_cash = portfolio_cash
+                                    current_equity = 0.0
+                                    # 计算equity_value（需要价格，但这里先设为0，后续会重新计算）
+                                    # 注意：这里暂时使用positions_detail，但应该从portfolio_state计算
+                                    positions = {}
+                                    for symbol, pos_info in portfolio_positions.items():
+                                        if isinstance(pos_info, dict):
+                                            qty = int(pos_info.get("quantity", 0))
+                                            if qty > 0:
+                                                positions[symbol] = {
+                                                    "quantity": qty,
+                                                    "avg_cost": float(pos_info.get("avg_cost", 0)),
+                                                    "total_cost": float(pos_info.get("total_cost", 0)),
+                                                }
+                                    
+                                    # 重新计算total_value（但equity_value需要价格，暂时设为0）
+                                    # 这里应该从portfolio_state.json的total_value获取，如果有的话
+                                    portfolio_total_value = portfolio_state.get("total_value")
+                                    if portfolio_total_value:
+                                        current_value = float(portfolio_total_value)
+                                        current_equity = current_value - current_cash
+                                    else:
+                                        # 如果没有total_value，使用cash作为保守估计
+                                        current_value = current_cash
+                                        current_equity = 0.0
+                            except Exception as e:
+                                print(f"[EQUITY WARNING] Failed to read portfolio_state.json: {e}")
                         
                         # 如果净值下降超过 50%，且当前是 10000.0，且之前有持仓，记录警告并跳过
                         # 或者如果净值突然回到初始值（10000），且之前有持仓，也跳过
@@ -96,7 +142,7 @@ class EquityTracker:
                             len(positions) == 0
                         )
                         if suspicious_drop or reset_to_initial:
-                            print(f"[EQUITY WARNING] ⚠️ Suspicious equity drop/reset detected: ${last_value:.2f} -> ${current_value:.2f}")
+                            print(f"[EQUITY WARNING] Suspicious equity drop/reset detected: ${last_value:.2f} -> ${current_value:.2f}")
                             print(f"[EQUITY WARNING] Previous positions: {len(last_positions)}, Current positions: {len(positions)}")
                             print(f"[EQUITY WARNING] Previous cash: ${last_record.get('cash', 0):.2f}, Current cash: ${current_cash:.2f}")
                             print(f"[EQUITY WARNING] Skipping recording to prevent data corruption (likely portfolio state not loaded correctly)")

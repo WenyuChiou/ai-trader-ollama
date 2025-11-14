@@ -1055,7 +1055,13 @@ def execute_daily_trade(
     should_create_orders = False
     if end is not None:
         # 多日模拟模式：允许创建订单（假设市场开放）
-        should_create_orders = True
+        # CRITICAL FIX: 即使有end参数，也要检查市场是否真的开放
+        # 只有在多日模拟且市场开放时才允许创建订单
+        if is_market_open_for_simulation:
+            should_create_orders = True
+        else:
+            print(f"[TRADING CYCLE] ⚠️ WARNING: end parameter provided but market is closed. Skipping order creation.")
+            should_create_orders = False
     elif is_market_open_for_simulation:
         # 实时模式：只有在市场开放时才检查是否可以创建订单
         if not existing_pending_orders:

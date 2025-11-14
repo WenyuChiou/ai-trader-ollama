@@ -694,7 +694,8 @@ def execute_daily_trade(
     if existing_pending_orders:
         # 在多日模拟中（end参数提供），也执行订单
         # 条件：1) 市场开盘且是今天，或 2) 提供了end参数（多日模拟）
-        should_settle_orders = (is_market_open and today == date.today().isoformat()) or (end is not None)
+        # CRITICAL FIX: 使用 is_market_open_for_simulation 而不是 is_market_open，确保市场关闭时不执行
+        should_settle_orders = (is_market_open_for_simulation and today == date.today().isoformat()) or (end is not None)
         if should_settle_orders:
             # 市场开盘时，先尝试结算今天的pending订单
             print(f"[TRADING CYCLE] Market is open (or simulation mode). Found {len(existing_pending_orders)} pending orders for {today}. Checking if they can be filled...")
@@ -742,7 +743,8 @@ def execute_daily_trade(
                         try:
                             # 在多日模拟中（end is not None），使用历史数据检查订单
                             # 在实时交易中（end is None），使用实时价格
-                            use_realtime_for_check = (end is None) and (today == date.today().isoformat())
+                            # CRITICAL FIX: 只有在市场开盘时才使用实时价格，市场关闭时不执行订单
+                            use_realtime_for_check = (end is None) and (today == date.today().isoformat()) and is_market_open_for_simulation
                             # 如果无法获取历史数据，使用当前价格作为 fallback（从 last_prices 或 market_view 获取）
                             fallback_price = last_prices.get(symbol)
                             if fallback_price is None:
@@ -1587,7 +1589,8 @@ def execute_daily_trade(
     # ---- (5b) 檢查並結算今天的 PENDING 訂單（如果市場開盤，或在多日模擬中）----
     # 在多日模拟中（end参数提供），也执行订单
     # 条件：1) 市场开盘且是今天，或 2) 提供了end参数（多日模拟）
-    should_settle_orders = (is_market_open and today == date.today().isoformat()) or (end is not None)
+    # CRITICAL FIX: 使用 is_market_open_for_simulation 而不是 is_market_open，确保市场关闭时不执行
+    should_settle_orders = (is_market_open_for_simulation and today == date.today().isoformat()) or (end is not None)
     if should_settle_orders:
         try:
             # Path 已经在文件顶部导入，不需要重新导入
@@ -1638,7 +1641,8 @@ def execute_daily_trade(
                         try:
                             # 在多日模拟中（end is not None），使用历史数据检查订单
                             # 在实时交易中（end is None），使用实时价格
-                            use_realtime_for_check = (end is None) and (today == date.today().isoformat())
+                            # CRITICAL FIX: 只有在市场开盘时才使用实时价格，市场关闭时不执行订单
+                            use_realtime_for_check = (end is None) and (today == date.today().isoformat()) and is_market_open_for_simulation
                             # 如果无法获取历史数据，使用当前价格作为 fallback（从 last_prices 或 market_view 获取）
                             fallback_price = last_prices.get(symbol)
                             if fallback_price is None:

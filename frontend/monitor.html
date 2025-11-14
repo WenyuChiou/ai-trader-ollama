@@ -6898,11 +6898,13 @@
                     const pnlPctStr = pnlPct !== null ? ` (${pnlSign}${pnlPct.toFixed(2)}%)` : '';
                     realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
                 }
+                // 将明日订单标记添加到Symbol列
+                const symbolDisplay = `${t.symbol || '-'}${tomorrowBadge}`;
+                
                 return `
                     <tr ${isTomorrowOrder ? 'style="background-color: #fff7ed;"' : ''}>
                         <td>${timeDisplay}</td>
-                        <td>${orderDateDisplay}${tomorrowBadge}</td>
-                        <td class="symbol-cell">${t.symbol || '-'}</td>
+                        <td class="symbol-cell">${symbolDisplay}</td>
                         <td class="${sideClass}">${side || '-'}</td>
                         <td>${t.quantity ?? '-'}</td>
                         <td>${priceDisplay}</td>
@@ -7195,11 +7197,13 @@
                     realizedPnlDisplay = `<span class="${pnlClass}">${pnlSign}$${pnl.toFixed(2)}${pnlPctStr}</span>`;
                 }
                 
+                // 将明日订单标记添加到Symbol列
+                const symbolDisplay = `${t.symbol || '-'}${tomorrowBadge}`;
+                
                 return `
                     <tr ${isTomorrowOrder ? 'style="background-color: #fff7ed;"' : ''}>
                         <td>${timeDisplay}</td>
-                        <td>${orderDateDisplay}${tomorrowBadge}</td>
-                        <td class="symbol-cell">${t.symbol || '-'}</td>
+                        <td class="symbol-cell">${symbolDisplay}</td>
                         <td class="${sideClass}">${side || '-'}</td>
                         <td>${t.quantity ?? '-'}</td>
                         <td>${priceDisplay}</td>

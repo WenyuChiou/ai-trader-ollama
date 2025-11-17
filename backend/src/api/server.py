@@ -662,11 +662,48 @@ async def get_portfolio_real_time():
                     "unrealized_pnl_pct": 0.0,
                 }
             
-            # CRITICAL FIX: 尝试获取实时价格（使用正确的调用方式）
-            # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 方法
-            # 它返回的数据结构是: {"stocks": {symbol: {price, ...}}, "crypto": {...}, "VIX": {...}}
+            # CRITICAL FIX: 优先使用实时价格（如果市场开盘），否则使用历史收盘价
+            # 检查市场是否开盘
+            from src.utils.trading_days import is_market_open
+            is_market_open_now = is_market_open(None)  # 传入None直接获取美东时间
+            
             try:
+                import yfinance as yf
                 from datetime import date, timedelta
+                
+                # 如果市场开盘，优先使用实时价格
+                if is_market_open_now:
+                    print(f"[API] Market is open, using real-time prices for {len(positions)} positions")
+                    for symbol in positions:
+                        try:
+                            ticker = yf.Ticker(symbol)
+                            info = ticker.fast_info
+                            # 优先使用lastPrice（实时价格），如果没有则使用regularMarketPrice
+                            price = info.get("lastPrice") or info.get("regularMarketPrice")
+                            if price:
+                                price = float(price)
+                                if price > 0:
+                                    last_prices[symbol] = price
+                                    pos = portfolio._positions[symbol]
+                                    total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
+                                    positions_detail[symbol] = {
+                                        "quantity": pos.quantity,
+                                        "avg_cost": pos.avg_cost,
+                                        "total_cost": total_cost,
+                                        "cost_basis": total_cost,
+                                        "current_price": price,
+                                        "market_value": pos.quantity * price,
+                                        "unrealized_pnl": (price - pos.avg_cost) * pos.quantity,
+                                        "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
+                                    }
+                                    positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
+                                    print(f"[API] Real-time price for {symbol}: ${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
+                                    continue
+                        except Exception as e:
+                            print(f"[API] Failed to get real-time price for {symbol}: {e}, will try historical data")
+                
+                # 如果市场关闭或实时价格获取失败，使用历史收盘价
+                print(f"[API] Using historical close prices (market closed or real-time fetch failed)")
                 # 获取最近7天的数据（确保能获取到最新价格）
                 end_date = date.today().isoformat()
                 start_date = (date.today() - timedelta(days=7)).isoformat()
@@ -682,6 +719,10 @@ async def get_portfolio_real_time():
                 stocks_data = market_data.get("stocks", {})
                 
                 for symbol in positions:
+                    # 如果已经通过实时价格获取了，跳过
+                    if symbol in last_prices and last_prices[symbol] > 0:
+                        continue
+                    
                     if symbol in stocks_data:
                         stock_info = stocks_data[symbol]
                         # CRITICAL FIX: fetch_market_batch 返回的 price 字段是最新收盘价
@@ -718,7 +759,7 @@ async def get_portfolio_real_time():
                             
                             # 计算盈亏
                             positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
-                            print(f"[API] Updated {symbol}: price=${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
+                            print(f"[API] Historical price for {symbol}: ${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
             except Exception as e:
                 import traceback
                 print(f"[API] Failed to fetch market data: {e}")

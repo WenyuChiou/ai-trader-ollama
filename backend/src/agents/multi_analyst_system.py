@@ -279,12 +279,32 @@ def run_multi_analyst_discussion(
             
             # 格式化之前的对话历史（包含Market Analyst的讨论）
             previous_discussion_text = _format_discussion_history(discussion_history)
+            
+            # CRITICAL FIX: 添加Market Analyst的推荐名单到Technical Analyst的prompt
+            technical_positions_text = positions_text
+            if analyst_reports.get("market"):
+                market_report = analyst_reports["market"]
+                recommended_stocks = market_report.get("recommended_stocks", [])
+                if recommended_stocks:
+                    # 确保推荐股票是列表格式
+                    if isinstance(recommended_stocks, str):
+                        recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
+                    elif not isinstance(recommended_stocks, list):
+                        recommended_stocks = []
+                    
+                    if recommended_stocks:
+                        # 添加到positions_text中，让Technical Analyst知道推荐名单
+                        recommended_text = f"\n**📋 RECOMMENDED STOCKS FROM MARKET ANALYST:**\n"
+                        recommended_text += f"**Priority 1 - MUST Analyze These:** {', '.join(recommended_stocks)}\n"
+                        recommended_text += f"**These are Market Analyst's top recommendations - analyze them first!**\n"
+                        technical_positions_text = recommended_text + "\n" + technical_positions_text
+            
             technical_prompt_vars = {
                 "market_view": json.dumps(market_summary, indent=2),
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
                 "order_status": order_status_text,  # 添加订单状态
-                "current_positions": positions_text,  # 添加仓位信息
+                "current_positions": technical_positions_text,  # 添加仓位信息和推荐名单
             }
             
             technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
@@ -1273,6 +1293,12 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     """执行工具调用，确保工具能正常工作"""
     tool_name = tool_call.get("name", "")
     tool_args = tool_call.get("args", {})
+    
+    # FIX: Map incorrect tool name "vix" to correct "vix_term"
+    if tool_name == "vix":
+        print(f"   [TOOL] Mapping 'vix' -> 'vix_term' (correct tool name)")
+        tool_name = "vix_term"
+        tool_call["name"] = "vix_term"  # Update the tool_call dict as well
     
     if not tool_name:
         print(f"   [WARN] Tool call missing name")

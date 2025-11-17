@@ -57,6 +57,9 @@
   "max_orders_per_cycle": 20,
   "trade_cooldown_hours": 24.0,
   
+  "_comment_optimization": "Enable optimization components for improved performance (ToolCoordinator, SharedContext, BudgetAllocator). Default: false (uses standard version)",
+  "enable_optimizations": false,
+  
   "llm": {
     "default_model": "deepseek-r1",
     "ollama_host": "http://localhost:11434",

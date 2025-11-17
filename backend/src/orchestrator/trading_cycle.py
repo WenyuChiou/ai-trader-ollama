@@ -21,6 +21,13 @@ from src.tools.market_tools import fetch_market_batch
 # --- Analyst Discussion: 使用四个独立 Analyst 的版本 ---
 from src.agents.analyst_discussion import run_analyst_discussion
 from src.agents.multi_analyst_system import run_multi_analyst_discussion
+# Optional: Import parallel/optimized version (can be enabled via config)
+try:
+    from src.agents.multi_analyst_system_parallel import run_multi_analyst_discussion_parallel
+    OPTIMIZATION_AVAILABLE = True
+except ImportError:
+    OPTIMIZATION_AVAILABLE = False
+    run_multi_analyst_discussion_parallel = None
 
 # --- Risk Analyst: 評估倉位風險 (LLM-powered) ---
 from src.agents.risk_analyst_llm import run_risk_analyst_llm
@@ -450,16 +457,35 @@ def execute_daily_trade(
             # 如果没有价格数据，使用现金 + 初始净值作为近似值
             portfolio_value = portfolio.cash + portfolio.initial_value
     
-    # 使用 run_multi_analyst_discussion 确保四个 analyst 都有工具调用和 summary
-    convo = run_multi_analyst_discussion(
-        market_view=market_view,  # 传入完整的market_view
-        use_tools=auto_tools,
-        tool_budget=tool_budget,
-        order_status=order_status,
-        current_positions=current_positions if current_positions else None,
-        portfolio_value=portfolio_value,
-        available_cash=portfolio.cash if portfolio else None,
-    )
+    # Check if optimizations are enabled via config
+    enable_optimizations = config.get("enable_optimizations", False)
+    
+    # Use optimized version if enabled and available, otherwise use standard version
+    if enable_optimizations and OPTIMIZATION_AVAILABLE and run_multi_analyst_discussion_parallel:
+        print("[TRADING CYCLE] ✅ Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
+        convo = run_multi_analyst_discussion_parallel(
+            market_view=market_view,  # 传入完整的market_view
+            use_tools=auto_tools,
+            tool_budget=tool_budget,
+            order_status=order_status,
+            current_positions=current_positions if current_positions else None,
+            portfolio_value=portfolio_value,
+            available_cash=portfolio.cash if portfolio else None,
+            enable_parallel=True,
+        )
+    else:
+        if enable_optimizations and not OPTIMIZATION_AVAILABLE:
+            print("[TRADING CYCLE] ⚠️  Optimizations requested but not available, using standard version")
+        # 使用 run_multi_analyst_discussion 确保四个 analyst 都有工具调用和 summary
+        convo = run_multi_analyst_discussion(
+            market_view=market_view,  # 传入完整的market_view
+            use_tools=auto_tools,
+            tool_budget=tool_budget,
+            order_status=order_status,
+            current_positions=current_positions if current_positions else None,
+            portfolio_value=portfolio_value,
+            available_cash=portfolio.cash if portfolio else None,
+        )
     final_stance = convo.get("final_stance", "neutral")
     
     # CRITICAL FIX: 从 multi_analyst_system 的 Market Analyst LLM 输出中提取推荐股票

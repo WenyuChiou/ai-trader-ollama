@@ -4220,41 +4220,59 @@
                                         
                                         // CRITICAL FIX: 将 "Market Analyst: ... | Technical Analyst: ... | Fundamental Analyst: ..." 格式转换为分行显示
                                         // 匹配模式: "Agent Name: content | Agent Name: content | ..."
-                                        const agentPattern = /(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*([^|]+)/gi;
-                                        const matches = [...coordinatorAnalysis.matchAll(agentPattern)];
-                                        
-                                        if (matches.length > 0) {
-                                            // 如果有匹配的 agent 分析，格式化为分行显示
-                                            const formattedParts = matches.map((match, index) => {
-                                                const agentName = match[1].trim();
-                                                const agentContent = match[2].trim();
-                                                const letter = String.fromCharCode(65 + index); // A, B, C, D
-                                                return `${letter}. ${agentName}:\n${agentContent}`;
-                                            });
-                                            analysisText = formattedParts.join('\n\n');
-                                        } else {
-                                            // 如果没有匹配到标准格式，尝试其他分隔符
-                                            // 检查是否有 "|" 分隔符
-                                            if (coordinatorAnalysis.includes(' | ')) {
-                                                const parts = coordinatorAnalysis.split(/\s*\|\s*/);
-                                                if (parts.length > 1) {
-                                                    // 尝试识别每个部分的 agent 名称
-                                                    const formattedParts = parts.map((part, index) => {
-                                                        const trimmed = part.trim();
-                                                        // 尝试提取 agent 名称（如果存在）
-                                                        const agentMatch = trimmed.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*(.+)$/i);
-                                                        if (agentMatch) {
-                                                            const letter = String.fromCharCode(65 + index);
-                                                            return `${letter}. ${agentMatch[1]}:\n${agentMatch[2].trim()}`;
-                                                        } else {
-                                                            const letter = String.fromCharCode(65 + index);
-                                                            return `${letter}. ${trimmed}`;
-                                                        }
-                                                    });
-                                                    analysisText = formattedParts.join('\n\n');
+                                        // CRITICAL FIX: 使用更智能的分割方式，先按 "|" 分割，然后提取每个部分的 agent 名称和内容
+                                        if (coordinatorAnalysis.includes(' | ')) {
+                                            // 先按 "|" 分割
+                                            const parts = coordinatorAnalysis.split(/\s*\|\s*/);
+                                            const formattedParts = [];
+                                            
+                                            parts.forEach((part, index) => {
+                                                const trimmed = part.trim();
+                                                if (!trimmed) return; // 跳过空部分
+                                                
+                                                // 尝试提取 agent 名称（如果存在）
+                                                const agentMatch = trimmed.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*(.+)$/i);
+                                                if (agentMatch) {
+                                                    const agentName = agentMatch[1].trim();
+                                                    const agentContent = agentMatch[2].trim();
+                                                    const letter = String.fromCharCode(65 + index);
+                                                    formattedParts.push(`${letter}. ${agentName}:\n${agentContent}`);
                                                 } else {
-                                                    analysisText = coordinatorAnalysis;
+                                                    // 如果没有匹配到 agent 名称，检查是否以已知的 agent 名称开头（可能没有冒号）
+                                                    const agentPattern = /^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\s+(.+)$/i;
+                                                    const agentMatch2 = trimmed.match(agentPattern);
+                                                    if (agentMatch2) {
+                                                        const agentName = agentMatch2[1].trim();
+                                                        const agentContent = agentMatch2[2].trim();
+                                                        const letter = String.fromCharCode(65 + index);
+                                                        formattedParts.push(`${letter}. ${agentName}:\n${agentContent}`);
+                                                    } else {
+                                                        // 如果都不匹配，直接显示内容
+                                                        const letter = String.fromCharCode(65 + index);
+                                                        formattedParts.push(`${letter}. ${trimmed}`);
+                                                    }
                                                 }
+                                            });
+                                            
+                                            if (formattedParts.length > 0) {
+                                                analysisText = formattedParts.join('\n\n');
+                                            } else {
+                                                // 如果分割后没有有效内容，使用原始内容
+                                                analysisText = coordinatorAnalysis;
+                                            }
+                                        } else {
+                                            // 如果没有 "|" 分隔符，尝试使用正则表达式匹配
+                                            const agentPattern = /(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*([\s\S]+?)(?=\s*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):|$)/gi;
+                                            const matches = [...coordinatorAnalysis.matchAll(agentPattern)];
+                                            
+                                            if (matches.length > 0) {
+                                                const formattedParts = matches.map((match, index) => {
+                                                    const agentName = match[1].trim();
+                                                    const agentContent = match[2].trim();
+                                                    const letter = String.fromCharCode(65 + index);
+                                                    return `${letter}. ${agentName}:\n${agentContent}`;
+                                                });
+                                                analysisText = formattedParts.join('\n\n');
                                             } else {
                                                 analysisText = coordinatorAnalysis;
                                             }

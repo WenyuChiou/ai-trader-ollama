@@ -2489,6 +2489,23 @@
             ttl: 30000  // 30 seconds cache
         };
         
+        // CRITICAL: Track if first manual trade has been executed
+        // Use localStorage to persist across page refreshes
+        function hasManualTradeExecuted() {
+            const stored = localStorage.getItem('hasManualTradeExecuted');
+            return stored === 'true';
+        }
+        
+        function setManualTradeExecuted() {
+            localStorage.setItem('hasManualTradeExecuted', 'true');
+            console.log('[Auto Trade] Manual trade executed flag set - auto-trade can now start');
+        }
+        
+        function clearManualTradeFlag() {
+            localStorage.removeItem('hasManualTradeExecuted');
+            console.log('[Auto Trade] Manual trade flag cleared (after initialization)');
+        }
+        
         // Fallback function to estimate market status using client-side time
         // CRITICAL FIX: Use Eastern Time instead of local time for accurate market hours
         function estimateMarketStatusFromTime() {
@@ -2749,6 +2766,9 @@
                         updateAutoTradeStatus('Stopped - First trade must be manual');
                     }
                     
+                    // CRITICAL FIX: Clear manual trade flag after initialization
+                    clearManualTradeFlag();
+                    
                     console.log('[Init] System initialization completed. First trade must be manual.');
                 } else {
                     alert('❌ Initialization failed: ' + (data.error || 'Unknown error'));
@@ -2770,7 +2790,13 @@
         let isTradingExecuting = false;  // Add execution state flag to prevent duplicate execution
         // Removed hasPlannedToday, now determined by API response message
         
-        async function executeTradeCycle() {
+        async function executeTradeCycle(isManualTrigger = true) {
+            // CRITICAL FIX: Track if this is a manual trigger
+            // If it's a manual trigger, set the flag so auto-trade can start
+            if (isManualTrigger) {
+                setManualTradeExecuted();
+            }
+            
             // Prevent duplicate execution: if last trade is still executing, skip this one
             if (isTradingExecuting) {
                 console.log('[Trade Cycle] Previous trade cycle still executing, skipping...');
@@ -3122,7 +3148,8 @@
                         console.log('[Auto Trade] Market is open, executing trade cycle...');
                         updateAutoTradeStatus('Trading Hours Running');
                         try {
-                            await executeTradeCycle();
+                            // CRITICAL FIX: Pass isManualTrigger=false for auto-trade
+                            await executeTradeCycle(false);
                             console.log('[Auto Trade] Trade cycle completed successfully');
                         } catch (e) {
                             console.error('[Auto Trade] Error during trade cycle:', e);
@@ -3166,8 +3193,15 @@
                         tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
                         console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
                         console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
-                        // Execute immediately once
-                        smartAutoTrade();
+                        // CRITICAL FIX: Only execute immediately if first manual trade has been executed
+                        // This ensures the first trade after initialization/refresh must be manual
+                        if (hasManualTradeExecuted()) {
+                            console.log('[Auto Trade] First manual trade already executed, executing immediately...');
+                            smartAutoTrade();
+                        } else {
+                            console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
+                            updateAutoTradeStatus('Waiting for First Manual Trade');
+                        }
                     } else {
                         // Market is closed: do not start auto-trade
                         console.log('[Auto Trade] Market is closed, auto-trade disabled (manual only)');
@@ -7024,20 +7058,40 @@
                     };
                 }
                 
-                // Get P&L data, if backend doesn't provide, calculate from frontend
+                // Get P&L data, prioritize backend data, fallback to frontend calculation
                 let pnl = positionsPnL[symbol];
+                
+                // CRITICAL FIX: Also check if positions_detail already has unrealized_pnl
+                if ((!pnl || typeof pnl.unrealized_pnl !== 'number' || pnl.unrealized_pnl === 0) && 
+                    pos.unrealized_pnl !== undefined && typeof pos.unrealized_pnl === 'number') {
+                    // Use unrealized_pnl from positions_detail if positions_pnl doesn't have it
+                    pnl = {
+                        unrealized_pnl: pos.unrealized_pnl,
+                        unrealized_pnl_pct: pos.unrealized_pnl_pct || 0
+                    };
+                }
+                
                 if (!pnl || typeof pnl.unrealized_pnl !== 'number') {
                     // 如果后端没有提供P&L数据，从前端计算
                     // Prioritize using total_cost (if exists), otherwise use cost_basis, finally use avg_cost * quantity
                     const costBasis = pos.total_cost || pos.cost_basis || ((pos.avg_cost || 0) * (pos.quantity || 0));
-                    const marketValue = pos.market_value || 0;
+                    // CRITICAL FIX: Use current_price * quantity if market_value is not available or equals cost_basis
+                    let marketValue = pos.market_value || 0;
+                    if (marketValue === 0 || Math.abs(marketValue - costBasis) < 0.01) {
+                        // If market_value is missing or equals cost_basis, recalculate from current_price
+                        const currentPrice = pos.current_price || 0;
+                        if (currentPrice > 0 && pos.quantity > 0) {
+                            marketValue = currentPrice * pos.quantity;
+                            console.log(`[Frontend] Recalculated market_value for ${symbol}: ${currentPrice} * ${pos.quantity} = ${marketValue}`);
+                        }
+                    }
                     const unrealizedPnl = marketValue - costBasis;
                     const unrealizedPnlPct = costBasis > 0 ? (unrealizedPnl / costBasis * 100) : 0;
                     pnl = {
                         unrealized_pnl: unrealizedPnl,
                         unrealized_pnl_pct: unrealizedPnlPct
                     };
-                    console.warn(`[Frontend] Calculating P&L for ${symbol}: cost_basis=${costBasis} (total_cost=${pos.total_cost}, cost_basis=${pos.cost_basis}), market_value=${marketValue}, unrealized_pnl=${unrealizedPnl}`);
+                    console.warn(`[Frontend] Calculating P&L for ${symbol}: cost_basis=${costBasis} (total_cost=${pos.total_cost}, cost_basis=${pos.cost_basis}), market_value=${marketValue} (from pos.market_value=${pos.market_value}, current_price=${pos.current_price}), unrealized_pnl=${unrealizedPnl}`);
                 }
                 
                 // 确保P&L值有效（不能是NaN或Infinity）
@@ -7887,54 +7941,47 @@
                 console.log('[Refresh] Skipping health check (trading in progress)');
             }
             
+            // CRITICAL FIX: 统一使用 isMarketOpen() 函数，确保缓存和UI同步更新
             // Check if market is open - non-trading hours still show conversation content, but don't update real-time data
-            let isMarketOpen = true;
-            let marketStatusSource = 'api'; // 追踪状态来源：'api' 或 'fallback'
+            // 使用 isMarketOpen(false, true) 强制刷新（不使用缓存），但静默模式（不打印日志）
+            let isMarketOpenValue = false;
+            let marketStatusSource = 'api';
             try {
-                const marketCheck = await fetch(`${getApiBase()}/api/market/is-open`, {
-                    mode: 'cors',  // 明确指定 CORS 模式
-                    signal: AbortSignal.timeout(3000)  // 3秒超时，快速fallback到时间判断
-                });
-                if (marketCheck.ok) {
-                    const marketData = await marketCheck.json();
-                    if (marketData) {
-                        isMarketOpen = marketData.open || false;
-                        marketStatusSource = 'api';
-                        if (!isMarketOpen) {
-                            console.log('[Refresh] Market is closed (from API), will show conversations but skip real-time data');
-                            // 显示提示信息
-                            const refreshBtn = document.getElementById('refreshBtn');
-                            if (refreshBtn) {
-                                refreshBtn.disabled = false;
-                                refreshBtn.textContent = '🔄 Refresh (Market Closed)';
-                            }
-                        } else {
-                            console.debug('[Refresh] Market is open (from API)');
-                        }
+                // CRITICAL FIX: 使用 isMarketOpen() 函数而不是直接调用 API
+                // 这样可以确保缓存和UI同步更新
+                isMarketOpenValue = await isMarketOpen(false, true);  // 不使用缓存，强制刷新，但静默模式
+                marketStatusSource = 'api';
+                if (!isMarketOpenValue) {
+                    console.log('[Refresh] Market is closed (from API), will show conversations but skip real-time data');
+                    // 显示提示信息
+                    const refreshBtn = document.getElementById('refreshBtn');
+                    if (refreshBtn) {
+                        refreshBtn.disabled = false;
+                        refreshBtn.textContent = '🔄 Refresh (Market Closed)';
                     }
                 } else {
-                    // API返回了错误状态码，使用fallback
-                    throw new Error(`API returned status ${marketCheck.status}`);
+                    console.debug('[Refresh] Market is open (from API)');
                 }
+                // CRITICAL FIX: 更新UI显示（确保市场状态显示正确）
+                updateMarketStatus(isMarketOpenValue);
             } catch (e) {
-                // If check fails, intelligently judge based on current time (fallback logic)
-                const now = new Date();
-                const hour = now.getHours();
-                const minute = now.getMinutes();
-                const day = now.getDay();
-                // 周一到周五，9:30-16:00 为交易时间
-                const isWeekday = day >= 1 && day <= 5;
-                const isTradingHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
-                isMarketOpen = isWeekday && isTradingHours;
+                // If check fails, use fallback
+                const fallback = estimateMarketStatusFromTime();
+                isMarketOpenValue = fallback;
                 marketStatusSource = 'fallback';
+                // CRITICAL FIX: 即使使用fallback，也要更新UI
+                updateMarketStatus(isMarketOpenValue);
                 // If error is timeout or connection reset, silently handle (server may be processing requests, this is normal)
                 const isTimeoutOrReset = e.message && (e.message.includes('timeout') || e.message.includes('reset') || e.message.includes('aborted') || e.message.includes('signal timed out'));
                 // 超时错误完全静默，因为fallback逻辑已经处理了
                 if (!isTimeoutOrReset && showLoading) {
-                    console.debug(`[Refresh] API check failed (${e.message || 'network error'}), using time-based fallback: ${isMarketOpen ? 'open' : 'closed'}`);
+                    console.debug(`[Refresh] API check failed (${e.message || 'network error'}), using time-based fallback: ${isMarketOpenValue ? 'open' : 'closed'}`);
                 }
                 // 超时错误不显示任何日志，避免控制台噪音
             }
+            
+            // CRITICAL FIX: 使用 isMarketOpenValue 而不是 isMarketOpen（避免变量名冲突）
+            const isMarketOpen = isMarketOpenValue;
             
             // 请求去重：如果正在刷新，取消之前的请求
             if (isRefreshing) {
@@ -8684,7 +8731,8 @@
             
             try {
                 console.log('[Manual] Executing trading cycle manually...');
-                await executeTradeCycle();
+                // CRITICAL FIX: Pass isManualTrigger=true for manual button click
+                await executeTradeCycle(true);
                 
                 // ✅ Auto Trade 现在自动管理，不需要手动启动
             } catch (e) {

@@ -1195,28 +1195,34 @@ def execute_daily_trade(
             with open(config_path, 'r', encoding="utf-8") as f:
                 config_data = json.load(f)
                 
-                # Only set limits if explicitly configured (not using defaults)
-                # If user wants limits, they must explicitly set them in config.json
-                if "position_limit_per_stock" in config_data:
-                    position_config["max_position_per_stock"] = float(config_data["position_limit_per_stock"])
-                    print(f"[TRADING CYCLE] Position limit configured: max_position_per_stock = {position_config['max_position_per_stock']:.1%}")
+                # CRITICAL FIX: 检查模式设置：'auto' (LLM自主) 或 'configured' (使用约束)
+                position_limit_mode = config_data.get("position_limit_mode", "auto")
                 
-                if "position_limit_total" in config_data:
-                    position_config["max_total_position"] = float(config_data["position_limit_total"])
-                    print(f"[TRADING CYCLE] Position limit configured: max_total_position = {position_config['max_total_position']:.1%}")
-                
-                if "position_limit_min_per_stock" in config_data:
-                    position_config["min_position_per_stock"] = float(config_data["position_limit_min_per_stock"])
-                    print(f"[TRADING CYCLE] Position limit configured: min_position_per_stock = {position_config['min_position_per_stock']:.1%}")
-                
-                if "max_positions" in config_data:
-                    position_config["max_positions"] = int(config_data["max_positions"])
-                    print(f"[TRADING CYCLE] Position limit configured: max_positions = {position_config['max_positions']}")
-                
-                if position_config:
-                    print(f"[TRADING CYCLE] Position limits enabled from config.json (agent will respect these limits)")
+                if position_limit_mode == "configured":
+                    # 配置模式：检查是否有仓位限制（使用不带下划线的字段名）
+                    if "position_limit_per_stock" in config_data and config_data.get("position_limit_per_stock") is not None:
+                        position_config["max_position_per_stock"] = float(config_data["position_limit_per_stock"])
+                        print(f"[TRADING CYCLE] Position limit configured: max_position_per_stock = {position_config['max_position_per_stock']:.1%}")
+                    
+                    if "position_limit_total" in config_data and config_data.get("position_limit_total") is not None:
+                        position_config["max_total_position"] = float(config_data["position_limit_total"])
+                        print(f"[TRADING CYCLE] Position limit configured: max_total_position = {position_config['max_total_position']:.1%}")
+                    
+                    if "position_limit_min_per_stock" in config_data and config_data.get("position_limit_min_per_stock") is not None:
+                        position_config["min_position_per_stock"] = float(config_data["position_limit_min_per_stock"])
+                        print(f"[TRADING CYCLE] Position limit configured: min_position_per_stock = {position_config['min_position_per_stock']:.1%}")
+                    
+                    if "max_positions" in config_data and config_data.get("max_positions") is not None:
+                        position_config["max_positions"] = int(config_data["max_positions"])
+                        print(f"[TRADING CYCLE] Position limit configured: max_positions = {position_config['max_positions']}")
+                    
+                    if position_config:
+                        print(f"[TRADING CYCLE] Position limits ENABLED (configured mode) - agent will respect these constraints")
+                    else:
+                        print(f"[TRADING CYCLE] Position limits DISABLED (configured mode but no limits set) - agent has complete freedom")
                 else:
-                    print(f"[TRADING CYCLE] No position limits in config.json - agent has complete freedom")
+                    # Auto模式（默认）：LLM完全自主决定，不使用任何硬约束
+                    print(f"[TRADING CYCLE] Position limits DISABLED (auto mode) - agent has complete freedom to decide position sizes")
         else:
             print(f"[TRADING CYCLE] Config file not found - agent has complete freedom (no position limits)")
     except Exception as e:

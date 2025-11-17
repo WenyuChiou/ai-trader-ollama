@@ -1399,14 +1399,14 @@
                 <div class="trades-section" id="economicDataSection">
                     <div class="section-header">
                         <h2>
-                            📊 Economic Data (FRED & Jin10)
+                            📊 Economic Data (FRED)
                         </h2>
                         <span class="position-count" id="economicDataCount">0 indicators</span>
                     </div>
                     <div id="economicDataContent" style="padding: 16px;">
                         <div style="text-align: center; color: #94a3b8; padding: 40px;">
                             <p>No economic data available yet.</p>
-                            <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators or Jin10 economic data.</p>
+                            <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators.</p>
                         </div>
                     </div>
                 </div>
@@ -9348,25 +9348,31 @@
             // 获取经济数据
             const economicData = toolResultsByCategory?.economic || [];
             
-            if (economicData.length === 0) {
+            // 过滤掉 Jin10 经济数据，只保留 FRED 数据
+            const fredData = economicData.filter(entry => {
+                const toolName = entry.tool_name || '';
+                return toolName !== 'fetch_jin10_economic_data';
+            });
+            
+            if (fredData.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; color: #94a3b8; padding: 40px;">
                         <p>No economic data available yet.</p>
-                        <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators or Jin10 economic data.</p>
+                        <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators.</p>
                     </div>
                 `;
                 if (countElement) countElement.textContent = '0 indicators';
                 return;
             }
             
-            // 更新计数
+            // 更新计数（只计算 FRED 数据）
             if (countElement) {
-                countElement.textContent = `${economicData.length} indicator${economicData.length > 1 ? 's' : ''}`;
+                countElement.textContent = `${fredData.length} indicator${fredData.length > 1 ? 's' : ''}`;
             }
             
-            // 渲染经济数据
+            // 渲染经济数据（只渲染 FRED 数据）
             let html = '';
-            economicData.forEach((toolEntry, index) => {
+            fredData.forEach((toolEntry, index) => {
                 const toolName = toolEntry.tool_name || 'Unknown';
                 const toolResult = toolEntry.tool_result || {};
                 const timestamp = toolEntry.timestamp || '';
@@ -9375,7 +9381,7 @@
                 // 使用已有的 formatToolResultAsTable 函数格式化显示
                 const formattedResult = formatToolResultAsTable(toolResult, toolName);
                 
-                // 确定工具显示名称
+                // 确定工具显示名称（只显示 FRED 数据，不包括 Jin10）
                 let displayName = toolName;
                 if (toolName === 'get_economic_summary') {
                     displayName = 'US Economic Indicators (FRED)';
@@ -9384,7 +9390,8 @@
                 } else if (toolName === 'fetch_fred_indicator') {
                     displayName = 'FRED Indicator';
                 } else if (toolName === 'fetch_jin10_economic_data') {
-                    displayName = 'Jin10 Economic Data';
+                    // 跳过 Jin10 经济数据，不显示
+                    return;
                 }
                 
                 html += `

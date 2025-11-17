@@ -1315,8 +1315,15 @@ async def get_system_info():
             try:
                 with config_path.open("r", encoding="utf-8") as f:
                     config_data = json.load(f)
-            except:
+            except Exception as e:
+                print(f"[API] Failed to read config.json: {e}")
+                import traceback
+                traceback.print_exc()
                 pass
+        else:
+            print(f"[API] Config file not found at: {config_path}")
+            print(f"[API] Current working directory: {Path.cwd()}")
+            print(f"[API] __file__ path: {Path(__file__).resolve()}")
         
         # Check if position limits are configured (not commented out with underscore)
         position_limits = {}
@@ -1338,6 +1345,13 @@ async def get_system_info():
         
         # Get LLM config
         llm_config = config_data.get("llm", {})
+        
+        # CRITICAL FIX: Debug logging for LLM config
+        if not llm_config:
+            print(f"[API] Warning: llm config not found in config_data. Available keys: {list(config_data.keys())}")
+        else:
+            print(f"[API] LLM config found: {llm_config}")
+            print(f"[API] default_model: {llm_config.get('default_model', 'NOT FOUND')}")
         
         # Check optimization components status
         # Optimizations are now integrated and always enabled

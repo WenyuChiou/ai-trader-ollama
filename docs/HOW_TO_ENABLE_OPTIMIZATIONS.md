@@ -75,22 +75,13 @@
 
 ### 检查日志输出
 
-**启用优化后**，你会看到以下日志：
+**当前系统（优化版本默认启用）**，你会看到以下日志：
 
 ```
 [TRADING CYCLE] ✅ Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)
 [PARALLEL] Budget allocation: {'market': 3, 'technical': 4, 'fundamental': 4, 'sentiment': 4}
-[PARALLEL] Market conditions: VIX=22, News=5, Volatility=normal
+[PARALLEL] Market conditions: VIX=22.00, News=5, Volatility=normal, VIX Level=normal
 [PARALLEL] Using optimized sequential execution with coordination
-```
-
-**未启用优化（默认）**，你会看到：
-
-```
-[TRADING CYCLE] Multi-Analyst discussion system started
-[1/4] Market Analyst analyzing...
-[2/4] Technical Analyst analyzing...
-...
 ```
 
 ### 检查返回结果

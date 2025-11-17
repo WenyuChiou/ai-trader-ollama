@@ -18,10 +18,9 @@ def _get_project_logs_dir() -> Path:
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
 
-# --- Analyst Discussion: 使用优化的并行版本 ---
-from src.agents.analyst_discussion import run_analyst_discussion
-from src.agents.multi_analyst_system import run_multi_analyst_discussion
-# CRITICAL: Use optimized parallel version as default
+# --- Analyst Discussion: 使用优化的并行版本（默认） ---
+# Note: multi_analyst_system_parallel internally uses functions from multi_analyst_system,
+# so we don't import run_multi_analyst_discussion directly here
 from src.agents.multi_analyst_system_parallel import run_multi_analyst_discussion_parallel
 
 # --- Risk Analyst: 評估倉位風險 (LLM-powered) ---

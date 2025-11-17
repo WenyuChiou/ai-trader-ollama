@@ -3425,16 +3425,26 @@
                 }
                 return { conversations: [], total: 0, has_more: false, tool_results_by_category: {}, discussion_rounds_summaries: {} };
             } catch (err) {
-                // Log errors for debugging
+                // CRITICAL FIX: 正确处理 AbortController 取消的请求
+                // 如果请求被取消（AbortError 或 signal aborted），静默处理，不显示错误
+                const isAborted = err.name === 'AbortError' || 
+                                 (err.message && err.message.includes('aborted')) ||
+                                 (err.message && err.message.includes('signal is aborted'));
+                
+                if (isAborted) {
+                    // 请求被取消是正常的（例如用户刷新页面），静默处理
+                    console.debug('[fetchConversations] Request aborted (normal during refresh)');
+                    return { conversations: [], total: 0, has_more: false };
+                }
+                
+                // Log other errors for debugging
                 console.error('[fetchConversations] Error:', err.message, 'URL:', `${getApiBase()}/api/agents/conversations?limit=${limit}&include_demo=false`);
-                if (err.name !== 'AbortError') {
-                    // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
-                    const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
-                    if (isConnectionError) {
-                        console.debug('Failed to fetch conversations (server may be busy):', err.message);
-                    } else {
-                        console.warn('Failed to fetch conversations:', err.message);
-                    }
+                // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
+                const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout'));
+                if (isConnectionError) {
+                    console.debug('Failed to fetch conversations (server may be busy):', err.message);
+                } else {
+                    console.warn('Failed to fetch conversations:', err.message);
                 }
                 return { conversations: [], total: 0, has_more: false };
             }

@@ -3751,6 +3751,65 @@
                         const summary = agentMap[agentName];
                         if (!summary) return;
                         
+                        // CRITICAL FIX: 对于 DiscussionCoordinator，如果内容包含合并格式，提取并分别显示每个 agent 的分析
+                        if (agentName === 'DiscussionCoordinator') {
+                            const coordinatorSummary = summary.summary || '';
+                            
+                            // 检查是否包含合并格式（"Market Analyst: ... | Technical Analyst: ..."）
+                            // 方法：先按 "|" 分割，然后检查每个部分是否以 agent 名称开头
+                            if (coordinatorSummary.includes(' | ') || coordinatorSummary.match(/(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):/i)) {
+                                const parts = coordinatorSummary.split(/\s*\|\s*/);
+                                const extractedAgents = new Set(); // 用于跟踪已提取的 agent，避免重复
+                                
+                                parts.forEach(part => {
+                                    const trimmedPart = part.trim();
+                                    
+                                    // 匹配 "Agent Name: content" 格式
+                                    const agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*(.+)$/i);
+                                    
+                                    if (agentMatch) {
+                                        const extractedAgentName = agentMatch[1].trim();
+                                        let extractedContent = agentMatch[2].trim();
+                                        
+                                        // 标准化 agent 名称
+                                        const agentNameMap = {
+                                            'Market Analyst': 'MarketAnalyst',
+                                            'Technical Analyst': 'TechnicalAnalyst',
+                                            'Fundamental Analyst': 'FundamentalAnalyst',
+                                            'Sentiment Analyst': 'SentimentAnalyst'
+                                        };
+                                        const normalizedAgentName = agentNameMap[extractedAgentName] || extractedAgentName;
+                                        
+                                        // 检查这个 agent 是否已经在 agentMap 中（避免重复显示）
+                                        // 或者是否已经提取过（避免在同一 round 中重复显示）
+                                        if (!agentMap[normalizedAgentName] && !extractedAgents.has(normalizedAgentName) && extractedContent.length > 10) {
+                                            extractedAgents.add(normalizedAgentName);
+                                            
+                                            const agentIcon = getAgentIcon(normalizedAgentName);
+                                            const stance = 'neutral'; // 默认 stance，因为是从 Coordinator 提取的
+                                            const stanceColor = '#6b7280';
+                                            
+                                            html += `<div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 3px solid ${stanceColor}; border-top: 1px dashed rgba(34, 211, 238, 0.3);">`;
+                                            html += `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">`;
+                                            html += `<span style="font-size: 16px;">${agentIcon}</span>`;
+                                            html += `<span style="font-size: 13px; font-weight: 600; color: #cbd5e1;">${normalizedAgentName}</span>`;
+                                            html += `<span style="font-size: 10px; padding: 2px 4px; background: rgba(34, 211, 238, 0.2); color: #22d3ee; border-radius: 3px; font-weight: 500;">EXTRACTED</span>`;
+                                            html += `</div>`;
+                                            
+                                            html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px;">${escapeHtml(extractedContent)}</div>`;
+                                            
+                                            html += `</div>`;
+                                        }
+                                    }
+                                });
+                                
+                                // 如果提取到了任何 agent，不显示 DiscussionCoordinator 本身的合并内容
+                                if (extractedAgents.size > 0) {
+                                    return;
+                                }
+                            }
+                        }
+                        
                         const agentIcon = getAgentIcon(agentName);
                         const stance = summary.stance || 'neutral';
                         const stanceColor = stance === 'bullish' ? '#10b981' : stance === 'bearish' ? '#ef4444' : '#6b7280';

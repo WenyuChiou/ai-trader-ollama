@@ -485,7 +485,21 @@ All files are automatically created and updated by the system. No manual file ma
 
 #### 6. **Trader Agent** 💰
 - **Specialty**: Trading decisions, position sizing
-- **Inputs**: All analyst recommendations + risk report + portfolio state
+- **Type**: LLM-based agent (uses deepseek-r1)
+- **Inputs**: 
+  - All analyst recommendations (consensus stance, recommended stocks)
+  - Risk report (risk level, VIX score, position recommendations)
+  - Portfolio state (current positions, available cash, P&L)
+  - Market data (current prices, market status)
+- **Outputs**: 
+  - Buy/sell orders with quantities and prices
+  - Rationale (LLM-generated explanation)
+  - Risk compliance check
+- **Decision Process**: 
+  - LLM analyzes all inputs simultaneously
+  - Considers hard rules (position limits, cash constraints)
+  - Integrates Risk Analyst recommendations
+  - Generates natural language rationale
 
 ---
 
@@ -536,38 +550,439 @@ All files are automatically created and updated by the system. No manual file ma
 
 **Trading Frequency**: Automatic trading runs every **30 minutes** during market hours (9:30 AM - 4:00 PM EST).
 
-1. **Data Collection** (5-10 seconds)
-   - Fetch market data for 118+ NASDAQ-100 stocks
-   - Calculate technical indicators
-   - Get economic indicators and market sentiment
+### Complete Trading Cycle Flow
 
-2. **Multi-Agent Analysis** (30-60 seconds)
-   - Market Analyst: Macro trends
-   - Technical Analyst: Price patterns
-   - Fundamental Analyst: Valuation
-   - Sentiment Analyst: Market psychology
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TRADING CYCLE (30 min intervals)              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  1. Market Data Collection          │
+        │     • Fetch 118+ NASDAQ-100 stocks  │
+        │     • Calculate technical indicators│
+        │     • Get economic data & sentiment  │
+        │     Time: 5-10 seconds               │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  2. Multi-Agent Analysis            │
+        │     ┌──────────────────────────┐   │
+        │     │ Market Analyst            │   │
+        │     │ • Macro trends            │   │
+        │     │ • Sector rotation         │   │
+        │     │ • Market breadth          │   │
+        │     └──────────────────────────┘   │
+        │     ┌──────────────────────────┐   │
+        │     │ Technical Analyst         │   │
+        │     │ • Price patterns          │   │
+        │     │ • Support/resistance      │   │
+        │     │ • Technical indicators    │   │
+        │     └──────────────────────────┘   │
+        │     ┌──────────────────────────┐   │
+        │     │ Fundamental Analyst       │   │
+        │     │ • Financial statements    │   │
+        │     │ • Valuation metrics       │   │
+        │     │ • Earnings history        │   │
+        │     └──────────────────────────┘   │
+        │     ┌──────────────────────────┐   │
+        │     │ Sentiment Analyst         │   │
+        │     │ • News sentiment          │   │
+        │     │ • Fear & Greed Index      │   │
+        │     │ • VIX term structure      │   │
+        │     └──────────────────────────┘   │
+        │     Time: 30-60 seconds             │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  3. Discussion Coordinator          │
+        │     • Synthesizes all 4 analysts    │
+        │     • 3 rounds of discussion        │
+        │     • Final consensus (stance)       │
+        │     • Tool usage tracking           │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  4. Risk Assessment                 │
+        │     • Position concentration        │
+        │     • Market risk evaluation        │
+        │     • Position size recommendations│
+        │     • VIX risk scoring              │
+        │     Time: 10-20 seconds              │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  5. Trader Agent Decision           │
+        │     ┌──────────────────────────┐    │
+        │     │ Inputs:                   │    │
+        │     │ • Analyst consensus       │    │
+        │     │ • Risk report             │    │
+        │     │ • Current positions       │    │
+        │     │ • Market data             │    │
+        │     └──────────────────────────┘    │
+        │     ┌──────────────────────────┐    │
+        │     │ LLM Processing:           │    │
+        │     │ • Analyzes all inputs     │    │
+        │     │ • Considers risk limits   │    │
+        │     │ • Generates buy/sell      │    │
+        │     └──────────────────────────┘    │
+        │     ┌──────────────────────────┐    │
+        │     │ Outputs:                  │    │
+        │     │ • buy_orders[]            │    │
+        │     │ • sell_orders[]          │    │
+        │     │ • rationale               │    │
+        │     └──────────────────────────┘    │
+        │     Time: 5-10 seconds                │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  6. Hard Rules Validation           │
+        │     ✓ Market status check           │
+        │     ✓ Cash availability             │
+        │     ✓ Position limits               │
+        │     ✓ Position count limit          │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  7. Order Execution                 │
+        │     • Market open: Execute orders    │
+        │     • Market closed: Analysis only   │
+        │     • All orders are market orders  │
+        │     • Immediate fill guaranteed     │
+        └─────────────────────────────────────┘
+                              │
+                              ▼
+        ┌─────────────────────────────────────┐
+        │  8. Portfolio Update                 │
+        │     • Update portfolio state         │
+        │     • Record equity history          │
+        │     • Save memory snapshot           │
+        │     • Log conversations & trades     │
+        └─────────────────────────────────────┘
+```
 
-3. **Risk Assessment** (10-20 seconds)
-   - Position concentration analysis
-   - Market risk evaluation
-   - Position size recommendations
+### Detailed Trading Scenarios
 
-4. **Trading Decisions** (5-10 seconds)
-   - Generate buy/sell orders
-   - Apply position limits (max 15% per stock)
-   - Use current market price for immediate execution
+#### Scenario 1: Market Open - Bullish Consensus
 
-5. **Order Execution**
-   - **Market open**: Execute **market orders** immediately at current price (guaranteed fill)
-   - **Market closed**: Run analysis only, **no orders created**
-   - All orders are market orders (not limit orders) for guaranteed execution
+**Market Conditions**:
+- Market is open (9:30 AM - 4:00 PM ET)
+- VIX < 20 (low volatility)
+- Analyst consensus: **BULLISH**
+- Risk Analyst: Low risk, recommends 10-15% per stock
 
-6. **Portfolio Update**
-   - Update portfolio state → saved to `data/logs/portfolio_state.json`
-   - Record equity history (every 30 minutes) → saved to `data/logs/equity_history.jsonl`
-   - Save memory snapshot → saved to `data/logs/memory/daily/YYYY-MM-DD.json`
-   - Save agent conversations → saved to `data/logs/discussion_actions.jsonl`
-   - Save trade records → saved to `data/logs/trades.jsonl` and `data/logs/filled_orders.jsonl`
+**Agent Dialogue Example**:
+```
+Market Analyst: "S&P 500 up 0.5%, NASDAQ leading with tech sector rotation. 
+                 Market breadth strong with 65% advancing stocks."
+
+Technical Analyst: "NVDA showing bullish momentum, RSI 55, MACD positive. 
+                    Support at $150, resistance at $160."
+
+Fundamental Analyst: "NVDA P/E ratio 35, below sector average. Strong revenue 
+                      growth, healthy cash flow. Valuation attractive."
+
+Sentiment Analyst: "Fear & Greed Index at 65 (Greed). News sentiment positive 
+                    on AI sector. VIX term structure normal."
+
+Discussion Coordinator: "Consensus: BULLISH. All analysts agree NVDA is 
+                         attractive. Recommended allocation: 12% portfolio."
+
+Risk Analyst: "Portfolio risk: LOW. Current positions: 3 stocks (45% total). 
+               Can add NVDA with 12% allocation. Position limit: 15% per stock."
+
+Trader Agent: "Based on bullish consensus and low risk, generating BUY order 
+               for NVDA: 12% allocation, market price $155.00, quantity 7 shares."
+```
+
+**Trader Agent Decision Process**:
+1. **LLM Analysis**: Processes all analyst inputs, risk report, current positions
+2. **Risk Compliance**: Checks position limits (12% < 15% max, total 57% < 80% max)
+3. **Cash Check**: Verifies sufficient cash available
+4. **Order Generation**: Creates market order for immediate execution
+
+**Hard Rules Applied**:
+- ✓ Market open: Orders can be executed
+- ✓ Position limit: 12% < 15% max per stock
+- ✓ Total position: 57% < 80% max
+- ✓ Cash available: Sufficient for purchase
+- ✓ Position count: 4 stocks < 10 max
+
+**Result**: Order executed immediately at market price.
+
+---
+
+#### Scenario 2: Market Open - Bearish Consensus with Existing Positions
+
+**Market Conditions**:
+- Market is open
+- VIX > 25 (high volatility)
+- Analyst consensus: **BEARISH**
+- Current position: NVDA (15% of portfolio, -5% P&L)
+
+**Agent Dialogue Example**:
+```
+Market Analyst: "S&P 500 down 1.2%, NASDAQ down 1.5%. Market breadth weak, 
+                 only 35% advancing. Sector rotation to defensive."
+
+Technical Analyst: "NVDA breaking support at $150. RSI oversold at 30, 
+                    but trend is down. Next support at $140."
+
+Fundamental Analyst: "NVDA earnings miss expectations. Revenue growth slowing. 
+                      P/E ratio elevated at 40. Valuation concerns."
+
+Sentiment Analyst: "Fear & Greed Index at 25 (Fear). Negative news on chip 
+                    sector. VIX term structure inverted (bearish signal)."
+
+Discussion Coordinator: "Consensus: BEARISH. Risk-off environment. Recommend 
+                         reducing tech exposure, especially NVDA."
+
+Risk Analyst: "Portfolio risk: HIGH. VIX risk score: 7.5/10. NVDA position 
+               at 15% limit. Recommend reducing to 8% or exiting entirely."
+
+Trader Agent: "Based on bearish consensus and high risk, generating SELL order 
+               for NVDA: Reduce position from 15% to 8% (sell 4 shares). 
+               Preserve capital in volatile market."
+```
+
+**Trader Agent Decision Process**:
+1. **LLM Analysis**: Identifies risk-off environment, high VIX, negative sentiment
+2. **Position Management**: Decides to reduce exposure (not exit completely)
+3. **Risk Compliance**: Follows Risk Analyst recommendation (reduce to 8%)
+4. **Order Generation**: Creates SELL order for partial position
+
+**Hard Rules Applied**:
+- ✓ Market open: Orders can be executed
+- ✓ Position reduction: 15% → 8% (within limits)
+- ✓ Risk management: Reduces exposure in high-risk environment
+
+**Result**: Partial sell order executed, position reduced to 8%.
+
+---
+
+#### Scenario 3: Market Closed - Analysis Only
+
+**Market Conditions**:
+- Market is closed (after 4:00 PM ET or before 9:30 AM ET)
+- All agents still run analysis
+- No orders generated
+
+**Agent Dialogue Example**:
+```
+[All agents run analysis as normal...]
+
+Trader Agent: "Market is currently closed. Analysis completed:
+              - Market stance: NEUTRAL
+              - VIX risk: 4.0/10
+              - Recommended actions: Monitor for next session
+              - No trading orders generated (market orders only execute 
+                during trading hours: 9:30 AM - 4:00 PM ET)"
+```
+
+**Hard Rules Applied**:
+- ✓ Market closed: **NO ORDERS GENERATED** (hard rule)
+- ✓ Analysis still runs: Agents provide insights for next session
+- ✓ Portfolio state: Unchanged, but analysis saved to memory
+
+**Result**: Analysis saved, no trading activity.
+
+---
+
+### Trader Agent: LLM-Based Decision Making
+
+**Is Trader Agent an LLM?**
+- **Yes**: Trader Agent uses LLM (deepseek-r1) to make trading decisions
+- **Input**: Structured data (analyst reports, risk assessment, positions, market data)
+- **Output**: Trading orders (buy/sell) with rationale
+
+**Decision-Making Process**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Trader Agent Decision Flow                      │
+└─────────────────────────────────────────────────────────────┘
+
+Input Layer:
+├── Analyst Consensus
+│   ├── Final stance (BULLISH/BEARISH/NEUTRAL)
+│   ├── Recommended stocks
+│   └── Key insights from 4 analysts
+│
+├── Risk Report
+│   ├── Overall risk level (LOW/MEDIUM/HIGH)
+│   ├── VIX risk score (0-10)
+│   ├── Position control recommendations
+│   └── Position limit checks
+│
+├── Current Portfolio
+│   ├── Current positions (symbol, quantity, P&L)
+│   ├── Available cash
+│   └── Portfolio value
+│
+└── Market Data
+    ├── Current prices
+    ├── Market status (open/closed)
+    └── Market indicators
+
+                    ▼
+        ┌───────────────────────┐
+        │   LLM Processing       │
+        │   (deepseek-r1)        │
+        │                        │
+        │  • Analyzes all inputs │
+        │  • Weighs risk factors │
+        │  • Considers position  │
+        │    limits              │
+        │  • Generates rationale │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │   Hard Rules Check    │
+        │                        │
+        │  ✓ Market open?        │
+        │  ✓ Cash available?     │
+        │  ✓ Position limits?    │
+        │  ✓ Position count?    │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │   Output Generation   │
+        │                        │
+        │  • buy_orders[]        │
+        │  • sell_orders[]       │
+        │  • rationale           │
+        │  • risk_compliance    │
+        └───────────────────────┘
+```
+
+**How Trader Agent Decides Buy/Sell**:
+
+1. **Stance Analysis**: 
+   - BULLISH → Generate BUY orders for recommended stocks
+   - BEARISH → Generate SELL orders for existing positions or avoid new buys
+   - NEUTRAL → Conservative approach, may hold or make small adjustments
+
+2. **Risk Integration**:
+   - High VIX risk (7-10) → Reduce position sizes, be more conservative
+   - Low VIX risk (0-4) → Can be more aggressive, larger positions
+   - Risk Analyst recommendations → Directly influence position sizing
+
+3. **Position Management**:
+   - Existing positions with negative P&L + bearish consensus → Consider selling
+   - Existing positions at limit (15%) + new opportunities → May reduce to make room
+   - No positions + bullish consensus → Generate new BUY orders
+
+4. **LLM Reasoning**:
+   - Trader Agent uses LLM to synthesize all information
+   - LLM considers multiple factors simultaneously
+   - LLM generates natural language rationale explaining decisions
+   - LLM can make nuanced decisions (e.g., partial sells, gradual entries)
+
+---
+
+### Hard Rules & Constraints
+
+**1. Market Status (Hard Rule)**
+```
+IF market_closed:
+    NO_ORDERS_GENERATED
+    Analysis only
+ELSE:
+    Orders can be executed
+```
+
+**2. Position Limits (Hard Rules)**
+- **Per Stock Limit**: Maximum 15% of portfolio per stock
+- **Total Position Limit**: Maximum 80% of portfolio in positions (20% cash reserve)
+- **Minimum Position**: Minimum 3% per stock (for diversification)
+- **Position Count**: Maximum 10 different stocks
+
+**3. Cash Constraints (Hard Rule)**
+```
+IF order_cost > available_cash:
+    Reduce quantity OR skip order
+ELSE:
+    Execute order
+```
+
+**4. Risk-Based Position Sizing (Guidelines, not hard rules)**
+- High VIX risk (7-10) → Smaller positions (5-8% per stock)
+- Medium VIX risk (4-6) → Normal positions (8-12% per stock)
+- Low VIX risk (0-3) → Larger positions (10-15% per stock)
+
+**5. Order Execution Rules**
+- All orders are **market orders** (immediate execution)
+- No limit orders (guaranteed fill at current price)
+- Orders execute immediately when market is open
+- No pending orders (all filled or rejected)
+
+---
+
+### Trading Decision Examples
+
+#### Example 1: New Position Entry
+```
+Input:
+- Stance: BULLISH
+- Recommended: NVDA, MSFT, AAPL
+- Risk: LOW (VIX 15)
+- Current positions: None
+- Available cash: $10,000
+
+Trader Agent Decision:
+- Generate 3 BUY orders
+- NVDA: 12% ($1,200, ~7 shares @ $170)
+- MSFT: 10% ($1,000, ~2 shares @ $500)
+- AAPL: 8% ($800, ~3 shares @ $270)
+- Total: 30% of portfolio
+- Rationale: "Diversified entry into tech sector with strong fundamentals"
+```
+
+#### Example 2: Position Adjustment
+```
+Input:
+- Stance: NEUTRAL
+- Current position: NVDA (15% of portfolio, +8% P&L)
+- Risk: MEDIUM (VIX 20)
+- New opportunity: MSFT (recommended)
+
+Trader Agent Decision:
+- Reduce NVDA: 15% → 10% (sell 3 shares)
+- Add MSFT: 10% (buy 2 shares)
+- Rationale: "Taking profits on NVDA, rebalancing to include MSFT for diversification"
+```
+
+#### Example 3: Risk-Off Exit
+```
+Input:
+- Stance: BEARISH
+- Current position: NVDA (12% of portfolio, -3% P&L)
+- Risk: HIGH (VIX 28)
+- Risk Analyst: Recommend reducing tech exposure
+
+Trader Agent Decision:
+- SELL NVDA: Exit entire position (12% → 0%)
+- No new BUY orders
+- Rationale: "Risk-off environment, exiting tech position to preserve capital"
+```
+
+---
+
+### Key Points
+
+1. **Trader Agent is LLM-based**: Uses deepseek-r1 to make nuanced trading decisions
+2. **Hard Rules Enforced**: Market status, position limits, cash constraints are strictly enforced
+3. **Risk Integration**: Risk Analyst recommendations directly influence Trader Agent decisions
+4. **Multi-Factor Analysis**: Trader Agent considers all inputs simultaneously (not sequential)
+5. **Natural Language Rationale**: Every decision includes LLM-generated explanation
+6. **Market Orders Only**: All orders execute immediately at current price (no limit orders)
 
 ---
 

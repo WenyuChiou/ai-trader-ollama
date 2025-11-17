@@ -400,10 +400,11 @@ def execute_daily_trade(
     position_limit_mode = config.get("position_limit_mode", "auto")
     min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
     
-    # 如果是auto模式或min_cash_reserve_ratio为null，不应用现金储备限制
+    # CRITICAL FIX: 即使是在 auto 模式下，可用现金也必须限制在实际现金范围内
+    # LLM 可以自主决定如何使用现金，但不能超过实际可用的现金
     if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
         preliminary_available_cash = portfolio.cash if portfolio else 0.0
-        print(f"[TRADING CYCLE] Cash reserve DISABLED (auto mode) - all cash available: ${preliminary_available_cash:.2f}")
+        print(f"[TRADING CYCLE] Cash reserve DISABLED (auto mode) - all cash available: ${preliminary_available_cash:.2f} (LLM autonomous, but limited to actual cash)")
     else:
         MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)
         required_cash_reserve = preliminary_portfolio_value * MIN_CASH_RESERVE_RATIO
@@ -1326,15 +1327,18 @@ def execute_daily_trade(
     position_limit_mode = config.get("position_limit_mode", "auto")
     min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
     
-    # 如果是auto模式或min_cash_reserve_ratio为null，不应用现金储备限制（LLM自主决定）
+    # CRITICAL FIX: 即使是在 auto 模式下，可用现金也必须限制在实际现金范围内
+    # LLM 可以自主决定如何使用现金，但不能超过实际可用的现金
     if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
-        available_cash_for_trading = None  # None表示无限制，让LLM自主决定
+        # Auto模式：不应用现金储备限制，但可用现金仍然限制在实际现金范围内
+        available_cash_for_trading = portfolio.cash if portfolio else 0.0
         print(f"[TRADING CYCLE] Cash reserve DISABLED (auto mode) - LLM decides cash usage autonomously")
-        print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, available for trading: unlimited (LLM autonomous)")
+        print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, available for trading: ${available_cash_for_trading:.2f} (LLM autonomous, but limited to actual cash)")
     else:
+        # Configured模式：应用现金储备限制
         MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)
         required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
-        available_cash_for_trading = max(0, portfolio.cash - required_cash_reserve)
+        available_cash_for_trading = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
         print(f"[TRADING CYCLE] Cash reserve ENABLED (configured mode): reserve={MIN_CASH_RESERVE_RATIO:.1%}")
         print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, required reserve: ${required_cash_reserve:.2f}, available for trading: ${available_cash_for_trading:.2f}")
     
@@ -1347,10 +1351,7 @@ def execute_daily_trade(
     print(f"[TRADING CYCLE] Calling Trader Agent with is_market_open={is_market_open_for_simulation} (actual market: {market_status}, is_market_open={is_market_open})")
     print(f"[TRADING CYCLE] Parameters:")
     print(f"  - portfolio_value: ${portfolio_value:,.2f}")
-    if available_cash_for_trading is None:
-        print(f"  - available_cash: unlimited (LLM autonomous mode)")
-    else:
-        print(f"  - available_cash: ${available_cash_for_trading:,.2f}")
+    print(f"  - available_cash: ${available_cash_for_trading:,.2f} (LLM can decide how to use, but cannot exceed this amount)")
     print(f"  - current_positions: {len(current_positions_info) if current_positions_info else 0}")
     print(f"  - enriched_market keys: {list(enriched_market.keys())[:5] if isinstance(enriched_market, dict) else 'N/A'}...")
     print(f"  - convo keys: {list(convo.keys())[:5] if isinstance(convo, dict) else 'N/A'}...")
@@ -1525,10 +1526,10 @@ def execute_daily_trade(
         
         # CRITICAL FIX: 计算可用现金（根据模式决定是否应用现金储备）
         if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
-            # Auto模式：不应用现金储备限制，使用全部现金
+            # Auto模式：不应用现金储备限制，但可用现金仍然限制在实际现金范围内
             available_for_trading = portfolio.cash
             print(f"[OPTIMIZATION] Position limits: {current_position_count}/{MAX_POSITIONS} positions, "
-                  f"Available cash: ${available_for_trading:.2f} (no reserve, LLM autonomous)")
+                  f"Available cash: ${available_for_trading:.2f} (no reserve, LLM autonomous but limited to actual cash)")
         else:
             # Configured模式：应用现金储备限制
             MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)

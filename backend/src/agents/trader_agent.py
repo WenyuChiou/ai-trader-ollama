@@ -412,7 +412,8 @@ def run_trader(
             }
             
             # 准备 prompt
-            available_cash_str = f"${available_cash:,.2f}" if available_cash is not None else "unlimited (LLM autonomous mode)"
+            # CRITICAL FIX: available_cash 现在总是有值（限制在实际现金范围内），即使是在 LLM 自主模式下
+            available_cash_str = f"${available_cash:,.2f}" if available_cash is not None else "$0.00"
             summary_prompt = f"""The market is currently CLOSED. Based on the following analysis, generate a concise summary (100-150 words) explaining the market assessment:
 
 Market Status: CLOSED (no trading allowed)
@@ -484,7 +485,8 @@ Write in natural language, approximately 100-150 words."""
     print(f"[TRADER] Received parameters:")
     print(f"  - is_market_open: {is_market_open} (Market OPEN - can trade)")
     print(f"  - portfolio_value: ${portfolio_value:,.2f}")
-    print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: None (unlimited)")
+    # CRITICAL FIX: available_cash 现在总是有值（限制在实际现金范围内），即使是在 LLM 自主模式下
+    print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: $0.00")
     print(f"  - current_positions count: {len(current_positions) if current_positions else 0}")
     if current_positions:
         total_position_value = sum(
@@ -640,11 +642,12 @@ Write in natural language, approximately 100-150 words."""
             print(f"[TRADER] No position limits configured - agent has complete freedom")
             print(f"  - Agent will decide position sizes based on VIX risk, signal strength, diversification needs, etc.")
         
-        # CRITICAL FIX: 处理 available_cash 可能为 None 的情况
+        # CRITICAL FIX: available_cash 现在总是有值（限制在实际现金范围内），即使是在 LLM 自主模式下
+        # LLM 可以自主决定如何使用现金，但不能超过实际可用的现金
         if available_cash is not None:
-            print(f"  - Available cash: ${available_cash:,.2f} (hard limit, cannot exceed)")
+            print(f"  - Available cash: ${available_cash:,.2f} (hard limit, cannot exceed - LLM can decide how to use within this limit)")
         else:
-            print(f"  - Available cash: unlimited (no cash limit)")
+            print(f"  - Available cash: $0.00 (no cash available)")
         
         # Note: We no longer limit stock count based on stance - agent decides freely
         # Agent can consider stance when making decisions, but we don't enforce limits
@@ -686,11 +689,13 @@ Write in natural language, approximately 100-150 words."""
             available_position_pct = 1.0  # 100% of portfolio (limited only by cash)
         
         # CRITICAL: 跟踪累计使用的现金，确保总订单金额不超过可用现金
-        remaining_cash = available_cash if available_cash is not None else float('inf')
+        # CRITICAL FIX: available_cash 现在总是有值（限制在实际现金范围内），即使是在 LLM 自主模式下
+        # LLM 可以自主决定如何使用现金，但不能超过实际可用的现金
+        remaining_cash = available_cash if available_cash is not None else 0.0
         
         # CRITICAL: 打印开始生成买入订单时的状态（用于调试）
         print(f"[TRADER] Starting buy order generation:")
-        print(f"  - Available cash: ${remaining_cash:,.2f}" if remaining_cash != float('inf') else "  - Available cash: unlimited")
+        print(f"  - Available cash: ${remaining_cash:,.2f} (LLM can decide how to use, but cannot exceed this amount)")
         print(f"  - Current total position value: ${current_total_value:,.2f} ({current_total_position_pct:.1f}%)")
         # CRITICAL FIX: 修复显示格式，1.0 应该显示为 100.0%（而不是 1.0%）
         available_position_pct_display = available_position_pct * 100 if available_position_pct <= 1.0 else available_position_pct

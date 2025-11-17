@@ -318,47 +318,52 @@ def run_multi_analyst_discussion(
                     print(f"   ✅ Extracted {extracted_count} tool call(s) from analysis text")
             
             # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
-            # 如果没有调用工具，使用默认工具 - 分析尽可能多的股票（按signal_score排序）
+            # CRITICAL FIX: 优先分析持仓和指数，而不是随机股票
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Technical analysis requires indicators)")
-                # 从market_view获取所有股票，按signal_score排序
-                stocks = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
                 
-                # 按signal_score排序，选择前N个股票（N = tool_budget允许的数量）
-                sorted_stocks = []
-                for sym in stocks.keys():
-                    try:
-                        score = float(stocks[sym].get("signal_score", 0))
-                        sorted_stocks.append((sym, score))
-                    except (ValueError, TypeError):
-                        pass
+                # CRITICAL FIX: 优先分析持仓和指数
+                selected_symbols = []
                 
-                sorted_stocks.sort(key=lambda x: x[1], reverse=True)
+                # 1. 添加持仓（如果有）
+                if current_positions:
+                    for symbol, pos_info in current_positions.items():
+                        if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+                            selected_symbols.append(symbol)
+                            print(f"   [FALLBACK] Adding holding: {symbol}")
                 
-                # 计算可以分析的股票数量（每个股票需要1-2个工具调用）
-                # 为了最大化覆盖，我们优先为更多股票添加indicators
+                # 2. 添加主要指数（总是添加）
+                major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
+                selected_symbols.extend(major_indices)
+                print(f"   [FALLBACK] Adding major indices: {', '.join(major_indices)}")
+                
+                # 3. 如果还有预算，添加高信号股票
                 remaining_budget = tool_budget - tool_calls_count
-                max_stocks = min(len(sorted_stocks), remaining_budget)  # 每个股票至少1个工具
-                selected_symbols = [sym for sym, _ in sorted_stocks[:max_stocks]]
-                
-                # 如果sorted_stocks为空，使用sample_stocks或market_stats.top_signals作为fallback
-                if not selected_symbols:
-                    # 尝试从market_stats获取top_signals
-                    top_signals = market_summary.get("market_stats", {}).get("top_signals", [])
-                    if top_signals:
-                        selected_symbols = [item.get("symbol") for item in top_signals if item.get("symbol")]
-                    # 如果还是没有，使用默认列表
-                    if not selected_symbols:
-                        selected_symbols = ["NVDA", "MSFT", "AAPL", "TSLA", "GOOGL", "AMZN", "META", "AVGO", "AMD", "INTC", "QCOM", "NFLX", "COST", "ASML", "CSCO"]
-                    selected_symbols = selected_symbols[:min(remaining_budget, len(selected_symbols))]
+                if len(selected_symbols) < remaining_budget:
+                    stocks = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
+                    sorted_stocks = []
+                    for sym in stocks.keys():
+                        # 跳过已经选择的持仓和指数
+                        if sym not in selected_symbols:
+                            try:
+                                score = float(stocks[sym].get("signal_score", 0))
+                                sorted_stocks.append((sym, score))
+                            except (ValueError, TypeError):
+                                pass
+                    
+                    sorted_stocks.sort(key=lambda x: x[1], reverse=True)
+                    additional_count = remaining_budget - len(selected_symbols)
+                    additional_symbols = [sym for sym, _ in sorted_stocks[:additional_count]]
+                    selected_symbols.extend(additional_symbols)
+                    if additional_symbols:
+                        print(f"   [FALLBACK] Adding {len(additional_symbols)} high-signal stocks: {', '.join(additional_symbols[:5])}...")
                 
                 tool_calls_list = []
-                # 为每个股票添加技术指标工具（优先）
+                # 为每个符号添加技术指标工具
                 for sym in selected_symbols:
                     if tool_calls_count >= tool_budget:
                         break
-                    signal_score = stocks.get(sym, {}).get("signal_score", "N/A") if stocks.get(sym) else "N/A"
-                    tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym} (signal_score: {signal_score})"})
+                    tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym} (priority: holdings/indices)"})
                 
                 # 为前一半股票添加support/resistance工具（如果还有预算）
                 for sym in selected_symbols[:len(selected_symbols)//2]:

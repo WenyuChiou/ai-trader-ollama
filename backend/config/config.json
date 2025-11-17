@@ -57,7 +57,7 @@
   "max_orders_per_cycle": 20,
   "trade_cooldown_hours": 24.0,
   
-  "_comment_optimization": "Enable optimization components for improved performance (ToolCoordinator, SharedContext, BudgetAllocator). Default: false (uses standard version)",
+  "_comment_optimization": "Optimization components are now integrated and enabled by default. This setting is kept for backward compatibility but no longer affects behavior.",
   "enable_optimizations": true,
   
   "llm": {

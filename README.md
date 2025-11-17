@@ -1673,14 +1673,21 @@ Trader Agent decides:
 
 #### 3. Cash Management Rules
 
-**Current System**: **LLM-Decided (Guidelines)** - Trader Agent manages cash allocation
+**Current System**: **Two Modes - Auto vs Configured**
 
-**Guidelines (LLM Considers)**:
+**Mode 1: `"auto"` (Default - LLM Autonomous)**:
 
-| Rule | Default Guideline | Type | How It Works |
+| Rule | Default Behavior | Type | How It Works |
 |------|------------------|------|--------------|
-| **Cash Reserve** | 20% of portfolio | LLM Guideline | Trader Agent considers keeping cash reserve, but can adjust based on opportunities |
-| **Available Cash** | Portfolio cash - reserve | LLM Guideline | Trader Agent calculates available cash for trading |
+| **Cash Reserve** | **No Limit** | Agent Decision | Agent decides cash reserve based on market conditions and risk |
+| **Available Cash** | **Flexible** | Agent Decision | Agent can use all available cash if opportunities are strong |
+
+**Mode 2: `"configured"` (With Hard Limit)**:
+
+| Rule | Configurable | Type | How It Works |
+|------|--------------|------|--------------|
+| **Cash Reserve** | Yes (`min_cash_reserve_ratio`) | Hard Limit | Agent will maintain minimum cash reserve (e.g., 20%) |
+| **Available Cash** | Limited by Reserve | Hard Limit | Agent can only use cash above the reserve threshold |
 
 **LLM Decision Process**:
 ```

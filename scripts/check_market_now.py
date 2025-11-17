@@ -21,25 +21,15 @@ try:
     import pytz
     from src.utils.trading_days import is_market_open, is_trading_day
     
-    # 获取当前时间
+    # 直接获取美东时间（最可靠的方法，自动处理夏令时）
+    et_tz = pytz.timezone('America/New_York')
+    et_time = datetime.now(et_tz)
+    
+    # 获取本地时间用于显示
     now = datetime.now()
     
-    # 获取美东时间
-    et_tz = pytz.timezone('America/New_York')
-    if now.tzinfo is None:
-        # 假设是本地时间，需要先添加时区信息
-        import time
-        offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
-        from datetime import timedelta, timezone as dt_timezone
-        local_tz = dt_timezone(timedelta(seconds=offset_seconds))
-        now_with_tz = now.replace(tzinfo=local_tz)
-    else:
-        now_with_tz = now
-    
-    et_time = now_with_tz.astimezone(et_tz)
-    
-    # 检查市场状态
-    market_open = is_market_open(now)
+    # 检查市场状态（传入None让函数直接获取美东时间）
+    market_open = is_market_open(None)
     is_trading = is_trading_day(et_time.date())
     
     print("=" * 60)

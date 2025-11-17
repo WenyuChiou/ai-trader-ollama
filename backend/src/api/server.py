@@ -916,20 +916,10 @@ async def check_market_open():
         from src.utils.trading_days import is_market_open
         import pytz
         
-        now = datetime.now()
-        market_open = is_market_open(now)
-        
-        # 获取美东时间用于显示
+        # 直接获取美东时间（最可靠的方法，自动处理夏令时）
         et_tz = pytz.timezone('America/New_York')
-        if now.tzinfo is None:
-            import time
-            offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
-            from datetime import timedelta, timezone as dt_timezone
-            local_tz = dt_timezone(timedelta(seconds=offset_seconds))
-            now_with_tz = now.replace(tzinfo=local_tz)
-        else:
-            now_with_tz = now
-        et_time = now_with_tz.astimezone(et_tz)
+        et_time = datetime.now(et_tz)
+        market_open = is_market_open(None)  # 传入None让函数直接获取美东时间
         
         # 计算距离开盘/收盘的时间（分钟）
         current_time = et_time.time()

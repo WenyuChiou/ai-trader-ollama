@@ -124,33 +124,24 @@ def is_market_open(check_datetime: Optional[datetime] = None) -> bool:
     返回:
     - True if market is open, False otherwise
     """
-    if check_datetime is None:
-        check_datetime = datetime.now()
-    
-    # CRITICAL FIX: 转换为美东时间（EST/EDT）进行判断
+    # CRITICAL FIX: 直接获取美东时间，避免本地时区转换错误
     try:
         import pytz
-        # 获取美东时区（自动处理EST/EDT）
+        # 获取美东时区（自动处理EST/EDT，pytz会自动处理夏令时转换）
         et_tz = pytz.timezone('America/New_York')
         
-        # 如果check_datetime没有时区信息，需要先添加时区信息
-        if check_datetime.tzinfo is None:
-            # 更可靠的方法：直接使用 UTC 作为基准，然后转换为美东时间
-            # 这样可以避免本地时区转换的复杂性
-            try:
-                # 方法1: 尝试获取本地时区
-                import time
-                offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
-                from datetime import timedelta, timezone as dt_timezone
-                local_tz = dt_timezone(timedelta(seconds=offset_seconds))
-                check_datetime = check_datetime.replace(tzinfo=local_tz)
-            except Exception:
-                # 如果获取本地时区失败，假设是UTC
+        if check_datetime is None:
+            # 直接获取当前美东时间（最可靠的方法）
+            et_time = datetime.now(et_tz)
+        else:
+            # 如果提供了check_datetime，需要转换为美东时间
+            if check_datetime.tzinfo is None:
+                # 如果没有时区信息，假设是UTC（最安全的方法）
                 utc_tz = pytz.UTC
                 check_datetime = utc_tz.localize(check_datetime)
-        
-        # 转换为美东时间
-        et_time = check_datetime.astimezone(et_tz)
+            
+            # 转换为美东时间
+            et_time = check_datetime.astimezone(et_tz)
     except ImportError:
         # 如果没有pytz，使用UTC时间（需要手动调整）
         # 这是一个fallback，建议安装pytz: pip install pytz
@@ -178,7 +169,8 @@ def is_market_open(check_datetime: Optional[datetime] = None) -> bool:
     is_open = market_open <= current_time < market_close
     if not is_open:
         print(f"[MARKET STATUS] Market is CLOSED")
-        print(f"  - Local time: {check_datetime.strftime('%Y-%m-%d %H:%M:%S %Z') if check_datetime.tzinfo else check_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
+        if check_datetime is not None:
+            print(f"  - Input time: {check_datetime.strftime('%Y-%m-%d %H:%M:%S %Z') if check_datetime.tzinfo else check_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"  - Eastern time: {et_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
         print(f"  - Current ET time: {current_time.strftime('%H:%M:%S')}")
         print(f"  - Market hours: 9:30 AM - 4:00 PM ET")

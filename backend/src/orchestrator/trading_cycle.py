@@ -1723,22 +1723,30 @@ def execute_daily_trade(
                         execution_errors.append(f"SELL {symbol} skipped: market is closed (market orders only execute during trading hours)")
                         continue
                     
-                    # 获取当前市价
+                    # CRITICAL FIX: 获取当前市价 - 优先使用实时价格，fallback到last_prices中的价格
+                    # 不使用sell_price（+0.5%），确保成交价格接近市价
                     import yfinance as yf
+                    current_price = None
                     try:
                         ticker = yf.Ticker(symbol)
                         info = ticker.fast_info
                         current_price = info.get("lastPrice") or info.get("regularMarketPrice")
-                        if not current_price:
-                            # 如果获取不到实时价格，使用sell_price作为后备
-                            current_price = sell_price
-                            print(f"[MARKET ORDER] Warning: Could not get real-time price for {symbol}, using sell_price ${current_price:.2f}")
-                        else:
+                        if current_price:
                             current_price = float(current_price)
+                            print(f"[MARKET ORDER] Got real-time price for {symbol}: ${current_price:.2f}")
                     except Exception as e:
-                        # 如果获取价格失败，使用sell_price作为后备
-                        current_price = sell_price
-                        print(f"[MARKET ORDER] Warning: Failed to get real-time price for {symbol}: {e}, using sell_price ${current_price:.2f}")
+                        print(f"[MARKET ORDER] Warning: Failed to get real-time price for {symbol}: {e}")
+                    
+                    # CRITICAL FIX: 如果获取实时价格失败，使用last_prices中的价格（而不是sell_price）
+                    if current_price is None or current_price <= 0:
+                        # 优先使用last_prices中的价格（这是从market_view获取的最新价格）
+                        current_price = last_prices.get(symbol)
+                        if current_price and current_price > 0:
+                            print(f"[MARKET ORDER] Using last_prices for {symbol}: ${current_price:.2f}")
+                        else:
+                            # 最后fallback到sell_price（但应该很少发生）
+                            current_price = sell_price
+                            print(f"[MARKET ORDER] Warning: Using sell_price as last resort for {symbol}: ${current_price:.2f}")
                     
                     # 市价单：使用当前价格
                     limit_price = current_price

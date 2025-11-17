@@ -49,6 +49,7 @@ def fetch_jin10_news(
             "User-Agent": USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Charset": "UTF-8",
         })
         
         if resp.status_code != 200:
@@ -59,8 +60,10 @@ def fetch_jin10_news(
                 "count": 0
             }
         
+        # CRITICAL FIX: 确保正确设置编码，避免中文乱码
+        resp.encoding = resp.apparent_encoding or 'utf-8'
         html = resp.text
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, 'html.parser', from_encoding='utf-8')
         
         items = []
         
@@ -195,6 +198,7 @@ def fetch_jin10_economic_data(
             "User-Agent": USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Charset": "UTF-8",
         })
         
         if resp.status_code != 200:
@@ -205,8 +209,10 @@ def fetch_jin10_economic_data(
                 "count": 0
             }
         
+        # CRITICAL FIX: 确保正确设置编码，避免中文乱码
+        resp.encoding = resp.apparent_encoding or 'utf-8'
         html = resp.text
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, 'html.parser', from_encoding='utf-8')
         
         items = []
         

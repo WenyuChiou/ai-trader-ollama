@@ -9285,19 +9285,41 @@
                 console.log('[News] Using tool_results_by_category.news:', toolResultsByCategory.news.length, 'items');
                 for (const newsTool of toolResultsByCategory.news) {
                     const toolResult = newsTool.tool_result || {};
-                    const hits = toolResult.hits || [];
+                    const toolName = newsTool.tool_name || '';
                     
-                    if (Array.isArray(hits) && hits.length > 0) {
-                        for (const hit of hits) {
-                            if (hit && (hit.title || hit.link)) {
+                    // CRITICAL FIX: 支持多种数据结构
+                    // news_scan 返回 {hits: [...]}
+                    // fetch_jin10_news 返回 {items: [...], count, source, fetched_at}
+                    let newsItems = null;
+                    
+                    if (toolResult.hits && Array.isArray(toolResult.hits)) {
+                        // news_scan 格式
+                        newsItems = toolResult.hits;
+                    } else if (toolResult.items && Array.isArray(toolResult.items)) {
+                        // fetch_jin10_news 格式
+                        newsItems = toolResult.items;
+                    } else if (Array.isArray(toolResult)) {
+                        // 如果 tool_result 本身就是数组
+                        newsItems = toolResult;
+                    }
+                    
+                    if (newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
+                        for (const item of newsItems) {
+                            if (item && (item.title || item.link || item.href)) {
+                                // 处理不同的字段名
+                                const title = item.title || item.headline || 'No title';
+                                const link = item.link || item.href || item.url || '';
+                                const source = item.source || toolResult.source || 'Unknown';
+                                const published = item.published || item.published_timestamp || item.published_at || item.date || '';
+                                
                                 newsData.push({
-                                    title: hit.title || 'No title',
-                                    link: hit.link || '',
-                                    source: hit.source || 'Unknown',
-                                    published: hit.published || hit.published_timestamp || '',
+                                    title: title,
+                                    link: link,
+                                    source: source,
+                                    published: published,
                                     timestamp: newsTool.timestamp || '',
                                     agent: newsTool.agent || 'Unknown',
-                                    tool: newsTool.tool_name || 'unknown'
+                                    tool: toolName
                                 });
                             }
                         }

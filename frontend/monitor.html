@@ -5339,6 +5339,136 @@
                         `;
                     }
                     
+                    // 特殊处理：jin10 news 数据（items 数组）
+                    if (data.items && Array.isArray(data.items) && data.items.length > 0 && (toolName === 'fetch_jin10_news' || toolName === 'fetch_jin10_economic_data')) {
+                        const items = data.items;
+                        const allKeys = new Set();
+                        items.forEach(item => {
+                            if (typeof item === 'object' && item !== null) {
+                                Object.keys(item).forEach(k => allKeys.add(k));
+                            }
+                        });
+                        
+                        if (allKeys.size > 0) {
+                            const keys = Array.from(allKeys);
+                            let tableHtml = `
+                                <div style="margin-top: 8px;">
+                                    <div style="font-weight: 600; color: #22d3ee; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                                        <span>📰</span>
+                                        <span>${toolName === 'fetch_jin10_news' ? 'Jin10 News' : 'Jin10 Economic Data'} (${items.length} items)</span>
+                                    </div>
+                                    <div style="overflow-x: auto;">
+                                        <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
+                                            <thead>
+                                                <tr style="background: rgba(34, 211, 238, 0.25);">
+                                                    ${keys.map(k => {
+                                                        const headerText = String(k).toUpperCase();
+                                                        return `<th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">${escapeHtml(headerText)}</th>`;
+                                                    }).join('')}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${items.map((item, idx) => {
+                                                    const isEven = idx % 2 === 0;
+                                                    return `
+                                                    <tr style="border-bottom: 1px solid rgba(34, 211, 238, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
+                                                        ${keys.map(k => {
+                                                            const val = item[k];
+                                                            let displayVal = '';
+                                                            if (val === null || val === undefined || val === '') {
+                                                                displayVal = '<span style="color: #94a3b8; font-style: italic;">-</span>';
+                                                            } else if (typeof val === 'object') {
+                                                                if (Array.isArray(val)) {
+                                                                    displayVal = `<span style="color: #818cf8; font-weight: 600;">[${val.length} items]</span>`;
+                                                                } else {
+                                                                    const keys = Object.keys(val);
+                                                                    displayVal = `<span style="color: #818cf8; font-weight: 600;">Object (${keys.length} fields)</span>`;
+                                                                }
+                                                            } else if (typeof val === 'number') {
+                                                                const formatted = val % 1 === 0 ? val.toString() : val.toFixed(2);
+                                                                displayVal = `<span style="color: #10b981; font-weight: 700;">${formatted}</span>`;
+                                                            } else {
+                                                                // CRITICAL FIX: 确保中文正确显示（不进行额外escape，因为escapeHtml已经处理）
+                                                                displayVal = escapeHtml(String(val));
+                                                            }
+                                                            return `<td style="padding: 8px 12px; color: #f1f5f9;">${displayVal}</td>`;
+                                                        }).join('')}
+                                                    </tr>
+                                                `;
+                                                }).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    ${data.count !== undefined ? `<div style="margin-top: 8px; color: #94a3b8; font-size: 11px;">Total: ${data.count} items | Source: ${data.source || 'jin10'}</div>` : ''}
+                                </div>
+                            `;
+                            return tableHtml;
+                        }
+                    }
+                    
+                    // 特殊处理：FRED 经济数据（字符串格式）
+                    if ((toolName === 'get_economic_summary' || toolName === 'get_labor_market_data' || toolName === 'fetch_fred_indicator') && typeof data === 'object' && data.result && typeof data.result === 'string') {
+                        // FRED 数据通常是字符串格式，需要格式化显示
+                        const fredText = data.result;
+                        const lines = fredText.split('\n').filter(line => line.trim());
+                        
+                        let tableHtml = `
+                            <div style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee;">
+                                <div style="font-weight: 600; color: #22d3ee; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <span>📊</span>
+                                    <span>${toolName === 'get_economic_summary' ? 'US Economic Indicators (FRED)' : toolName === 'get_labor_market_data' ? 'US Labor Market Data (FRED)' : 'FRED Indicator'}</span>
+                                </div>
+                                <div style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
+                                        <thead>
+                                            <tr style="background: rgba(34, 211, 238, 0.25);">
+                                                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">INDICATOR</th>
+                                                <th style="padding: 8px 12px; text-align: right; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">VALUE</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                        `;
+                        
+                        lines.forEach((line, idx) => {
+                            // 跳过标题行和空行
+                            if (line.includes('===') || line.includes('Data source') || line.trim() === '') {
+                                return;
+                            }
+                            
+                            // 解析格式：Label: Value (as of Date) 或 Label: Value
+                            const match = line.match(/^(.+?):\s*(.+?)(?:\s*\(as of\s*(.+?)\))?$/);
+                            if (match) {
+                                const label = match[1].trim();
+                                const value = match[2].trim();
+                                const date = match[3] ? match[3].trim() : null;
+                                
+                                const isEven = idx % 2 === 0;
+                                tableHtml += `
+                                    <tr style="border-bottom: 1px solid rgba(34, 211, 238, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
+                                        <td style="padding: 8px 12px; color: #f1f5f9; font-weight: 600;">${escapeHtml(label)}</td>
+                                        <td style="padding: 8px 12px; text-align: right; color: #10b981; font-weight: 700;">${escapeHtml(value)}${date ? `<br><span style="font-size: 10px; color: #94a3b8; font-weight: 400;">as of ${escapeHtml(date)}</span>` : ''}</td>
+                                    </tr>
+                                `;
+                            } else {
+                                // 如果不是标准格式，显示为普通文本
+                                const isEven = idx % 2 === 0;
+                                tableHtml += `
+                                    <tr style="border-bottom: 1px solid rgba(34, 211, 238, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
+                                        <td colspan="2" style="padding: 8px 12px; color: #f1f5f9;">${escapeHtml(line)}</td>
+                                    </tr>
+                                `;
+                            }
+                        });
+                        
+                        tableHtml += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                        return tableHtml;
+                    }
+                    
                     // Prioritize checking array fields (like indices, records, etc.), as arrays are more common
                     for (const [key, value] of Object.entries(data)) {
                         if (Array.isArray(value) && value.length > 0) {

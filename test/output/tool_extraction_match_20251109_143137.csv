@@ -1,5 +1,0 @@
-﻿序号,Agent,日期,使用的工具数,工具列表,匹配到的工具数,匹配状态,匹配的工具
-1,Market Analyst,2025-11-09,3,"get_market_indices, get_sector_rotation, get_market_breadth",3,✅ 成功,"get_market_indices (str), get_sector_rotation (str), get_market_breadth (dict)"
-2,Technical Analyst,2025-11-09,2,"get_advanced_indicators, get_support_resistance",2,✅ 成功,"get_advanced_indicators (str), get_support_resistance (dict)"
-3,Fundamental Analyst,2025-11-09,4,"get_company_fundamentals, get_earnings_history, get_financial_statements, get_sector_rotation",4,✅ 成功,"get_company_fundamentals (str), get_earnings_history (dict), get_financial_statements (str), get_sector_rotation (str)"
-4,Sentiment Analyst,2025-11-09,3,"fear_greed, vix_term, news_scan",3,✅ 成功,"fear_greed (dict), vix_term (dict), news_scan (dict)"

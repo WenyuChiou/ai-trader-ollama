@@ -9415,15 +9415,39 @@
                             }
                             
                             // 提取新闻数据
+                            // CRITICAL FIX: 支持多种数据结构
+                            // news_scan 返回 {hits: [...]}
+                            // fetch_jin10_news 返回 {items: [...], count, source, fetched_at}
+                            let newsItems = null;
+                            
                             if (result && result.hits && Array.isArray(result.hits)) {
-                                console.log('[News] Found', result.hits.length, 'news hits from', toolName);
-                                for (const hit of result.hits) {
-                                    if (hit && (hit.title || hit.link)) {
+                                // news_scan 格式
+                                newsItems = result.hits;
+                                console.log('[News] Found', newsItems.length, 'news hits from', toolName);
+                            } else if (result && result.items && Array.isArray(result.items)) {
+                                // fetch_jin10_news 格式
+                                newsItems = result.items;
+                                console.log('[News] Found', newsItems.length, 'news items from', toolName);
+                            } else if (result && Array.isArray(result)) {
+                                // 如果 result 本身就是数组
+                                newsItems = result;
+                                console.log('[News] Found', newsItems.length, 'news items (direct array) from', toolName);
+                            }
+                            
+                            if (newsItems && Array.isArray(newsItems)) {
+                                for (const item of newsItems) {
+                                    if (item && (item.title || item.link || item.href)) {
+                                        // 处理不同的字段名
+                                        const title = item.title || item.headline || 'No title';
+                                        const link = item.link || item.href || item.url || '';
+                                        const source = item.source || result.source || 'Unknown';
+                                        const published = item.published || item.published_timestamp || item.published_at || item.date || '';
+                                        
                                         newsData.push({
-                                            title: hit.title || 'No title',
-                                            link: hit.link || '',
-                                            source: hit.source || 'Unknown',
-                                            published: hit.published || hit.published_timestamp || '',
+                                            title: title,
+                                            link: link,
+                                            source: source,
+                                            published: published,
                                             timestamp: conv.timestamp || conv.date || '',
                                             agent: conv.agent || 'Unknown',
                                             tool: toolName
@@ -9431,7 +9455,7 @@
                                     }
                                 }
                             } else {
-                                console.warn('[News] No hits array found in result:', result ? Object.keys(result) : 'null');
+                                console.warn('[News] No hits/items array found in result:', result ? Object.keys(result) : 'null');
                             }
                             
                             // 如果有queries信息，也保存

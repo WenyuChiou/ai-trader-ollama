@@ -173,8 +173,11 @@ def execute_daily_trade(
         print(f"[TRADING CYCLE] Single-day query detected, extended start to 7 days before: {start} -> {market_data_end}")
     
     print(f"[TRADING CYCLE] Fetching market data: start={start}, end={market_data_end}")
-    print(f"[TRADING CYCLE] Universe size: {len(universe)} symbols")
-    print(f"[TRADING CYCLE] Universe sample (first 10): {universe[:10]}")
+    print(f"[TRADING CYCLE] Universe size: {len(universe)} symbols (processing ALL symbols)")
+    if len(universe) <= 20:
+        print(f"[TRADING CYCLE] Universe symbols: {universe}")
+    else:
+        print(f"[TRADING CYCLE] Universe symbols (first 10): {universe[:10]} ... (and {len(universe) - 10} more)")
     
     try:
         market_view: Dict[str, Any] = fetch_market_batch.invoke({
@@ -204,8 +207,11 @@ def execute_daily_trade(
     # ---- (1b) 輕量 enriched 給討論層 ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
-    print(f"[TRADING CYCLE] Stocks available for analysis: {len(symbols)} symbols")
-    print(f"[TRADING CYCLE] Stock symbols sample (first 10): {symbols[:10]}")
+    print(f"[TRADING CYCLE] Stocks available for analysis: {len(symbols)} symbols (ALL symbols will be analyzed)")
+    if len(symbols) <= 20:
+        print(f"[TRADING CYCLE] Stock symbols: {symbols}")
+    else:
+        print(f"[TRADING CYCLE] Stock symbols (first 10): {symbols[:10]} ... (and {len(symbols) - 10} more)")
     # 传递所有股票的信号分数（按降序排列），不限制数量
     signal_top = _top_by_signal(stocks, k=len(stocks))  # 使用全部股票
     print(f"[TRADING CYCLE] Signal scores calculated for {len(signal_top)} stocks")

@@ -1933,9 +1933,10 @@ def execute_daily_trade(
         print(f"[TRADING CYCLE] ⚠️  Traceback: {error_trace}")
         # CRITICAL: 即使写入失败，也要继续执行，不要中断整个流程
     
-    # CRITICAL FIX: 保存 portfolio 状态（在订单执行后立即保存）
-    # 确保即使订单立即成交，portfolio 状态也会被保存
-    if portfolio and (actual_buy_orders_count > 0 or actual_sell_orders_count > 0):
+    # CRITICAL FIX: 保存 portfolio 状态（无论是否有订单都要保存）
+    # 确保portfolio状态始终是最新的（包括持仓价格变化、现金变化等）
+    # 即使没有订单，也要保存portfolio状态（因为持仓价格可能变化）
+    if portfolio:
         try:
             # json 已在文件顶部导入
             portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
@@ -1966,7 +1967,10 @@ def execute_daily_trade(
                 }
             
             portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
-            print(f"[TRADING CYCLE] Saved portfolio state after order execution ({actual_buy_orders_count} buy, {actual_sell_orders_count} sell orders)")
+            if actual_buy_orders_count > 0 or actual_sell_orders_count > 0:
+                print(f"[TRADING CYCLE] Saved portfolio state after order execution ({actual_buy_orders_count} buy, {actual_sell_orders_count} sell orders)")
+            else:
+                print(f"[TRADING CYCLE] Saved portfolio state (no new orders, {len(portfolio._positions)} positions, total_value=${total_value:.2f})")
         except Exception as e:
             print(f"[TRADING CYCLE] ⚠️  Failed to save portfolio state: {e}")
     

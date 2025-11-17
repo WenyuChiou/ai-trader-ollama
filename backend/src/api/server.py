@@ -662,39 +662,128 @@ async def get_portfolio_real_time():
                     "unrealized_pnl_pct": 0.0,
                 }
             
-            # 尝试获取实时价格（如果市场开放）
+            # CRITICAL FIX: 尝试获取实时价格（使用正确的调用方式）
+            # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 方法
+            # 它返回的数据结构是: {"stocks": {symbol: {price, ...}}, "crypto": {...}, "VIX": {...}}
             try:
-                market_data = fetch_market_batch(positions)
+                from datetime import date, timedelta
+                # 获取最近7天的数据（确保能获取到最新价格）
+                end_date = date.today().isoformat()
+                start_date = (date.today() - timedelta(days=7)).isoformat()
+                
+                # CRITICAL FIX: 使用 .invoke() 方法，传递正确的参数
+                market_data = fetch_market_batch.invoke({
+                    "symbols": positions,
+                    "start": start_date,
+                    "end": end_date,
+                })
+                
+                # CRITICAL FIX: 从正确的路径获取价格数据
+                stocks_data = market_data.get("stocks", {})
+                
                 for symbol in positions:
-                    if symbol in market_data and "price" in market_data[symbol]:
-                        price = float(market_data[symbol]["price"])
-                        last_prices[symbol] = price
+                    if symbol in stocks_data:
+                        stock_info = stocks_data[symbol]
+                        # CRITICAL FIX: fetch_market_batch 返回的 price 字段是最新收盘价
+                        price = stock_info.get("price")
+                        if price is None or (isinstance(price, float) and (price != price or price <= 0)):  # Check for NaN or invalid
+                            # 如果没有 price 或 price 无效，尝试使用 get_latest_close 获取最新收盘价
+                            from src.data.market_data import get_latest_close
+                            try:
+                                price = get_latest_close(symbol, start_date, end_date)
+                                print(f"[API] Using get_latest_close for {symbol}: ${price:.2f}")
+                            except Exception as e:
+                                # 如果获取失败，使用 avg_cost（保持原逻辑）
+                                price = portfolio._positions[symbol].avg_cost
+                                print(f"[API] Failed to get latest price for {symbol}, using avg_cost: ${price:.2f} (error: {e})")
+                        else:
+                            price = float(price)
                         
-                        # 更新持仓详情（使用真实价格）
-                        pos = portfolio._positions[symbol]
-                        total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
-                        positions_detail[symbol] = {
-                    "quantity": pos.quantity,
-                    "avg_cost": pos.avg_cost,
-                            "total_cost": total_cost,
-                            "cost_basis": total_cost,
-                            "current_price": price,
-                            "market_value": pos.quantity * price,
-                            "unrealized_pnl": (price - pos.avg_cost) * pos.quantity,
-                            "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
-                        }
-                        
-                        # 计算盈亏
-                        positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
+                        if price and price > 0 and price == price:  # Check for valid, non-NaN price
+                            last_prices[symbol] = price
+                            
+                            # 更新持仓详情（使用真实价格）
+                            pos = portfolio._positions[symbol]
+                            total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
+                            positions_detail[symbol] = {
+                                "quantity": pos.quantity,
+                                "avg_cost": pos.avg_cost,
+                                "total_cost": total_cost,
+                                "cost_basis": total_cost,
+                                "current_price": price,
+                                "market_value": pos.quantity * price,
+                                "unrealized_pnl": (price - pos.avg_cost) * pos.quantity,
+                                "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
+                            }
+                            
+                            # 计算盈亏
+                            positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
+                            print(f"[API] Updated {symbol}: price=${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
             except Exception as e:
+                import traceback
                 print(f"[API] Failed to fetch market data: {e}")
-                # 即使失败，positions_detail 也已经填充了基本信息
+                print(f"[API] Traceback: {traceback.format_exc()}")
+                # 即使失败，positions_detail 也已经填充了基本信息（使用 avg_cost）
         
         # 计算总值
         equity_value = portfolio.equity_value(last_prices)
         total_value = portfolio.cash + equity_value
         total_pnl = portfolio.total_pnl(last_prices)
         total_pnl_pct = portfolio.total_pnl_pct(last_prices)
+        
+        # CRITICAL FIX: 自动记录净值历史（每小时最多记录一次）
+        # 即使没有运行trading cycle，也要记录净值变化
+        try:
+            from src.data.equity_tracker import EquityTracker
+            from datetime import datetime, timezone
+            equity_tracker = EquityTracker(root=str(logs_dir))
+            
+            # 检查最后一条记录的时间，如果超过1小时，才记录新点
+            equity_file = logs_dir / "equity_history.jsonl"
+            should_record = True
+            if equity_file.exists():
+                try:
+                    with equity_file.open("r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                        if lines:
+                            last_record = json.loads(lines[-1].strip())
+                            last_timestamp = last_record.get("timestamp")
+                            if last_timestamp:
+                                # 解析最后记录的时间戳
+                                last_time = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
+                                current_time = datetime.now(timezone.utc)
+                                time_diff = (current_time - last_time).total_seconds() / 3600  # 小时
+                                # CRITICAL FIX: 只要超过1小时就记录，不管净值变化多少
+                                # 这样可以确保每小时都有记录，即使净值没有变化
+                                if time_diff < 1.0:
+                                    should_record = False
+                except Exception as e:
+                    print(f"[API] Failed to check last equity record: {e}")
+            
+            if should_record:
+                # 构建portfolio snapshot
+                portfolio_snapshot = {
+                    "cash": portfolio.cash,
+                    "equity_value": equity_value,
+                    "total_value": total_value,
+                    "total_pnl": total_pnl,
+                    "total_pnl_pct": total_pnl_pct,
+                    "positions_detail": positions_detail,
+                }
+                
+                # 记录净值（使用今天的日期）
+                from datetime import date
+                equity_date = date.today().isoformat()
+                equity_tracker.record_daily_equity(
+                    date_str=equity_date,
+                    portfolio_snapshot=portfolio_snapshot,
+                )
+                print(f"[API] Auto-recorded equity snapshot: ${total_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
+        except Exception as e:
+            import traceback
+            print(f"[API] Failed to auto-record equity: {e}")
+            print(f"[API] Traceback: {traceback.format_exc()}")
+            # 不影响API响应，继续返回数据
         
         return JSONResponse(
             status_code=200,

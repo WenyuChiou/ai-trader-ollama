@@ -511,6 +511,7 @@ Write in natural language, approximately 100-150 words."""
     }
 
     # 提取推荐股票列表（recs）
+    # CRITICAL: 优先使用分析师推荐的股票，如果没有推荐则从 universe 的所有股票中选择
     recs = []
     if mview and isinstance(mview, dict):
         recs = mview.get("recommended_stocks", [])
@@ -520,6 +521,12 @@ Write in natural language, approximately 100-150 words."""
         recs = convo.get("recommended_stocks", [])
         if not recs:
             recs = convo.get("recs", [])
+    
+    # DEBUG: 打印推荐股票来源
+    if recs:
+        print(f"[TRADER] Using {len(recs)} recommended stocks from analysts: {recs[:10]}...")
+    else:
+        print(f"[TRADER] No recommended stocks from analysts, will use fallback from universe")
     
     # 反向ETF列表（用于做空市场）
     INVERSE_ETFS = ["SQQQ", "SPXU", "SH", "PSQ", "SDS", "DOG", "SOXS"]
@@ -590,20 +597,24 @@ Write in natural language, approximately 100-150 words."""
         stocks = market.get("stocks", {})
     
     if not recs and stocks and portfolio_value > 0:
-        # Fallback: 如果仍然没有推荐股票，使用所有有价格的股票的前10只
+        # Fallback: 如果仍然没有推荐股票，使用所有有价格的股票（从 universe 中选择）
+        # CRITICAL: 从 universe 的所有股票中选择，按 signal_score 排序
         available_stocks = [
             (s, d) for s, d in stocks.items() 
             if isinstance(d, dict) and s in last_prices and last_prices.get(s, 0) > 0
         ]
         if available_stocks:
-            # 按 signal_score 排序，选择前10只
+            # 按 signal_score 排序，选择前20只（增加选择范围，让 agent 有更多选择）
             sorted_available = sorted(
                 available_stocks,
                 key=lambda x: float(x[1].get("signal_score", 0)) if isinstance(x[1], dict) else 0,
                 reverse=True
             )
-            recs = [symbol for symbol, _ in sorted_available[:10]]
-            print(f"[TRADER] Fallback: Using top {len(recs)} available stocks: {recs[:5]}...")
+            # CRITICAL: 使用所有 universe 股票，不限制数量（让 agent 自由选择）
+            # 但为了性能，限制在 top 50（如果 universe 很大）
+            max_candidates = min(50, len(sorted_available))
+            recs = [symbol for symbol, _ in sorted_available[:max_candidates]]
+            print(f"[TRADER] Fallback: Using top {len(recs)} stocks from universe (total available: {len(available_stocks)}): {recs[:10]}...")
     
     if recs and portfolio_value > 0:
         # NEW: Position limits are OPTIONAL - only use if explicitly set in config.json

@@ -2258,6 +2258,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 | `docs/SYSTEM_PIPELINE_CHECK.md` | Complete system pipeline integrity check report |
 | `docs/COMPLETE_PIPELINE_DIAGRAM.md` | Complete system pipeline flow diagram |
 | `docs/PIPELINE_SUMMARY.md` | Complete system pipeline summary and verification |
+| `docs/DAILY_UPLOAD_SETUP.md` | Daily upload to Railway and GitHub Pages setup guide |
 
 ---
 

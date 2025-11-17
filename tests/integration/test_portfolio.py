@@ -33,31 +33,35 @@ class TestPortfolio:
         from src.data.portfolio import Portfolio, Position
         
         portfolio = Portfolio()
-        position = Position(symbol="NVDA", quantity=10, avg_cost=500.0)
+        position = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
         portfolio._positions["NVDA"] = position
         
         assert "NVDA" in portfolio._positions
         assert portfolio._positions["NVDA"].quantity == 10
         assert portfolio._positions["NVDA"].avg_cost == 500.0
+        assert portfolio._positions["NVDA"].total_cost == 5000.0
     
     def test_portfolio_value_calculation(self):
         """Test portfolio value calculation"""
         from src.data.portfolio import Portfolio, Position
         
         portfolio = Portfolio()
-        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0)
+        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
         
         last_prices = {"NVDA": 510.0}
-        value = portfolio.value(last_prices)
+        # value() returns total value (cash + equity), equity_value() returns only equity
+        equity_value = portfolio.equity_value(last_prices)
+        total_value = portfolio.value(last_prices)
         
-        assert value == 5100.0  # 10 * 510
+        assert equity_value == 5100.0  # 10 * 510
+        assert total_value == 15100.0  # 10000 (cash) + 5100 (equity)
     
     def test_portfolio_pnl_calculation(self):
         """Test portfolio P&L calculation"""
         from src.data.portfolio import Portfolio, Position
         
         portfolio = Portfolio()
-        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0)
+        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
         
         last_prices = {"NVDA": 510.0}
         pnl = portfolio.total_pnl(last_prices)
@@ -69,7 +73,7 @@ class TestPortfolio:
         from src.data.portfolio import Portfolio, Position
         
         portfolio = Portfolio()
-        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0)
+        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
         
         pnl = portfolio.get_position_pnl("NVDA", 510.0)
         
@@ -84,7 +88,7 @@ class TestPortfolio:
         # Create portfolio
         portfolio = Portfolio()
         portfolio.cash = 5000.0
-        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0)
+        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
         
         # Save state
         state_file = tmp_path / "portfolio_state.json"
@@ -119,7 +123,7 @@ class TestPortfolio:
         
         # Use temporary directory for testing
         with tempfile.TemporaryDirectory() as tmpdir:
-            tracker = EquityTracker(data_dir=Path(tmpdir))
+            tracker = EquityTracker(root=Path(tmpdir))
             
             snapshot = {
                 "cash": 5000.0,

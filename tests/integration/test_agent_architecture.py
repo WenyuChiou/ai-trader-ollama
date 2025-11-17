@@ -20,11 +20,11 @@ class TestAgentArchitecture:
         """Test that all agents can be imported"""
         from src.agents.multi_analyst_system import run_multi_analyst_discussion
         from src.agents.trader_agent import run_trader
-        from src.agents.risk_analyst import run_risk_analyst_llm
+        from src.agents.risk_analyst import run_risk_analyst
         
         assert run_multi_analyst_discussion is not None
         assert run_trader is not None
-        assert run_risk_analyst_llm is not None
+        assert run_risk_analyst is not None
     
     def test_toolbox_availability(self):
         """Test that toolbox is available and has tools"""

@@ -38,9 +38,9 @@ class TestSharedContext:
         
         relevant = context.get_relevant_insights("Technical Analyst", ["stance", "key_points"])
         
-        assert "Market_Analyst_stance" in relevant
-        assert relevant["Market_Analyst_stance"] == "bullish"
-        assert "Market_Analyst_key_points" in relevant
+        assert "Market Analyst_stance" in relevant
+        assert relevant["Market Analyst_stance"] == "bullish"
+        assert "Market Analyst_key_points" in relevant
     
     def test_tool_result_sharing(self):
         """Test tool result sharing"""

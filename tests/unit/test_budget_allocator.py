@@ -59,13 +59,13 @@ class TestBudgetAllocator:
     def test_get_market_conditions(self):
         """Test market conditions extraction"""
         market_view = {
-            "vix_term": {"current": 25},
+            "vix_term": {"current": 26},  # > 25 to trigger "high" volatility
             "news": [{"title": "News 1"}, {"title": "News 2"}]
         }
         
         conditions = get_market_conditions(market_view)
         
-        assert conditions["vix"] == 25
+        assert conditions["vix"] == 26
         assert conditions["news_count"] == 2
         assert conditions["volatility"] == "high"
     

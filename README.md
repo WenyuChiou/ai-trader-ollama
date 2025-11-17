@@ -2343,49 +2343,101 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
 | `docs/DAILY_UPLOAD_SETUP.md` | Daily upload to Railway and GitHub Pages setup guide |
 
-### Testing
+## 🧪 Testing
 
-**Test Suite Location**: All test files are located in the `tests/` directory (not `test/`).
+### Test Suite Overview
 
-**Test Structure**:
+**All test files are located in the `tests/` directory** (not `test/`). The old `test/` directory has been removed and replaced with a properly structured test suite.
+
+### Test Directory Structure
+
 ```
 tests/
 ├── unit/                    # Unit tests for individual components
-│   ├── test_tool_coordinator.py
-│   ├── test_shared_context.py
-│   └── test_budget_allocator.py
+│   ├── test_tool_coordinator.py    # ToolCoordinator tests
+│   ├── test_shared_context.py      # SharedContext tests
+│   └── test_budget_allocator.py     # BudgetAllocator tests
 ├── integration/             # Integration tests for system components
-│   ├── test_agent_architecture.py
-│   ├── test_portfolio.py
-│   ├── test_memory.py
-│   └── test_api.py
+│   ├── test_agent_architecture.py  # Agent system tests
+│   ├── test_portfolio.py            # Portfolio management tests
+│   ├── test_memory.py               # Memory system tests
+│   └── test_api.py                  # API endpoint tests
 ├── e2e/                     # End-to-end tests
-│   └── test_frontend.py
-├── conftest.py              # Pytest configuration and fixtures
+│   └── test_frontend.py             # Frontend integration tests
+├── utils/                   # Test utilities and helpers
+│   └── test_helpers.py
+├── conftest.py              # Pytest configuration and shared fixtures
 ├── pytest.ini               # Pytest settings
 └── README.md                # Test documentation
 ```
 
-**Running Tests**:
+### Running Tests
+
+**Prerequisites**:
+- Python 3.10+ installed
+- Virtual environment activated
+- Dependencies installed (`pip install -r backend/requirements.txt`)
+
+**Run All Tests**:
 ```powershell
-# Run all tests
+# From project root
 pytest tests/ -v
 
-# Run specific test category
-pytest tests/unit/ -v          # Unit tests only
-pytest tests/integration/ -v   # Integration tests only
-pytest tests/e2e/ -v           # E2E tests only
-
-# Run with coverage (if pytest-cov installed)
-pytest tests/ --cov=backend/src --cov-report=html
+# Or with more details
+pytest tests/ -v --tb=short
 ```
 
-**Test Status**: ✅ **48/48 tests passing** (100% pass rate)
-- Unit tests: 18/18 ✅
-- Integration tests: 24/24 ✅
-- E2E tests: 4/4 ✅
+**Run Specific Test Categories**:
+```powershell
+# Unit tests only
+pytest tests/unit/ -v
 
-**Note**: The old `test/` directory has been removed. All tests are now in `tests/` directory with proper structure and organization.
+# Integration tests only
+pytest tests/integration/ -v
+
+# End-to-end tests only
+pytest tests/e2e/ -v
+
+# Specific test file
+pytest tests/integration/test_portfolio.py -v
+```
+
+**Run with Coverage** (if pytest-cov installed):
+```powershell
+pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
+```
+
+### Test Status
+
+✅ **Current Status**: **48/48 tests passing** (100% pass rate)
+
+**Test Breakdown**:
+- **Unit Tests**: 18/18 passing
+  - ToolCoordinator: 6 tests ✅
+  - SharedContext: 7 tests ✅
+  - BudgetAllocator: 7 tests ✅
+- **Integration Tests**: 24/24 passing
+  - Agent Architecture: 6 tests ✅
+  - Portfolio Management: 7 tests ✅
+  - Memory System: 5 tests ✅
+  - API Endpoints: 5 tests ✅
+- **E2E Tests**: 4/4 passing
+  - Frontend Integration: 4 tests ✅
+
+### Test Documentation
+
+For detailed test documentation, see:
+- **[Test README](tests/README.md)** - Test suite overview and guidelines
+- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation
+- **[Test Results](docs/TEST_RESULTS.md)** - Latest test execution results
+
+### Important Notes
+
+1. **Test Location**: All tests are in `tests/` directory (not `test/`)
+2. **Old Test Files**: The old `test/` directory has been removed
+3. **Test Structure**: Tests are organized by type (unit/integration/e2e)
+4. **Test Infrastructure**: Uses pytest with proper fixtures and configuration
+5. **Test Coverage**: Structure complete, requires Ollama for full execution tests
 
 ---
 

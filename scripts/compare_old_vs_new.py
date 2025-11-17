@@ -59,7 +59,7 @@ def compare_performance():
         
         stats = coordinator.get_statistics()
         
-        print(f"  ✅ ToolCoordinator working")
+        print(f"  [OK] ToolCoordinator working")
         print(f"  - First call: {first_call_time*1000:.2f}ms")
         print(f"  - Cached call: {second_call_time*1000:.2f}ms")
         print(f"  - Cache hit rate: {stats['cache_hit_rate']:.1f}%")
@@ -67,7 +67,7 @@ def compare_performance():
         print()
         
     except Exception as e:
-        print(f"  ❌ ToolCoordinator test failed: {e}")
+        print(f"  [FAIL] ToolCoordinator test failed: {e}")
         print()
     
     # Test SharedContext
@@ -81,13 +81,13 @@ def compare_performance():
         
         relevant = context.get_relevant_insights("Technical Analyst", ["stance"])
         
-        print(f"  ✅ SharedContext working")
+        print(f"  [OK] SharedContext working")
         print(f"  - Agents: {len(context.agent_insights)}")
         print(f"  - Relevant insights: {len(relevant)}")
         print()
         
     except Exception as e:
-        print(f"  ❌ SharedContext test failed: {e}")
+        print(f"  [FAIL] SharedContext test failed: {e}")
         print()
     
     # Test BudgetAllocator
@@ -98,14 +98,14 @@ def compare_performance():
         conditions = get_market_conditions(market_view)
         allocation = allocate_tool_budget(conditions, total_budget=15)
         
-        print(f"  ✅ BudgetAllocator working")
+        print(f"  [OK] BudgetAllocator working")
         print(f"  - Market conditions: VIX={conditions['vix']}, Volatility={conditions['volatility']}")
         print(f"  - Budget allocation: {allocation}")
         print(f"  - Total allocated: {sum(allocation.values())}")
         print()
         
     except Exception as e:
-        print(f"  ❌ BudgetAllocator test failed: {e}")
+        print(f"  [FAIL] BudgetAllocator test failed: {e}")
         print()
     
     print("=" * 80)

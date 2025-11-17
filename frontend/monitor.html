@@ -2490,17 +2490,26 @@
         };
         
         // Fallback function to estimate market status using client-side time
+        // CRITICAL FIX: Use Eastern Time instead of local time for accurate market hours
         function estimateMarketStatusFromTime() {
             const now = new Date();
             const day = now.getDay();  // 0 = Sunday, 6 = Saturday
-            const hour = now.getHours();
-            const minute = now.getMinutes();
+            
+            // Convert to Eastern Time (handles DST automatically)
+            const etFormatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            });
+            const etParts = etFormatter.formatToParts(now);
+            const etHour = parseInt(etParts.find(p => p.type === 'hour').value);
+            const etMinute = parseInt(etParts.find(p => p.type === 'minute').value);
             
             // Check if weekday (Monday=1 to Friday=5)
             const isWeekday = day >= 1 && day <= 5;
             // Check if trading hours (9:30 AM - 4:00 PM ET)
-            // Note: This is approximate, doesn't account for timezone or holidays
-            const isTradingHours = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 16;
+            const isTradingHours = (etHour > 9 || (etHour === 9 && etMinute >= 30)) && etHour < 16;
             
             return isWeekday && isTradingHours;
         }

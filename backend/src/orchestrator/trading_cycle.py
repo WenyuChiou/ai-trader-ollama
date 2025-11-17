@@ -1266,7 +1266,10 @@ def execute_daily_trade(
     print(f"[TRADING CYCLE] Calling Trader Agent with is_market_open={is_market_open_for_simulation} (actual market: {market_status}, is_market_open={is_market_open})")
     print(f"[TRADING CYCLE] Parameters:")
     print(f"  - portfolio_value: ${portfolio_value:,.2f}")
-    print(f"  - available_cash: ${available_cash_for_trading:,.2f}")
+    if available_cash_for_trading is None:
+        print(f"  - available_cash: unlimited (LLM autonomous mode)")
+    else:
+        print(f"  - available_cash: ${available_cash_for_trading:,.2f}")
     print(f"  - current_positions: {len(current_positions_info) if current_positions_info else 0}")
     print(f"  - enriched_market keys: {list(enriched_market.keys())[:5] if isinstance(enriched_market, dict) else 'N/A'}...")
     print(f"  - convo keys: {list(convo.keys())[:5] if isinstance(convo, dict) else 'N/A'}...")

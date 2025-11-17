@@ -39,8 +39,8 @@
   "_position_limit_per_stock": null,
   "_position_limit_total": null,
   "_position_limit_min_per_stock": null,
-  "min_cash_reserve_ratio": 0.20,
-  "_comment_min_cash_reserve": "Minimum cash reserve ratio (0.20 = 20%). This ensures we always keep some cash for opportunities and emergencies. Lower value = more cash available for trading.",
+  "min_cash_reserve_ratio": null,
+  "_comment_min_cash_reserve": "Minimum cash reserve ratio. Only used when position_limit_mode='configured'. If null or mode='auto', LLM decides cash reserve autonomously. Example: 0.20 = 20% reserve.",
   
   "_comment_example_configured_mode": "To use configured mode with constraints, set position_limit_mode='configured' and uncomment/set the following:",
   "_example_position_limit_per_stock": 0.15,

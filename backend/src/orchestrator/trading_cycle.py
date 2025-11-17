@@ -387,12 +387,21 @@ def execute_daily_trade(
                 "market_value": pos.quantity * current_price,
             }
     
-    # 计算初步可用现金
+    # CRITICAL FIX: 计算初步可用现金（根据模式决定是否应用现金储备）
     from src.utils.config_loader import load_config
     config = load_config()
-    MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)
-    required_cash_reserve = preliminary_portfolio_value * MIN_CASH_RESERVE_RATIO
-    preliminary_available_cash = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
+    position_limit_mode = config.get("position_limit_mode", "auto")
+    min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
+    
+    # 如果是auto模式或min_cash_reserve_ratio为null，不应用现金储备限制
+    if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
+        preliminary_available_cash = portfolio.cash if portfolio else 0.0
+        print(f"[TRADING CYCLE] Cash reserve DISABLED (auto mode) - all cash available: ${preliminary_available_cash:.2f}")
+    else:
+        MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)
+        required_cash_reserve = preliminary_portfolio_value * MIN_CASH_RESERVE_RATIO
+        preliminary_available_cash = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
+        print(f"[TRADING CYCLE] Cash reserve ENABLED (configured mode): reserve={MIN_CASH_RESERVE_RATIO:.1%}, available=${preliminary_available_cash:.2f}")
     
     # CRITICAL FIX: 使用四个独立 Analyst 的版本，确保每个 analyst 都有工具调用和 summary
     # 获取当前仓位信息（用于 analyst 分析）
@@ -1229,15 +1238,24 @@ def execute_daily_trade(
         # 如果读取失败，不设置限制（给 agent 自由）
         print(f"[TRADING CYCLE] Failed to load config: {e} - agent has complete freedom (no position limits)")
 
-    # 计算可用现金（考虑现金储备要求）
+    # CRITICAL FIX: 计算可用现金（根据模式决定是否应用现金储备）
     # 先计算，以便传递给 trader agent
     from src.utils.config_loader import load_config
     config = load_config()
-    MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)  # Keep 20% cash
-    required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
-    available_cash_for_trading = max(0, portfolio.cash - required_cash_reserve)
+    position_limit_mode = config.get("position_limit_mode", "auto")
+    min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
     
-    print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, required reserve: ${required_cash_reserve:.2f}, available for trading: ${available_cash_for_trading:.2f}")
+    # 如果是auto模式或min_cash_reserve_ratio为null，不应用现金储备限制（LLM自主决定）
+    if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
+        available_cash_for_trading = None  # None表示无限制，让LLM自主决定
+        print(f"[TRADING CYCLE] Cash reserve DISABLED (auto mode) - LLM decides cash usage autonomously")
+        print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, available for trading: unlimited (LLM autonomous)")
+    else:
+        MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)
+        required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
+        available_cash_for_trading = max(0, portfolio.cash - required_cash_reserve)
+        print(f"[TRADING CYCLE] Cash reserve ENABLED (configured mode): reserve={MIN_CASH_RESERVE_RATIO:.1%}")
+        print(f"[TRADING CYCLE] Portfolio cash: ${portfolio.cash:.2f}, required reserve: ${required_cash_reserve:.2f}, available for trading: ${available_cash_for_trading:.2f}")
     
     # CRITICAL: 传递市场状态给 Trader Agent，让它知道是否可以交易
     # 市场关闭时：可以评估和分析，但不能生成订单
@@ -1409,7 +1427,10 @@ def execute_daily_trade(
         MAX_POSITIONS = config.get("max_positions", 10)  # Maximum number of different stocks
         # 移除 TRADE_COOLDOWN_HOURS（不再使用冷却期限制）
         # TRADE_COOLDOWN_HOURS = config.get("trade_cooldown_hours", 24.0)  # 已移除
-        MIN_CASH_RESERVE_RATIO = config.get("min_cash_reserve_ratio", 0.20)  # Keep 20% cash
+        
+        # CRITICAL FIX: 根据模式决定是否应用现金储备
+        position_limit_mode = config.get("position_limit_mode", "auto")
+        min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
         
         # 移除 trade history tracker（不再需要冷却期检查）
         # trade_history = TradeHistoryTracker(root="data/logs")  # 已移除
@@ -1418,12 +1439,19 @@ def execute_daily_trade(
         current_position_count = len(portfolio._positions)
         portfolio_value = portfolio.value(last_prices)
         
-        # Calculate available cash (after reserve)
-        required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
-        available_for_trading = max(0, portfolio.cash - required_cash_reserve)
-        
-        print(f"[OPTIMIZATION] Position limits: {current_position_count}/{MAX_POSITIONS} positions, "
-              f"Available cash: ${available_for_trading:.2f} (reserve: ${required_cash_reserve:.2f})")
+        # CRITICAL FIX: 计算可用现金（根据模式决定是否应用现金储备）
+        if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
+            # Auto模式：不应用现金储备限制，使用全部现金
+            available_for_trading = portfolio.cash
+            print(f"[OPTIMIZATION] Position limits: {current_position_count}/{MAX_POSITIONS} positions, "
+                  f"Available cash: ${available_for_trading:.2f} (no reserve, LLM autonomous)")
+        else:
+            # Configured模式：应用现金储备限制
+            MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)
+            required_cash_reserve = portfolio_value * MIN_CASH_RESERVE_RATIO
+            available_for_trading = max(0, portfolio.cash - required_cash_reserve)
+            print(f"[OPTIMIZATION] Position limits: {current_position_count}/{MAX_POSITIONS} positions, "
+                  f"Available cash: ${available_for_trading:.2f} (reserve: ${required_cash_reserve:.2f}, ratio: {MIN_CASH_RESERVE_RATIO:.1%})")
         
         # 掛單策略：將所有訂單先掛單，收盤後再檢查成交
         buy_orders = decision.get("buy_orders", [])

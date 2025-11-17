@@ -214,9 +214,11 @@ The main configuration file controls trading parameters, universe selection, and
   "universe": ["NVDA", "MSFT", "AAPL", ...],
   "crypto": ["BTC-USD", "ETH-USD", ...],
   "initial_cash": 10000,
-  "_position_limit_per_stock": 0.15,
-  "_position_limit_total": 0.85,
-  "_position_limit_min_per_stock": 0.03,
+  "position_limit_mode": "auto",
+  "_position_limit_per_stock": null,
+  "_position_limit_total": null,
+  "_position_limit_min_per_stock": null,
+  "min_cash_reserve_ratio": null,
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
   "discussion_tool_budget": 15,
@@ -247,9 +249,11 @@ The main configuration file controls trading parameters, universe selection, and
 | `crypto` | Cryptocurrency symbols | Array of strings | `["BTC-USD", "ETH-USD", ...]` |
 | **Capital & Position Limits** |
 | `initial_cash` | Starting capital | Float | `10000` (USD) |
-| `_position_limit_per_stock` | Max % per stock | `0.0-1.0` or commented out | **Commented out** (agent has freedom) |
-| `_position_limit_total` | Max % total equity | `0.0-1.0` or commented out | **Commented out** (agent has freedom) |
-| `_position_limit_min_per_stock` | Min % per stock | `0.0-1.0` or commented out | **Commented out** (agent has freedom) |
+| `position_limit_mode` | Position limit mode | `"auto"`, `"configured"` | `"auto"` (LLM autonomous) |
+| `_position_limit_per_stock` | Max % per stock | `0.0-1.0` or `null` | `null` (only used when mode=`"configured"`) |
+| `_position_limit_total` | Max % total equity | `0.0-1.0` or `null` | `null` (only used when mode=`"configured"`) |
+| `_position_limit_min_per_stock` | Min % per stock | `0.0-1.0` or `null` | `null` (only used when mode=`"configured"`) |
+| `min_cash_reserve_ratio` | Min cash reserve % | `0.0-1.0` or `null` | `null` (only used when mode=`"configured"`) |
 | **Trading Behavior** |
 | `discussion_rounds` | Number of discussion rounds | `1-5` | `3` |
 | `discussion_auto_tools` | Enable automatic tool calls | `true`, `false` | `true` |
@@ -271,17 +275,48 @@ The main configuration file controls trading parameters, universe selection, and
 - `crypto`: List of cryptocurrency symbols (optional, for crypto trading)
 - `universe_limit`: Maximum number of symbols to analyze (default: 100)
 
-**Position Limits (Optional - Agent Freedom by Default):**
-- **Current System**: Position limits are **OPTIONAL** and **commented out by default**
-- If limits are commented out (with `_` prefix) or removed, agent has **complete freedom** to decide position sizes
+**Position Limits (Two Modes - Auto vs Configured):**
+
+**Mode 1: `"auto"` (Default - LLM Autonomous):**
+- Position limits are **disabled** - agent has **complete freedom** to decide position sizes
 - Agent decides based on:
   - VIX risk score (high VIX → smaller positions, low VIX → larger positions)
   - Number of recommended stocks (many stocks → smaller positions, few stocks → larger positions)
   - Signal strength and diversification needs
-- If you want to set limits, remove the `_` prefix and set values:
-  - `position_limit_per_stock`: Max % per stock (e.g., 0.15 = 15%)
-  - `position_limit_total`: Max % total equity (e.g., 0.85 = 85%, leaves 15% cash)
-  - `position_limit_min_per_stock`: Min % per stock (e.g., 0.03 = 3%)
+  - Market conditions and risk assessment
+- Cash reserve is also LLM-decided (no hard limit)
+- **This is the default mode** - agent operates autonomously
+
+**Mode 2: `"configured"` (With Constraints):**
+- Set `position_limit_mode` to `"configured"` to enable hard limits
+- Uncomment and set position limit values:
+  - `_position_limit_per_stock`: Max % per stock (e.g., 0.15 = 15%)
+  - `_position_limit_total`: Max % total equity (e.g., 0.80 = 80%, leaves 20% cash)
+  - `_position_limit_min_per_stock`: Min % per stock (e.g., 0.03 = 3%)
+  - `min_cash_reserve_ratio`: Min cash reserve % (e.g., 0.20 = 20%)
+- Agent will respect these hard limits when making trading decisions
+
+**Example Configuration:**
+
+```json
+// Auto mode (default - LLM autonomous)
+{
+  "position_limit_mode": "auto",
+  "_position_limit_per_stock": null,
+  "_position_limit_total": null,
+  "_position_limit_min_per_stock": null,
+  "min_cash_reserve_ratio": null
+}
+
+// Configured mode (with constraints)
+{
+  "position_limit_mode": "configured",
+  "_position_limit_per_stock": 0.15,
+  "_position_limit_total": 0.80,
+  "_position_limit_min_per_stock": 0.03,
+  "min_cash_reserve_ratio": 0.20
+}
+```
 
 **Trading Behavior:**
 - `initial_cash`: Starting capital ($10,000 default)
@@ -1600,21 +1635,33 @@ Trader Agent decides:
 └── Rationale for decisions
 ```
 
-**Configurable in `config.json`** (Optional - if not set, LLM uses defaults):
+**Configuration in `config.json`**:
+
+**Auto Mode (Default)**:
 ```json
 {
-  "position_limit_per_stock": 0.15,      // Guideline: Max 15% per stock (LLM can use less)
-  "position_limit_total": 0.85,          // Guideline: Max 85% total (LLM can use less)
-  "position_limit_min_per_stock": 0.03,  // Guideline: Min 3% per stock (LLM can use smaller)
-  "max_positions": 10                     // Guideline: Max 10 different stocks (LLM can use fewer)
+  "position_limit_mode": "auto",
+  "_position_limit_per_stock": null,
+  "_position_limit_total": null,
+  "_position_limit_min_per_stock": null,
+  "min_cash_reserve_ratio": null
 }
 ```
 
-**Note**: These values are **guidelines** that the LLM considers. The LLM can make nuanced decisions:
-- Use smaller positions if risk is high
-- Use larger positions if signals are strong and risk is low
-- Adjust based on number of recommended stocks
-- Consider Risk Analyst recommendations
+**Configured Mode (With Hard Limits)**:
+```json
+{
+  "position_limit_mode": "configured",
+  "_position_limit_per_stock": 0.15,
+  "_position_limit_total": 0.80,
+  "_position_limit_min_per_stock": 0.03,
+  "min_cash_reserve_ratio": 0.20
+}
+```
+
+**Note**: 
+- In `"auto"` mode, the LLM has complete freedom to decide position sizes based on market conditions
+- In `"configured"` mode, the LLM will respect the hard limits you set
 
 **Example LLM Decisions**:
 - **High VIX (7-10)**: LLM might use 5-8% per stock (below 15% guideline)

@@ -204,8 +204,11 @@ def execute_daily_trade(
     # ---- (1b) 輕量 enriched 給討論層 ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
+    print(f"[TRADING CYCLE] Stocks available for analysis: {len(symbols)} symbols")
+    print(f"[TRADING CYCLE] Stock symbols sample (first 10): {symbols[:10]}")
     # 传递所有股票的信号分数（按降序排列），不限制数量
     signal_top = _top_by_signal(stocks, k=len(stocks))  # 使用全部股票
+    print(f"[TRADING CYCLE] Signal scores calculated for {len(signal_top)} stocks")
     
     # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
     # CRITICAL FIX: 使用 fallback 推荐（实际推荐会在 multi_analyst_system 中由 LLM 生成）

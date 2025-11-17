@@ -348,12 +348,14 @@ async def fetch_conversations_api(
                     if "Analysis:" in content:
                         summary = content.split("Analysis:")[-1].strip()
                         if summary:
+                            # CRITICAL FIX: 移除500字符限制，允许完整summary显示
                             entry["summary"] = summary
                     else:
-                        # 如果没有 "Analysis:"，使用 content 作为 summary
-                        entry["summary"] = content[:500] if len(content) > 500 else content
+                        # 如果没有 "Analysis:"，使用完整 content 作为 summary（移除500字符限制）
+                        entry["summary"] = content
                 else:
-                    entry["summary"] = str(content)[:500] if content else ""
+                    # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                    entry["summary"] = str(content) if content else ""
             
             # 确保 tools_used 字段存在（即使是空数组）
             if "tools_used" not in entry or not isinstance(entry.get("tools_used"), list):
@@ -399,9 +401,11 @@ async def fetch_conversations_api(
                         if "Analysis:" in content:
                             summary = content.split("Analysis:")[-1].strip()
                         else:
-                            summary = content[:500] if len(content) > 500 else content
+                            # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                            summary = content
                     else:
-                        summary = str(content)[:500] if content else ""
+                        # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                        summary = str(content) if content else ""
                 
                 # CRITICAL FIX: 确保 tools_used 是列表
                 tools_used = entry.get("tools_used", [])
@@ -508,9 +512,11 @@ async def fetch_conversations_api(
                             if result_text.startswith("{") or result_text.startswith("["):
                                 tool_result = json.loads(result_text)
                         except:
-                            tool_result = {"raw": str(content)[:500]}
+                            # CRITICAL FIX: 移除500字符限制，允许完整工具结果显示
+                            tool_result = {"raw": str(content)}
                     else:
-                        tool_result = {"raw": str(content)[:500] if content else ""}
+                        # CRITICAL FIX: 移除500字符限制，允许完整工具结果显示
+                        tool_result = {"raw": str(content) if content else ""}
                 
                 # CRITICAL FIX: 确保所有字段都是可序列化的
                 try:

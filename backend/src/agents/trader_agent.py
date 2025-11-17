@@ -1126,18 +1126,21 @@ Write in natural language, approximately 100-150 words."""
             total_buy_cost = sum(o.get("total_cost", 0.0) for o in buy_orders)
             trader_summary = f"Market is currently OPEN. Based on market analysis and risk assessment, I'm generating {buy_count} buy orders for {', '.join(buy_symbols)}{'...' if buy_count > 5 else ''} with a total cost of ${total_buy_cost:,.2f}. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}."
             if coordinator_summary:
-                trader_summary += f" Key insights: {coordinator_summary[:500] if len(coordinator_summary) > 500 else coordinator_summary}"
+                # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                trader_summary += f" Key insights: {coordinator_summary}"
         elif sell_orders and len(sell_orders) > 0:
             sell_symbols = [o["symbol"] for o in sell_orders[:5]]
             sell_count = len(sell_orders)
             total_sell_proceeds = sum(o.get("total_proceeds", 0.0) for o in sell_orders)
             trader_summary = f"Market is currently OPEN. Based on risk management and market conditions, I'm generating {sell_count} sell orders for {', '.join(sell_symbols)}{'...' if sell_count > 5 else ''} with expected proceeds of ${total_sell_proceeds:,.2f}. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}."
             if coordinator_summary:
-                trader_summary += f" Key insights: {coordinator_summary[:500] if len(coordinator_summary) > 500 else coordinator_summary}"
+                # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                trader_summary += f" Key insights: {coordinator_summary}"
         else:
             trader_summary = f"Market is currently OPEN. No trading orders generated. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. Current market conditions and risk assessment suggest maintaining current positions or waiting for better entry points."
             if coordinator_summary:
-                trader_summary += f" Analysis: {coordinator_summary[:500] if len(coordinator_summary) > 500 else coordinator_summary}"
+                # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                trader_summary += f" Analysis: {coordinator_summary}"
     
     # 严格JSON格式输出（交易决策必须严格遵守JSON格式，因为交易系统根据这个判断）
     # 确保所有字段都是JSON可序列化的类型

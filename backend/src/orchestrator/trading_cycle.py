@@ -1210,7 +1210,7 @@ def execute_daily_trade(
             "content": risk_content,
             "type": "discussion",
             "stance": risk_level,  # 使用 risk_level 作为 stance
-            "summary": risk_content[:500] if len(risk_content) > 500 else risk_content,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
+            "summary": risk_content,  # CRITICAL FIX: 移除500字符限制，允许完整summary显示
             "tools_used": [],  # CRITICAL FIX: 确保 tools_used 被正确存储
             "risk_report": risk_report,  # CRITICAL: 添加完整的 risk_report 数据供前端使用
         }

@@ -365,13 +365,22 @@ def run_multi_analyst_discussion(
                         break
                     tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym} (priority: holdings/indices)"})
                 
-                # 为前一半股票添加support/resistance工具（如果还有预算）
-                for sym in selected_symbols[:len(selected_symbols)//2]:
+                # 为持仓和指数添加support/resistance工具（如果还有预算）
+                # 优先为持仓和指数添加support/resistance
+                priority_symbols = []
+                if current_positions:
+                    for symbol, pos_info in current_positions.items():
+                        if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+                            priority_symbols.append(symbol)
+                priority_symbols.extend(major_indices[:3])  # SPY, QQQ, DIA
+                
+                for sym in priority_symbols:
                     if tool_calls_count >= tool_budget:
                         break
-                    tool_calls_list.append({"name": "get_support_resistance", "args": {"symbol": sym}, "why": f"Fallback: Get support/resistance levels for {sym}"})
+                    if sym in selected_symbols:  # 确保这个符号在selected_symbols中
+                        tool_calls_list.append({"name": "get_support_resistance", "args": {"symbol": sym}, "why": f"Fallback: Get support/resistance levels for {sym} (priority: holdings/indices)"})
                 
-                print(f"   [FALLBACK] Selected {len(selected_symbols)} stocks by signal_score for technical analysis")
+                print(f"   [FALLBACK] Selected {len(selected_symbols)} symbols for technical analysis (holdings + indices + high-signal stocks)")
             
             # 收集工具调用结果
             tool_results_summary = []

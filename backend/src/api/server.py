@@ -945,7 +945,7 @@ async def check_market_open():
             content={
                 "ok": True,
                 "is_open": market_open,
-                "timestamp": now.isoformat(),
+                "timestamp": et_time.isoformat(),
                 "eastern_time": et_time.strftime('%Y-%m-%d %H:%M:%S %Z'),
                 "current_et_time": current_time.strftime('%H:%M:%S'),
                 "market_hours": "9:30 AM - 4:00 PM ET",

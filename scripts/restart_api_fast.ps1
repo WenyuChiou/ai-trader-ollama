@@ -45,10 +45,11 @@ try {
     # Ignore errors
 }
 
+$backendDir = Join-Path $ProjectRoot "backend"
 $cmd = @"
-cd '$ProjectRoot'
-if (Test-Path '.venv\Scripts\Activate.ps1') { . '.venv\Scripts\Activate.ps1' }
-python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
+cd '$backendDir'
+if (Test-Path '..\venv\Scripts\Activate.ps1') { . '..\venv\Scripts\Activate.ps1' }
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
 "@
 
 Start-Process powershell -ArgumentList "-ExecutionPolicy", "Bypass", "-NoExit", "-Command", $cmd | Out-Null

@@ -1,250 +1,139 @@
-# 🔧 Troubleshooting Guide
+# Troubleshooting Guide
 
-Common issues and solutions for AI-Trader Ollama.
+## Common Issues
 
----
+### API Server Not Starting
 
-## 🐛 Common Issues
+**Symptoms**:
+- Port 8000 already in use
+- Ollama connection failed
+- Python module not found
 
-### Issue: `ModuleNotFoundError: src`
+**Solutions**:
+1. Check port availability:
+   ```powershell
+   .\scripts\check_port.ps1
+   ```
 
-**Error**:
-```
-ModuleNotFoundError: No module named 'src'
-```
+2. Stop existing processes:
+   ```powershell
+   .\scripts\stop_all_services.ps1
+   ```
 
-**Cause**: Running script from wrong directory
+3. Check Ollama:
+   ```powershell
+   ollama list
+   ```
 
-**Solution**:
-```bash
-# Always run from backend/ directory
-cd backend
-python scripts/run_daily_trading.py
-```
+4. Check Python environment:
+   ```powershell
+   python --version
+   cd backend
+   .\venv\Scripts\Activate.ps1
+   ```
 
----
+### No Orders Generated
 
-### Issue: Ollama Connection Error
+**Symptoms**:
+- Trading cycle runs but no orders
+- Market is open but agent doesn't trade
 
-**Error**:
-```
-ConnectionError: Could not connect to Ollama
-```
-
-**Cause**: Ollama service not running
-
-**Solution**:
-```bash
-# Start Ollama service
-ollama serve
-
-# In another terminal, verify it's running
-curl http://localhost:11434/api/tags
-```
-
----
-
-### Issue: Config File Not Found
-
-**Error**:
-```
-FileNotFoundError: config/config.json not found
+**Diagnosis**:
+```powershell
+python scripts\diagnose_no_trades.py
 ```
 
-**Cause**: Missing config file or wrong directory
+**Common Causes**:
+1. Market is closed
+2. Agent decided not to trade
+3. Daily order limit reached
+4. No recommended stocks
+5. Insufficient cash
 
-**Solution**:
-```bash
-# Check config file exists
-ls backend/config/config.json
+**Solutions**:
+- Check market status: `GET /api/market/is-open`
+- Check agent conversations: `GET /api/agents/conversations`
+- Check portfolio state: `GET /api/portfolio/real-time`
+- Review agent decisions in logs
 
-# If missing, create from template
-cp backend/config/config.json.example backend/config/config.json
-```
+### P&L Calculation Issues
 
----
+**Symptoms**:
+- Unrealized P&L shows 0
+- Market value equals cost basis
+- Prices not updating
 
-### Issue: Agent Key Not Found
+**Solutions**:
+1. Check market is open (real-time prices only during market hours)
+2. Verify API is fetching prices correctly
+3. Check `positions_detail` in API response
+4. Refresh frontend to reload data
 
-**Error**:
-```
-KeyError: Agent key not found in config: discussion_agent
-```
+### Memory/Conversation Logs Missing
 
-**Cause**: `agents.yaml` not found or incorrect path
+**Symptoms**:
+- No conversation entries
+- Missing agent logs
+- Memory files not created
 
-**Solution**:
-```bash
-# Verify agents.yaml exists
-ls backend/config/agents.yaml
+**Solutions**:
+1. Check `data/logs/discussion_actions.jsonl` exists
+2. Verify write permissions
+3. Check disk space
+4. Review error logs for write failures
 
-# Check you're running from backend/ directory
-pwd  # Should show .../backend
-```
+### Frontend Not Updating
 
----
+**Symptoms**:
+- Dashboard shows old data
+- Charts not updating
+- Market status stuck
 
-### Issue: VIX Level = NaN
+**Solutions**:
+1. Hard refresh browser (Ctrl+F5)
+2. Check API is running
+3. Check browser console for errors
+4. Verify API endpoints are accessible
+5. Clear browser cache
 
-**Error**:
-```
-VIX level: nan
-```
+## Error Codes
 
-**Cause**: yfinance outage or network issue
+### API Errors
 
-**Solution**: System auto-falls back to VIXY. If persistent:
+**500 Internal Server Error**
+- Check server logs
+- Verify configuration files
+- Check data file permissions
+
+**404 Not Found**
+- Verify endpoint URL
+- Check API routes
+- Verify file paths
+
+**400 Bad Request**
+- Check request format
+- Verify parameters
+- Check data types
+
+## Debug Mode
+
+Enable debug logging:
 ```python
-# Check network connection
-import yfinance as yf
-ticker = yf.Ticker("^VIX")
-print(ticker.history(period="5d"))
+# In config.json
+{
+  "debug": true,
+  "log_level": "DEBUG"
+}
 ```
 
----
+## Getting Help
 
-### Issue: Portfolio State Not Found
+1. Check logs: `data/logs/`
+2. Run diagnostics: `python scripts/verify_system_status.py`
+3. Check system features: `python scripts/check_system_features.py`
+4. Review documentation
 
-**Error**:
-```
-FileNotFoundError: data/portfolio_state.json not found
-```
-
-**Cause**: First run - portfolio state doesn't exist yet
-
-**Solution**: This is normal on first run. Portfolio will be created automatically.
-
----
-
-### Issue: Memory Files Not Created
-
-**Error**: No memory files in `data/logs/memory/daily/`
-
-**Cause**: Memory save failed or script didn't complete
-
-**Solution**:
-```bash
-# Check for errors in execution
-python scripts/run_daily_trading.py
-
-# Verify memory directory exists
-ls -la backend/data/logs/memory/
-
-# Check write permissions
-touch backend/data/logs/memory/test.json
-```
-
----
-
-### Issue: Orders Not Executing
-
-**Symptom**: Orders placed but no fills
-
-**Possible Causes**:
-1. **Price out of range**: Check order price ranges vs actual market prices
-2. **Fill check not running**: Ensure `check_pending_orders.py` is called
-3. **Market closed**: System only checks fills after market close
-
-**Solution**:
-```bash
-# Check pending orders
-python scripts/check_pending_orders.py --date 2025-01-28
-
-# Verify order price ranges are reasonable
-# Check daily high/low prices match order limits
-```
-
----
-
-### Issue: Test Failures
-
-**Error**: Tests fail with import errors
-
-**Cause**: Running tests from wrong directory
-
-**Solution**:
-```bash
-# Always run from backend/ directory
-cd backend
-python tests/run_all.py
-
-# Or run specific test
-python tests/test_05_full_trading_loop.py
-```
-
----
-
-## 🔍 Debugging Tips
-
-### Enable Verbose Logging
-
-```python
-# In scripts/run_daily_trading.py, add:
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
-
-### Check Generated Files
-
-```bash
-# Portfolio state
-cat backend/data/portfolio_state.json
-
-# Latest trade logs
-tail backend/data/logs/trades.jsonl
-
-# Latest memory
-ls -lt backend/data/logs/memory/daily/ | head -5
-```
-
-### Verify Ollama Model
-
-```bash
-# List available models
-ollama list
-
-# Test model
-ollama run llama3.1 "Hello, test"
-```
-
----
-
-## 📞 Getting More Help
-
-1. **Check Logs**: Review `backend/data/logs/` for error details
-2. **Review Documentation**: See [`docs/`](../docs/) for detailed guides
-3. **Run Tests**: Execute `python tests/run_all.py` to verify setup
-4. **Check Configuration**: Validate `config/config.json` and `config/agents.yaml`
-
----
-
-## ✅ Verification Checklist
-
-Run this checklist to verify your setup:
-
-```bash
-cd backend
-
-# 1. Python dependencies
-python -c "import yfinance, langchain; print('✓ Dependencies OK')"
-
-# 2. Ollama connection
-python -c "from src.llm.ollama_client import OllamaClient; client = OllamaClient(); print('✓ Ollama OK')"
-
-# 3. Config files
-python tests/test_00_config.py
-
-# 4. Full cycle test
-python tests/test_05_full_trading_loop.py
-```
-
-All should pass without errors.
-
----
-
-## 📚 Related Documentation
-
-- [`docs/GETTING_STARTED.md`](GETTING_STARTED.md) - Setup guide
-- [`backend/tests/README.md`](../backend/tests/README.md) - Testing guide
-- [`docs/CONFIGURATION.md`](CONFIGURATION.md) - Configuration details
-
+## See Also
+- [Quick Start Guide](QUICK_START.md)
+- [Configuration Guide](CONFIGURATION.md)
+- [API Reference](API_REFERENCE.md)

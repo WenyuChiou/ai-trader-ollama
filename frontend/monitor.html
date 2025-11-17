@@ -1244,10 +1244,6 @@
                     🔄 Refresh
                 </button>
                 <button class="refresh-btn" onclick="initSystem()">⚙️ Initialize</button>
-                <label class="auto-refresh-toggle">
-                    <input type="checkbox" id="autoDemoLoop">
-                    <span>Auto Demo Loop</span>
-                </label>
                 <span class="last-update" id="lastUpdate"></span>
             </div>
         </header>
@@ -1639,11 +1635,6 @@
                 const initBtn = document.querySelector('button[onclick="initSystem()"]');
                 if (initBtn) {
                     initBtn.style.display = 'none';
-                }
-                
-                const autoDemoLoop = document.getElementById('autoDemoLoop');
-                if (autoDemoLoop) {
-                    autoDemoLoop.closest('label').style.display = 'none';
                 }
                 
                 // Hide Auto Trade status label (since trading is disabled)
@@ -9262,13 +9253,6 @@
             }, 1000);
             
             // Auto Trade is now automatically managed, no checkbox needed
-            
-            const demoChk = document.getElementById('autoDemoLoop');
-            if (demoChk) {
-                demoChk.addEventListener('change', () => {
-                    if (demoChk.checked) startAutoRefresh(); else stopAutoRefresh();
-                });
-            }
         });
         
         // 页面卸载时清理

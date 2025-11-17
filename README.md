@@ -870,6 +870,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 | `docs/FRONTEND_CONSOLE_ERRORS_FIXED.md` | API endpoint error fixes (405, 500 errors) |
 | `docs/COMPLETE_FIX_SUMMARY.md` | Comprehensive summary of all recent fixes |
 | `docs/API_IMPLEMENTATION_COMPLETE.md` | API endpoint implementation status |
+| `docs/TOOL_RESULTS_DISPLAY_FIX.md` | Tool results display fix and Discussion Rounds Panel implementation |
 
 ---
 

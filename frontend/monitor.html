@@ -4855,6 +4855,8 @@
                         if (c.summary && c.summary.trim()) {
                             // 优先使用 summary 字段
                             analysisText = c.summary.trim();
+                            // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
+                            analysisText = convertPositionPnlToTable(analysisText);
                         } else if (entry_type === 'discussion' && content) {
                             // 提取完整的分析文本（summary），去掉Stance前缀
                             const analysisMatch = content.match(/Analysis:\s*(.+)/is);

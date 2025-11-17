@@ -1,214 +1,170 @@
-# ⚙️ Configuration Guide
+# Configuration Guide
 
-Complete guide to configuring AI-Trader Ollama.
+## Overview
+This guide explains all configuration options for the AI-Trader system.
 
----
+## Configuration Files
 
-## 📋 Main Configuration: `config/config.json`
+### 1. `backend/config/config.json`
+Main system configuration file.
 
-### Basic Settings
+#### Key Settings
 
+**Position Limits**
 ```json
 {
-  "universe": ["NVDA", "MSFT", "AAPL", "GOOGL", "AMZN"],
-  "initial_cash": 10000,
-  "position_limit_per_stock": 0.15,
-  "position_limit_total": 0.85,
-  "position_limit_min_per_stock": 0.03
+  "position_limit_mode": "auto",  // "auto" or "configured"
+  "_position_limit_per_stock": null,  // Max position per stock (0.15 = 15%)
+  "_position_limit_total": null,  // Max total position (0.15 = 15%)
+  "_position_limit_min_per_stock": null,  // Min position per stock
+  "min_cash_reserve_ratio": null  // Min cash reserve (0.1 = 10%)
 }
 ```
 
-### Trading Parameters
+**Mode: "auto"**
+- LLM decides position sizes autonomously
+- No hard limits enforced
+- Agent considers VIX risk, signal strength, diversification
 
+**Mode: "configured"**
+- Hard limits enforced
+- Set `_position_limit_per_stock`, `_position_limit_total`, etc.
+- Set `min_cash_reserve_ratio` for cash management
+
+**Trading Settings**
 ```json
 {
-  "date_range": {
-    "start": "2024-01-02",
-    "end": "2024-01-31"
-  },
-  "discussion_rounds": 3,
-  "discussion_auto_tools": true,
-  "discussion_tool_budget": 2
+  "daily_order_limit": 10,  // Max orders per day
+  "trading_enabled": true,   // Enable/disable trading
+  "universe": "nasdaq100"    // Stock universe
 }
 ```
 
-### Preferred Domains (Optional)
-
+**Agent Settings**
 ```json
 {
-  "preferred_domains": [
-    "www.cboe.com",
-    "www.reuters.com",
-    "www.ft.com",
-    "www.cmegroup.com",
-    "fred.stlouisfed.org",
-    "home.treasury.gov"
-  ]
+  "tool_budget": 15,         // Total tool calls per cycle
+  "use_tools": true,         // Enable tool usage
+  "rounds": 3                // Discussion rounds
 }
 ```
 
----
+### 2. `backend/config/agents.yaml`
+Agent configuration file.
 
-## 🎯 Stock Universe Configuration
-
-### Define Your Universe
-
-```json
-{
-  "universe": [
-    "NVDA", "MSFT", "AAPL", "GOOGL", "AMZN", "META",
-    "TSLA", "NFLX", "AMD", "INTC", "QCOM"
-  ]
-}
-```
-
-### Supported Symbol Types
-
-- **Stocks**: `NVDA`, `MSFT`, `AAPL`
-- **Crypto**: `BTC-USD`, `ETH-USD`, `SOL-USD`
-- **Bonds**: `^TNX`, `^IRX`, `^FVX`
-- **Indices**: `^GSPC`, `^DJI`, `^VIX`
-- **Inverse ETFs**: `SQQQ`, `SPXU`, `SH`, `PSQ`, `SDS`, `DOG`
-
----
-
-## 💰 Position Sizing Configuration
-
-### Position Limits
-
-```json
-{
-  "position_limit_per_stock": 0.15,      // Max 15% per stock
-  "position_limit_total": 0.85,         // Max 85% total exposure
-  "position_limit_min_per_stock": 0.03   // Min 3% per stock (for diversification)
-}
-```
-
-**How It Works**:
-- If many recommended stocks → Smaller positions per stock (more diversified)
-- If few recommended stocks → Larger positions per stock
-- Respects min/max limits
-
----
-
-## 🤖 Agent Configuration: `config/agents.yaml`
-
-### Model Settings
-
+**Example**:
 ```yaml
-market_agent:
-  model: llama3.1
-  temperature: 0.2
-
 market_analyst:
-  model: llama3.1
-  temperature: 0.3
+  model: "deepseek-r1"
+  temperature: 0.7
+  max_tokens: 2000
 
-discussion_agent:
-  model: llama3.1
-  temperature: 0.3
-
-risk_analyst:
-  model: llama3.1
-  temperature: 0.2
-
-trader_agent:
-  model: llama3.1
-  temperature: 0.25
+technical_analyst:
+  model: "deepseek-r1"
+  temperature: 0.7
+  max_tokens: 2000
 ```
 
-### Supported Models
+## Environment Variables
 
-- `llama3.1` (recommended)
-- `llama3`
-- `mistral`
-
-**Note**: Ensure model is pulled in Ollama:
-```bash
-ollama pull llama3.1
+### FRED_API_KEY
+Economic data API key (optional but recommended)
+```powershell
+$env:FRED_API_KEY="your_api_key_here"
 ```
 
----
+### OLLAMA_BASE_URL
+Custom Ollama server URL (default: http://localhost:11434)
+```powershell
+$env:OLLAMA_BASE_URL="http://localhost:11434"
+```
 
-## 🔄 Discussion Agent Configuration
+## Data Directory Structure
 
-### Rounds and Tool Budget
+```
+data/
+├── logs/
+│   ├── portfolio_state.json      # Current portfolio state
+│   ├── equity_history.jsonl      # Historical equity records
+│   ├── discussion_actions.jsonl  # Agent conversations
+│   ├── filled_orders.jsonl       # Executed orders
+│   ├── pending_orders.jsonl     # Pending orders
+│   └── memory/                   # Agent memory
+│       ├── daily/                # Daily memory files
+│       └── index/                 # Memory index
+└── backups/                      # Data backups
+```
 
+## Advanced Configuration
+
+### Custom Stock Universe
+Edit `backend/config/config.json`:
 ```json
 {
-  "discussion_rounds": 3,           // Number of discussion rounds
-  "discussion_auto_tools": true,    // Enable automatic tool calling
-  "discussion_tool_budget": 2       // Max tools per cycle
+  "universe": "custom",
+  "custom_universe": ["NVDA", "MSFT", "AAPL"]
 }
 ```
 
-**How It Works**:
-- Agent analyzes market data
-- If info insufficient → Automatically calls tools
-- Tool results added to context
-- Process repeats until sufficient info or budget exhausted
-
----
-
-## 📊 Advanced Configuration
-
-### Custom Date Range
-
+### Custom Tool Budget
+Adjust per-agent budget allocation:
 ```json
 {
-  "date_range": {
-    "start": "2024-01-02",
-    "end": "2024-12-31"
+  "tool_budget": 20,
+  "budget_allocation": {
+    "market": 5,
+    "technical": 6,
+    "fundamental": 5,
+    "sentiment": 4
   }
 }
 ```
 
-**Note**: For daily trading, `end` should be yesterday's date.
-
-### Custom Tools Preference
-
+### Risk Management
 ```json
 {
-  "preferred_domains": [
-    "www.reuters.com",
-    "www.wsj.com",
-    "www.ft.com"
-  ]
+  "risk_management": {
+    "max_drawdown": 0.20,      // Max 20% drawdown
+    "stop_loss_pct": 0.10,     // 10% stop loss
+    "take_profit_pct": 0.20    // 20% take profit
+  }
 }
 ```
 
-This affects which domains are preferred when searching for news.
+## Configuration Validation
 
----
-
-## 🔧 Environment Variables
-
-Create `.env` file in `backend/` directory (optional):
-
-```env
-# Ollama configuration
-OLLAMA_BASE_URL=http://localhost:11434
-
-# API keys (if needed)
-NEWS_API_KEY=your_key_here
+Run configuration check:
+```powershell
+python scripts\check_system_features.py
 ```
 
----
+This will validate:
+- Configuration file syntax
+- Required fields present
+- Valid value ranges
+- File paths exist
 
-## ✅ Configuration Validation
+## Best Practices
 
-Test your configuration:
+1. **Start with "auto" mode**: Let LLM decide initially
+2. **Monitor performance**: Adjust limits based on results
+3. **Use backups**: Regular data backups recommended
+4. **Test changes**: Test configuration changes in test environment
+5. **Document customizations**: Keep notes on custom settings
 
-```bash
-cd backend
-python tests/test_00_config.py
-```
+## Troubleshooting
 
----
+### Configuration Errors
+- Check JSON syntax: Use JSON validator
+- Check file paths: Ensure paths exist
+- Check permissions: Ensure read/write access
 
-## 📚 Related Documentation
+### Invalid Values
+- Position limits: Must be between 0 and 1
+- Tool budget: Must be positive integer
+- Cash reserve: Must be between 0 and 1
 
-- [`docs/GETTING_STARTED.md`](GETTING_STARTED.md) - Setup guide
-- [`docs/AGENTS.md`](AGENTS.md) - Agent configuration
-- [`docs/TOOLS.md`](TOOLS.md) - Tool configuration
-
+## See Also
+- [Quick Start Guide](QUICK_START.md)
+- [API Reference](API_REFERENCE.md)
+- [Architecture Documentation](ARCHITECTURE.md)

@@ -1358,12 +1358,15 @@ async def get_system_info():
         # Get LLM config
         llm_config = config_data.get("llm", {})
         
-        # CRITICAL FIX: Debug logging for LLM config
+        # CRITICAL FIX: 如果 llm_config 为空，尝试从 config_data 顶层获取（向后兼容）
         if not llm_config:
-            print(f"[API] Warning: llm config not found in config_data. Available keys: {list(config_data.keys())}")
-        else:
-            print(f"[API] LLM config found: {llm_config}")
-            print(f"[API] default_model: {llm_config.get('default_model', 'NOT FOUND')}")
+            # 尝试从顶层获取（旧格式）
+            llm_model = config_data.get("llm_model", config_data.get("default_model", "Unknown"))
+            llm_base_url = config_data.get("llm_base_url", config_data.get("ollama_host", "Unknown"))
+            llm_config = {
+                "default_model": llm_model,
+                "ollama_host": llm_base_url
+            }
         
         # Check optimization components status
         # Optimizations are now integrated and always enabled

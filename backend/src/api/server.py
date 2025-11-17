@@ -1233,6 +1233,89 @@ async def get_fear_greed():
 # System Endpoints
 # ============================================================================
 
+@app.post("/api/data/upload")
+async def upload_data(data: Dict[str, Any]):
+    """上传数据到 Railway（用于同步本地数据到云端）"""
+    try:
+        logs_dir = _get_project_logs_dir()
+        uploaded = {}
+        
+        # 处理对话记录
+        if "conversations" in data and data["conversations"]:
+            convo_file = logs_dir / "discussion_actions.jsonl"
+            with open(convo_file, "w", encoding="utf-8") as f:
+                for entry in data["conversations"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            uploaded["conversations"] = len(data["conversations"])
+        
+        # 处理交易记录
+        if "trades" in data and data["trades"]:
+            trades_file = logs_dir / "trades.jsonl"
+            with open(trades_file, "w", encoding="utf-8") as f:
+                for entry in data["trades"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            uploaded["trades"] = len(data["trades"])
+        
+        # 处理已成交订单
+        if "filled_orders" in data and data["filled_orders"]:
+            filled_file = logs_dir / "filled_orders.jsonl"
+            with open(filled_file, "w", encoding="utf-8") as f:
+                for entry in data["filled_orders"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            uploaded["filled_orders"] = len(data["filled_orders"])
+        
+        # 处理待处理订单
+        if "pending_orders" in data and data["pending_orders"]:
+            pending_file = logs_dir / "pending_orders.jsonl"
+            with open(pending_file, "w", encoding="utf-8") as f:
+                for entry in data["pending_orders"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            uploaded["pending_orders"] = len(data["pending_orders"])
+        
+        # 处理净值历史
+        if "equity_history" in data and data["equity_history"]:
+            equity_file = logs_dir / "equity_history.jsonl"
+            with open(equity_file, "w", encoding="utf-8") as f:
+                for entry in data["equity_history"]:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            uploaded["equity_history"] = len(data["equity_history"])
+        
+        # 处理投资组合状态
+        if "portfolio_state" in data and data["portfolio_state"]:
+            portfolio_file = logs_dir / "portfolio_state.json"
+            with open(portfolio_file, "w", encoding="utf-8") as f:
+                json.dump(data["portfolio_state"], f, ensure_ascii=False, indent=2)
+            uploaded["portfolio_state"] = True
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "ok": True,
+                "uploaded": uploaded,
+                "message": "Data uploaded successfully"
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
 @app.post("/api/system/init")
 async def system_init(force: bool = Query(False)):
     """系统初始化（删除所有数据）"""

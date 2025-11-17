@@ -339,8 +339,25 @@ async def fetch_conversations_api(
             if not isinstance(entry, dict):
                 continue
             
+            # CRITICAL FIX: 对于 RiskAnalyst，优先使用 risk_report 中的分析内容
+            if entry.get("agent") == "RiskAnalyst" and "risk_report" in entry:
+                risk_report = entry.get("risk_report", {})
+                # 从 risk_report 中提取分析内容
+                risk_analysis = risk_report.get("summary") or risk_report.get("analysis")
+                if risk_analysis and risk_analysis != "No risk analysis provided":
+                    entry["summary"] = risk_analysis
+                elif "content" in entry:
+                    # 如果 risk_report 没有分析，使用 content
+                    content = entry.get("content", "")
+                    if isinstance(content, str) and "Analysis:" in content:
+                        summary = content.split("Analysis:")[-1].strip()
+                        if summary:
+                            entry["summary"] = summary
+                    else:
+                        entry["summary"] = content if isinstance(content, str) else str(content) if content else ""
+            
             # 如果没有 summary 字段，从 content 中提取
-            if "summary" not in entry:
+            if "summary" not in entry or not entry.get("summary"):
                 content = entry.get("content", "")
                 # CRITICAL FIX: 确保 content 是字符串
                 if isinstance(content, str):

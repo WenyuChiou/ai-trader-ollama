@@ -1159,8 +1159,79 @@ def execute_daily_trade(
     # CRITICAL FIX: 写入 RiskAnalyst 结果到 discussion_actions.jsonl
     try:
         risk_level = risk_report.get("overall_risk_level", risk_report.get("risk_level", "medium"))
-        risk_summary = risk_report.get("summary", risk_report.get("analysis", "No risk analysis provided"))
         risk_score = risk_report.get("risk_score", 5.0)
+        
+        # CRITICAL FIX: 从 risk_report 中提取完整的分析内容
+        # 优先使用 summary 或 analysis 字段，如果没有则从其他字段构建
+        risk_summary = risk_report.get("summary") or risk_report.get("analysis")
+        
+        # 如果没有 summary/analysis，从其他字段构建分析内容
+        if not risk_summary or risk_summary == "No risk analysis provided":
+            analysis_parts = []
+            
+            # 从 market_risks 提取信息
+            market_risks = risk_report.get("market_risks", [])
+            if market_risks:
+                risk_descriptions = []
+                for risk in market_risks:
+                    if isinstance(risk, dict):
+                        risk_type = risk.get("type", "")
+                        severity = risk.get("severity", "")
+                        description = risk.get("description", "")
+                        if description:
+                            risk_descriptions.append(f"{risk_type} ({severity}): {description}")
+                    elif isinstance(risk, str):
+                        risk_descriptions.append(risk)
+                if risk_descriptions:
+                    analysis_parts.append("Market Risks: " + "; ".join(risk_descriptions))
+            
+            # 从 position_risks 提取信息
+            position_risks = risk_report.get("position_risks", [])
+            if position_risks:
+                pos_risk_descriptions = []
+                for risk in position_risks:
+                    if isinstance(risk, dict):
+                        description = risk.get("description", "")
+                        if description:
+                            pos_risk_descriptions.append(description)
+                    elif isinstance(risk, str):
+                        pos_risk_descriptions.append(risk)
+                if pos_risk_descriptions:
+                    analysis_parts.append("Position Risks: " + "; ".join(pos_risk_descriptions))
+            
+            # 从 position_control_report 提取信息
+            position_control = risk_report.get("position_control_report", {})
+            if position_control:
+                checks = position_control.get("checks", [])
+                if checks:
+                    check_messages = []
+                    for check in checks:
+                        if isinstance(check, dict):
+                            status = check.get("status", "")
+                            msg = check.get("message", check.get("description", ""))
+                            if msg:
+                                check_messages.append(f"{status}: {msg}")
+                    if check_messages:
+                        analysis_parts.append("Position Control: " + "; ".join(check_messages))
+            
+            # 从 recommendations 提取信息
+            recommendations = risk_report.get("recommendations", [])
+            if recommendations:
+                recs_text = ', '.join(recommendations) if isinstance(recommendations, list) else str(recommendations)
+                analysis_parts.append(f"Recommendations: {recs_text}")
+            
+            # 如果还是没有内容，使用默认分析
+            if analysis_parts:
+                risk_summary = " ".join(analysis_parts)
+            else:
+                # 构建基础分析
+                risk_summary = f"Overall risk level is {risk_level.upper()} with a risk score of {risk_score}/10. "
+                if current_positions_info:
+                    risk_summary += f"Current portfolio has {len(current_positions_info)} positions. "
+                else:
+                    risk_summary += "Portfolio is currently 100% cash with no market exposure. "
+                risk_summary += "Risk assessment considers market conditions, volatility, and portfolio composition."
+        
         risk_signals = risk_report.get("risk_signals", [])
         recommendations = risk_report.get("recommendations", [])
         

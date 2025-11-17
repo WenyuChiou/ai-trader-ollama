@@ -879,7 +879,7 @@
             background: white;
             border-radius: 12px;
             padding: 30px;
-            max-width: 900px;
+            max-width: 1200px;  /* CRITICAL FIX: 增加最大宽度，确保对话内容有足够空间显示 */
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -938,6 +938,10 @@
             border-left: 3px solid #22d3ee;
             backdrop-filter: blur(5px);
             transition: all 0.2s ease;
+            /* CRITICAL FIX: 确保对话项不被截断 */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
         }
 
         .conversation-item:hover {
@@ -2690,8 +2694,19 @@
                     return;
                 }
                 
+                console.log('[Init] Sending POST request to:', `${getApiBase()}/api/system/init?force=true`);
                 const r = await fetch(`${getApiBase()}/api/system/init?force=true`, { method: 'POST' });
+                console.log('[Init] Response status:', r.status, r.statusText);
+                
+                if (!r.ok) {
+                    const errorText = await r.text();
+                    console.error('[Init] API error response:', errorText);
+                    alert('❌ Initialization failed: HTTP ' + r.status + ' ' + r.statusText + '\n\n' + (errorText || 'No error details available'));
+                    return;
+                }
+                
                 const data = await r.json();
+                console.log('[Init] Response data:', data);
                 
                 if (r.ok && data.ok) {
                     let message = '✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.';
@@ -2704,6 +2719,16 @@
                         message += `\n\n📌 ${data.note}`;
                     } else {
                         message += '\n\n📌 First trade after initialization must be triggered manually. Auto-trading will resume after the first manual trade.';
+                    }
+                    // CRITICAL: Show log files initialization status
+                    if (data.log_files_initialized && data.log_files_initialized.length > 0) {
+                        const readyFiles = data.log_files_initialized.filter(f => f.ready).length;
+                        const totalFiles = data.log_files_initialized.length;
+                        message += `\n\n📝 Log files initialized: ${readyFiles}/${totalFiles} ready for recording`;
+                        if (readyFiles < totalFiles) {
+                            const missingFiles = data.log_files_initialized.filter(f => !f.ready).map(f => f.name).join(', ');
+                            message += `\n\n⚠️ Warning: Some log files are not ready: ${missingFiles}`;
+                        }
                     }
                     alert(message);
                     
@@ -2816,7 +2841,12 @@
             }
             
             try {
-                console.log('[Trade Cycle] Executing trading cycle...');
+                // 根据市场状态显示不同的消息
+                if (marketStatus === 'closed') {
+                    console.log('[Trade Cycle] Market is closed, executing analysis only (no trading)...');
+                } else {
+                    console.log('[Trade Cycle] Market is open, executing trading cycle...');
+                }
                 const response = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
                     method: 'POST',
                     mode: 'cors',  // 明确指定 CORS 模式
@@ -2841,7 +2871,8 @@
                     const isPlanning = data.result?.is_planning || false;
                     
                     // Update market status based on actual API response
-                    if (isPlanning) {
+                    // CRITICAL FIX: 根据 message 判断市场状态（更准确）
+                    if (isPlanning || message.toLowerCase().includes('market closed') || message.toLowerCase().includes('analysis completed')) {
                         marketStatus = 'closed';
                         console.log(`[Trade Cycle] Analysis completed: ${orderCount} orders, ${convCount} conversations. ${message}`);
                     } else {
@@ -3556,14 +3587,23 @@
                 return;
             }
 
-            // 按日期分组
+            // 按日期和轮次分组
             const byDate = {};
+            const byRound = {};  // CRITICAL FIX: 按轮次分组（用于显示三轮 Discussion）
             conversations.forEach(conv => {
                 const date = conv.date || conv.timestamp?.split('T')[0] || 'Unknown';
                 if (!byDate[date]) {
                     byDate[date] = [];
                 }
                 byDate[date].push(conv);
+                
+                // CRITICAL FIX: 按轮次分组（只处理 discussion 类型且 round > 0）
+                if (conv.type === 'discussion' && conv.round && conv.round > 0) {
+                    if (!byRound[conv.round]) {
+                        byRound[conv.round] = [];
+                    }
+                    byRound[conv.round].push(conv);
+                }
             });
 
             // 生成HTML（按日期分组显示）
@@ -3574,6 +3614,69 @@
             const orderStatusCard = generateOrderStatusCard();
             if (orderStatusCard) {
                 html += orderStatusCard;
+            }
+            
+            // CRITICAL FIX: 显示三轮 Discussion（如果有）
+            // 定义 getAgentIcon 函数（用于三轮 Discussion 显示）
+            function getAgentIcon(agentName) {
+                const icons = {
+                    'MarketAgent': '🌐',
+                    'MarketAnalyst': '🌐',
+                    'TechnicalAnalyst': '📈',
+                    'FundamentalAnalyst': '💼',
+                    'SentimentAnalyst': '😊',
+                    'DiscussionCoordinator': '💬',
+                    'DiscussionAgent': '💬',
+                    'RiskAnalyst': '⚠️',
+                    'TraderAgent': '🤖',
+                    'ToolSystem': '🔧',
+                    'Unknown': '🤖'
+                };
+                // 匹配部分名称
+                for (const [key, icon] of Object.entries(icons)) {
+                    if (agentName.toLowerCase().includes(key.toLowerCase())) {
+                        return icon;
+                    }
+                }
+                return icons[agentName] || '🤖';
+            }
+            
+            const sortedRounds = Object.keys(byRound).sort((a, b) => parseInt(a) - parseInt(b));
+            if (sortedRounds.length > 0) {
+                html += `<div style="margin-bottom: 32px; padding: 20px; background: rgba(15, 23, 42, 0.8); border-radius: 12px; border: 2px solid rgba(34, 211, 238, 0.3);">`;
+                html += `<h3 style="font-size: 16px; color: #22d3ee; margin-bottom: 16px; font-weight: 600;">💬 Discussion Rounds</h3>`;
+                
+                sortedRounds.forEach(roundNum => {
+                    const roundConvs = byRound[roundNum];
+                    html += `<div style="margin-bottom: 20px; padding: 16px; background: rgba(34, 211, 238, 0.05); border-radius: 8px; border-left: 4px solid #22d3ee;">`;
+                    html += `<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-bottom: 12px;">Round ${roundNum}</div>`;
+                    
+                    roundConvs.forEach(conv => {
+                        const agent = conv.agent || 'Unknown';
+                        const content_text = conv.content || '';
+                        const agentIcon = getAgentIcon(agent);
+                        
+                        // 提取分析文本
+                        let analysisText = content_text;
+                        if (content_text.includes('Round') && content_text.includes('Discussion:')) {
+                            const match = content_text.match(/Round \d+ Discussion:\s*\n\n([\s\S]+)/);
+                            if (match) {
+                                analysisText = match[1].trim();
+                            }
+                        }
+                        
+                        html += `
+                            <div style="margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 6px;">
+                                <div style="font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">${agentIcon} ${agent}</div>
+                                <div style="font-size: 13px; color: #94a3b8; white-space: pre-wrap; line-height: 1.6; max-height: 300px; overflow-y: auto;">${escapeHtml(analysisText.substring(0, 1000))}${analysisText.length > 1000 ? '...' : ''}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
             }
             
             const sortedDates = Object.keys(byDate).sort().reverse(); // 最新的日期在前
@@ -3627,6 +3730,62 @@
                             
                             const agentIcon = getAgentIcon(agent);
                             
+                            // CRITICAL FIX: 特殊处理 RiskAnalyst
+                            if (agent === 'RiskAnalyst' || agent.toLowerCase().includes('risk')) {
+                                const riskReport = conv.risk_report || {};
+                                const riskLevel = riskReport.overall_risk_level || riskReport.risk_level || conv.stance || 'medium';
+                                const riskScore = riskReport.risk_score || 5.0;
+                                const riskSignals = riskReport.risk_signals || [];
+                                const recommendations = riskReport.recommendations || [];
+                                
+                                // 风险级别颜色
+                                const riskColor = 
+                                    riskLevel === 'high' ? '#ef4444' :
+                                    riskLevel === 'medium' ? '#f59e0b' :
+                                    '#10b981';  // low
+                                
+                                // 提取分析文本
+                                let analysisText = content_text;
+                                const analysisMatch = content_text.match(/Analysis:\s*([\s\S]+)$/i);
+                                if (analysisMatch) {
+                                    analysisText = analysisMatch[1].trim();
+                                }
+                                
+                                let riskHtml = `
+                                    <div style="margin-top: 12px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border-left: 3px solid ${riskColor};">
+                                        <div style="font-weight: 600; color: ${riskColor}; margin-bottom: 8px;">⚠️ Risk Level: ${riskLevel.toUpperCase()} (Score: ${riskScore}/10)</div>
+                                        ${riskSignals.length > 0 ? `
+                                            <div style="margin-bottom: 8px;">
+                                                <div style="font-weight: 600; color: #f59e0b; margin-bottom: 4px;">Risk Signals:</div>
+                                                <ul style="margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 12px;">
+                                                    ${riskSignals.map(signal => `<li>${escapeHtml(String(signal))}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        ` : ''}
+                                        ${recommendations.length > 0 ? `
+                                            <div>
+                                                <div style="font-weight: 600; color: #10b981; margin-bottom: 4px;">Recommendations:</div>
+                                                <ul style="margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 12px;">
+                                                    ${recommendations.map(rec => `<li>${escapeHtml(String(rec))}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                                
+                                // 返回 RiskAnalyst 的特殊显示
+                                return `
+                                    <div class="conversation-item" style="margin-bottom: 16px; padding: 16px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.2);">
+                                        <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                            <span class="conversation-agent" style="font-weight: 600; color: #22d3ee;">${agentIcon} ${agent}</span>
+                                            <span class="conversation-date" style="font-size: 12px; color: #6b7280;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
+                                        </div>
+                                        ${analysisText ? `<div class="conversation-content" style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; margin-bottom: 12px;">${escapeHtml(analysisText)}</div>` : ''}
+                                        ${riskHtml}
+                                    </div>
+                                `;
+                            }
+                            
                             // Parse tool information if it's a tool entry
                             let toolHtml = '';
                             let toolResultHtml = '';
@@ -3666,7 +3825,7 @@
                                         // If parsing fails, display original content
                                         toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool Result</div>`;
                                         toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                            <div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content_text)}</div>
+                                            <div style="font-family: monospace; white-space: pre-wrap; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; color: #cbd5e1;">${escapeHtml(content_text)}</div>
                                         </div>`;
                                     }
                                 }
@@ -3799,13 +3958,67 @@
                             let analysisText = '';
                             let toolsListHtml = '';
                             if (entry_type === 'discussion' && content_text) {
-                                // 提取完整的分析文本，不限制长度
-                                const analysisMatch = content_text.match(/Analysis:\s*(.+)/is);
+                                // CRITICAL FIX: 优化DiscussionCoordinator和TraderAgent的内容提取
+                                // 对于"Stance: X\n\nAnalysis: Y"格式，正确提取Analysis部分
+                                const isCoordinatorOrTrader = agent && (agent.toLowerCase().includes('coordinator') || agent.toLowerCase().includes('trader'));
+                                
+                                // CRITICAL FIX: 提取完整的分析文本，不限制长度
+                                // 优先匹配 "Analysis:" 后面的内容（支持多行，匹配到字符串末尾）
+                                // 使用非贪婪匹配可能导致截断，改为贪婪匹配到字符串末尾
+                                const analysisMatch = content_text.match(/Analysis:\s*([\s\S]+)$/i);
                                 if (analysisMatch) {
                                     analysisText = analysisMatch[1].trim();
                                 } else {
                                     // 如果没有"Analysis:"前缀，使用完整内容
                                     analysisText = content_text.trim();
+                                }
+                                
+                                // CRITICAL FIX: 确保analysisText包含完整内容，不被截断
+                                // 如果analysisText太短（可能是匹配失败），使用完整content_text
+                                if (analysisText.length < 50 && content_text.length > 50) {
+                                    // 尝试从"Stance:"后面提取所有内容
+                                    const stanceMatch = content_text.match(/Stance:\s*[\w\s]+\n\n([\s\S]+)$/i);
+                                    if (stanceMatch) {
+                                        analysisText = stanceMatch[1].trim();
+                                    } else {
+                                        // 如果还是失败，使用完整内容（移除Stance行）
+                                        analysisText = content_text.replace(/^Stance:\s*[\w\s]+\n\n?/i, '').trim();
+                                    }
+                                }
+                                
+                                // CRITICAL FIX: 将 "|" 分隔符转换为换行符，确保完整显示
+                                // 如果内容包含 "|" 分隔符（可能是LLM返回的格式），将其转换为换行符
+                                if (analysisText.includes(' | ')) {
+                                    // 将 " | " 替换为 "\n\n" 以便更好地显示
+                                    analysisText = analysisText.replace(/\s*\|\s*/g, '\n\n');
+                                }
+                                
+                                // CRITICAL FIX: 对于Coordinator和TraderAgent，如果内容是JSON格式，尝试解析
+                                if (isCoordinatorOrTrader && analysisText.trim().startsWith('{')) {
+                                    try {
+                                        const parsed = JSON.parse(analysisText);
+                                        // 尝试提取文本内容
+                                        const textKeys = ['summary', 'analysis', 'rationale', 'content', 'text'];
+                                        for (const key of textKeys) {
+                                            if (parsed[key] && typeof parsed[key] === 'string' && parsed[key].length > 50) {
+                                                analysisText = parsed[key];
+                                                break;
+                                            }
+                                        }
+                                        // 如果无法提取文本，格式化JSON显示
+                                        if (analysisText.trim().startsWith('{')) {
+                                            analysisText = JSON.stringify(parsed, null, 2);
+                                        }
+                                    } catch (e) {
+                                        // JSON解析失败，保留原始内容
+                                    }
+                                }
+                                
+                                // CRITICAL FIX: 将 "|" 分隔符转换为换行符（在清理之前）
+                                // 如果内容包含 "|" 分隔符（可能是LLM返回的格式），将其转换为换行符
+                                if (analysisText.includes(' | ')) {
+                                    // 将 " | " 替换为 "\n\n" 以便更好地显示
+                                    analysisText = analysisText.replace(/\s*\|\s*/g, '\n\n');
                                 }
                                 
                                 // 清理杂讯：移除所有 "Requested tool:" 相关的占位文本
@@ -3828,7 +4041,11 @@
                                 analysisText = analysisText.replace(/```python[\s\S]*?```/gi, '').trim();
                                 analysisText = analysisText.replace(/```[\s\S]*?```/gi, '').trim();
                                 
-                                // 清理：移除所有 JSON 格式内容（包括嵌套的）
+                                // CRITICAL FIX: 不要移除 JSON 格式内容，而是保留完整文本
+                                // 如果内容包含 JSON，保留 JSON 前后的文本，而不是移除 JSON
+                                // 这样可以确保完整显示对话内容
+                                // 注释掉原来的 JSON 移除逻辑，改为保留完整内容
+                                /*
                                 while (analysisText.includes('{') && analysisText.includes('}')) {
                                     const jsonStart = analysisText.indexOf('{');
                                     const jsonEnd = analysisText.lastIndexOf('}');
@@ -3848,6 +4065,7 @@
                                         break;
                                     }
                                 }
+                                */
                                 
                                 // 清理：移除 "Output:" 或 "Stance:" 等前缀后的简短内容
                                 analysisText = analysisText.replace(/^Output:\s*/i, '').trim();
@@ -3875,9 +4093,20 @@
                                 // 清理：移除 "As the [Analyst], I will" 开头的占位文本
                                 analysisText = analysisText.replace(/^As the [^,]+,\s*I will[\s\S]*?(?=\n\n|$)/gi, '').trim();
                                 
-                                // 如果清理后为空或太短，不显示
+                                // CRITICAL FIX: 如果清理后为空或太短，使用原始内容
+                                // 这样可以确保即使清理后内容很短，也能显示原始对话
                                 if (analysisText.length < 30) {
-                                    analysisText = '';
+                                    // 如果清理后太短，使用原始内容（但移除明显的占位文本）
+                                    const originalText = content_text.trim();
+                                    if (originalText.length > 30) {
+                                        // 只移除明显的占位文本，保留其他内容
+                                        analysisText = originalText
+                                            .replace(/^As the [^,]+,\s*I will[\s\S]*?(?=\n\n|$)/gi, '')
+                                            .replace(/Please note that[\s\S]*?(?=\n\n|$)/gi, '')
+                                            .trim();
+                                    } else {
+                                        analysisText = '';
+                                    }
                                 }
                             }
                             
@@ -3895,7 +4124,7 @@
                                         <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                         <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${escapeHtml(analysisText)}</div>
                                     </div>` : ''}
-                                    ${entry_type === 'discussion' && !analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">${formatConversationContent(content_text, entry_type)}</div>` : ''}
+                                    ${entry_type === 'discussion' && !analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${formatConversationContent(content_text, entry_type, agent)}</div>` : ''}
                                 </div>
                             `;
                         }).join('')}
@@ -4189,7 +4418,7 @@
                                     // If parsing fails, display original content
                                     toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool Result</div>`;
                                     toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                        <div style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content)}</div>
+                                        <div style="font-family: monospace; white-space: pre-wrap; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; color: #cbd5e1;">${escapeHtml(content)}</div>
                                     </div>`;
                                 }
                             }
@@ -4281,7 +4510,7 @@
                             if (!toolHtml && !toolResultHtml) {
                                 toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolName)}</strong></div>`;
                                 toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
-                                    <div style="font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; color: #cbd5e1;">${escapeHtml(content)}</div>
+                                    <div style="font-family: monospace; white-space: pre-wrap; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; color: #cbd5e1;">${escapeHtml(content)}</div>
                                 </div>`;
                             }
                             return `
@@ -4325,8 +4554,8 @@
                                 </div>
                                 ${round ? `<div class="conversation-meta" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Round ${round}</div>` : ''}
                                 ${stanceHtml}
-                                ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: 500px; overflow-y: auto;">
-                                    <div style="color: #ffffff; white-space: pre-wrap; word-wrap: break-word; font-weight: 400;">${escapeHtml(analysisText)}</div>
+                                ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
+                                    <div style="color: #ffffff; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; font-weight: 400;">${escapeHtml(analysisText)}</div>
                                 </div>` : ''}
                             </div>`;
                     }).join('')}
@@ -5472,6 +5701,70 @@
         function formatConversationContent(content, entryType, agentName = '') {
             if (!content) return '';
             
+            // CRITICAL FIX: 对于DiscussionCoordinator和TraderAgent，优先处理"Stance: X\n\nAnalysis: Y"格式
+            const isCoordinatorOrTrader = agentName && (agentName.toLowerCase().includes('coordinator') || agentName.toLowerCase().includes('trader'));
+            
+            if (isCoordinatorOrTrader && typeof content === 'string') {
+                // CRITICAL FIX: 提取Analysis部分，使用贪婪匹配到字符串末尾，确保不截断
+                // 使用非贪婪匹配(?:\n\n|$)可能导致截断，改为贪婪匹配到字符串末尾
+                const analysisMatch = content.match(/Analysis:\s*([\s\S]+)$/i);
+                if (analysisMatch) {
+                    let analysisText = analysisMatch[1].trim();
+                    
+                    // CRITICAL FIX: 将 "|" 分隔符转换为换行符，确保完整显示
+                    // 如果内容包含 "|" 分隔符（可能是LLM返回的格式），将其转换为换行符
+                    if (analysisText.includes(' | ')) {
+                        // 将 " | " 替换为 "\n\n" 以便更好地显示
+                        analysisText = analysisText.replace(/\s*\|\s*/g, '\n\n');
+                    }
+                    
+                    // 如果Analysis部分是JSON，尝试解析
+                    if (analysisText.trim().startsWith('{')) {
+                        try {
+                            const parsed = JSON.parse(analysisText);
+                            // 尝试提取文本内容
+                            const textKeys = ['summary', 'analysis', 'rationale', 'content', 'text'];
+                            for (const key of textKeys) {
+                                if (parsed[key] && typeof parsed[key] === 'string' && parsed[key].length > 50) {
+                                    let extractedText = parsed[key];
+                                    // 同样处理提取的文本中的 "|" 分隔符
+                                    if (extractedText.includes(' | ')) {
+                                        extractedText = extractedText.replace(/\s*\|\s*/g, '\n\n');
+                                    }
+                                    return escapeHtml(extractedText);
+                                }
+                            }
+                            // 如果无法提取文本，格式化JSON显示
+                            return escapeHtml(JSON.stringify(parsed, null, 2));
+                        } catch (e) {
+                            // JSON解析失败，返回原始内容
+                            return escapeHtml(analysisText);
+                        }
+                    }
+                    // 如果不是JSON，直接返回Analysis部分（完整内容）
+                    return escapeHtml(analysisText);
+                } else {
+                    // CRITICAL FIX: 如果匹配失败，尝试从"Stance:"后面提取所有内容
+                    const stanceMatch = content.match(/Stance:\s*[\w\s]+\n\n([\s\S]+)$/i);
+                    if (stanceMatch) {
+                        let extractedText = stanceMatch[1].trim();
+                        // 同样处理提取的文本中的 "|" 分隔符
+                        if (extractedText.includes(' | ')) {
+                            extractedText = extractedText.replace(/\s*\|\s*/g, '\n\n');
+                        }
+                        return escapeHtml(extractedText);
+                    } else {
+                        // 如果还是失败，使用完整内容（移除Stance行）
+                        let fullContent = content.replace(/^Stance:\s*[\w\s]+\n\n?/i, '').trim();
+                        // 同样处理完整内容中的 "|" 分隔符
+                        if (fullContent.includes(' | ')) {
+                            fullContent = fullContent.replace(/\s*\|\s*/g, '\n\n');
+                        }
+                        return escapeHtml(fullContent || content);
+                    }
+                }
+            }
+            
             // 尝试检测并格式化 JSON/dict 内容（适用于所有类型）
             // 检查是否是 Coordinator 或内容看起来像 JSON
             const isCoordinator = agentName && agentName.toLowerCase().includes('coordinator');
@@ -6378,8 +6671,11 @@
 
         // Render positions table
         function renderPositions(portfolio) {
+            // 优先使用 positions_detail（包含完整信息），如果没有则使用 positions（仅数量）
+            const positionsDetail = portfolio.positions_detail || {};
             const positions = portfolio.positions || {};
             const positionsPnL = portfolio.positions_pnl || {};
+            
             // 确保 total_value 正确计算（如果后端返回错误，使用 cash + equity_value）
             let totalValue = portfolio.total_value || 0;
             if (totalValue === 0 && portfolio.cash && portfolio.equity_value) {
@@ -6387,7 +6683,27 @@
                 console.warn('[Frontend] Fixed total_value calculation:', totalValue);
             }
             
-            const positionsArray = Object.entries(positions);
+            // 优先使用 positions_detail，如果没有则从 positions 构建
+            let positionsArray = [];
+            if (Object.keys(positionsDetail).length > 0) {
+                // 使用 positions_detail（包含完整信息）
+                positionsArray = Object.entries(positionsDetail);
+            } else if (Object.keys(positions).length > 0) {
+                // 回退到 positions（仅数量），需要从 positions_detail 或其他地方获取详细信息
+                console.warn('[Frontend] Using positions (quantity only), positions_detail is empty');
+                positionsArray = Object.entries(positions).map(([symbol, quantity]) => {
+                    // 尝试从 positionsPnL 获取信息，否则使用默认值
+                    const pnl = positionsPnL[symbol] || {};
+                    return [symbol, {
+                        quantity: quantity,
+                        avg_cost: pnl.avg_cost || 0,
+                        total_cost: pnl.total_cost || 0,
+                        cost_basis: pnl.cost_basis || 0,
+                        current_price: pnl.current_price || 0,
+                        market_value: pnl.market_value || 0,
+                    }];
+                });
+            }
             
             if (positionsArray.length === 0) {
                 document.getElementById('positionsSection').style.display = 'none';
@@ -6406,6 +6722,19 @@
             let totalUnrealizedPnL = 0;
 
             tbody.innerHTML = positionsArray.map(([symbol, pos]) => {
+                // pos 现在应该是对象（从 positions_detail），包含完整信息
+                // 如果 pos 是数字（旧格式），转换为对象
+                if (typeof pos === 'number') {
+                    pos = {
+                        quantity: pos,
+                        avg_cost: 0,
+                        total_cost: 0,
+                        cost_basis: 0,
+                        current_price: 0,
+                        market_value: 0,
+                    };
+                }
+                
                 // Get P&L data, if backend doesn't provide, calculate from frontend
                 let pnl = positionsPnL[symbol];
                 if (!pnl || typeof pnl.unrealized_pnl !== 'number') {
@@ -6431,7 +6760,7 @@
                 }
                 
                 const isProfit = pnl.unrealized_pnl >= 0;
-                const weight = totalValue > 0 ? ((pos.market_value / totalValue) * 100).toFixed(2) : '0.00';
+                const weight = totalValue > 0 && pos.market_value ? ((pos.market_value / totalValue) * 100).toFixed(2) : '0.00';
                 
                 totalPositionsValue += pos.market_value || 0;
                 totalUnrealizedPnL += pnl.unrealized_pnl || 0;
@@ -6439,10 +6768,10 @@
                 return `
                     <tr class="${isProfit ? 'profit-row' : 'loss-row'}">
                         <td class="symbol-cell">${symbol}</td>
-                        <td>${pos.quantity}</td>
-                        <td>${formatCurrency(pos.avg_cost)}</td>
-                        <td>${formatCurrency(pos.current_price)}</td>
-                        <td>${formatCurrency(pos.market_value)}</td>
+                        <td>${pos.quantity || 0}</td>
+                        <td>${formatCurrency(pos.avg_cost || 0)}</td>
+                        <td>${formatCurrency(pos.current_price || 0)}</td>
+                        <td>${formatCurrency(pos.market_value || 0)}</td>
                         <td class="${isProfit ? 'positive' : 'negative'}">
                             ${isProfit ? '+' : ''}${formatCurrency(pnl.unrealized_pnl)}
                         </td>

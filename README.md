@@ -271,13 +271,20 @@ technical_analyst:
 
 ### Data Directory Structure
 
-All trading data, records, and memory are stored in `data/logs/`:
+**All agent-generated data, conversations, positions, and trading records are stored in `data/logs/` directory** (relative to project root).
+
+**Path Details:**
+- **Project Root**: The directory containing `README.md` and `backend/` folder
+- **Data Directory**: `{project_root}/data/logs/`
+- **Example**: If project is at `C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\`, then data is stored at `C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\data\logs\`
+
+After each agent execution cycle, the following data is automatically saved:
 
 ```
 data/logs/
 ├── portfolio_state.json          # Current portfolio state (cash, positions)
 ├── equity_history.jsonl          # Net value history (P&L records)
-├── discussion_actions.jsonl      # Agent conversations
+├── discussion_actions.jsonl      # Agent conversations and discussions
 ├── trades.jsonl                  # Trade execution history
 ├── filled_orders.jsonl            # Completed orders (with realized P&L)
 ├── pending_orders.jsonl          # Pending orders
@@ -289,6 +296,15 @@ data/logs/
 │   └── index/                    # Memory indices
 └── real_time_snapshots.jsonl     # Real-time portfolio snapshots
 ```
+
+**Key Points:**
+- **Position Information**: Stored in `portfolio_state.json` (current holdings, cash balance)
+- **Agent Conversations**: Stored in `discussion_actions.jsonl` (all agent discussions, analyses, and summaries)
+- **Trading Records**: Stored in `trades.jsonl` and `filled_orders.jsonl` (execution history and P&L)
+- **Memory System**: Stored in `memory/` subdirectories (daily/weekly/monthly snapshots for agent learning)
+- **Equity History**: Stored in `equity_history.jsonl` (portfolio value over time)
+
+All files are automatically created and updated by the system. No manual file management is required.
 
 ### Portfolio State (`portfolio_state.json`)
 
@@ -547,9 +563,11 @@ data/logs/
    - All orders are market orders (not limit orders) for guaranteed execution
 
 6. **Portfolio Update**
-   - Update portfolio state
-   - Record equity history (every 30 minutes)
-   - Save memory snapshot
+   - Update portfolio state → saved to `data/logs/portfolio_state.json`
+   - Record equity history (every 30 minutes) → saved to `data/logs/equity_history.jsonl`
+   - Save memory snapshot → saved to `data/logs/memory/daily/YYYY-MM-DD.json`
+   - Save agent conversations → saved to `data/logs/discussion_actions.jsonl`
+   - Save trade records → saved to `data/logs/trades.jsonl` and `data/logs/filled_orders.jsonl`
 
 ---
 
@@ -666,6 +684,47 @@ $env:FRED_API_KEY="your_key_here"
 ```bash
 python scripts/init_data.py
 ```
+
+### Frontend Positions Display Issues
+
+**Error**: Positions table shows `undefined` or `NaN` for shares, cost, price, etc.
+
+**Root Cause**: Frontend was reading from `positions` (quantity only) instead of `positions_detail` (full information).
+
+**Solution**: 
+- ✅ **Fixed**: Frontend now reads from `positions_detail` with fallback logic
+- Refresh the browser page (F5 or Ctrl+R) to see the fix
+- All position fields should now display correctly
+
+**Related Documentation**: See [`docs/FRONTEND_POSITIONS_FIX.md`](docs/FRONTEND_POSITIONS_FIX.md)
+
+### Portfolio P&L Calculation Issues
+
+**Error**: 
+- `cost_basis=0 (total_cost=undefined, cost_basis=undefined)` in console
+- Net value not returning to 10000 when positions are cleared
+
+**Root Cause**: 
+- API was not populating `positions_detail` when market data fetch failed
+- Missing `total_cost` and `cost_basis` fields
+- Incorrect `total_value` calculation
+
+**Solution**:
+- ✅ **Fixed**: API now always populates `positions_detail` with basic info (even when market is closed)
+- ✅ **Fixed**: Added `total_cost` and `cost_basis` fields
+- ✅ **Fixed**: Corrected `total_value = cash + equity_value` calculation
+
+**Related Documentation**: See [`docs/PORTFOLIO_PNL_FIX.md`](docs/PORTFOLIO_PNL_FIX.md)
+
+### API Endpoint Errors
+
+**Error**: `405 Method Not Allowed` or `500 Internal Server Error`
+
+**Common Issues**:
+- ✅ **Fixed**: Added `POST` method support to `/api/trading/check-pending-orders`
+- ✅ **Fixed**: VIX and Fear & Greed endpoints now return default values instead of 500 errors when data fetch fails
+
+**Related Documentation**: See [`docs/FRONTEND_CONSOLE_ERRORS_FIXED.md`](docs/FRONTEND_CONSOLE_ERRORS_FIXED.md)
 
 ### Restart Backend API
 
@@ -801,6 +860,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 | `docs/TOOLS.md` | Detailed documentation for all 23 tools |
 | `docs/ARCHITECTURE.md` | System design and data flow |
 | `docs/USER_MANUAL_RAILWAY_UPDATE.md` | Daily upload guide |
+
+### Recent Fixes & Improvements
+
+| File | Description |
+|------|-------------|
+| `docs/FRONTEND_POSITIONS_FIX.md` | Frontend positions display fix (undefined/NaN issue) |
+| `docs/PORTFOLIO_PNL_FIX.md` | Portfolio P&L calculation and net value fixes |
+| `docs/FRONTEND_CONSOLE_ERRORS_FIXED.md` | API endpoint error fixes (405, 500 errors) |
+| `docs/COMPLETE_FIX_SUMMARY.md` | Comprehensive summary of all recent fixes |
+| `docs/API_IMPLEMENTATION_COMPLETE.md` | API endpoint implementation status |
 
 ---
 

@@ -146,10 +146,13 @@ class ToolBox:
                 seen.add(s)
 
         # 映射數值類參數（兼容新旧参数名）
+        # CRITICAL FIX: 默认改为2天（48小时），确保只获取最新新闻
         recency_days = _safe_int(
-            kwargs.get("recency_days") or kwargs.get("days", 10),
-            default=10
+            kwargs.get("recency_days") or kwargs.get("days", 2),
+            default=2
         )
+        # 强制限制为最多2天（48小时）
+        recency_days = min(recency_days, 2)
         max_articles = _safe_int(
             kwargs.get("max_articles") or kwargs.get("max_n", 12),
             default=12

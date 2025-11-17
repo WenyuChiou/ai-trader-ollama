@@ -531,7 +531,7 @@ def run_multi_analyst_discussion(
                 tool_calls_list = [
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
                     {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
-                    {"name": "news_scan", "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 7}, "why": "Fallback: Get recent market news for sentiment analysis"}
+                    {"name": "news_scan", "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 2}, "why": "Fallback: Get latest market news (last 48 hours) for sentiment analysis"}
                 ]
             # 即使agent请求了工具，也确保news_scan被包含（如果还没有）
             elif tool_calls_list and use_tools and tool_calls_count < tool_budget:
@@ -540,8 +540,8 @@ def run_multi_analyst_discussion(
                     print(f"   [INFO] Adding news_scan to tool calls (news analysis is important for sentiment)")
                     tool_calls_list.append({
                         "name": "news_scan", 
-                        "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 7}, 
-                        "why": "Added: News analysis is critical for sentiment assessment"
+                        "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 2}, 
+                        "why": "Added: News analysis is critical for sentiment assessment (latest 48 hours)"
                     })
             
             # 收集工具调用结果
@@ -1143,8 +1143,16 @@ def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
             fundamentals = tool_result.get("fundamentals", {})
             return f"PE: {fundamentals.get('pe_ratio', 'N/A')}, Market Cap: {fundamentals.get('market_cap', 'N/A')}"
         elif tool_name == "fear_greed":
-            fg = tool_result.get("fear_greed", {})
-            return f"Index: {fg.get('value', 'N/A')} ({fg.get('label', 'N/A')})"
+            # CRITICAL FIX: 处理嵌套结构，提取实际的值和标签
+            fg_data = tool_result.get("fear_greed", tool_result)
+            if isinstance(fg_data, dict):
+                value = fg_data.get("value")
+                label = fg_data.get("label")
+                if value is not None:
+                    value_str = f"{value}" if isinstance(value, (int, float)) else str(value)
+                    label_str = label if label else "N/A"
+                    return f"Index: {value_str} ({label_str})"
+            return f"Index: {tool_result.get('value', 'N/A')} ({tool_result.get('label', 'N/A')})"
         elif tool_name == "vix_term":
             vix = tool_result.get("vix", {})
             return f"VIX: {vix.get('vix', 'N/A')}, Term structure: {vix.get('term_structure', 'N/A')}"
@@ -1213,6 +1221,38 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
             # 使用完整的 universe symbols（不是 sample_stocks）
             tool_args["symbols"] = market_summary["symbols"]
             print(f"   [INFO] Auto-added {len(market_summary['symbols'])} symbols to get_market_breadth (full universe)")
+    
+    # CRITICAL FIX: fear_greed 工具不接受 index 或 crypto 参数，移除它们
+    if tool_name == "fear_greed":
+        # fear_greed 只接受 timeout 参数，移除其他不支持的参数
+        unsupported_params = ["index", "crypto", "source", "market"]
+        removed = []
+        for param in unsupported_params:
+            if param in tool_args:
+                del tool_args[param]
+                removed.append(param)
+        if removed:
+            print(f"   [TOOL_FIX] Removed unsupported parameters from fear_greed call: {removed}")
+        # 只保留 timeout 参数（如果存在），其他参数都移除
+        allowed_params = {"timeout"}
+        params_to_remove = [k for k in tool_args.keys() if k not in allowed_params]
+        for param in params_to_remove:
+            del tool_args[param]
+            if param not in unsupported_params:  # 避免重复打印
+                print(f"   [TOOL_FIX] Removed unsupported '{param}' parameter from fear_greed call")
+    
+    # CRITICAL FIX: web_search 必须要有 query 或 keywords 参数
+    if tool_name == "web_search":
+        if "query" not in tool_args and "keywords" not in tool_args:
+            # 如果没有 query 或 keywords，添加默认查询或跳过
+            if "domains" in tool_args:
+                # 如果有 domains，使用通用市场查询
+                tool_args["query"] = "market news stocks economy"
+                print(f"   [TOOL_FIX] Added default query='market news stocks economy' to web_search (domains={tool_args.get('domains')})")
+            else:
+                # 如果没有 domains 也没有 query，返回错误
+                print(f"   [TOOL_ERR] web_search requires 'query' or 'keywords' parameter")
+                return {"error": "web_search requires 'query' or 'keywords' parameter"}
     
     # 处理 news_scan 工具：确保有 keywords
     if tool_name == "news_scan":

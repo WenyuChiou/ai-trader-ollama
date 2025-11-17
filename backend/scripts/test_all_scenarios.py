@@ -18,7 +18,7 @@ import sys
 import os
 import json
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 
 # Add project paths
@@ -33,6 +33,38 @@ from src.data.order_manager import OrderManager
 from src.data.equity_tracker import EquityTracker
 from src.orchestrator.trading_cycle import execute_daily_trade
 from src.agents.toolbox import ToolBox
+
+# Load config from config.json (same as API)
+def load_trading_config():
+    """从 config.json 读取交易配置（与 API 保持一致）"""
+    config_path = backend_dir / "config" / "config.json"
+    universe = None
+    tool_budget = 15  # 默认值
+    rounds = 3
+    min_tools = 3
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+                if "universe" in config_data and isinstance(config_data["universe"], list):
+                    universe = config_data["universe"]
+                # 读取工具预算（优先使用 discussion_tool_budget）
+                tool_budget = config_data.get("discussion_tool_budget", config_data.get("tool_budget", 15))
+                # 确保至少为8，否则工具调用太少
+                if tool_budget < 8:
+                    tool_budget = 15
+                rounds = config_data.get("discussion_rounds", 3)
+                min_tools = config_data.get("discussion_min_tools", 3)
+        except Exception as e:
+            print(f"[Config] Failed to read config.json, using defaults: {e}")
+    
+    return {
+        "universe": universe,
+        "tool_budget": tool_budget,
+        "rounds": rounds,
+        "min_tools": min_tools
+    }
 
 # Constants
 DATA_DIR = project_root / "data" / "logs"
@@ -111,16 +143,90 @@ def test_scenario1():
     
     # Run trading cycle
     try:
-        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        # CRITICAL: 使用与 API 相同的配置和日期范围
+        # 不指定 start 和 end，让函数使用默认窗口（今天往前180天，以便技术指标正常）
+        config = load_trading_config()
+        print(f"[TEST] Using config from config.json:")
+        print(f"  - Tool budget: {config['tool_budget']}")
+        print(f"  - Rounds: {config['rounds']}")
+        print(f"  - Min tools: {config['min_tools']}")
+        print(f"  - Universe: {len(config['universe']) if config['universe'] else 0} stocks")
+        print(f"[TEST] Using default date range (today - 180 days) for technical indicators")
+        
         result = execute_daily_trade(
-            start=yesterday,
-            end=yesterday,
-            tool_budget=6,
-            min_tools=3
+            # 不传入 start 和 end，使用默认窗口（今天往前180天）
+            universe=config['universe'],
+            rounds=config['rounds'],
+            auto_tools=True,
+            tool_budget=config['tool_budget'],
+            min_tools=config['min_tools']
         )
         print(f"[Result] Trading cycle completed")
-        print(f"  - Stance: {result.get('final_stance', 'unknown')}")
+        # CRITICAL FIX: 使用正确的键名 'stance' 而不是 'final_stance'
+        stance = result.get('stance') or result.get('final_stance') or 'unknown'
+        print(f"  - Stance: {stance}")
         print(f"  - Orders: {len(result.get('trade_suggestions', []))}")
+        
+        # Print tool context from result immediately after execution
+        if result:
+            discussion = result.get('discussion', {})
+            tool_context = discussion.get('tool_context', [])
+            if tool_context:
+                print(f"\n[TOOL CONTEXT FROM RESULT]")
+                for tool_ctx in tool_context:
+                    print(f"  - {tool_ctx}")
+            
+            # CRITICAL FIX: 显示新闻的详细日期信息（立即执行后）
+            tool_calls = discussion.get('tool_calls', [])
+            if tool_calls:
+                print(f"\n[NEWS WITH DATES (IMMEDIATE)]")
+                news_found = False
+                for tool_call in tool_calls:
+                    tool_name = tool_call.get('tool', '')
+                    if tool_name in ['news_scan', 'plan_and_scan_news']:
+                        news_found = True
+                        tool_result = tool_call.get('result', {})
+                        # 处理嵌套结构
+                        if isinstance(tool_result, dict) and 'ok' in tool_result and 'result' in tool_result:
+                            tool_result = tool_result['result']
+                        
+                        hits = tool_result.get('hits', []) if isinstance(tool_result, dict) else []
+                        if hits:
+                            print(f"  📰 {tool_name}: {len(hits)} articles")
+                            for i, hit in enumerate(hits[:5], 1):  # 只显示前5条
+                                title = hit.get('title', 'No title')[:60]
+                                source = hit.get('source', 'Unknown')
+                                # 格式化日期
+                                published_ts = hit.get('published_timestamp')
+                                if published_ts:
+                                    try:
+                                        if isinstance(published_ts, (int, float)):
+                                            pub_date = datetime.fromtimestamp(published_ts, tz=timezone.utc)
+                                            date_str = pub_date.strftime('%Y-%m-%d %H:%M UTC')
+                                            # 计算相对时间
+                                            now = datetime.now(timezone.utc)
+                                            age = now - pub_date
+                                            if age.days > 0:
+                                                age_str = f"{age.days} days ago"
+                                            elif age.seconds >= 3600:
+                                                age_str = f"{age.seconds // 3600} hours ago"
+                                            else:
+                                                age_str = f"{age.seconds // 60} minutes ago"
+                                            date_display = f"{date_str} ({age_str})"
+                                        else:
+                                            date_display = str(published_ts)
+                                    except Exception:
+                                        date_display = str(published_ts)
+                                else:
+                                    date_display = "No date"
+                                print(f"    {i}. {title}")
+                                print(f"       Source: {source} | Published: {date_display}")
+                        else:
+                            queries = tool_result.get('queries', []) if isinstance(tool_result, dict) else []
+                            print(f"  📰 {tool_name}: No articles found (queries: {', '.join(queries[:3]) if queries else 'N/A'})")
+                
+                if not news_found:
+                    print("  [INFO] No news tools found in tool_calls")
     except Exception as e:
         print(f"[ERROR] Trading cycle failed: {e}")
         import traceback
@@ -174,9 +280,175 @@ def test_scenario1():
         
         if len(tools_used) < 3:
             print(f"  [WARN] Expected at least 3 tools, got {len(tools_used)}")
+        
+        # Print tool results from conversations
+        print("\n[TOOL RESULTS]")
+        tool_results_found = False
+        for conv in conversations:
+            if conv.get('agent') == 'ToolSystem':
+                tool_content = conv.get('content', '')
+                if 'Tool used:' in tool_content:
+                    tool_results_found = True
+                    # Extract tool name and result
+                    tool_line = tool_content.replace('Tool used: ', '')
+                    if ':' in tool_line:
+                        tool_name, tool_result = tool_line.split(':', 1)
+                        tool_name = tool_name.strip()
+                        tool_result = tool_result.strip()
+                        # Limit result length for readability
+                        if len(tool_result) > 200:
+                            tool_result = tool_result[:200] + "..."
+                        print(f"  - {tool_name}: {tool_result}")
+        
+        # Also check tool_context from result
+        if result:
+            discussion = result.get('discussion', {})
+            tool_context = discussion.get('tool_context', [])
+            if tool_context:
+                print("\n[TOOL CONTEXT FROM DISCUSSION]")
+                for tool_ctx in tool_context:
+                    print(f"  - {tool_ctx}")
+            
+            # CRITICAL FIX: 显示新闻的详细日期信息
+            tool_calls = discussion.get('tool_calls', [])
+            if tool_calls:
+                print("\n[NEWS WITH DATES]")
+                news_found = False
+                for tool_call in tool_calls:
+                    tool_name = tool_call.get('tool', '')
+                    if tool_name in ['news_scan', 'plan_and_scan_news']:
+                        news_found = True
+                        tool_result = tool_call.get('result', {})
+                        # 处理嵌套结构
+                        if isinstance(tool_result, dict) and 'ok' in tool_result and 'result' in tool_result:
+                            tool_result = tool_result['result']
+                        
+                        hits = tool_result.get('hits', []) if isinstance(tool_result, dict) else []
+                        if hits:
+                            print(f"  📰 {tool_name}: {len(hits)} articles")
+                            for i, hit in enumerate(hits[:5], 1):  # 只显示前5条
+                                title = hit.get('title', 'No title')[:60]
+                                source = hit.get('source', 'Unknown')
+                                # 格式化日期
+                                published_ts = hit.get('published_timestamp')
+                                if published_ts:
+                                    try:
+                                        if isinstance(published_ts, (int, float)):
+                                            pub_date = datetime.fromtimestamp(published_ts, tz=timezone.utc)
+                                            date_str = pub_date.strftime('%Y-%m-%d %H:%M UTC')
+                                            # 计算相对时间
+                                            now = datetime.now(timezone.utc)
+                                            age = now - pub_date
+                                            if age.days > 0:
+                                                age_str = f"{age.days} days ago"
+                                            elif age.seconds >= 3600:
+                                                age_str = f"{age.seconds // 3600} hours ago"
+                                            else:
+                                                age_str = f"{age.seconds // 60} minutes ago"
+                                            date_display = f"{date_str} ({age_str})"
+                                        else:
+                                            date_display = str(published_ts)
+                                    except Exception:
+                                        date_display = str(published_ts)
+                                else:
+                                    date_display = "No date"
+                                print(f"    {i}. {title}")
+                                print(f"       Source: {source} | Published: {date_display}")
+                        else:
+                            queries = tool_result.get('queries', []) if isinstance(tool_result, dict) else []
+                            print(f"  📰 {tool_name}: No articles found (queries: {', '.join(queries[:3]) if queries else 'N/A'})")
+                
+                if not news_found:
+                    print("  [INFO] No news tools found in tool_calls")
+        
+        if not tool_results_found and not (result and result.get('discussion', {}).get('tool_context')):
+            print("  [WARN] No tool results found in conversations")
     else:
         print(f"  [FAIL] No conversations found")
         return False
+    
+    # Validate agent summaries
+    print("\n[AGENT SUMMARIES VALIDATION]")
+    summary_checks = {}
+    
+    # Check Discussion Coordinator summary
+    coordinator_convs = [c for c in conversations if c.get('agent') == 'DiscussionCoordinator']
+    if coordinator_convs:
+        coordinator = coordinator_convs[-1]  # Get the latest one
+        coordinator_content = coordinator.get('content', '')
+        coordinator_stance = coordinator.get('stance', '')
+        if coordinator_content and len(coordinator_content.strip()) > 50:
+            summary_checks['Discussion Coordinator'] = True
+            print(f"  [OK] Discussion Coordinator summary: {len(coordinator_content)} chars, stance={coordinator_stance}")
+        else:
+            summary_checks['Discussion Coordinator'] = False
+            print(f"  [FAIL] Discussion Coordinator summary is empty or too short")
+    else:
+        summary_checks['Discussion Coordinator'] = False
+        print(f"  [FAIL] No Discussion Coordinator conversation found")
+    
+    # Check Trader Agent summary
+    trader_convs = [c for c in conversations if c.get('agent') == 'TraderAgent']
+    if trader_convs:
+        trader = trader_convs[-1]  # Get the latest one
+        trader_content = trader.get('content', '')
+        trader_stance = trader.get('stance', '')
+        # Check if summary is valid (not "no_op" error)
+        if trader_content and len(trader_content.strip()) > 50:
+            if 'no_op' in trader_content.lower() or 'uncertainty_reason' in trader_content.lower():
+                summary_checks['Trader Agent'] = False
+                print(f"  [FAIL] Trader Agent summary contains error: {trader_content[:200]}")
+            else:
+                summary_checks['Trader Agent'] = True
+                print(f"  [OK] Trader Agent summary: {len(trader_content)} chars, stance={trader_stance}")
+        else:
+            summary_checks['Trader Agent'] = False
+            print(f"  [FAIL] Trader Agent summary is empty or too short")
+    else:
+        summary_checks['Trader Agent'] = False
+        print(f"  [FAIL] No Trader Agent conversation found")
+    
+    # Check result summary fields
+    if result:
+        decision = result.get('decision', {})
+        decision_summary = decision.get('summary', '')
+        if decision_summary:
+            if 'no_op' in decision_summary.lower() or 'uncertainty_reason' in decision_summary.lower():
+                summary_checks['Decision Summary'] = False
+                print(f"  [FAIL] Decision summary contains error: {decision_summary[:200]}")
+            elif len(decision_summary.strip()) > 50:
+                summary_checks['Decision Summary'] = True
+                print(f"  [OK] Decision summary: {len(decision_summary)} chars")
+            else:
+                summary_checks['Decision Summary'] = False
+                print(f"  [FAIL] Decision summary is too short: {len(decision_summary)} chars")
+        else:
+            summary_checks['Decision Summary'] = False
+            print(f"  [FAIL] Decision summary is missing")
+    
+    # Check coordinator_summary in result
+    discussion = result.get('discussion', {}) if result else {}
+    coordinator_summary = discussion.get('coordinator_summary', {}) if discussion else {}
+    if coordinator_summary:
+        coord_summary_text = coordinator_summary.get('summary', '') if isinstance(coordinator_summary, dict) else ''
+        if coord_summary_text and len(coord_summary_text.strip()) > 50:
+            summary_checks['Result Coordinator Summary'] = True
+            print(f"  [OK] Result coordinator_summary: {len(coord_summary_text)} chars")
+        else:
+            summary_checks['Result Coordinator Summary'] = False
+            print(f"  [FAIL] Result coordinator_summary is empty or too short")
+    else:
+        summary_checks['Result Coordinator Summary'] = False
+        print(f"  [FAIL] Result coordinator_summary is missing")
+    
+    # Summary validation result
+    all_summaries_ok = all(summary_checks.values())
+    if all_summaries_ok:
+        print(f"\n  [SUCCESS] All agent summaries are valid!")
+    else:
+        failed = [k for k, v in summary_checks.items() if not v]
+        print(f"\n  [WARNING] Some summaries failed: {', '.join(failed)}")
+        # Don't fail the test, but warn
     
     print("\n[SCENARIO 1: PASSED]")
     return True
@@ -234,6 +506,9 @@ def test_scenario2():
 # SCENARIO 3: Cross-Period Flow (Multi-Day)
 # ============================================================================
 def test_scenario3():
+    # CRITICAL FIX: 确保 datetime 是全局变量，避免 UnboundLocalError
+    global datetime, timezone
+    
     print("\n" + "="*70)
     print("SCENARIO 3: CROSS-PERIOD FLOW (Multi-Day Continuity)")
     print("="*70)
@@ -252,15 +527,26 @@ def test_scenario3():
     
     # Run Day 2 trading cycle
     try:
-        today = datetime.now().strftime("%Y-%m-%d")
+        # CRITICAL: 使用与 API 相同的配置和日期范围
+        config = load_trading_config()
+        print(f"[TEST] Day 2 using config from config.json:")
+        print(f"  - Tool budget: {config['tool_budget']}")
+        print(f"  - Rounds: {config['rounds']}")
+        print(f"  - Min tools: {config['min_tools']}")
+        print(f"[TEST] Using default date range (today - 180 days) for technical indicators")
+        
         result = execute_daily_trade(
-            start=today,
-            end=today,
-            tool_budget=6,
-            min_tools=3
+            # 不传入 start 和 end，使用默认窗口（今天往前180天）
+            universe=config['universe'],
+            rounds=config['rounds'],
+            auto_tools=True,
+            tool_budget=config['tool_budget'],
+            min_tools=config['min_tools']
         )
         print(f"\n[Result] Day 2 trading cycle completed")
-        print(f"  - Stance: {result.get('final_stance', 'unknown')}")
+        # CRITICAL FIX: 使用正确的键名 'stance' 而不是 'final_stance'
+        stance = result.get('stance') or result.get('final_stance') or 'unknown'
+        print(f"  - Stance: {stance}")
         print(f"  - Orders: {len(result.get('trade_suggestions', []))}")
     except Exception as e:
         print(f"[ERROR] Day 2 trading cycle failed: {e}")
@@ -311,6 +597,85 @@ def test_scenario3():
         print(f"  [OK] Day 2 agent used {len(tools_day2)} tools: {', '.join(sorted(tools_day2))}")
     else:
         print(f"  [WARN] Day 2 agent used only {len(tools_day2)} tools (expected >= 3)")
+    
+    # Print Day 2 tool results
+    print("\n[DAY 2 TOOL RESULTS]")
+    tool_results_found = False
+    for conv in day2_convs:
+        if conv.get('agent') == 'ToolSystem':
+            tool_content = conv.get('content', '')
+            if 'Tool used:' in tool_content:
+                tool_results_found = True
+                tool_line = tool_content.replace('Tool used: ', '')
+                if ':' in tool_line:
+                    tool_name, tool_result = tool_line.split(':', 1)
+                    tool_name = tool_name.strip()
+                    tool_result = tool_result.strip()
+                    if len(tool_result) > 200:
+                        tool_result = tool_result[:200] + "..."
+                    print(f"  - {tool_name}: {tool_result}")
+    
+    # Also check tool_context from Day 2 result
+    if result:
+        discussion = result.get('discussion', {})
+        tool_context = discussion.get('tool_context', [])
+        if tool_context:
+            print("\n[DAY 2 TOOL CONTEXT FROM DISCUSSION]")
+            for tool_ctx in tool_context:
+                print(f"  - {tool_ctx}")
+        
+        # CRITICAL FIX: 显示 Day 2 新闻的详细日期信息
+        tool_calls = discussion.get('tool_calls', [])
+        if tool_calls:
+            print("\n[DAY 2 NEWS WITH DATES]")
+            news_found = False
+            for tool_call in tool_calls:
+                tool_name = tool_call.get('tool', '')
+                if tool_name in ['news_scan', 'plan_and_scan_news']:
+                    news_found = True
+                    tool_result = tool_call.get('result', {})
+                    # 处理嵌套结构
+                    if isinstance(tool_result, dict) and 'ok' in tool_result and 'result' in tool_result:
+                        tool_result = tool_result['result']
+                    
+                    hits = tool_result.get('hits', []) if isinstance(tool_result, dict) else []
+                    if hits:
+                        print(f"  📰 {tool_name}: {len(hits)} articles")
+                        for i, hit in enumerate(hits[:5], 1):  # 只显示前5条
+                            title = hit.get('title', 'No title')[:60]
+                            source = hit.get('source', 'Unknown')
+                            # 格式化日期
+                            published_ts = hit.get('published_timestamp')
+                            if published_ts:
+                                try:
+                                    # datetime 和 timezone 已在文件顶部导入
+                                    if isinstance(published_ts, (int, float)):
+                                        pub_date = datetime.fromtimestamp(published_ts, tz=timezone.utc)
+                                        date_str = pub_date.strftime('%Y-%m-%d %H:%M UTC')
+                                        # 计算相对时间
+                                        now = datetime.now(timezone.utc)
+                                        age = now - pub_date
+                                        if age.days > 0:
+                                            age_str = f"{age.days} days ago"
+                                        elif age.seconds >= 3600:
+                                            age_str = f"{age.seconds // 3600} hours ago"
+                                        else:
+                                            age_str = f"{age.seconds // 60} minutes ago"
+                                        date_display = f"{date_str} ({age_str})"
+                                    else:
+                                        date_display = str(published_ts)
+                                except Exception:
+                                    date_display = str(published_ts)
+                            else:
+                                date_display = "No date"
+                            print(f"    {i}. {title}")
+                            print(f"       Source: {source} | Published: {date_display}")
+                    else:
+                        queries = tool_result.get('queries', []) if isinstance(tool_result, dict) else []
+                        print(f"  📰 {tool_name}: No articles found (queries: {', '.join(queries[:3]) if queries else 'N/A'})")
+            
+            if not news_found:
+                print("  [INFO] No news tools found in Day 2 tool_calls")
     
     print("\n[SCENARIO 3: PASSED]")
     return True

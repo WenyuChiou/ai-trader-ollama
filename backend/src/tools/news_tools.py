@@ -291,14 +291,14 @@ def news_scan(
     *,
     keywords: List[str],
     max_articles: int = 12,
-    recency_days: int = 10,
+    recency_days: int = 2,  # CRITICAL FIX: 默认改为2天（48小时），确保只获取最新新闻
     domains: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     先用 RSS（business + google news）組合；若仍不足、且允許 domains=None，可再用 ddgs 搜尋補充。
     回傳 {"hits":[{title,link,source},...], "queries":[...]}。
     
-    只返回最新的新闻（基于 recency_days 参数）。
+    只返回最新的新闻（基于 recency_days 参数，默认最多48小时/2天）。
     """
     # 排除的新闻源（过旧或不可用）
     EXCLUDED_SOURCES = {
@@ -308,8 +308,10 @@ def news_scan(
         "www.zerohedge.com", "zerohedge.com",  # Zero Hedge（RSS不可用）
     }
     
+    # CRITICAL FIX: 强制限制为最多48小时（2天），确保只返回最新新闻
+    recency_days = min(recency_days, 2)  # 最多2天（48小时）
     # 计算最大年龄（小时）：recency_days 转换为小时，但不超过48小时（确保只返回最新新闻）
-    max_age_hours = min(recency_days * 24, 48)  # 最多48小时（2天）
+    max_age_hours = recency_days * 24  # 现在 recency_days 已经限制为最多2天
     
     # RSS 先來一輪（使用日期过滤）
     rss = fetch_rss(keywords, include_business=True, per_query=10, cap=max_articles, max_age_hours=max_age_hours)

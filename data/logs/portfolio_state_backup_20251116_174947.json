@@ -1,0 +1,59 @@
+{
+  "cash": 7370.560020446777,
+  "initial_value": 10000.0,
+  "total_value": 10000.0,
+  "positions": {
+    "CSCO": {
+      "quantity": 5,
+      "avg_cost": 78.0,
+      "total_cost": 390.0
+    },
+    "AZN": {
+      "quantity": 4,
+      "avg_cost": 89.0999984741211,
+      "total_cost": 356.3999938964844
+    },
+    "PLTR": {
+      "quantity": 2,
+      "avg_cost": 174.00999450683594,
+      "total_cost": 348.0199890136719
+    },
+    "GILD": {
+      "quantity": 3,
+      "avg_cost": 125.0199966430664,
+      "total_cost": 375.0599899291992
+    },
+    "MU": {
+      "quantity": 1,
+      "avg_cost": 246.8300018310547,
+      "total_cost": 246.8300018310547
+    },
+    "AMAT": {
+      "quantity": 1,
+      "avg_cost": 226.00999450683594,
+      "total_cost": 226.00999450683594
+    },
+    "PEP": {
+      "quantity": 2,
+      "avg_cost": 145.85000610351562,
+      "total_cost": 291.70001220703125
+    },
+    "PANW": {
+      "quantity": 1,
+      "avg_cost": 205.25,
+      "total_cost": 205.25
+    },
+    "NVDA": {
+      "quantity": 1,
+      "avg_cost": 190.1699981689453,
+      "total_cost": 190.1699981689453
+    }
+  },
+  "timestamp": "2025-11-16T21:04:11.657623Z",
+  "snapshot": {
+    "cash": 7370.560020446777,
+    "total_value": 10000.0,
+    "equity_value": 2629.4399795532227,
+    "positions_count": 9
+  }
+}

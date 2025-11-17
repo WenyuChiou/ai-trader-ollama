@@ -64,6 +64,31 @@ class EquityTracker:
         current_equity = float(portfolio_snapshot.get("equity_value", 0.0))
         positions = portfolio_snapshot.get("positions_detail", {})
         
+        # CRITICAL FIX: 检查是否已有当天的记录，如果有则先删除（去重）
+        # 确保同一天只有一条记录（保留最新的）
+        if self.equity_file.exists():
+            try:
+                with self.equity_file.open("r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                # 过滤掉同一天的记录
+                filtered_lines = []
+                for line in lines:
+                    try:
+                        record = json.loads(line.strip())
+                        if record.get("date") != date_str:
+                            filtered_lines.append(line)
+                    except:
+                        # 如果解析失败，保留原行（可能是格式问题）
+                        filtered_lines.append(line)
+                
+                # 如果有过滤，重新写入文件
+                if len(filtered_lines) < len(lines):
+                    with self.equity_file.open("w", encoding="utf-8") as f:
+                        f.writelines(filtered_lines)
+                    print(f"[EQUITY] Removed {len(lines) - len(filtered_lines)} duplicate record(s) for date {date_str}")
+            except Exception as e:
+                print(f"[EQUITY WARNING] Failed to check/remove duplicates: {e}")
+        
         # CRITICAL: 检查净值是否异常下降（防止记录错误数据）
         # 同时验证portfolio_state.json中的实际状态，确保数据一致性
         if self.equity_file.exists():

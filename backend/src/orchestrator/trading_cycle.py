@@ -18,7 +18,8 @@ def _get_project_logs_dir() -> Path:
 # --- Market: 批次抓價 + 指標 ---
 from src.tools.market_tools import fetch_market_batch
 
-# --- Multi-Analyst Discussion: 多个专门的分析师协同工作 ---
+# --- Analyst Discussion: 使用四个独立 Analyst 的版本 ---
+from src.agents.analyst_discussion import run_analyst_discussion
 from src.agents.multi_analyst_system import run_multi_analyst_discussion
 
 # --- Risk Analyst: 評估倉位風險 (LLM-powered) ---
@@ -43,7 +44,6 @@ def _default_universe() -> List[str]:
         # 尝试从config.json加载完整的universe
         config_file = Path(__file__).parent.parent.parent / "config" / "config.json"
         if config_file.exists():
-            import json
             with config_file.open("r", encoding="utf-8") as f:
                 config_data = json.load(f)
                 # config.json中universe字段
@@ -56,7 +56,6 @@ def _default_universe() -> List[str]:
         # 也尝试从universe.json加载（如果存在）
         universe_file = Path(__file__).parent.parent.parent / "config" / "universe.json"
         if universe_file.exists():
-            import json
             with universe_file.open("r", encoding="utf-8") as f:
                 universe_data = json.load(f)
                 # universe.json格式可能是 {"nasdaq100": [...]} 或直接是列表
@@ -148,10 +147,9 @@ def execute_daily_trade(
         start, end = _default_window()
     elif start is None:
         # If only end is provided, calculate start (7 days before end)
-        from datetime import datetime as dt, timedelta
-        end_date = dt.fromisoformat(end) if isinstance(end, str) else end
+        end_date = datetime.fromisoformat(end) if isinstance(end, str) else end
         start_date = end_date - timedelta(days=7)
-        start = start_date.isoformat().split('T')[0] if isinstance(start_date, dt) else str(start_date)
+        start = start_date.isoformat().split('T')[0] if isinstance(start_date, datetime) else str(start_date)
     elif end is None:
         # If only start is provided, use today as end
         end = date.today().isoformat()
@@ -165,6 +163,15 @@ def execute_daily_trade(
     # 如果 end 是 None（实时模式），使用昨天的日期（因为今天的数据可能还不完整）
     # 如果 end 是特定日期（规划模式），使用该日期
     market_data_end = end if end else (date.today() - timedelta(days=1)).isoformat()
+    
+    # CRITICAL FIX: 如果 start == end（单天查询），自动扩展 start 到 7 天前
+    # 这样可以确保 yfinance 能正确获取数据（单天查询经常失败）
+    if start == market_data_end:
+        end_dt = datetime.fromisoformat(market_data_end.split('T')[0]) if isinstance(market_data_end, str) else market_data_end
+        start_dt = end_dt - timedelta(days=7)
+        start = start_dt.isoformat().split('T')[0] if isinstance(start_dt, datetime) else str(start_dt)
+        print(f"[TRADING CYCLE] Single-day query detected, extended start to 7 days before: {start} -> {market_data_end}")
+    
     print(f"[TRADING CYCLE] Fetching market data: start={start}, end={market_data_end}")
     
     try:
@@ -372,48 +379,161 @@ def execute_daily_trade(
     required_cash_reserve = preliminary_portfolio_value * MIN_CASH_RESERVE_RATIO
     preliminary_available_cash = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
     
+    # CRITICAL FIX: 使用四个独立 Analyst 的版本，确保每个 analyst 都有工具调用和 summary
+    # 获取当前仓位信息（用于 analyst 分析）
+    current_positions = {}
+    if portfolio:
+        for symbol, pos in portfolio.positions.items():
+            current_positions[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "total_cost": pos.total_cost,
+            }
+    
+    # 获取订单状态（用于 analyst 分析）
+    order_status = None
+    if trade_logger:
+        try:
+            pending_orders = trade_logger.get_pending_orders()
+            filled_orders = trade_logger.get_filled_orders(limit=10)
+            order_status = {
+                "pending": len(pending_orders),
+                "filled_recent": len(filled_orders),
+            }
+        except:
+            order_status = None
+    
+    # CRITICAL FIX: 计算 portfolio_value（使用 market_view 中的价格）
+    portfolio_value = None
+    if portfolio:
+        # 从 market_view 中提取价格
+        last_prices = {}
+        if market_view and "stocks" in market_view:
+            for symbol, stock_data in market_view["stocks"].items():
+                if isinstance(stock_data, dict) and "price" in stock_data:
+                    last_prices[symbol] = stock_data["price"]
+        
+        # 如果有价格数据，使用 portfolio.value() 计算总净值
+        if last_prices:
+            portfolio_value = portfolio.value(last_prices)
+        else:
+            # 如果没有价格数据，使用现金 + 初始净值作为近似值
+            portfolio_value = portfolio.cash + portfolio.initial_value
+    
+    # 使用 run_multi_analyst_discussion 确保四个 analyst 都有工具调用和 summary
     convo = run_multi_analyst_discussion(
         market_view=market_view,  # 传入完整的market_view
         use_tools=auto_tools,
         tool_budget=tool_budget,
-        order_status=order_status,  # 传入订单状态
-        current_positions=preliminary_positions_info if preliminary_positions_info else None,  # 传入仓位信息
-        portfolio_value=preliminary_portfolio_value,  # 传入组合净值
-        available_cash=preliminary_available_cash,  # 传入可用现金
+        order_status=order_status,
+        current_positions=current_positions if current_positions else None,
+        portfolio_value=portfolio_value,
+        available_cash=portfolio.cash if portfolio else None,
     )
     final_stance = convo.get("final_stance", "neutral")
 
     # 將對話寫入 discussion_actions.jsonl（供前端顯示）
+    # CRITICAL FIX: 将 convo_file 和 trade_date_str 定义移到 try 块外，确保 RiskAnalyst 和 TraderAgent 写入可以访问
+    # CRITICAL: Use project root data/logs directory explicitly
+    logs_dir = _get_project_logs_dir()
+    convo_file = logs_dir / "discussion_actions.jsonl"
+    
+    # 獲取交易日期（使用 end 參數，如果沒有則使用今天）
+    trade_date = end if end else date.today().isoformat()
+    if isinstance(trade_date, str):
+        # 確保是 YYYY-MM-DD 格式
+        # CRITICAL FIX: datetime 已在文件顶部导入，直接使用
+        try:
+            trade_date_obj = datetime.strptime(trade_date, "%Y-%m-%d").date()
+            trade_date_str = trade_date_obj.isoformat()
+        except:
+            trade_date_str = date.today().isoformat()
+    else:
+        trade_date_str = date.today().isoformat()
+    
     try:
         # Path 已经在文件顶部导入，不需要重复导入
         import os
-        
-        # CRITICAL: Use project root data/logs directory explicitly
-        logs_dir = _get_project_logs_dir()
-        convo_file = logs_dir / "discussion_actions.jsonl"
         
         transcript = convo.get("transcript", [])
         tool_context = convo.get("tool_context", [])
         actions = convo.get("actions", [])
         
-        # 獲取交易日期（使用 end 參數，如果沒有則使用今天）
-        trade_date = end if end else date.today().isoformat()
-        if isinstance(trade_date, str):
-            # 確保是 YYYY-MM-DD 格式
-            try:
-                from datetime import datetime as dt
-                trade_date_obj = dt.strptime(trade_date, "%Y-%m-%d").date()
-                trade_date_str = trade_date_obj.isoformat()
-            except:
-                trade_date_str = date.today().isoformat()
-        else:
-            trade_date_str = date.today().isoformat()
-        
         # 寫入每一輪對話
-        import json
+        # CRITICAL FIX: json 已在文件顶部导入，确保在 try 块外可以访问
         
-        # 寫入每個analyst的分析結果（從discussion_history中提取）
+        # CRITICAL FIX: 写入三轮 Discussion 信息（从 transcript 中提取，设置正确的 round 字段）
+        transcript = convo.get("transcript", [])
+        if transcript and isinstance(transcript, list):
+            for round_num, round_text in enumerate(transcript, 1):
+                if not round_text or not isinstance(round_text, str):
+                    continue
+                
+                # 解析 transcript 格式: "--- Round {r} ---\n{out_text}"
+                # 提取轮次和内容
+                round_content = round_text
+                if "--- Round" in round_text:
+                    # 提取轮次编号和内容
+                    parts = round_text.split("--- Round", 1)
+                    if len(parts) == 2:
+                        round_info = parts[1].split("---", 1)
+                        if len(round_info) > 1:
+                            round_content = round_info[1].strip()
+                
+                # 写入每轮讨论
+                round_entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "date": trade_date_str,
+                    "agent": "DiscussionCoordinator",
+                    "round": round_num,  # CRITICAL: 使用实际轮次编号（1, 2, 3）
+                    "content": f"Round {round_num} Discussion:\n\n{round_content}",
+                    "type": "discussion",
+                    "stance": final_stance,  # 使用最终 stance
+                    "summary": round_content,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
+                    "tools_used": [],  # CRITICAL FIX: 确保 tools_used 被正确存储（讨论轮次可能没有工具）
+                }
+                
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(round_entry, ensure_ascii=False) + "\n")
+                print(f"[TRADING CYCLE] Wrote Discussion Round {round_num} entry")
+        
+        # CRITICAL FIX: 确保从 discussion_history 中提取四个 analyst 的结果
+        # 如果 discussion_history 为空，尝试从 analyst_reports 中构建
         discussion_history = convo.get("discussion_history", [])
+        
+        # 如果 discussion_history 为空，从 analyst_reports 构建
+        if not discussion_history:
+            analyst_reports = convo.get("analyst_reports", {})
+            all_tool_calls = convo.get("tool_calls", [])
+            for analyst_key, report in analyst_reports.items():
+                if report and isinstance(report, dict):
+                    # 标准化 analyst 名称
+                    analyst_name_map = {
+                        "market": "Market Analyst",
+                        "technical": "Technical Analyst",
+                        "fundamental": "Fundamental Analyst",
+                        "sentiment": "Sentiment Analyst",
+                    }
+                    analyst_name = analyst_name_map.get(analyst_key, analyst_key.title() + " Analyst")
+                    
+                    # 从 tool_calls 中提取该 analyst 使用的工具
+                    tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst", "").lower() == analyst_key]
+                    
+                    # 确保有 analysis（summary）
+                    analysis = report.get("analysis", "No analysis provided")
+                    if not analysis or len(analysis.strip()) < 50:
+                        # 如果 analysis 太短，尝试从工具结果生成
+                        if tools_used:
+                            analysis = f"Analysis based on {', '.join(tools_used[:3])}. {analysis}"
+                    
+                    discussion_history.append({
+                        "analyst": analyst_name,
+                        "stance": report.get("stance", "neutral"),
+                        "analysis": analysis,
+                        "tools_used": tools_used,
+                        "key_points": report.get("recommendations", [])[:3] if report.get("recommendations") else [],
+                    })
+        
         coordinator_found_in_history = False
         for entry_data in discussion_history:
             analyst_name = entry_data.get("analyst", "Unknown")
@@ -440,7 +560,8 @@ def execute_daily_trade(
                         "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                         "type": "discussion",
                         "stance": stance,
-                        "tools_used": entry_data.get("tools_used", []),
+                        "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
+                        "tools_used": entry_data.get("tools_used", []),  # CRITICAL FIX: 确保 tools_used 被正确存储
                     }
                     with convo_file.open("a", encoding="utf-8") as f:
                         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -475,7 +596,8 @@ def execute_daily_trade(
                 "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                 "type": "discussion",
                 "stance": stance,
-                "tools_used": tools_used,
+                "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
+                "tools_used": tools_used,  # CRITICAL FIX: 确保 tools_used 被正确存储
             }
             
             with convo_file.open("a", encoding="utf-8") as f:
@@ -500,6 +622,7 @@ def execute_daily_trade(
                     "content": f"Stance: {stance}\n\nAnalysis: {summary}",  # 使用 Analysis 而不是 Summary，保持一致性
                     "type": "discussion",
                     "stance": stance,
+                    "summary": summary,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
                     "tools_used": [],  # Coordinator 不使用工具
                 }
                 with convo_file.open("a", encoding="utf-8") as f:
@@ -569,14 +692,31 @@ def execute_daily_trade(
                 if len(result_text) > 2000:
                     result_text = result_text[:2000] + "... (truncated)"
             
+            # CRITICAL FIX: 根据工具类型分类（news, risk, market等）
+            tool_category = "other"
+            if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news", "web_search", "fetch_url"]:
+                tool_category = "news"
+            elif tool_name in ["vix_term", "vix_close", "fear_greed", "get_market_breadth"]:
+                tool_category = "risk"
+            elif tool_name in ["get_market_indices", "get_sector_rotation", "get_correlation_matrix", "get_advanced_indicators", "get_support_resistance"]:
+                tool_category = "market"
+            elif tool_name in ["get_company_fundamentals", "get_earnings_history", "get_financial_statements"]:
+                tool_category = "fundamental"
+            elif tool_name in ["get_economic_summary", "get_labor_market_data", "fetch_fred_indicator", "fetch_jin10_economic_data"]:
+                tool_category = "economic"
+            elif tool_name in ["fetch_crypto_batch", "get_crypto_price"]:
+                tool_category = "crypto"
+            
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "date": trade_date_str,
-                "agent": agent_name,
+                "agent": agent_name,  # CRITICAL FIX: 使用调用工具的 agent 名称（MarketAnalyst, TechnicalAnalyst等），而不是 ToolSystem
                 "round": 0,
                 "content": f"Tool used: {tool_name}: {result_text}",
                 "type": "tool",
                 "tool_name": tool_name,
+                "tool_category": tool_category,  # CRITICAL FIX: 添加工具分类
+                "tool_result": actual_result if isinstance(actual_result, dict) else {"raw": result_text},  # CRITICAL FIX: 添加工具结果（结构化数据）
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -612,8 +752,11 @@ def execute_daily_trade(
         today = end
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         print(f"[TRADING CYCLE] Using end date: {today} (forced date for testing/planning)")
-        # 在多日模拟中，假设市场是开放的，这样订单日期就是当天
-        is_market_open_for_simulation = True
+        # CRITICAL FIX: 即使有end参数，也应该检查实际市场状态
+        # 只有在实际市场开放时，才允许交易；否则只运行分析
+        is_market_open_for_simulation = is_market_open
+        if not is_market_open:
+            print(f"[TRADING CYCLE] Market is actually closed. Will run analysis only (no trading).")
     elif is_market_open:
         today = date.today().isoformat()
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
@@ -680,7 +823,7 @@ def execute_daily_trade(
                 existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         # 如果今日有pending订单，且总pending订单数量较多（>= 5），取消今日的订单
         elif len(today_orders) > 0 and len(all_pending_orders) >= 5:
-            print(f"[TRADING CYCLE] ⚠️ Found {len(all_pending_orders)} total pending orders ({len(today_orders)} for today, {len(tomorrow_orders)} for tomorrow)")
+            print(f"[TRADING CYCLE] WARNING: Found {len(all_pending_orders)} total pending orders ({len(today_orders)} for today, {len(tomorrow_orders)} for tomorrow)")
             print(f"[TRADING CYCLE] Cancelling {len(today_orders)} today's pending orders, keeping {len(tomorrow_orders)} tomorrow's orders")
             cancelled_count = order_manager.cancel_orders(order_date=today_str)
             if cancelled_count > 0:
@@ -861,7 +1004,7 @@ def execute_daily_trade(
                                 pass
                         
                         if today_has_filled_orders and not end:
-                            print(f"[TRADING CYCLE] ⚠️ Today already has filled orders. Skipping new order creation to prevent hourly duplicates.")
+                            print(f"[TRADING CYCLE] WARNING: Today already has filled orders. Skipping new order creation to prevent hourly duplicates.")
                             return {
                                 "placed_orders": [],
                                 "executed_trades": executed_trades,
@@ -950,10 +1093,52 @@ def execute_daily_trade(
         use_tools=auto_tools,  # 与discussion使用相同的tool设置
     )
     
+    # CRITICAL FIX: 写入 RiskAnalyst 结果到 discussion_actions.jsonl
+    try:
+        risk_level = risk_report.get("overall_risk_level", risk_report.get("risk_level", "medium"))
+        risk_summary = risk_report.get("summary", risk_report.get("analysis", "No risk analysis provided"))
+        risk_score = risk_report.get("risk_score", 5.0)
+        risk_signals = risk_report.get("risk_signals", [])
+        recommendations = risk_report.get("recommendations", [])
+        
+        # 构建 RiskAnalyst 内容
+        risk_content_parts = [
+            f"Risk Level: {risk_level.upper()}",
+            f"Risk Score: {risk_score}/10",
+            f"\n\nAnalysis: {risk_summary}",
+        ]
+        
+        if risk_signals:
+            risk_content_parts.append(f"\n\nRisk Signals: {', '.join(risk_signals) if isinstance(risk_signals, list) else str(risk_signals)}")
+        
+        if recommendations:
+            recs_text = ', '.join(recommendations) if isinstance(recommendations, list) else str(recommendations)
+            risk_content_parts.append(f"\n\nRecommendations: {recs_text}")
+        
+        risk_content = "".join(risk_content_parts)
+        risk_entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            "date": trade_date_str,
+            "agent": "RiskAnalyst",
+            "round": 0,
+            "content": risk_content,
+            "type": "discussion",
+            "stance": risk_level,  # 使用 risk_level 作为 stance
+            "summary": risk_content[:500] if len(risk_content) > 500 else risk_content,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
+            "tools_used": [],  # CRITICAL FIX: 确保 tools_used 被正确存储
+            "risk_report": risk_report,  # CRITICAL: 添加完整的 risk_report 数据供前端使用
+        }
+        
+        with convo_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(risk_entry, ensure_ascii=False) + "\n")
+        print(f"[TRADING CYCLE] Wrote RiskAnalyst conversation entry (risk_level: {risk_level}, risk_score: {risk_score})")
+    except Exception as e:
+        print(f"[TRADING CYCLE] ⚠️  Failed to write RiskAnalyst conversation entry: {e}")
+    
     # ---- (4) Trader Agent：交易決策 ----
     # 从配置文件中读取仓位限制参数（如果可用）
     # Path 已经在文件顶部导入，不需要重复导入
-    import json
+    # CRITICAL FIX: json 已在文件顶部导入，不需要重复导入
     
     position_config = {
         "max_position_per_stock": 0.15,  # 默认单股最大15%
@@ -976,10 +1161,10 @@ def execute_daily_trade(
                 print(f"  - max_total_position: {position_config['max_total_position']:.1%}")
                 print(f"  - min_position_per_stock: {position_config['min_position_per_stock']:.1%}")
         else:
-            print(f"[TRADING CYCLE] ⚠️ Config file not found at {config_path}, using default position limits")
+            print(f"[TRADING CYCLE] WARNING: Config file not found at {config_path}, using default position limits")
     except Exception as e:
         # 如果读取失败，使用默认值
-        print(f"[TRADING CYCLE] ⚠️ Failed to load position limits from config: {e}, using defaults")
+        print(f"[TRADING CYCLE] WARNING: Failed to load position limits from config: {e}, using defaults")
 
     # 计算可用现金（考虑现金储备要求）
     # 先计算，以便传递给 trader agent
@@ -994,7 +1179,9 @@ def execute_daily_trade(
     # CRITICAL: 传递市场状态给 Trader Agent，让它知道是否可以交易
     # 市场关闭时：可以评估和分析，但不能生成订单
     # 市场开放时：可以评估、分析和交易
-    print(f"[TRADING CYCLE] Calling Trader Agent with is_market_open={is_market_open_for_simulation} (is_market_open={is_market_open})")
+    # CRITICAL FIX: 更清晰的日志显示市场状态
+    market_status = "OPEN (simulation)" if is_market_open_for_simulation and not is_market_open else ("OPEN" if is_market_open else "CLOSED")
+    print(f"[TRADING CYCLE] Calling Trader Agent with is_market_open={is_market_open_for_simulation} (actual market: {market_status}, is_market_open={is_market_open})")
     decision = run_trader(
         market=market_view,
         mview=enriched_market,
@@ -1023,10 +1210,10 @@ def execute_daily_trade(
     print(f"[TRADING CYCLE] Trader decision: {buy_orders_count} buy orders, {sell_orders_count} sell orders")
     print(f"[TRADING CYCLE] Market status check: is_market_open_for_simulation={is_market_open_for_simulation}, is_market_open={is_market_open}")
     if not is_market_open_for_simulation and (buy_orders_count > 0 or sell_orders_count > 0):
-        print(f"[TRADING CYCLE] ⚠️ WARNING: Market is closed but Trader Agent generated {buy_orders_count} buy and {sell_orders_count} sell orders!")
+        print(f"[TRADING CYCLE] WARNING: Market is closed but Trader Agent generated {buy_orders_count} buy and {sell_orders_count} sell orders!")
         print(f"[TRADING CYCLE] This should not happen - Trader Agent should return empty orders when market is closed.")
         # CRITICAL FIX: 如果市场关闭但Trader Agent仍然生成了订单，强制清空订单列表
-        print(f"[TRADING CYCLE] ⚠️ FORCING: Clearing orders because market is closed.")
+        print(f"[TRADING CYCLE] WARNING: FORCING: Clearing orders because market is closed.")
         decision["buy_orders"] = []
         decision["sell_orders"] = []
         decision["targets"] = []
@@ -1591,15 +1778,24 @@ def execute_daily_trade(
                     )
                     print(f"[TRADING CYCLE] Updated Trader Agent summary: {mentioned_count} -> {actual_buy_orders_count} buy orders")
         
+        # CRITICAL FIX: 对话中只显示 summary，订单信息保留在 decision 对象中供系统使用
+        buy_orders = decision.get("buy_orders", [])
+        sell_orders = decision.get("sell_orders", [])
+        
+        # 对话内容只包含 summary（简洁显示）
         trader_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "date": trade_date_str,
             "agent": "TraderAgent",
             "round": 0,
-            "content": f"Stance: {trader_stance}\n\nAnalysis: {trader_summary}",
+            "content": f"Stance: {trader_stance}\n\nAnalysis: {trader_summary}",  # 只显示 summary
             "type": "discussion",
             "stance": trader_stance,
+            "summary": trader_summary,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
             "tools_used": [],  # Trader Agent不使用工具，它是基于其他agent的分析做决策
+            "decision": decision,  # CRITICAL: 完整的 decision 对象供系统使用（包含 buy_orders, sell_orders 等）
+            "buy_orders_count": len(buy_orders),  # 订单数量统计
+            "sell_orders_count": len(sell_orders),  # 订单数量统计
         }
         
         with convo_file.open("a", encoding="utf-8") as f:
@@ -1609,6 +1805,43 @@ def execute_daily_trade(
     except Exception as e:
         print(f"[TRADING CYCLE] ⚠️  Failed to write Trader Agent conversation entry: {e}")
     
+    # CRITICAL FIX: 保存 portfolio 状态（在订单执行后立即保存）
+    # 确保即使订单立即成交，portfolio 状态也会被保存
+    if portfolio and (actual_buy_orders_count > 0 or actual_sell_orders_count > 0):
+        try:
+            # json 已在文件顶部导入
+            portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
+            
+            # 计算 total_value（现金 + 持仓市值）
+            equity_value = portfolio.equity_value(last_prices) if last_prices else 0.0
+            total_value = portfolio.cash + equity_value
+            
+            portfolio_state = {
+                "cash": portfolio.cash,
+                "initial_value": portfolio.initial_value,
+                "total_value": total_value,
+                "positions": {},
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "snapshot": {
+                    "cash": portfolio.cash,
+                    "total_value": total_value,
+                    "equity_value": equity_value,
+                    "positions_count": len(portfolio._positions),
+                }
+            }
+            
+            for symbol, pos in portfolio._positions.items():
+                portfolio_state["positions"][symbol] = {
+                    "quantity": pos.quantity,
+                    "avg_cost": pos.avg_cost,
+                    "total_cost": pos.total_cost if hasattr(pos, 'total_cost') and pos.total_cost > 0 else pos.avg_cost * pos.quantity,
+                }
+            
+            portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"[TRADING CYCLE] Saved portfolio state after order execution ({actual_buy_orders_count} buy, {actual_sell_orders_count} sell orders)")
+        except Exception as e:
+            print(f"[TRADING CYCLE] ⚠️  Failed to save portfolio state: {e}")
+    
     # ---- (5b) 檢查並結算今天的 PENDING 訂單（如果市場開盤，或在多日模擬中）----
     # 在多日模拟中（end参数提供），也执行订单
     # 条件：1) 市场开盘且是今天，或 2) 提供了end参数（多日模拟）
@@ -1617,10 +1850,11 @@ def execute_daily_trade(
     if should_settle_orders:
         try:
             # Path 已经在文件顶部导入，不需要重新导入
-            import json
+            # CRITICAL FIX: json 已在文件顶部导入，不需要重复导入
             
             # 加载当前 portfolio 状态
-            portfolio_file = Path("data/logs/portfolio_state.json")
+            # CRITICAL: Use project root data/logs directory explicitly
+            portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
             if portfolio_file.exists():
                 with portfolio_file.open("r", encoding="utf-8") as f:
                     state = json.load(f)
@@ -1826,18 +2060,47 @@ def execute_daily_trade(
         # 不影响主流程，继续执行
     
     # ---- 内存清理：交易循环结束后清理临时数据 ----
-    # 注意：discussion_history 已经在 multi_analyst_system 中自动限制长度
     # 这里可以添加其他内存清理逻辑（如果需要）
     import gc
     gc.collect()  # 强制垃圾回收，释放未使用的内存
     print("[MEMORY] Trading cycle completed, memory cleaned")
 
+    # CRITICAL: 确保 coordinator_summary 被包含在返回结果中
+    # 即使 convo 中已有，也显式添加到 discussion 中以便前端访问
+    discussion_result = dict(convo) if isinstance(convo, dict) else {}
+    coordinator_summary = discussion_result.get("coordinator_summary")
+    if coordinator_summary:
+        # 确保 coordinator_summary 存在且有效
+        if isinstance(coordinator_summary, dict):
+            summary_text = coordinator_summary.get("summary", "")
+            if not summary_text or len(summary_text.strip()) < 50:
+                print(f"[TRADING CYCLE] ⚠️  Coordinator summary too short ({len(summary_text)} chars), may need improvement")
+        print(f"[TRADING CYCLE] Coordinator summary included in result: {len(coordinator_summary.get('summary', '')) if isinstance(coordinator_summary, dict) else 0} chars")
+    else:
+        print(f"[TRADING CYCLE] ⚠️  WARNING: coordinator_summary not found in convo")
+    
+    # CRITICAL FIX: 计算实际的对话数量（从文件中读取，包括新写入的条目）
+    conversations_count = 0
+    try:
+        if convo_file.exists():
+            with convo_file.open('r', encoding='utf-8') as f:
+                # 只计算今天日期的条目
+                today_entries = [line for line in f if trade_date_str in line]
+                conversations_count = len(today_entries)
+                print(f"[TRADING CYCLE] Counted {conversations_count} conversations for {trade_date_str} from file")
+    except Exception as e:
+        print(f"[TRADING CYCLE] ⚠️  Failed to count conversations from file: {e}")
+        # Fallback: 使用 convo 中的条目数（可能不准确）
+        conversations_count = len(convo.get("entries", [])) if isinstance(convo, dict) else 0
+    
     return {
-        "stance": final_stance,
+        "stance": final_stance,  # 主要键名
+        "final_stance": final_stance,  # CRITICAL FIX: 同时提供 final_stance 键以保持向后兼容
         "decision": decision,
         "risk_report": risk_report,
-        "discussion": convo,  # 添加完整的讨论信息（包含 transcript, actions 等）
-        "rounds": convo.get("rounds"),
+        "discussion": discussion_result,  # 添加完整的讨论信息（包含 transcript, actions, coordinator_summary 等）
+        "rounds": convo.get("rounds") if isinstance(convo, dict) else 0,
+        "conversations_count": conversations_count,  # CRITICAL FIX: 添加对话数量（从文件读取）
         "symbols": symbols,
         "top_signals": signal_top,
         "market_agent": market_view,  # 添加市场数据

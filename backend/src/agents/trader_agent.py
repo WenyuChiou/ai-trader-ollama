@@ -111,7 +111,8 @@ def _calculate_position_size(
                 print(f"[TRADER] {symbol}: Already has {current_qty} shares @ ${current_price:.2f}, position_pct={current_symbol_position:.2%}")
     
     # 计算目标仓位（考虑已有持仓）
-    target_position_pct = dynamic_max_pct
+    # CRITICAL FIX: 确保单股仓位不超过 max_position_per_stock（硬性限制）
+    target_position_pct = min(dynamic_max_pct, max_position_per_stock)
     if current_symbol_position >= target_position_pct:
         # 已达到目标仓位
         print(f"[TRADER] {symbol}: Skipping - already at target position (current={current_symbol_position:.2%}, target={target_position_pct:.2%})")
@@ -119,6 +120,10 @@ def _calculate_position_size(
     
     # 计算还需要买入的仓位百分比
     remaining_position_pct = target_position_pct - current_symbol_position
+    # CRITICAL FIX: 再次确保不会超过硬性限制
+    if current_symbol_position + remaining_position_pct > max_position_per_stock:
+        remaining_position_pct = max(0, max_position_per_stock - current_symbol_position)
+        print(f"[TRADER] {symbol}: Capped position to {max_position_per_stock:.1%} (hard limit, current={current_symbol_position:.2%})")
     if current_qty > 0:
         print(f"[TRADER] {symbol}: Current position={current_symbol_position:.2%}, target={target_position_pct:.2%}, remaining={remaining_position_pct:.2%}")
     
@@ -310,16 +315,104 @@ def run_trader(
             else:
                 rationale += f" Analysis: {coordinator_summary}"
         
-        # 生成分析summary（不包含交易订单）
-        trader_summary = f"Market is currently closed. I've completed market analysis and risk assessment. "
-        trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
-        trader_summary += "No trading orders can be generated when the market is closed, as we use market orders that execute immediately during trading hours only. "
-        trader_summary += "Analysis and evaluation can continue 24/7, but actual trading only occurs during market hours (9:30 AM - 4:00 PM ET, Monday-Friday, excluding holidays)."
-        if coordinator_summary:
-            if len(coordinator_summary) > 5000:
-                trader_summary += f" Key insights: {coordinator_summary[:5000]}... (truncated)"
+        # CRITICAL: 使用 LLM 来生成市场关闭时的分析 summary
+        print(f"[TRADER] ===== CALLING LLM FOR MARKET CLOSED SUMMARY =====")
+        trader_summary = None
+        
+        try:
+            # 创建 AgentFactory 和 trader_agent
+            from pathlib import Path
+            from src.agents.factory import AgentFactory
+            from src.agents.base import BaseAgent
+            import json
+            
+            ROOT = Path(__file__).resolve().parents[2]
+            fac = AgentFactory(ROOT / "config" / "agents.yaml")
+            trader_agent: BaseAgent = fac.create("trader_agent")
+            
+            # 准备完整的 prompt 信息（包括持仓信息）
+            positions_summary = ""
+            if current_positions:
+                positions_list = []
+                for sym, pos_info in list(current_positions.items())[:10]:  # 最多显示10个持仓
+                    if isinstance(pos_info, dict):
+                        qty = pos_info.get("quantity", 0)
+                        market_value = pos_info.get("market_value", 0.0)
+                        unrealized_pnl = pos_info.get("unrealized_pnl", 0.0)
+                        unrealized_pnl_pct = pos_info.get("unrealized_pnl_pct", 0.0)
+                        positions_list.append(f"{sym}: {qty} shares, value=${market_value:.2f}, P&L=${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%)")
+                if positions_list:
+                    positions_summary = "\n".join(positions_list)
+                else:
+                    positions_summary = "No current positions"
             else:
-                trader_summary += f" Key insights: {coordinator_summary}"
+                positions_summary = "No current positions"
+            
+            # 准备 prompt 变量（市场关闭时也需要传入基本数据）
+            market_closed_prompt_vars = {
+                "market_status": "CLOSED",
+                "quotes_snapshot": json.dumps(market, indent=2, ensure_ascii=False) if market else "{}",
+                "risk_result_json": json.dumps(rview, indent=2, ensure_ascii=False) if rview else "{}",
+                "tech_result_json": json.dumps(mview, indent=2, ensure_ascii=False) if mview else "{}",
+                "psych_result_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+                "consensus_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+                "positions_summary": positions_summary,
+                "final_stance": final_stance,
+                "vix_risk": vix_risk,
+                "coordinator_summary": coordinator_summary[:2000] if coordinator_summary else "No coordinator summary available",
+                "portfolio_value": portfolio_value or 10000.0,
+                "available_cash": available_cash or 0.0,
+            }
+            
+            # 准备 prompt
+            summary_prompt = f"""The market is currently CLOSED. Based on the following analysis, generate a concise summary (100-150 words) explaining the market assessment:
+
+Market Status: CLOSED (no trading allowed)
+Market Stance: {final_stance}
+VIX Risk: {vix_risk:.1f}
+Portfolio Value: ${portfolio_value:,.2f}
+Available Cash: ${available_cash:,.2f} (if available)
+
+Current Positions:
+{positions_summary}
+
+Coordinator Analysis Summary:
+{coordinator_summary[:2000] if coordinator_summary else "No coordinator summary available"}
+
+Please provide a clear, professional summary that:
+1. States that the market is currently CLOSED
+2. Explains the completed market analysis and risk assessment
+3. Mentions key factors (stance, VIX, coordinator insights)
+4. If there are current positions, briefly mention their status
+5. Clarifies that no trading orders can be generated when the market is closed
+6. Notes that analysis continues 24/7, but trading only occurs during market hours (9:30 AM - 4:00 PM ET)
+
+Write in natural language, approximately 100-150 words."""
+            
+            # CRITICAL FIX: 传入完整的 prompt_vars 让模板正常渲染，然后使用 user_append 附加 summary prompt
+            llm_response = trader_agent.run(market_closed_prompt_vars, expect_json=False, user_append=summary_prompt)
+            
+            if llm_response and isinstance(llm_response, str) and len(llm_response.strip()) > 50:
+                trader_summary = llm_response.strip()
+                print(f"[TRADER] LLM generated market-closed summary ({len(trader_summary)} chars)")
+            else:
+                print(f"[TRADER] WARNING: LLM response invalid, using fallback")
+                raise Exception("Invalid LLM response")
+                
+        except Exception as e:
+            print(f"[TRADER] LLM summary generation failed: {e}, using fallback")
+            import traceback
+            traceback.print_exc()
+            # Fallback: 使用基于规则的 summary
+            trader_summary = f"Market is currently closed. I've completed market analysis and risk assessment. "
+            trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
+            trader_summary += "No trading orders can be generated when the market is closed, as we use market orders that execute immediately during trading hours only. "
+            trader_summary += "Analysis and evaluation can continue 24/7, but actual trading only occurs during market hours (9:30 AM - 4:00 PM ET, Monday-Friday, excluding holidays)."
+            if coordinator_summary:
+                if len(coordinator_summary) > 5000:
+                    trader_summary += f" Key insights: {coordinator_summary[:5000]}... (truncated)"
+                else:
+                    trader_summary += f" Key insights: {coordinator_summary}"
         
         # 返回分析结果（不包含任何订单）
         return {
@@ -344,7 +437,7 @@ def run_trader(
     print(f"  - is_market_open: {is_market_open} (Market OPEN - can trade)")
     print(f"  - portfolio_value: ${portfolio_value:,.2f}")
     print(f"  - available_cash: ${available_cash:,.2f}" if available_cash is not None else "  - available_cash: None (unlimited)")
-    print(f"  - current_positions count: {len(current_positions)}")
+    print(f"  - current_positions count: {len(current_positions) if current_positions else 0}")
     if current_positions:
         total_position_value = sum(
             pos_info.get("market_value", 0.0) if isinstance(pos_info, dict) else 0.0
@@ -466,16 +559,32 @@ def run_trader(
             print(f"[TRADER] Fallback: Using top {len(recs)} available stocks: {recs[:5]}...")
     
     if recs and portfolio_value > 0:
-        # 从配置中读取仓位限制参数（这些是指导原则，agent 可以根据情况灵活调整）
+        # 从配置中读取仓位限制参数
         if position_config:
             max_position_per_stock = position_config.get("max_position_per_stock", 0.15)
             max_total_position = position_config.get("max_total_position", 0.80)
             min_position_per_stock = position_config.get("min_position_per_stock", 0.03)
         else:
             # 默认值
-            max_position_per_stock = 0.15  # 默认单股最大15%
+            max_position_per_stock = 0.15  # 默认单股最大15%（硬性限制）
             max_total_position = 0.80  # 默认总仓位80%
             min_position_per_stock = 0.03  # 默认单股最小3%（允许更小的仓位）
+        
+        # CRITICAL FIX: 根据 stance 调整买入股票数量（更保守的策略）
+        original_recs_count = len(recs)
+        if final_stance == "NEUTRAL":
+            # NEUTRAL: 更保守，限制买入数量
+            max_stocks_to_buy = min(15, original_recs_count)
+            if original_recs_count > max_stocks_to_buy:
+                recs = recs[:max_stocks_to_buy]
+                print(f"[TRADER] NEUTRAL stance: Limited to {max_stocks_to_buy} stocks (from {original_recs_count} recommended)")
+        elif final_stance == "BEARISH":
+            # BEARISH: 非常保守，只买入少量股票
+            max_stocks_to_buy = min(10, original_recs_count)
+            if original_recs_count > max_stocks_to_buy:
+                recs = recs[:max_stocks_to_buy]
+                print(f"[TRADER] BEARISH stance: Limited to {max_stocks_to_buy} stocks (from {original_recs_count} recommended)")
+        # BULLISH: 可以买入更多股票（不限制）
         
         # 打印仓位限制信息（作为指导原则）
         print(f"[TRADER] Position size guidelines (agent can adjust based on signals):")
@@ -545,11 +654,26 @@ def run_trader(
             
             for symbol in recs:
                 if symbol not in last_prices:
+                    print(f"[TRADER] Skipping {symbol}: no price data")
                     continue
                 
                 last_price = last_prices[symbol]
                 if last_price <= 0:
+                    print(f"[TRADER] Skipping {symbol}: invalid price (${last_price:.2f})")
                     continue
+                
+                # CRITICAL: 检查是否已有持仓（用于日志和验证）
+                has_existing_position = False
+                existing_qty = 0
+                if current_positions and symbol in current_positions:
+                    pos_info = current_positions[symbol]
+                    if isinstance(pos_info, dict):
+                        existing_qty = pos_info.get("quantity", 0)
+                    else:
+                        existing_qty = pos_info if isinstance(pos_info, (int, float)) else 0
+                    if existing_qty > 0:
+                        has_existing_position = True
+                        print(f"[TRADER] {symbol}: Already has {existing_qty} shares, will calculate additional buy quantity")
                 
                 # 检查是否是反向ETF（用于做空）
                 is_inverse_etf = symbol in INVERSE_ETFS
@@ -558,18 +682,27 @@ def run_trader(
                 # 计算买入数量（使用改进后的函数）
                 # NOTE: 仓位限制是指导原则，agent 可以根据信号强度、市场条件等因素灵活调整
                 # 函数内部会根据信号强度、推荐股票数量等因素动态调整仓位大小
+                # CRITICAL: _calculate_position_size 会检查已有持仓，如果已达到目标仓位则返回0
                 quantity = _calculate_position_size(
                     symbol, 
                     recs, 
                     portfolio_value, 
                     last_price, 
                     rview, 
-                    current_positions,
+                    current_positions,  # CRITICAL: 传入持仓信息，函数会检查并避免超过仓位限制
                     max_position_per_stock=max_position_per_stock,  # 指导原则：最大单股仓位
                     max_total_position=max_total_position,  # 指导原则：最大总仓位
                     min_position_per_stock=min_position_per_stock,  # 指导原则：最小单股仓位（用于分散投资）
                     available_cash=remaining_cash,  # 硬限制：可用现金（不能超过）
                 )
+                
+                # CRITICAL: 验证买入数量（确保逻辑正确）
+                if quantity > 0 and has_existing_position:
+                    print(f"[TRADER] {symbol}: Will add {quantity} shares to existing {existing_qty} shares (total will be {existing_qty + quantity})")
+                elif quantity == 0 and has_existing_position:
+                    print(f"[TRADER] {symbol}: Skipping buy - already at target position ({existing_qty} shares)")
+                elif quantity == 0:
+                    print(f"[TRADER] {symbol}: Skipping buy - no quantity calculated (may be due to cash limit, position limit, or other constraints)")
                 
                 if quantity > 0:
                     # 买入价格范围（优化限价策略，提高成交率）
@@ -670,10 +803,22 @@ def run_trader(
             # 综合决定：优先考虑风险报告的建议，但也可以考虑其他因素
             sell_qty = sell_qty_from_risk
             
-            # 如果风险报告建议卖出，或者有其他卖出信号，生成卖出订单
+            # CRITICAL: 如果风险报告建议卖出，或者有其他卖出信号，生成卖出订单
             if sell_qty > 0:
-                # 确保卖出数量不超过持仓数量
+                # CRITICAL FIX: 确保卖出数量不超过持仓数量（硬性限制）
+                original_sell_qty = sell_qty
                 sell_qty = min(sell_qty, qty)
+                if sell_qty < original_sell_qty:
+                    print(f"[TRADER] WARNING: {symbol} sell quantity capped from {original_sell_qty} to {sell_qty} (current position: {qty} shares)")
+                
+                # CRITICAL: 再次验证卖出数量（确保不会卖出超过持有的数量）
+                if sell_qty > qty:
+                    print(f"[TRADER] ERROR: {symbol} sell quantity ({sell_qty}) exceeds current position ({qty}), forcing to {qty}")
+                    sell_qty = qty
+                
+                if sell_qty <= 0:
+                    print(f"[TRADER] Skipping {symbol}: sell quantity is 0 or negative after validation")
+                    continue
                 
                 # 卖出价格范围（市价单：使用当前价格）
                 sell_price = current_price  # 市价单：使用当前价格
@@ -797,48 +942,139 @@ def run_trader(
     else:
         rationale = base_rationale
 
-    # 生成Trader Agent的summary（讲述交易决策的想法）
-    trader_summary = ""
-    if buy_orders and len(buy_orders) > 0:
-        buy_symbols = [o["symbol"] for o in buy_orders[:5]]
-        buy_count = len(buy_orders)
-        total_buy_cost = sum(o.get("total_cost", 0.0) for o in buy_orders)
-        trader_summary = f"Based on market analysis and risk assessment, I'm generating {buy_count} buy orders for {', '.join(buy_symbols)}{'...' if buy_count > 5 else ''} with a total cost of ${total_buy_cost:,.2f}. "
-        trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
-        if coordinator_summary:
-            # CRITICAL FIX: 移除150字符限制，允许完整显示coordinator_summary（前端有滚动条处理长文本）
-            # 只限制极端长度（超过5000字符）以避免内存问题
-            if len(coordinator_summary) > 5000:
-                trader_summary += f"Key insights: {coordinator_summary[:5000]}... (truncated)"
+    # CRITICAL: 使用 LLM 来生成交易决策的 summary
+    # LLM 会考虑市场状态、订单信息、分析结果，并生成有意义的说明
+    print(f"[TRADER] ===== CALLING LLM FOR SUMMARY GENERATION =====")
+    trader_summary = None
+    
+    try:
+        # 创建 AgentFactory 和 trader_agent
+        from pathlib import Path
+        from src.agents.factory import AgentFactory
+        from src.agents.base import BaseAgent
+        import json
+        
+        ROOT = Path(__file__).resolve().parents[2]
+        fac = AgentFactory(ROOT / "config" / "agents.yaml")
+        trader_agent: BaseAgent = fac.create("trader_agent")
+        
+        # 准备订单信息摘要
+        orders_summary = []
+        if buy_orders:
+            buy_symbols = [o["symbol"] for o in buy_orders[:10]]
+            buy_count = len(buy_orders)
+            total_buy_cost = sum(o.get("total_cost", 0.0) for o in buy_orders)
+            orders_summary.append(f"Generating {buy_count} BUY orders: {', '.join(buy_symbols)}{'...' if buy_count > 10 else ''} (Total: ${total_buy_cost:,.2f})")
+        if sell_orders:
+            sell_symbols = [o["symbol"] for o in sell_orders[:10]]
+            sell_count = len(sell_orders)
+            total_sell_proceeds = sum(o.get("total_proceeds", 0.0) for o in sell_orders)
+            orders_summary.append(f"Generating {sell_count} SELL orders: {', '.join(sell_symbols)}{'...' if sell_count > 10 else ''} (Total: ${total_sell_proceeds:,.2f})")
+        if not orders_summary:
+            orders_summary.append("No trading orders generated (HOLD position)")
+        
+        # 准备持仓信息摘要
+        positions_summary = ""
+        if current_positions:
+            positions_list = []
+            for sym, pos_info in list(current_positions.items())[:10]:  # 最多显示10个持仓
+                if isinstance(pos_info, dict):
+                    qty = pos_info.get("quantity", 0)
+                    market_value = pos_info.get("market_value", 0.0)
+                    unrealized_pnl = pos_info.get("unrealized_pnl", 0.0)
+                    unrealized_pnl_pct = pos_info.get("unrealized_pnl_pct", 0.0)
+                    positions_list.append(f"{sym}: {qty} shares, value=${market_value:.2f}, P&L=${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%)")
+            if positions_list:
+                positions_summary = "\n".join(positions_list)
             else:
-                trader_summary += f"Key insights: {coordinator_summary}"
+                positions_summary = "No current positions"
         else:
-            trader_summary += "Decision is based on technical signals, market sentiment, and risk management constraints."
-    elif sell_orders and len(sell_orders) > 0:
-        sell_symbols = [o["symbol"] for o in sell_orders[:5]]
-        sell_count = len(sell_orders)
-        total_sell_proceeds = sum(o.get("total_proceeds", 0.0) for o in sell_orders)
-        trader_summary = f"Based on risk management and market conditions, I'm generating {sell_count} sell orders for {', '.join(sell_symbols)}{'...' if sell_count > 5 else ''} with expected proceeds of ${total_sell_proceeds:,.2f}. "
-        trader_summary += f"Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
-        if coordinator_summary:
-            # CRITICAL FIX: 移除150字符限制，允许完整显示coordinator_summary（前端有滚动条处理长文本）
-            # 只限制极端长度（超过5000字符）以避免内存问题
-            if len(coordinator_summary) > 5000:
-                trader_summary += f"Key insights: {coordinator_summary[:5000]}... (truncated)"
-            else:
-                trader_summary += f"Key insights: {coordinator_summary}"
+            positions_summary = "No current positions"
+        
+        # 准备 prompt 变量（用于完整信息传递）
+        prompt_vars = {
+            "market_status": "OPEN" if is_market_open else "CLOSED",  # ⭐ 关键：传入市场状态
+            "quotes_snapshot": json.dumps(market, indent=2, ensure_ascii=False) if market else "{}",
+            "risk_result_json": json.dumps(rview, indent=2, ensure_ascii=False) if rview else "{}",
+            "tech_result_json": json.dumps(mview, indent=2, ensure_ascii=False) if mview else "{}",
+            "psych_result_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+            "consensus_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+            "orders_summary": "\n".join(orders_summary),
+            "positions_summary": positions_summary,
+            "final_stance": final_stance,
+            "vix_risk": vix_risk,
+            "coordinator_summary": coordinator_summary[:2000] if coordinator_summary else "No coordinator summary available",
+            "portfolio_value": portfolio_value or 10000.0,
+            "available_cash": available_cash or 0.0,
+            "max_position_per_stock": position_config.get("max_position_per_stock", 0.15) * 100 if position_config else 15.0,
+            "max_total_position": position_config.get("max_total_position", 0.85) * 100 if position_config else 85.0,
+            "min_position_per_stock": position_config.get("min_position_per_stock", 0.03) * 100 if position_config else 3.0,
+        }
+        
+        # 调用 LLM 生成 summary（传入完整信息）
+        # CRITICAL FIX: 使用 user_append 附加 summary prompt，而不是替换整个 user prompt
+        # 这样模板变量可以正常渲染，同时附加我们的 summary 请求
+        summary_prompt = f"""Based on the following trading decision information, generate a concise summary (100-150 words) explaining the trading rationale:
+
+Market Status: {prompt_vars['market_status']} (trading allowed only when OPEN)
+Market Stance: {final_stance}
+VIX Risk: {vix_risk:.1f}
+Portfolio Value: ${prompt_vars['portfolio_value']:,.2f}
+Available Cash: ${prompt_vars['available_cash']:,.2f}
+
+Current Positions:
+{prompt_vars['positions_summary']}
+
+Orders Generated:
+{prompt_vars['orders_summary']}
+
+Coordinator Analysis Summary:
+{prompt_vars['coordinator_summary']}
+
+Please provide a clear, professional summary that:
+1. States the market status (OPEN/CLOSED) and its implications
+2. Explains the trading decision rationale based on all available information
+3. Mentions key factors (stance, VIX, coordinator insights, current positions)
+4. If orders were generated, briefly explain why and what they are
+5. If no orders, explain the reasoning (e.g., market closed, risk concerns, waiting for better entry)
+6. If there are current positions, mention their status briefly
+
+Write in natural language, approximately 100-150 words."""
+        
+        # CRITICAL FIX: 传入完整的 prompt_vars 让模板正常渲染，然后使用 user_append 附加 summary prompt
+        # 这样 LLM 可以访问所有输入数据（quotes_snapshot, risk_result_json 等），同时收到 summary 请求
+        llm_response = trader_agent.run(prompt_vars, expect_json=False, user_append=summary_prompt)
+        
+        if llm_response and isinstance(llm_response, str) and len(llm_response.strip()) > 50:
+            trader_summary = llm_response.strip()
+            print(f"[TRADER] LLM generated summary ({len(trader_summary)} chars)")
         else:
-            trader_summary += "Decision is based on risk reduction, position management, and market conditions."
-    else:
-        trader_summary = f"No trading orders generated. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. "
-        trader_summary += "Current market conditions and risk assessment suggest maintaining current positions or waiting for better entry points."
-        if coordinator_summary:
-            # CRITICAL FIX: 移除150字符限制，允许完整显示coordinator_summary（前端有滚动条处理长文本）
-            # 只限制极端长度（超过5000字符）以避免内存问题
-            if len(coordinator_summary) > 5000:
-                trader_summary += f" Analysis: {coordinator_summary[:5000]}... (truncated)"
-            else:
-                trader_summary += f" Analysis: {coordinator_summary}"
+            print(f"[TRADER] WARNING: LLM response invalid, using fallback")
+            raise Exception("Invalid LLM response")
+            
+    except Exception as e:
+        print(f"[TRADER] LLM summary generation failed: {e}, using fallback")
+        import traceback
+        traceback.print_exc()
+        # Fallback: 使用基于规则的 summary
+        if buy_orders and len(buy_orders) > 0:
+            buy_symbols = [o["symbol"] for o in buy_orders[:5]]
+            buy_count = len(buy_orders)
+            total_buy_cost = sum(o.get("total_cost", 0.0) for o in buy_orders)
+            trader_summary = f"Market is currently OPEN. Based on market analysis and risk assessment, I'm generating {buy_count} buy orders for {', '.join(buy_symbols)}{'...' if buy_count > 5 else ''} with a total cost of ${total_buy_cost:,.2f}. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}."
+            if coordinator_summary:
+                trader_summary += f" Key insights: {coordinator_summary[:500] if len(coordinator_summary) > 500 else coordinator_summary}"
+        elif sell_orders and len(sell_orders) > 0:
+            sell_symbols = [o["symbol"] for o in sell_orders[:5]]
+            sell_count = len(sell_orders)
+            total_sell_proceeds = sum(o.get("total_proceeds", 0.0) for o in sell_orders)
+            trader_summary = f"Market is currently OPEN. Based on risk management and market conditions, I'm generating {sell_count} sell orders for {', '.join(sell_symbols)}{'...' if sell_count > 5 else ''} with expected proceeds of ${total_sell_proceeds:,.2f}. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}."
+            if coordinator_summary:
+                trader_summary += f" Key insights: {coordinator_summary[:500] if len(coordinator_summary) > 500 else coordinator_summary}"
+        else:
+            trader_summary = f"Market is currently OPEN. No trading orders generated. Market stance is {final_stance} with VIX risk at {vix_risk:.1f}. Current market conditions and risk assessment suggest maintaining current positions or waiting for better entry points."
+            if coordinator_summary:
+                trader_summary += f" Analysis: {coordinator_summary[:500] if len(coordinator_summary) > 500 else coordinator_summary}"
     
     # 严格JSON格式输出（交易决策必须严格遵守JSON格式，因为交易系统根据这个判断）
     # 确保所有字段都是JSON可序列化的类型

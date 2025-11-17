@@ -138,6 +138,19 @@ def _summarize_tool_result(name: str, result: Any) -> str:
             # 添加更详细的信息
             hit_titles = [h.get("title", "")[:50] for h in hits[:2] if isinstance(h, dict)]
             return f"news_scan: {len(hits)} hits, queries={q[:3]}, samples={hit_titles}"
+        # CRITICAL FIX: 添加 fear_greed 的详细格式化
+        if name == "fear_greed" and isinstance(result, dict):
+            # 处理嵌套结构：可能直接是 {"value": ..., "label": ...} 或 {"fear_greed": {"value": ..., "label": ...}}
+            fg_data = result.get("fear_greed", result)
+            value = fg_data.get("value") if isinstance(fg_data, dict) else None
+            label = fg_data.get("label") if isinstance(fg_data, dict) else None
+            if value is not None:
+                value_str = f"{value}" if isinstance(value, (int, float)) else str(value)
+                label_str = label if label else "N/A"
+                return f"fear_greed: value={value_str}, label={label_str}"
+            else:
+                # 如果没有值，返回 keys 信息以便调试
+                return f"fear_greed: keys={list(result.keys()) if isinstance(result, dict) else 'N/A'}"
         return f"{name}: ok"
     except Exception:
         return f"{name}: ok"
@@ -262,8 +275,9 @@ def run_analyst_discussion(
                 name = call.get("name")
                 kwargs = call.get("args", {}) or {}
                 # 強制給 news_scan 合理預設（避免模型遺漏鍵）
+                # CRITICAL FIX: 确保只获取最新新闻（最多2天，48小时）
                 if name == "news_scan":
-                    kwargs.setdefault("recency_days", 7)
+                    kwargs.setdefault("recency_days", 2)  # 改为2天（48小时），确保只获取最新新闻
                     kwargs.setdefault("max_articles", 10)
                     kwargs.setdefault("fetch_body_top", 0)
                     # keywords 至少要有東西；若模型沒給，退而求其次：從 market_view 裡取 symbols 或給常見詞彙
@@ -293,6 +307,38 @@ def run_analyst_discussion(
                 # 为 plan_and_scan_news 注入 mview 参数
                 if name == "plan_and_scan_news" and "mview" not in kwargs:
                     kwargs["mview"] = market_view if isinstance(market_view, dict) else {}
+                
+                # CRITICAL FIX: fear_greed 工具不接受 index 或 crypto 参数，移除它们
+                if name == "fear_greed":
+                    # fear_greed 只接受 timeout 参数，移除其他不支持的参数
+                    unsupported_params = ["index", "crypto", "source", "market"]
+                    removed = []
+                    for param in unsupported_params:
+                        if param in kwargs:
+                            del kwargs[param]
+                            removed.append(param)
+                    if removed:
+                        print(f"[TOOL_FIX] Removed unsupported parameters from fear_greed call: {removed}")
+                    # 只保留 timeout 参数（如果存在）
+                    allowed_params = {"timeout"}
+                    params_to_remove = [k for k in kwargs.keys() if k not in allowed_params]
+                    for param in params_to_remove:
+                        del kwargs[param]
+                        if param not in unsupported_params:  # 避免重复打印
+                            print(f"[TOOL_FIX] Removed unsupported '{param}' parameter from fear_greed call")
+                
+                # CRITICAL FIX: web_search 必须要有 query 或 keywords 参数
+                if name == "web_search":
+                    if "query" not in kwargs and "keywords" not in kwargs:
+                        # 如果没有 query 或 keywords，添加默认查询或跳过
+                        if "domains" in kwargs:
+                            # 如果有 domains，使用通用市场查询
+                            kwargs["query"] = "market news stocks economy"
+                            print(f"[TOOL_FIX] Added default query='market news stocks economy' to web_search (domains={kwargs.get('domains')})")
+                        else:
+                            # 如果没有 domains 也没有 query，跳过这个工具调用
+                            print(f"[TOOL_ERR] web_search skipped: missing 'query' or 'keywords' parameter")
+                            continue
 
                 res = tb.invoke(name, **kwargs)
                 if res.get("ok"):
@@ -334,10 +380,50 @@ def run_analyst_discussion(
         vars_ctx["tool_budget"] = max(tool_budget, 0)
         vars_ctx["tools_context_tail"] = tool_context_lines[-6:]
 
+    # 生成 coordinator_summary（用于 Trader Agent）
+    # 从 transcript 中提取更有意义的 summary
+    summary_text = ""
+    if transcript:
+        # 尝试从最后几轮中提取关键信息
+        # 合并最后3轮的 transcript（如果存在）
+        recent_transcript = transcript[-3:] if len(transcript) >= 3 else transcript
+        summary_parts = []
+        for entry in recent_transcript:
+            if isinstance(entry, str) and len(entry.strip()) > 20:
+                # 清理并截取每段的前200字符
+                cleaned = entry.strip()[:200]
+                summary_parts.append(cleaned)
+        
+        if summary_parts:
+            # 合并所有部分，总长度控制在500-800字符之间
+            summary_text = " ".join(summary_parts)
+            if len(summary_text) > 800:
+                summary_text = summary_text[:800] + "..."
+        else:
+            # Fallback: 使用工具上下文生成 summary
+            if tool_context_lines:
+                tools_summary = ", ".join(tool_context_lines[-5:])  # 使用最后5个工具结果
+                summary_text = f"Market stance: {final_stance}. Analysis completed after {len(transcript)} rounds. Key findings: {tools_summary[:400]}"
+            else:
+                summary_text = f"Market stance: {final_stance}. Analysis completed after {len(transcript)} rounds with {len(tool_context_lines)} tool calls."
+    else:
+        summary_text = f"Market stance: {final_stance}. Analysis completed with {len(tool_context_lines)} tool calls."
+    
+    # 确保 summary 至少100字符
+    if len(summary_text) < 100:
+        summary_text += f" The analysis integrated multiple data sources and indicators to reach a {final_stance} market stance."
+    
+    coordinator_summary = {
+        "stance": final_stance,
+        "summary": summary_text,
+        "rationale": transcript[-1] if transcript else "No analysis available",
+    }
+    
     return {
         "final_stance": final_stance,
         "rounds": len(transcript),
         "transcript": transcript,
         "actions": [{"action": a} for a in actions_taken],
         "tool_context": tool_context_lines,  # 添加工具上下文用于测试和调试
+        "coordinator_summary": coordinator_summary,  # 添加 coordinator_summary 供 Trader Agent 使用
     }

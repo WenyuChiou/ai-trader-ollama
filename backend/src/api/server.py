@@ -1,10 +1,23 @@
 """
 FastAPI server for AI Trader backend
 """
+import sys
+from pathlib import Path
+
+# CRITICAL FIX: 确保工作目录正确（修复 uvicorn --reload 时的 ModuleNotFoundError）
+# 如果当前工作目录不是 backend 目录，自动切换到 backend 目录
+_current_file = Path(__file__).resolve()
+_backend_dir = _current_file.parent.parent.parent  # backend/src/api/server.py -> backend
+if Path.cwd() != _backend_dir and _backend_dir.exists():
+    import os
+    os.chdir(_backend_dir)
+    # 确保 backend 目录在 Python 路径中
+    if str(_backend_dir) not in sys.path:
+        sys.path.insert(0, str(_backend_dir))
+
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, date
@@ -315,17 +328,241 @@ async def fetch_conversations_api(
         # 排序（最新的在前）
         conversations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         
+        # CRITICAL FIX: 处理每个对话条目，确保有 summary 字段和 tools_used
+        # 同时收集工具结果，按工具类型分类
+        processed_conversations = []
+        all_tool_results = {}  # 按工具名称收集所有工具结果
+        
+        for entry in conversations:
+            # CRITICAL FIX: 确保 entry 是字典
+            if not isinstance(entry, dict):
+                continue
+            
+            # 如果没有 summary 字段，从 content 中提取
+            if "summary" not in entry:
+                content = entry.get("content", "")
+                # CRITICAL FIX: 确保 content 是字符串
+                if isinstance(content, str):
+                    # 尝试从 content 中提取 summary（通常在 "Analysis:" 之后）
+                    if "Analysis:" in content:
+                        summary = content.split("Analysis:")[-1].strip()
+                        if summary:
+                            entry["summary"] = summary
+                    else:
+                        # 如果没有 "Analysis:"，使用 content 作为 summary
+                        entry["summary"] = content[:500] if len(content) > 500 else content
+                else:
+                    entry["summary"] = str(content)[:500] if content else ""
+            
+            # 确保 tools_used 字段存在（即使是空数组）
+            if "tools_used" not in entry or not isinstance(entry.get("tools_used"), list):
+                entry["tools_used"] = []
+            
+            # CRITICAL FIX: 如果是工具类型的 entry，收集工具结果
+            if entry.get("type") == "tool":
+                tool_name = entry.get("tool_name", "")
+                tool_result = entry.get("tool_result", {})
+                if tool_name and tool_result:
+                    all_tool_results[tool_name] = tool_result
+            
+            processed_conversations.append(entry)
+        
+        # CRITICAL FIX: 提取三轮讨论数据（按 round 分组，然后按 agent 分组显示 summary）
+        discussion_rounds = {}
+        discussion_rounds_by_agent = {}  # CRITICAL FIX: 按 round 和 agent 分组，提取每个 agent 的 summary
+        
+        for entry in processed_conversations:
+            round_num = entry.get("round", 0)
+            # CRITICAL FIX: 处理 round_num 可能是字符串或数字的情况
+            if isinstance(round_num, str):
+                try:
+                    round_num = int(round_num)
+                except (ValueError, TypeError):
+                    round_num = 0
+            
+            if round_num > 0:  # 只处理有 round 编号的条目（1, 2, 3）
+                if round_num not in discussion_rounds:
+                    discussion_rounds[round_num] = []
+                discussion_rounds[round_num].append(entry)
+                
+                # CRITICAL FIX: 按 round 和 agent 分组，提取 summary
+                agent = entry.get("agent", "Unknown")
+                if round_num not in discussion_rounds_by_agent:
+                    discussion_rounds_by_agent[round_num] = {}
+                
+                # 提取 summary（优先使用 summary 字段，否则从 content 提取）
+                summary = entry.get("summary", "")
+                if not summary:
+                    content = entry.get("content", "")
+                    if isinstance(content, str):
+                        if "Analysis:" in content:
+                            summary = content.split("Analysis:")[-1].strip()
+                        else:
+                            summary = content[:500] if len(content) > 500 else content
+                    else:
+                        summary = str(content)[:500] if content else ""
+                
+                # CRITICAL FIX: 确保 tools_used 是列表
+                tools_used = entry.get("tools_used", [])
+                if not isinstance(tools_used, list):
+                    tools_used = []
+                
+                # 按 agent 分组（如果同一个 round 有多个相同 agent 的 entry，合并 summary）
+                if agent not in discussion_rounds_by_agent[round_num]:
+                    discussion_rounds_by_agent[round_num][agent] = {
+                        "agent": str(agent) if agent else "Unknown",  # CRITICAL FIX: 确保是字符串
+                        "summary": str(summary) if summary else "",  # CRITICAL FIX: 确保是字符串
+                        "stance": str(entry.get("stance", "neutral")),  # CRITICAL FIX: 确保是字符串
+                        "tools_used": tools_used,
+                    }
+                else:
+                    # 如果已有该 agent 的 entry，合并 summary（用换行分隔）
+                    existing = discussion_rounds_by_agent[round_num][agent]
+                    if summary and str(summary) not in existing.get("summary", ""):
+                        existing["summary"] += "\n\n" + str(summary)
+                    # 合并 tools_used
+                    existing_tools = set(existing.get("tools_used", [])) if isinstance(existing.get("tools_used", []), list) else set()
+                    new_tools = set(tools_used) if isinstance(tools_used, list) else set()
+                    existing["tools_used"] = list(existing_tools | new_tools)
+        
         # 限制结果
-        limited_conversations = conversations[:limit]
+        limited_conversations = processed_conversations[:limit]
+        
+        # CRITICAL FIX: 将 discussion_rounds_by_agent 转换为列表格式（每个 round 包含 agent summaries）
+        discussion_rounds_summaries = {}
+        for round_num, agents in discussion_rounds_by_agent.items():
+            # CRITICAL FIX: 确保 round_num 是字符串（JSON 键必须是字符串）
+            round_key = str(round_num) if not isinstance(round_num, str) else round_num
+            # CRITICAL FIX: 确保 agents.values() 中的每个元素都是可序列化的
+            agent_summaries = []
+            for agent_data in agents.values():
+                if isinstance(agent_data, dict):
+                    agent_summaries.append({
+                        "agent": str(agent_data.get("agent", "Unknown")),
+                        "summary": str(agent_data.get("summary", "")),
+                        "stance": str(agent_data.get("stance", "neutral")),
+                        "tools_used": agent_data.get("tools_used", []) if isinstance(agent_data.get("tools_used", []), list) else [],
+                    })
+            discussion_rounds_summaries[round_key] = agent_summaries
+        
+        # CRITICAL FIX: 按工具类型分类工具结果（news, risk, market等）
+        tool_results_by_category = {
+            "news": [],
+            "risk": [],
+            "market": [],
+            "fundamental": [],
+            "economic": [],
+            "crypto": [],
+            "other": []
+        }
+        
+        # 工具分类映射
+        tool_category_map = {
+            "news_scan": "news",
+            "plan_and_scan_news": "news",
+            "fetch_jin10_news": "news",
+            "web_search": "news",
+            "fetch_url": "news",
+            "vix_term": "risk",
+            "vix_close": "risk",
+            "fear_greed": "risk",
+            "get_market_breadth": "risk",
+            "get_market_indices": "market",
+            "get_sector_rotation": "market",
+            "get_correlation_matrix": "market",
+            "get_advanced_indicators": "market",
+            "get_support_resistance": "market",
+            "get_company_fundamentals": "fundamental",
+            "get_earnings_history": "fundamental",
+            "get_financial_statements": "fundamental",
+            "get_economic_summary": "economic",
+            "get_labor_market_data": "economic",
+            "fetch_fred_indicator": "economic",
+            "fetch_jin10_economic_data": "economic",
+            "fetch_crypto_batch": "crypto",
+            "get_crypto_price": "crypto",
+        }
+        
+        for entry in processed_conversations:
+            # CRITICAL FIX: 确保 entry 是字典
+            if not isinstance(entry, dict):
+                continue
+                
+            if entry.get("type") == "tool":
+                tool_name = entry.get("tool_name", "")
+                tool_category = entry.get("tool_category", tool_category_map.get(tool_name, "other"))
+                tool_result = entry.get("tool_result", {})
+                
+                # CRITICAL FIX: 确保 tool_result 是可序列化的
+                if not isinstance(tool_result, (dict, list, str, int, float, bool, type(None))):
+                    tool_result = {}
+                
+                # 如果没有 tool_result，尝试从 content 中提取
+                if not tool_result or (isinstance(tool_result, dict) and not tool_result):
+                    content = entry.get("content", "")
+                    if isinstance(content, str) and "Tool used:" in content:
+                        try:
+                            # 尝试从 content 中解析 JSON
+                            result_text = content.split("Tool used:")[-1].split(":", 1)[-1].strip()
+                            if result_text.startswith("{") or result_text.startswith("["):
+                                tool_result = json.loads(result_text)
+                        except:
+                            tool_result = {"raw": str(content)[:500]}
+                    else:
+                        tool_result = {"raw": str(content)[:500] if content else ""}
+                
+                # CRITICAL FIX: 确保所有字段都是可序列化的
+                try:
+                    tool_entry = {
+                        "tool_name": str(tool_name) if tool_name else "",
+                        "tool_result": tool_result,
+                        "timestamp": str(entry.get("timestamp", "")),
+                        "agent": str(entry.get("agent", "ToolSystem")),
+                    }
+                    
+                    # 添加到对应分类
+                    if tool_category in tool_results_by_category:
+                        tool_results_by_category[tool_category].append(tool_entry)
+                    else:
+                        tool_results_by_category["other"].append(tool_entry)
+                except Exception as tool_error:
+                    # 如果序列化失败，跳过这个工具条目
+                    print(f"[WARN] 跳过工具条目（序列化失败）: {tool_error}")
+                    continue
+        
+        # CRITICAL FIX: 确保所有数据都是可序列化的
+        # 清理 limited_conversations 中的不可序列化数据
+        cleaned_conversations = []
+        for conv in limited_conversations:
+            if not isinstance(conv, dict):
+                continue
+            try:
+                # 测试是否可序列化
+                json.dumps(conv)
+                cleaned_conversations.append(conv)
+            except (TypeError, ValueError) as e:
+                # 如果不可序列化，创建一个清理后的版本
+                print(f"[WARN] 清理不可序列化的 conversation: {e}")
+                cleaned_conv = {}
+                for key, value in conv.items():
+                    try:
+                        json.dumps(value)
+                        cleaned_conv[key] = value
+                    except (TypeError, ValueError):
+                        cleaned_conv[key] = str(value)[:500] if value else ""
+                cleaned_conversations.append(cleaned_conv)
         
         return JSONResponse(
             status_code=200,
             content={
                 "ok": True,
-                "conversations": limited_conversations,
-                "count": len(limited_conversations),
-                "total": len(conversations),
-                "has_more": len(conversations) > limit
+                "conversations": cleaned_conversations,
+                "count": len(cleaned_conversations),
+                "total": len(processed_conversations),
+                "has_more": len(processed_conversations) > limit,
+                "discussion_rounds": {str(k): v for k, v in discussion_rounds.items()},  # CRITICAL FIX: 原始数据（按 round 分组的所有 entry），键转换为字符串
+                "discussion_rounds_summaries": discussion_rounds_summaries,  # CRITICAL FIX: 按 round 和 agent 分组的 summaries
+                "tool_results_by_category": tool_results_by_category,  # CRITICAL FIX: 按工具类型分类的工具结果
             },
             headers={
                 "Access-Control-Allow-Origin": "*",
@@ -335,19 +572,24 @@ async def fetch_conversations_api(
         )
     except Exception as e:
         import traceback
+        error_traceback = traceback.format_exc()
+        # CRITICAL FIX: 打印错误到控制台以便调试
+        print(f"[ERROR] /api/agents/conversations 错误: {e}")
+        print(f"[ERROR] Traceback:\n{error_traceback}")
         return JSONResponse(
             status_code=500,
             content={
                 "ok": False,
                 "error": str(e),
-                "traceback": traceback.format_exc()
+                "error_type": type(e).__name__,
+                "traceback": error_traceback
             },
-                headers={
-                    "Access-Control-Allow-Origin": "*",
+            headers={
+                "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
 
 # ============================================================================
 # Portfolio Endpoints
@@ -709,19 +951,29 @@ async def check_market_open():
 async def get_vix_term():
     """获取 VIX 期限结构"""
     try:
-        from src.tools.market_tools import get_vix_term_structure
+        from src.tools.sentiment_tools import vix_term_structure
+        from src.tools.sentiment_tools import vix_risk_score
         
-        vix_data = get_vix_term_structure()
+        vix_data = vix_term_structure()
         
         # 如果返回 None 或空数据，返回默认值
         if vix_data is None:
-            vix_data = {"level": None, "regime": "unknown"}
+            vix_data = {"vix": None, "vix3m": None, "ratio": None}
         
+        # CRITICAL FIX: 前端期望的格式是 vix.vix, vix.vix3m, vix.ratio, vix.vix_risk_score
+        # 计算风险分数
+        vix_risk = vix_risk_score(vix_data)
+        
+        # 返回前端期望的格式
         return JSONResponse(
             status_code=200,
             content={
-            "ok": True,
-                "vix": vix_data
+                "ok": True,
+                "vix": vix_data.get("vix", 0) or 0,  # CRITICAL FIX: 直接返回数值
+                "vix3m": vix_data.get("vix3m", 0) or 0,  # CRITICAL FIX: 直接返回数值
+                "ratio": vix_data.get("ratio", 0) or 0,  # CRITICAL FIX: 直接返回数值
+                "vix_risk_score": vix_risk,  # CRITICAL FIX: 添加风险分数
+                "regime": "contango" if vix_data.get("ratio", 0) and vix_data.get("ratio", 0) > 1 else ("backwardation" if vix_data.get("ratio", 0) and vix_data.get("ratio", 0) < 1 else "flat"),
             },
             headers={
                 "Access-Control-Allow-Origin": "*",
@@ -736,7 +988,12 @@ async def get_vix_term():
             status_code=200,
             content={
                 "ok": True,
-                "vix": {"level": None, "regime": "unknown", "error": str(e)}
+                "vix": 0,
+                "vix3m": 0,
+                "ratio": 0,
+                "vix_risk_score": 4.0,
+                "regime": "unknown",
+                "error": str(e)
             },
             headers={
                 "Access-Control-Allow-Origin": "*",
@@ -749,19 +1006,23 @@ async def get_vix_term():
 async def get_fear_greed():
     """获取恐惧贪婪指数"""
     try:
-        from src.tools.market_tools import get_fear_greed_index
+        from src.tools.sentiment_tools import fetch_fear_greed
         
-        fg_data = get_fear_greed_index()
+        fg_data = fetch_fear_greed()
         
         # 如果返回 None 或空数据，返回默认值
         if fg_data is None:
             fg_data = {"value": 0, "label": "Unknown"}
         
+        # CRITICAL FIX: 前端期望的格式是 fear_greed.value 和 fear_greed.label
+        # 但也可以直接返回 value 和 label（前端会尝试多种格式）
         return JSONResponse(
             status_code=200,
             content={
-                "ok": True, 
-                "fear_greed": fg_data
+                "ok": True,
+                "value": fg_data.get("value", 0) or 0,  # CRITICAL FIX: 直接返回数值
+                "label": fg_data.get("label", "Unknown") or "Unknown",  # CRITICAL FIX: 直接返回标签
+                "fear_greed": fg_data,  # CRITICAL FIX: 同时保留完整对象供前端使用
             },
             headers={
                 "Access-Control-Allow-Origin": "*",
@@ -776,6 +1037,8 @@ async def get_fear_greed():
             status_code=200,
             content={
                 "ok": True,
+                "value": 0,
+                "label": "Unknown",
                 "fear_greed": {"value": 0, "label": "Unknown", "error": str(e)}
             },
             headers={

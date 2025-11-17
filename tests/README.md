@@ -2,11 +2,71 @@
 
 This directory contains all tests for the AI-Trader system.
 
+## ⚠️ Branch-Specific Tests
+
+**Important**: Test files differ between branches!
+
+### Main Branch (`main`)
+
+**Test Coverage**: Core system tests only (production-ready features)
+
+**Test Files**:
+- `tests/integration/` - Core system integration tests
+  - `test_agent_architecture.py` - Agent system tests
+  - `test_portfolio.py` - Portfolio management tests
+  - `test_memory.py` - Memory system tests
+  - `test_api.py` - API endpoint tests
+- `tests/e2e/` - End-to-end tests
+  - `test_frontend.py` - Frontend integration tests
+
+**Does NOT Include**:
+- ❌ `tests/unit/` - Optimization component tests (only in feature branch)
+- ❌ Optimization components (ToolCoordinator, SharedContext, BudgetAllocator)
+
+**Total Tests**: ~28 tests
+
+**Purpose**: Tests for stable, production-ready features
+
+### Feature Branch (`feature/system-optimization`)
+
+**Test Coverage**: All tests including optimization components
+
+**Test Files**:
+- `tests/integration/` - Core system integration tests (same as main)
+- `tests/e2e/` - End-to-end tests (same as main)
+- `tests/unit/` - **Optimization component unit tests** (feature branch only)
+  - `test_tool_coordinator.py` - ToolCoordinator tests
+  - `test_shared_context.py` - SharedContext tests
+  - `test_budget_allocator.py` - BudgetAllocator tests
+
+**Additional Components** (feature branch only):
+- `backend/src/utils/tool_coordinator.py`
+- `backend/src/utils/shared_context.py`
+- `backend/src/utils/budget_allocator.py`
+- `backend/src/agents/multi_analyst_system_parallel.py`
+
+**Total Tests**: ~48 tests
+
+**Purpose**: Tests for new optimization features under development
+
+### Checking Your Current Branch
+
+**To check which branch you're on**:
+```bash
+git branch
+# or
+git status
+```
+
+**If you see `* main`**: You're on main branch (core tests only, ~28 tests)
+**If you see `* feature/system-optimization`**: You're on feature branch (all tests, ~48 tests)
+
+---
+
 ## Directory Structure
 
 ```
 tests/
-├── unit/              # Unit tests for individual components
 ├── integration/       # Integration tests for system components
 ├── e2e/              # End-to-end tests
 ├── utils/            # Test utilities and helpers
@@ -14,6 +74,8 @@ tests/
 ├── conftest.py       # Pytest configuration and fixtures
 └── pytest.ini        # Pytest configuration file
 ```
+
+**Note**: `tests/unit/` directory only exists in `feature/system-optimization` branch.
 
 ## Running Tests
 
@@ -24,15 +86,14 @@ pytest tests/ -v
 
 ### Run specific test category
 ```bash
-# Unit tests only
-pytest tests/unit/ -v
-
 # Integration tests only
 pytest tests/integration/ -v
 
 # E2E tests only
 pytest tests/e2e/ -v
 ```
+
+**Note**: Unit tests (`pytest tests/unit/ -v`) are only available in `feature/system-optimization` branch.
 
 ### Run with coverage
 ```bash
@@ -45,12 +106,6 @@ pytest tests/integration/test_agent_architecture.py -v
 ```
 
 ## Test Categories
-
-### Unit Tests (`tests/unit/`)
-- Test individual functions and classes
-- Mock external dependencies
-- Fast execution
-- High coverage target
 
 ### Integration Tests (`tests/integration/`)
 - Test component interactions
@@ -81,48 +136,9 @@ Helper functions in `tests/utils/test_helpers.py`:
 - `create_test_order()` - Create test order
 - `assert_portfolio_state_valid()` - Validate portfolio state
 
-## Writing Tests
-
-### Example Unit Test
-```python
-def test_calculate_position_size():
-    from src.agents.trader_agent import _calculate_position_size
-    
-    size = _calculate_position_size(
-        symbol="NVDA",
-        recommended_stocks=["NVDA"],
-        portfolio_value=10000.0,
-        last_price=500.0
-    )
-    
-    assert size > 0
-    assert size <= 100  # Max shares
-```
-
-### Example Integration Test
-```python
-def test_trading_cycle_execution():
-    from src.orchestrator.trading_cycle import execute_daily_trade
-    
-    result = execute_daily_trade(
-        start="2025-01-01",
-        end="2025-01-02"
-    )
-    
-    assert result["ok"] is True
-    assert "portfolio" in result
-```
-
-## Test Reports
-
-Test reports are generated in `tests/reports/`:
-- Coverage reports: `tests/reports/coverage/`
-- HTML reports: `tests/reports/test_report_YYYYMMDD.html`
-
 ## Notes
 
 - Tests should be independent and not rely on execution order
 - Use fixtures for common setup/teardown
 - Mock external API calls to avoid rate limits
 - Use test data directory for sample data files
-

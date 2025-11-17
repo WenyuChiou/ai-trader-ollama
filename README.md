@@ -2349,14 +2349,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 
 **All test files are located in the `tests/` directory** (not `test/`). The old `test/` directory has been removed and replaced with a properly structured test suite.
 
-### Test Directory Structure
+### Test Directory Structure (Main Branch)
 
 ```
 tests/
-├── unit/                    # Unit tests for individual components
-│   ├── test_tool_coordinator.py    # ToolCoordinator tests
-│   ├── test_shared_context.py      # SharedContext tests
-│   └── test_budget_allocator.py     # BudgetAllocator tests
 ├── integration/             # Integration tests for system components
 │   ├── test_agent_architecture.py  # Agent system tests
 │   ├── test_portfolio.py            # Portfolio management tests
@@ -2370,6 +2366,8 @@ tests/
 ├── pytest.ini               # Pytest settings
 └── README.md                # Test documentation
 ```
+
+**Note**: `tests/unit/` directory (optimization component tests) only exists in `feature/system-optimization` branch.
 
 ### Running Tests
 
@@ -2407,22 +2405,20 @@ pytest tests/integration/test_portfolio.py -v
 pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 ```
 
-### Test Status
+### Test Status (Main Branch)
 
-✅ **Current Status**: **48/48 tests passing** (100% pass rate)
+✅ **Current Status**: **~28 tests passing** (100% pass rate)
 
 **Test Breakdown**:
-- **Unit Tests**: 18/18 passing
-  - ToolCoordinator: 6 tests ✅
-  - SharedContext: 7 tests ✅
-  - BudgetAllocator: 7 tests ✅
-- **Integration Tests**: 24/24 passing
+- **Integration Tests**: ~24 tests passing
   - Agent Architecture: 6 tests ✅
   - Portfolio Management: 7 tests ✅
   - Memory System: 5 tests ✅
   - API Endpoints: 5 tests ✅
 - **E2E Tests**: 4/4 passing
   - Frontend Integration: 4 tests ✅
+
+**Note**: Unit tests for optimization components (~18 tests) are only in `feature/system-optimization` branch.
 
 ### Test Documentation
 

@@ -604,6 +604,14 @@ curl -X POST "http://localhost:8000/api/system/init?force=true"
 }
 ```
 
+**Timestamp Format**:
+- **`date`**: Date in `YYYY-MM-DD` format (e.g., `"2025-01-28"`)
+- **`timestamp`**: ISO 8601 format with UTC timezone (e.g., `"2025-01-28T10:00:00.000Z"`)
+  - Format: `YYYY-MM-DDTHH:MM:SS.sssZ`
+  - Always includes `Z` suffix indicating UTC timezone
+  - Automatically generated when recording equity snapshot
+  - Used for chronological sorting and time-based queries
+
 **Fields**:
 - `total_pnl`: Total profit/loss in dollars (total_value - initial_value)
 - `total_pnl_pct`: Total profit/loss percentage
@@ -1992,9 +2000,16 @@ Daily Summary:
 ### Portfolio & Trading
 - `GET /api/portfolio/state`: Current portfolio state
 - `GET /api/portfolio/real-time`: Real-time portfolio with live prices
-- `GET /api/portfolio/equity-history`: Historical net value curve
+- `GET /api/portfolio/equity-history`: Historical net value curve (with timestamps)
 - `POST /api/trading/execute-trade`: Execute full trading cycle
 - `POST /api/system/init?force=true`: Reset portfolio to initial state (deletes all trading data, preserves memory)
+
+### System Information
+- `GET /api/system/info`: System information including:
+  - LLM model configuration
+  - Position limits status (auto/configured mode)
+  - **Optimization components status** (enabled by default)
+  - Agent freedom settings
 
 ### Market Data
 - `GET /api/market/status`: Check if market is open
@@ -2065,9 +2080,16 @@ python scripts\upload_data_to_railway.py
 
 **功能说明**:
 - ✅ 每天自动上传本地数据到 Railway 后端
+  - 上传数据包括：`portfolio_state.json`（持仓）、`equity_history.jsonl`（净值历史，包含时间戳）、`discussion_actions.jsonl`（对话记录）、`trades.jsonl`（交易记录）、`filled_orders.jsonl`（已成交订单）
 - ✅ 自动更新 GitHub Pages（如果有前端更改）
 - ✅ 可设置上传时间（推荐：18:00，市场收盘后）
 - ✅ 支持工作日或每天运行
+
+**数据时间戳**:
+- 所有净值历史记录（`equity_history.jsonl`）都包含 `date` 和 `timestamp` 字段
+- `timestamp` 格式：ISO 8601 UTC 时间（例如：`"2025-01-28T10:00:00.000Z"`）
+- 每小时自动记录一次净值快照（即使净值没有变化）
+- Railway 上传脚本会保留所有时间戳信息
 
 > 📖 **详细指南**: See [`docs/DAILY_UPLOAD_SETUP.md`](docs/DAILY_UPLOAD_SETUP.md)
 

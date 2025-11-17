@@ -1307,7 +1307,18 @@ Trader Agent: "Market is currently closed. Analysis completed:
 
 ### Trading Rules & Constraints (Complete List)
 
-#### 1. Market Status Rules (Hard Rules - Enforced)
+**Rule Classification**:
+The system uses **two types of rules**:
+1. **LLM-Decided Rules (Guidelines)**: Trader Agent (LLM) makes decisions based on these guidelines, with flexibility to adjust based on market conditions
+2. **Configurable Hard Rules**: Can be set in `config.json` and are strictly enforced by the system
+
+**Current System Default**: **LLM-Decided** (Trader Agent makes all trading decisions based on guidelines)
+
+---
+
+#### 1. Market Status Rules (Hard Rules - System Enforced)
+
+**Type**: System-enforced (cannot be overridden)
 
 ```
 IF market_status == CLOSED:
@@ -1328,48 +1339,107 @@ IF market_status == OPEN:
 - **Trading Days**: Monday-Friday (excluding holidays)
 - **Holidays**: System respects NYSE/NASDAQ holidays
 
-#### 2. Position Limits (Hard Rules - Enforced)
+**Configuration**: Not configurable (system-enforced)
 
-| Rule | Limit | Type | Enforcement |
-|------|-------|------|-------------|
-| **Per Stock Maximum** | 15% of portfolio | Hard | Trader Agent + Execution Layer |
-| **Total Position Maximum** | 80% of portfolio | Hard | Trader Agent + Execution Layer |
-| **Cash Reserve Minimum** | 20% of portfolio | Hard | Execution Layer |
-| **Minimum Position Size** | 3% of portfolio | Guideline | Trader Agent decision |
-| **Maximum Positions** | 10 different stocks | Hard | Execution Layer |
+---
 
-**Position Limit Logic**:
+#### 2. Position Limits
+
+**Current System**: **LLM-Decided (Guidelines)** - Trader Agent makes decisions based on guidelines
+
+**Guidelines (LLM Considers)**:
+
+| Rule | Default Guideline | Type | How It Works |
+|------|------------------|------|--------------|
+| **Per Stock Maximum** | 15% of portfolio | LLM Guideline | Trader Agent considers this as a guideline, can use smaller positions based on signals |
+| **Total Position Maximum** | 80% of portfolio | LLM Guideline | Trader Agent considers this as a guideline, can use less based on risk |
+| **Minimum Position Size** | 3% of portfolio | LLM Guideline | Trader Agent can use smaller positions for diversification |
+| **Maximum Positions** | 10 different stocks | LLM Guideline | Trader Agent considers this when selecting stocks |
+
+**LLM Decision Process**:
 ```
-For each BUY order:
-    IF current_position[symbol] + new_order_value > 15% of portfolio:
-        Reduce quantity to stay within 15% limit
-    
-    IF total_positions_value + new_order_value > 80% of portfolio:
-        Reduce quantity to stay within 80% limit
-    
-    IF available_cash < order_cost:
-        Reduce quantity OR skip order
-    
-    IF position_count >= 10 AND symbol not in current_positions:
-        Skip order (max positions reached)
-```
+Trader Agent (LLM) receives:
+├── Position limit guidelines (from config.json or defaults)
+├── Risk Analyst recommendations
+├── Market conditions (VIX, sentiment, etc.)
+├── Current positions
+└── Analyst consensus
 
-#### 3. Cash Management Rules (Hard Rules - Enforced)
-
-```
-Available Cash Calculation:
-    available_cash = portfolio.cash - (portfolio_value * 0.20)
-    
-For each BUY order:
-    IF order_cost > available_cash:
-        ├── Calculate max_affordable_qty = floor(available_cash / price)
-        ├── IF max_affordable_qty > 0:
-        │   └── Reduce quantity to max_affordable_qty
-        └── ELSE:
-            └── Skip order (insufficient cash)
+Trader Agent decides:
+├── Which stocks to buy/sell
+├── Position sizes (within guideline ranges)
+├── Number of positions (considering diversification)
+└── Rationale for decisions
 ```
 
-#### 4. Order Execution Rules (Hard Rules - Enforced)
+**Configurable in `config.json`** (Optional - if not set, LLM uses defaults):
+```json
+{
+  "position_limit_per_stock": 0.15,      // Guideline: Max 15% per stock (LLM can use less)
+  "position_limit_total": 0.85,          // Guideline: Max 85% total (LLM can use less)
+  "position_limit_min_per_stock": 0.03,  // Guideline: Min 3% per stock (LLM can use smaller)
+  "max_positions": 10                     // Guideline: Max 10 different stocks (LLM can use fewer)
+}
+```
+
+**Note**: These values are **guidelines** that the LLM considers. The LLM can make nuanced decisions:
+- Use smaller positions if risk is high
+- Use larger positions if signals are strong and risk is low
+- Adjust based on number of recommended stocks
+- Consider Risk Analyst recommendations
+
+**Example LLM Decisions**:
+- **High VIX (7-10)**: LLM might use 5-8% per stock (below 15% guideline)
+- **Low VIX (0-3)**: LLM might use 10-15% per stock (up to guideline)
+- **Many recommended stocks**: LLM might use smaller positions per stock (e.g., 5-8%)
+- **Few recommended stocks**: LLM might use larger positions per stock (e.g., 12-15%)
+
+---
+
+#### 3. Cash Management Rules
+
+**Current System**: **LLM-Decided (Guidelines)** - Trader Agent manages cash allocation
+
+**Guidelines (LLM Considers)**:
+
+| Rule | Default Guideline | Type | How It Works |
+|------|------------------|------|--------------|
+| **Cash Reserve** | 20% of portfolio | LLM Guideline | Trader Agent considers keeping cash reserve, but can adjust based on opportunities |
+| **Available Cash** | Portfolio cash - reserve | LLM Guideline | Trader Agent calculates available cash for trading |
+
+**LLM Decision Process**:
+```
+Trader Agent (LLM) receives:
+├── Current cash balance
+├── Cash reserve guideline (20%)
+├── Recommended stocks and quantities
+└── Risk assessment
+
+Trader Agent decides:
+├── How much cash to use (can use more or less than guideline)
+├── Which orders to prioritize if cash is limited
+└── Whether to reduce position sizes or skip some orders
+```
+
+**Configurable in `config.json`** (Optional):
+```json
+{
+  "min_cash_reserve_ratio": 0.20  // Guideline: Keep 20% cash (LLM can adjust)
+}
+```
+
+**System Safety Check** (Hard Rule - Cannot Override):
+```
+IF order_cost > portfolio.cash:
+    Reduce quantity OR skip order
+```
+This is a **hard safety check** to prevent negative cash balance.
+
+---
+
+#### 4. Order Execution Rules (Hard Rules - System Enforced)
+
+**Type**: System-enforced (cannot be overridden)
 
 ```
 Order Type: MARKET ORDERS ONLY
@@ -1388,7 +1458,13 @@ Order Status:
     └── PENDING: NOT USED (all orders fill immediately)
 ```
 
-#### 5. Risk-Based Position Sizing (Guidelines - LLM Decision)
+**Configuration**: Not configurable (system-enforced)
+
+---
+
+#### 5. Risk-Based Position Sizing (LLM Decision)
+
+**Type**: **LLM-Decided (Guidelines)**
 
 **VIX Risk Score → Position Size Guidelines**:
 
@@ -1398,14 +1474,55 @@ Order Status:
 | 4-6 | MEDIUM | 8-12% per stock | Normal position sizing |
 | 7-10 | HIGH | 5-8% per stock | Conservative, smaller positions |
 
-**Note**: These are **guidelines** that Trader Agent (LLM) considers, not hard rules. The LLM can make nuanced decisions based on multiple factors.
+**How LLM Uses This**:
+- LLM receives VIX risk score from Risk Analyst
+- LLM considers this as a guideline when deciding position sizes
+- LLM can adjust based on other factors (signal strength, diversification needs, etc.)
+- LLM generates rationale explaining position size decisions
 
-#### 6. Conversation & Analysis Rules
+**Example**:
+```
+VIX Risk: 7.5 (HIGH)
+Guideline: 5-8% per stock
+LLM Decision: Uses 6% per stock for NVDA (conservative due to high risk)
+Rationale: "High VIX risk (7.5) suggests conservative position sizing. Using 6% allocation 
+           for NVDA to balance opportunity with risk management."
+```
+
+---
+
+#### 6. Trading Frequency & Order Limits (Configurable)
+
+**Type**: **Configurable in `config.json`**
+
+| Rule | Default | Configurable | Description |
+|------|---------|--------------|-------------|
+| **Trading Frequency** | Every 30 minutes | No (system-enforced) | Fixed at 30-minute intervals |
+| **Max Orders Per Cycle** | 20 | Yes | Maximum number of orders per trading cycle |
+| **Discussion Rounds** | 3 | Yes | Number of discussion rounds |
+| **Tool Budget** | 15 | Yes | Maximum tool calls per cycle |
+
+**Configurable in `config.json`**:
+```json
+{
+  "max_orders_per_cycle": 20,        // Maximum orders per cycle (guideline for LLM)
+  "discussion_rounds": 3,            // Number of discussion rounds
+  "discussion_tool_budget": 15       // Tool calls per cycle
+}
+```
+
+**Note**: `max_orders_per_cycle` is a **guideline** for the LLM. The LLM can generate fewer orders if it determines that's appropriate.
+
+---
+
+#### 7. Conversation & Analysis Rules
+
+**Type**: **Configurable in `config.json`**
 
 **Discussion Rounds**:
-- **Number of Rounds**: 3 rounds per cycle
+- **Number of Rounds**: 3 rounds per cycle (configurable)
 - **Participants**: All 4 analysts participate in each round
-- **Tool Budget**: 15 tool calls per cycle (shared across all analysts)
+- **Tool Budget**: 15 tool calls per cycle (configurable, shared across all analysts)
 - **Round Structure**:
   - Round 1: Initial analysis, tool calls
   - Round 2: Refinement based on Round 1, additional tool calls if needed
@@ -1416,6 +1533,72 @@ Order Status:
 - Tool results shared across rounds
 - Tool budget tracked per cycle
 - If budget exhausted, agents continue without tools
+
+**Configurable in `config.json`**:
+```json
+{
+  "discussion_rounds": 3,              // Number of discussion rounds
+  "discussion_tool_budget": 15,        // Tool calls per cycle
+  "discussion_auto_tools": true        // Enable automatic tool calls
+}
+```
+
+---
+
+### Rule Summary Table
+
+| Rule Category | Type | Configurable | Current Default | LLM Decision |
+|---------------|------|--------------|-----------------|--------------|
+| **Market Status** | Hard (System) | No | 9:30 AM - 4:00 PM ET | N/A (System-enforced) |
+| **Per Stock Max** | LLM Guideline | Yes (`position_limit_per_stock`) | 15% | ✅ LLM decides actual size |
+| **Total Position Max** | LLM Guideline | Yes (`position_limit_total`) | 80% | ✅ LLM decides actual usage |
+| **Min Position Size** | LLM Guideline | Yes (`position_limit_min_per_stock`) | 3% | ✅ LLM decides actual size |
+| **Max Positions** | LLM Guideline | Yes (`max_positions`) | 10 | ✅ LLM decides actual count |
+| **Cash Reserve** | LLM Guideline | Yes (`min_cash_reserve_ratio`) | 20% | ✅ LLM decides actual reserve |
+| **Cash Safety** | Hard (System) | No | Must have cash | N/A (System-enforced) |
+| **Order Type** | Hard (System) | No | Market orders only | N/A (System-enforced) |
+| **Risk-Based Sizing** | LLM Guideline | No | VIX-based ranges | ✅ LLM decides based on risk |
+| **Max Orders/Cycle** | LLM Guideline | Yes (`max_orders_per_cycle`) | 20 | ✅ LLM decides actual count |
+| **Discussion Rounds** | Configurable | Yes (`discussion_rounds`) | 3 | N/A (System setting) |
+| **Tool Budget** | Configurable | Yes (`discussion_tool_budget`) | 15 | N/A (System setting) |
+
+**Key**:
+- ✅ **LLM-Decided**: Trader Agent (LLM) makes the actual decision based on guidelines
+- **Configurable**: Can be set in `config.json` (if not set, uses defaults)
+- **Hard (System)**: System-enforced, cannot be overridden
+
+---
+
+### How to Configure Rules
+
+**Option 1: Let LLM Decide (Current Default - Recommended)**
+
+Don't set position limits in `config.json`, or set them as guidelines:
+```json
+{
+  "position_limit_per_stock": 0.15,      // Guideline: LLM can use less
+  "position_limit_total": 0.85,          // Guideline: LLM can use less
+  "position_limit_min_per_stock": 0.03    // Guideline: LLM can use smaller
+}
+```
+
+The LLM will:
+- Consider these as maximum guidelines
+- Adjust based on market conditions, risk, and opportunities
+- Make nuanced decisions (e.g., use 8% if risk is high, 12% if signals are strong)
+
+**Option 2: Set Strict Limits (Future Feature)**
+
+In the future, you can set strict limits that override LLM decisions:
+```json
+{
+  "position_limit_per_stock": 0.15,      // Strict limit: LLM cannot exceed
+  "position_limit_total": 0.85,          // Strict limit: LLM cannot exceed
+  "enforce_strict_limits": true          // Enable strict enforcement
+}
+```
+
+**Current System**: Uses Option 1 (LLM decides based on guidelines)
 
 ---
 

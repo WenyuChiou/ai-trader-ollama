@@ -763,12 +763,22 @@ def execute_daily_trade(
         today = date.today().isoformat()
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         is_market_open_for_simulation = True
+        print(f"[TRADING CYCLE] ✅ Market is OPEN - trading allowed")
     else:
         # CRITICAL FIX: 市场收盘后，允许运行对话（AI分析），但不执行交易
         # 继续执行对话和分析，但跳过订单创建和执行
-        print(f"[TRADING CYCLE] Market closed. Running conversation/analysis only (no trading).")
+        print(f"[TRADING CYCLE] ⚠️  Market closed. Running conversation/analysis only (no trading).")
         # 设置标志，后续跳过订单执行
         is_market_open_for_simulation = False
+        # CRITICAL FIX: 打印详细的市场状态信息，帮助调试
+        import pytz
+        et_tz = pytz.timezone('America/New_York')
+        et_time = datetime.now(et_tz)
+        from src.utils.trading_days import is_trading_day
+        print(f"[TRADING CYCLE] Market status details:")
+        print(f"  - Current ET time: {et_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        print(f"  - Market hours: 9:30 AM - 4:00 PM ET")
+        print(f"  - Today is trading day: {is_trading_day(et_time.date())}")
         today = date.today().isoformat()
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         
@@ -1274,7 +1284,13 @@ def execute_daily_trade(
             should_create_orders = False
     elif is_market_open_for_simulation:
         # 实时模式：只有在市场开放时才检查是否可以创建订单
-        if not existing_pending_orders:
+        # CRITICAL FIX: 再次确认市场状态（双重检查，避免误判）
+        from src.utils.trading_days import is_market_open as double_check_market
+        market_open_double_check = double_check_market(None)
+        if not market_open_double_check:
+            print(f"[TRADING CYCLE] ⚠️  WARNING: Double-check shows market is closed, skipping order creation")
+            should_create_orders = False
+        elif not existing_pending_orders:
             # 检查今天是否已经有filled订单
             # CRITICAL: Use project root data/logs directory explicitly
             filled_file = _get_project_logs_dir() / "filled_orders.jsonl"
@@ -1295,13 +1311,16 @@ def execute_daily_trade(
             should_create_orders = not today_has_any_orders
             if today_has_any_orders:
                 print(f"[TRADING CYCLE] ⚠️ Today already has orders (filled or pending). Skipping new order creation to prevent hourly duplicates.")
+            else:
+                print(f"[TRADING CYCLE] ✅ Market is open and no existing orders - will create new orders")
         else:
             # 有pending订单，不创建新订单
             should_create_orders = False
+            print(f"[TRADING CYCLE] ⚠️  Existing pending orders found, skipping new order creation")
     else:
         # 市场关闭：不允许创建订单
         should_create_orders = False
-        print(f"[TRADING CYCLE] Market is closed. Skipping order creation (should_create_orders=False).")
+        print(f"[TRADING CYCLE] ⚠️  Market is closed. Skipping order creation (should_create_orders=False).")
     
     if should_create_orders:
         # === OPTIMIZATION: Position limits (移除 cooldown 检查) ===
@@ -1778,18 +1797,35 @@ def execute_daily_trade(
     # CRITICAL FIX: 写入Trader Agent的conversation entry（无论should_create_orders是True还是False，都要写入）
     # 这确保即使市场关闭或没有创建订单，Trader Agent的决策也会被记录
     try:
-        # 确保decision存在
+        # CRITICAL FIX: 确保decision存在，如果为空则创建默认值
         if not decision:
-            print(f"[TRADING CYCLE] ⚠️  WARNING: decision is None or empty, cannot write Trader Agent entry")
-            decision = {}  # 使用空字典作为后备
+            print(f"[TRADING CYCLE] ⚠️  WARNING: decision is None or empty, creating default decision")
+            decision = {
+                "action": "HOLD",
+                "summary": "No trading decision generated",
+                "rationale": "Trader agent did not generate a decision",
+                "stance": "neutral",
+                "buy_orders": [],
+                "sell_orders": []
+            }
+        
+        # CRITICAL FIX: 确保trader_summary_original和trader_stance有值
+        if not trader_summary_original:
+            trader_summary_original = decision.get("summary", decision.get("rationale", "No summary available"))
+        if not trader_stance:
+            trader_stance = decision.get("stance", "neutral")
         
         # 更新 summary 以反映实际创建的订单数量
         trader_summary = trader_summary_original if trader_summary_original else decision.get("summary", decision.get("rationale", "No summary available"))
-        trader_stance = trader_stance if trader_stance else decision.get("stance", "neutral")
         
         # 如果summary为空，使用decision中的其他字段
         if not trader_summary or trader_summary.strip() == "":
             trader_summary = decision.get("rationale", decision.get("summary", "No analysis provided"))
+        
+        # CRITICAL FIX: 如果所有字段都为空，使用默认值
+        if not trader_summary or trader_summary.strip() == "":
+            trader_summary = "Trader agent analysis completed but no summary provided"
+            print(f"[TRADING CYCLE] ⚠️  WARNING: All summary fields are empty, using default message")
         
         if actual_buy_orders_count is not None:
             # 检查 summary 中是否包含订单数量信息

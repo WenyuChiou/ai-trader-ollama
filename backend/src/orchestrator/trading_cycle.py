@@ -420,7 +420,8 @@ def execute_daily_trade(
     # 获取当前仓位信息（用于 analyst 分析）
     current_positions = {}
     if portfolio:
-        for symbol, pos in portfolio.positions.items():
+        # FIX: Use _positions instead of positions property (positions returns Dict[str, int], _positions returns Dict[str, Position])
+        for symbol, pos in portfolio._positions.items():
             current_positions[symbol] = {
                 "quantity": pos.quantity,
                 "avg_cost": pos.avg_cost,

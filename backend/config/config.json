@@ -46,6 +46,7 @@
   "_example_position_limit_per_stock": 0.15,
   "_example_position_limit_total": 0.80,
   "_example_position_limit_min_per_stock": 0.03,
+  "_example_min_cash_reserve_ratio": 0.20,
   "date_range": {
     "start": "2024-01-02",
     "end": "2024-01-31"

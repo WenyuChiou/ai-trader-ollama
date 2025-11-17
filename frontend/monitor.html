@@ -4857,6 +4857,8 @@
                             analysisText = c.summary.trim();
                             // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
                             analysisText = convertPositionPnlToTable(analysisText);
+                            // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
+                            analysisText = convertMarkdownBoldToBlocks(analysisText);
                         } else if (entry_type === 'discussion' && content) {
                             // 提取完整的分析文本（summary），去掉Stance前缀
                             const analysisMatch = content.match(/Analysis:\s*(.+)/is);
@@ -4902,6 +4904,8 @@
                             // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
                             if (analysisText) {
                                 analysisText = convertPositionPnlToTable(analysisText);
+                                // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
+                                analysisText = convertMarkdownBoldToBlocks(analysisText);
                             }
                         }
                         
@@ -6164,6 +6168,115 @@
             return text;
         }
 
+        // Convert all Markdown bold (**text**) to interactive blocks
+        function convertMarkdownBoldToBlocks(text) {
+            if (!text || typeof text !== 'string') return text;
+            
+            // Pattern to match **text:** or **text** (with or without colon)
+            // This will match:
+            // - **Title:**
+            // - **Title**
+            // - **[WARN] Text:**
+            // - **📋 Menu:**
+            const boldPattern = /\*\*([^*]+?)\*\*/g;
+            const blocks = [];
+            let lastIndex = 0;
+            let match;
+            let hasBlocks = false;
+            
+            // First, collect all matches with their positions
+            const matches = [];
+            while ((match = boldPattern.exec(text)) !== null) {
+                matches.push({
+                    fullMatch: match[0],
+                    content: match[1],
+                    index: match.index,
+                    length: match[0].length
+                });
+            }
+            
+            if (matches.length === 0) return text;
+            
+            // Determine block type based on content
+            function getBlockType(content) {
+                const lowerContent = content.toLowerCase();
+                if (lowerContent.includes('warn') || lowerContent.includes('critical') || lowerContent.includes('⚠️')) {
+                    return 'warning';
+                } else if (lowerContent.includes('info') || lowerContent.includes('note') || lowerContent.includes('📋') || lowerContent.includes('📊')) {
+                    return 'info';
+                } else if (lowerContent.includes('error') || lowerContent.includes('❌')) {
+                    return 'error';
+                } else if (lowerContent.includes('success') || lowerContent.includes('✅')) {
+                    return 'success';
+                } else if (content.includes(':') && content.length < 50) {
+                    return 'label';
+                } else {
+                    return 'default';
+                }
+            }
+            
+            // Build result with blocks
+            let result = '';
+            let currentIndex = 0;
+            
+            matches.forEach((match, idx) => {
+                // Add text before this match
+                if (match.index > currentIndex) {
+                    result += escapeHtml(text.substring(currentIndex, match.index));
+                }
+                
+                // Determine block type
+                const blockType = getBlockType(match.content);
+                const hasColon = match.content.endsWith(':');
+                const displayText = hasColon ? match.content.slice(0, -1) : match.content;
+                
+                // Create block HTML based on type
+                let blockHtml = '';
+                switch (blockType) {
+                    case 'warning':
+                        blockHtml = `<div class="markdown-block markdown-warning" style="margin: 8px 0; padding: 10px 14px; background: rgba(245, 158, 11, 0.15); border-left: 4px solid #f59e0b; border-radius: 6px; color: #fbbf24; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="this.style.opacity='0.8'; setTimeout(() => this.style.opacity='1', 200);">
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">⚠️ ${escapeHtml(displayText)}</span>
+                        </div>`;
+                        break;
+                    case 'error':
+                        blockHtml = `<div class="markdown-block markdown-error" style="margin: 8px 0; padding: 10px 14px; background: rgba(239, 68, 68, 0.15); border-left: 4px solid #ef4444; border-radius: 6px; color: #f87171; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="this.style.opacity='0.8'; setTimeout(() => this.style.opacity='1', 200);">
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">❌ ${escapeHtml(displayText)}</span>
+                        </div>`;
+                        break;
+                    case 'success':
+                        blockHtml = `<div class="markdown-block markdown-success" style="margin: 8px 0; padding: 10px 14px; background: rgba(16, 185, 129, 0.15); border-left: 4px solid #10b981; border-radius: 6px; color: #34d399; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="this.style.opacity='0.8'; setTimeout(() => this.style.opacity='1', 200);">
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">✅ ${escapeHtml(displayText)}</span>
+                        </div>`;
+                        break;
+                    case 'info':
+                        blockHtml = `<div class="markdown-block markdown-info" style="margin: 8px 0; padding: 10px 14px; background: rgba(34, 211, 238, 0.15); border-left: 4px solid #22d3ee; border-radius: 6px; color: #67e8f9; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="this.style.opacity='0.8'; setTimeout(() => this.style.opacity='1', 200);">
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">${escapeHtml(match.content)}</span>
+                        </div>`;
+                        break;
+                    case 'label':
+                        blockHtml = `<div class="markdown-block markdown-label" style="display: inline-block; margin: 4px 4px 4px 0; padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.4); border-radius: 6px; color: #22d3ee; font-weight: 700; font-size: 12px; cursor: pointer; transition: all 0.2s;" onclick="this.style.transform='scale(0.95)'; setTimeout(() => this.style.transform='scale(1)', 150);">
+                            ${escapeHtml(displayText)}
+                        </div>`;
+                        break;
+                    default:
+                        blockHtml = `<div class="markdown-block markdown-default" style="display: inline-block; margin: 4px 4px 4px 0; padding: 6px 12px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; color: #e2e8f0; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;" onclick="this.style.background='rgba(255,255,255,0.12)'; setTimeout(() => this.style.background='rgba(255,255,255,0.08)', 200);">
+                            ${escapeHtml(match.content)}
+                        </div>`;
+                }
+                
+                result += blockHtml;
+                currentIndex = match.index + match.length;
+                hasBlocks = true;
+            });
+            
+            // Add remaining text
+            if (currentIndex < text.length) {
+                result += escapeHtml(text.substring(currentIndex));
+            }
+            
+            return hasBlocks ? result : text;
+        }
+
         function formatConversationContent(content, entryType, agentName = '') {
             if (!content) return '';
             
@@ -6179,6 +6292,9 @@
                     
                     // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
                     analysisText = convertPositionPnlToTable(analysisText);
+                    
+                    // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
+                    analysisText = convertMarkdownBoldToBlocks(analysisText);
                     
                     // CRITICAL FIX: 将 "|" 分隔符转换为换行符，确保完整显示
                     // 如果内容包含 "|" 分隔符（可能是LLM返回的格式），将其转换为换行符

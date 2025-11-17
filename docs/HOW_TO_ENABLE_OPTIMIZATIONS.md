@@ -31,49 +31,21 @@
 }
 ```
 
-### 方法2: 修改代码启用
+## 性能指标
 
-修改 `backend/src/orchestrator/trading_cycle.py` 第454行：
+### 当前优化版本（默认启用）
+- **执行时间**: ~45秒/周期（相比标准版本提升25%）
+- **工具调用**: ~9-10次/周期（相比标准版本减少33%）
+- **缓存命中率**: ~50%
+- **预算分配**: 自适应（根据市场条件动态调整）
 
-**当前（标准版本）**:
-```python
-convo = run_multi_analyst_discussion(
-    market_view=market_view,
-    use_tools=auto_tools,
-    tool_budget=tool_budget,
-    ...
-)
-```
+### 历史对比（仅供参考）
 
-**启用优化版本**:
-```python
-from src.agents.multi_analyst_system_parallel import run_multi_analyst_discussion_parallel
-
-convo = run_multi_analyst_discussion_parallel(
-    market_view=market_view,
-    use_tools=auto_tools,
-    tool_budget=tool_budget,
-    order_status=order_status,
-    current_positions=current_positions if current_positions else None,
-    portfolio_value=portfolio_value,
-    available_cash=portfolio.cash if portfolio else None,
-    enable_parallel=True,
-)
-```
-
-## 性能对比
-
-### 标准版本（默认）
+**标准版本（已废弃）**:
 - **执行时间**: ~60秒/周期
 - **工具调用**: ~15次/周期
 - **缓存**: 无
 - **预算分配**: 固定
-
-### 优化版本（启用后）
-- **执行时间**: ~45秒/周期（25%提升）
-- **工具调用**: ~9-10次/周期（33%减少）
-- **缓存命中率**: ~50%
-- **预算分配**: 自适应（根据市场条件）
 
 ### 未来并行版本（需要async LLM）
 - **执行时间**: ~20-30秒/周期（50-70%提升）

@@ -852,6 +852,9 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             response["analysis"] = "No analysis provided"
         if "tool_calls" not in response:
             response["tool_calls"] = []
+        # CRITICAL FIX: 确保 recommended_stocks 字段存在（如果LLM提供了）
+        if "recommended_stocks" not in response:
+            response["recommended_stocks"] = []  # 默认为空列表，LLM可以填充
         # 如果tool_calls是单个dict而不是列表，转换为列表
         if isinstance(response.get("tool_calls"), dict):
             response["tool_calls"] = [response["tool_calls"]]
@@ -881,6 +884,7 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             "stance": parsed.get("stance", "neutral"),
             "analysis": parsed.get("analysis", str(response)[:300] if isinstance(response, str) else ""),
             "tool_calls": parsed.get("tool_calls", []),
+            "recommended_stocks": parsed.get("recommended_stocks", []),  # CRITICAL FIX: 保留推荐股票列表
         }
         
         # 如果tool_calls为空，尝试从analysis文本中提取工具名称
@@ -925,6 +929,10 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
                     validated_tool_calls.append({"name": tc, "args": {}, "why": "Auto-converted"})
             defaults["tool_calls"] = validated_tool_calls
         
+        # CRITICAL FIX: 确保 recommended_stocks 字段被保留
+        if "recommended_stocks" in parsed:
+            defaults["recommended_stocks"] = parsed["recommended_stocks"]
+        
         # 根据analyst类型设置score字段
         if "market_score" not in parsed and "technical_score" not in parsed and "fundamental_score" not in parsed and "sentiment_score" not in parsed:
             # 如果没有任何score字段，尝试从response中提取
@@ -939,8 +947,13 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             else:
                 defaults["score"] = 5.0
         
-        # 合并parsed和defaults
+        # 合并parsed和defaults，确保 recommended_stocks 被保留
         result = {**defaults, **parsed}
+        # CRITICAL FIX: 确保 recommended_stocks 字段存在（优先使用parsed中的值）
+        if "recommended_stocks" in parsed:
+            result["recommended_stocks"] = parsed["recommended_stocks"]
+        elif "recommended_stocks" not in result:
+            result["recommended_stocks"] = []
         return result
     except Exception as e:
         # Fallback: 返回文本响应
@@ -948,6 +961,7 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             "stance": "neutral",
             "analysis": str(response)[:300] if isinstance(response, str) else "No analysis provided",
             "tool_calls": [],
+            "recommended_stocks": [],  # CRITICAL FIX: 确保 recommended_stocks 字段存在
             "score": 5.0,
             "error": f"Failed to parse JSON: {e}"
         }

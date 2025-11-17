@@ -198,9 +198,10 @@ def execute_daily_trade(
     signal_top = _top_by_signal(stocks, k=len(stocks))  # 使用全部股票
     
     # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
+    # CRITICAL FIX: 使用 fallback 推荐（实际推荐会在 multi_analyst_system 中由 LLM 生成）
     from src.tools.market_analyst import run_market_analyst
     market_analysis = run_market_analyst(market_view)
-    recommended_stocks = market_analysis.get("recommended_stocks", [])
+    recommended_stocks_fallback = market_analysis.get("recommended_stocks", [])
 
     enriched_market: Dict[str, Any] = {
         "symbols": symbols,
@@ -211,7 +212,7 @@ def execute_daily_trade(
         "signal_score_top": signal_top,
         "stocks": stocks,
         "vix": market_view.get("vix"),
-        "recommended_stocks": recommended_stocks,  # 添加 Market Analyst 的推薦股票列表
+        "recommended_stocks": recommended_stocks_fallback,  # Fallback推荐（实际推荐会在 multi_analyst_system 中更新）
         "market_sentiment": market_analysis.get("market_sentiment", "neutral"),  # 添加市場情緒
     }
 
@@ -432,6 +433,24 @@ def execute_daily_trade(
         available_cash=portfolio.cash if portfolio else None,
     )
     final_stance = convo.get("final_stance", "neutral")
+    
+    # CRITICAL FIX: 从 multi_analyst_system 的 Market Analyst LLM 输出中提取推荐股票
+    # 优先使用 LLM 的推荐，如果没有则使用 fallback
+    recommended_stocks_from_llm = []
+    analyst_reports = convo.get("analyst_reports", {})
+    market_analyst_report = analyst_reports.get("market", {})
+    if market_analyst_report:
+        # 尝试从 Market Analyst 的响应中提取 recommended_stocks
+        recommended_stocks_from_llm = market_analyst_report.get("recommended_stocks", [])
+        if recommended_stocks_from_llm:
+            print(f"[TRADING CYCLE] ✅ Using LLM recommended stocks from Market Analyst: {len(recommended_stocks_from_llm)} stocks")
+            print(f"[TRADING CYCLE]   Recommended stocks: {recommended_stocks_from_llm[:10]}...")
+            # 更新 enriched_market 中的推荐股票
+            enriched_market["recommended_stocks"] = recommended_stocks_from_llm
+        else:
+            print(f"[TRADING CYCLE] ⚠️  Market Analyst LLM did not provide recommended_stocks, using fallback")
+    else:
+        print(f"[TRADING CYCLE] ⚠️  Market Analyst report not found in analyst_reports, using fallback")
 
     # 將對話寫入 discussion_actions.jsonl（供前端顯示）
     # CRITICAL FIX: 将 convo_file 和 trade_date_str 定义移到 try 块外，确保 RiskAnalyst 和 TraderAgent 写入可以访问

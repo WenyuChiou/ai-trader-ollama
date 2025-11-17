@@ -105,8 +105,18 @@ user: |
     ],
   
   **IMPORTANT**: The "tool_calls" array MUST contain at least 2 tool calls. Do not leave it empty.
-    "recommendations": ["<action 1>", "<action 2>"]
+    "recommendations": ["<action 1>", "<action 2>"],
+    "recommended_stocks": ["<symbol1>", "<symbol2>", "<symbol3>", ...]  # CRITICAL: List of stock symbols you recommend for trading. Can be empty if no good opportunities. Use your judgment based on market analysis, sector rotation, technical indicators, and fundamental data. Do NOT limit the number - recommend as many as you find attractive. Include both long positions (regular stocks) and short positions (inverse ETFs like SQQQ, SPXU) if market conditions warrant.
   }
+  
+  **CRITICAL: Stock Recommendations:**
+  - The "recommended_stocks" field is MANDATORY - you must provide a list of stock symbols
+  - Recommend stocks based on your comprehensive analysis (market trends, sector rotation, technical indicators, fundamentals, sentiment)
+  - Do NOT use hard rules like "vix_risk <= 7.0" or "must be uptrend" - use your judgment
+  - You can recommend ANY number of stocks (0 to many) based on your analysis
+  - Include inverse ETFs (SQQQ, SPXU, SH, etc.) if you identify bearish opportunities
+  - Include leveraged ETFs (TQQQ, SPXL, UPRO) if you identify strong bullish trends
+  - Consider the full universe of stocks available in market_view - analyze all opportunities, not just a few
   
   **Trading Strategy - Long and Short Opportunities:**
   Based on your market analysis, you can recommend both LONG (buy) and SHORT (sell) positions. You have access to the following ETF tools - use them according to your analysis and judgment:

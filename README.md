@@ -32,6 +32,7 @@
 - [Deployment](#-deployment)
 - [Troubleshooting](#-troubleshooting)
 - [Documentation](#-documentation)
+- [Testing](#-testing)
 - [Contributing](#-contributing)
 
 ---
@@ -2322,32 +2323,69 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 
 ## 📖 Documentation
 
-### Detailed Documentation Files
+### Core Documentation
+
+- **[Quick Start Guide](docs/QUICK_START.md)** - Installation and first run
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
+- **[API Reference](docs/API_REFERENCE.md)** - All API endpoints and usage
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Local and cloud deployment
+- **[Architecture Documentation](docs/ARCHITECTURE.md)** - System architecture overview
+- **[Testing Guide](docs/TESTING.md)** - Running and writing tests
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
+### Additional Documentation
 
 | File | Description |
 |------|-------------|
 | `docs/AGENT_SYSTEM.md` | Complete agent architecture |
-| `docs/API_REFERENCE.md` | Full API endpoint documentation |
 | `docs/TOOLS.md` | Detailed documentation for all 23 tools |
-| `docs/ARCHITECTURE.md` | System design and data flow |
-| `docs/USER_MANUAL_RAILWAY_UPDATE.md` | Daily upload guide |
-
-### Recent Fixes & Improvements
-
-| File | Description |
-|------|-------------|
-| `docs/FRONTEND_POSITIONS_FIX.md` | Frontend positions display fix (undefined/NaN issue) |
-| `docs/PORTFOLIO_PNL_FIX.md` | Portfolio P&L calculation and net value fixes |
-| `docs/FRONTEND_CONSOLE_ERRORS_FIXED.md` | API endpoint error fixes (405, 500 errors) |
-| `docs/COMPLETE_FIX_SUMMARY.md` | Comprehensive summary of all recent fixes |
-| `docs/API_IMPLEMENTATION_COMPLETE.md` | API endpoint implementation status |
-| `docs/TOOL_RESULTS_DISPLAY_FIX.md` | Tool results display fix and Discussion Rounds Panel implementation |
-| `docs/DATA_STORAGE_GUIDE.md` | Complete data storage location and initialization guide |
-| `docs/LONG_TERM_RUNNING_GUIDE.md` | Guide for running the system continuously for weeks/months |
-| `docs/SYSTEM_PIPELINE_CHECK.md` | Complete system pipeline integrity check report |
-| `docs/COMPLETE_PIPELINE_DIAGRAM.md` | Complete system pipeline flow diagram |
-| `docs/PIPELINE_SUMMARY.md` | Complete system pipeline summary and verification |
+| `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
+| `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
 | `docs/DAILY_UPLOAD_SETUP.md` | Daily upload to Railway and GitHub Pages setup guide |
+
+### Testing
+
+**Test Suite Location**: All test files are located in the `tests/` directory (not `test/`).
+
+**Test Structure**:
+```
+tests/
+├── unit/                    # Unit tests for individual components
+│   ├── test_tool_coordinator.py
+│   ├── test_shared_context.py
+│   └── test_budget_allocator.py
+├── integration/             # Integration tests for system components
+│   ├── test_agent_architecture.py
+│   ├── test_portfolio.py
+│   ├── test_memory.py
+│   └── test_api.py
+├── e2e/                     # End-to-end tests
+│   └── test_frontend.py
+├── conftest.py              # Pytest configuration and fixtures
+├── pytest.ini               # Pytest settings
+└── README.md                # Test documentation
+```
+
+**Running Tests**:
+```powershell
+# Run all tests
+pytest tests/ -v
+
+# Run specific test category
+pytest tests/unit/ -v          # Unit tests only
+pytest tests/integration/ -v   # Integration tests only
+pytest tests/e2e/ -v           # E2E tests only
+
+# Run with coverage (if pytest-cov installed)
+pytest tests/ --cov=backend/src --cov-report=html
+```
+
+**Test Status**: ✅ **48/48 tests passing** (100% pass rate)
+- Unit tests: 18/18 ✅
+- Integration tests: 24/24 ✅
+- E2E tests: 4/4 ✅
+
+**Note**: The old `test/` directory has been removed. All tests are now in `tests/` directory with proper structure and organization.
 
 ---
 

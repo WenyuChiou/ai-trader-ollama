@@ -10,6 +10,9 @@ from src.agents.factory import AgentFactory
 from src.agents.base import BaseAgent
 from src.agents.toolbox import ToolBox
 
+# Maximum number of discussion history entries to keep
+MAX_DISCUSSION_HISTORY_ENTRIES = 20  # 最多保留20条记录（约5轮完整讨论）
+
 
 def run_multi_analyst_discussion(
     market_view: Dict[str, Any],
@@ -158,7 +161,6 @@ def run_multi_analyst_discussion(
     
     # 对话历史记录（用于agents互相影响）
     # 限制历史长度，避免内存累积：只保留最近 N 轮讨论（每轮4个analyst = 4条记录）
-    MAX_DISCUSSION_HISTORY_ENTRIES = 20  # 最多保留20条记录（约5轮完整讨论）
     discussion_history = []
     
     print("\n" + "="*80)

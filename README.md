@@ -59,36 +59,92 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 ### Prerequisites
 
 **1. Python Environment**
-```bash
-# Python 3.10 or higher required
-python --version
-
-# Install dependencies
-cd backend
-pip install -r requirements.txt
-```
+- Python 3.10 or higher required
+- Download from: https://www.python.org/downloads/
 
 **2. Ollama Setup**
-```bash
-# Install Ollama from https://ollama.ai/
-
-# Start Ollama service (keep running in terminal 1)
-ollama serve
-
-# Pull LLM model (in terminal 2)
-ollama pull deepseek-r1
-```
+- Install Ollama from: https://ollama.ai/
+- Pull LLM model: `ollama pull deepseek-r1`
 
 **3. API Keys (Optional but Recommended)**
-```bash
-# FRED API for economic data (free: https://fred.stlouisfed.org/docs/api/api_key.html)
-export FRED_API_KEY=your_api_key_here
+- FRED API for economic data (free): https://fred.stlouisfed.org/docs/api/api_key.html
+- Set environment variable: `$env:FRED_API_KEY="your_api_key_here"`
 
-# For Windows PowerShell:
-$env:FRED_API_KEY="your_api_key_here"
+---
+
+### 🎯 Quick Setup (3 Steps)
+
+**Step 1: Install Dependencies**
+```powershell
+# Run from project root directory
+.\scripts\setup_step1_install_dependencies.ps1
+```
+This will:
+- ✅ Check Python installation
+- ✅ Check Ollama installation and pull deepseek-r1 model
+- ✅ Create virtual environment
+- ✅ Install all Python dependencies
+
+**Step 2: Configure System**
+```powershell
+.\scripts\setup_step2_configure.ps1
+```
+This will:
+- ✅ Validate configuration files (config.json, agents.yaml)
+- ✅ Initialize data directory
+- ✅ Initialize portfolio state
+- ✅ Check environment variables
+
+**Step 3: Start Services**
+```powershell
+.\scripts\setup_step3_start_services.ps1
+```
+This will:
+- ✅ Check Ollama service
+- ✅ Check port availability
+- ✅ Start API server (choose from 3 options)
+
+**After Setup:**
+- 🌐 **API Server**: http://localhost:8000
+- 📊 **API Docs**: http://localhost:8000/docs
+- 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
+
+**Or run all steps at once:**
+```powershell
+.\scripts\setup_all_steps.ps1
 ```
 
-### Installation
+---
+
+### 🎬 First Run
+
+After completing the setup:
+
+1. **Start Ollama** (if not already running):
+   ```powershell
+   ollama serve
+   ```
+
+2. **Open Frontend**:
+   - Open `frontend/monitor.html` in your browser
+   - Or access via: http://localhost:3000/monitor.html
+
+3. **Execute First Trade Cycle**:
+   - Click "▶️ Start Trading" or "▶️ Run Analysis" button
+   - Wait for agents to analyze (30-60 seconds)
+   - View results in the dashboard
+
+4. **View Results**:
+   - **Portfolio**: Current positions and P&L
+   - **Conversations**: Agent discussions and analysis
+   - **Trades**: Trading history
+   - **Charts**: Equity curve and distribution
+
+---
+
+### 📋 Manual Installation (Alternative)
+
+If you prefer manual setup:
 
 **1. Clone Repository**
 ```bash
@@ -96,59 +152,60 @@ git clone https://github.com/WenyuChiou/ai-trader-ollama.git
 cd ai-trader-ollama
 ```
 
-**2. Initialize System**
-```bash
-# From project root directory
-cd "path\to\ai-trader-ollama"
+**2. Install Dependencies**
+```powershell
+# Create virtual environment
+python -m venv .venv
 
-# Initialize portfolio and data structures
+# Activate virtual environment
+.venv\Scripts\Activate.ps1
+
+# Install dependencies
+cd backend
+pip install -r requirements.txt
+cd ..
+```
+
+**3. Initialize System**
+```powershell
 python scripts/init_data.py
 ```
 
-**3. Start Backend API**
+**4. Start Backend API**
 
+**Option A: Task Scheduler (Recommended for long-term running)**
 ```powershell
-# Make sure you're in the project ROOT directory (not backend/)
-cd "path\to\ai-trader-ollama"
-
-# Method 1: Background Service (Recommended - runs even after closing CMD)
-# Option A: Windows Service (requires NSSM)
-#   Right-click: scripts\start_api_service_admin.bat → "Run as administrator"
-
-# Option B: Task Scheduler (no additional software needed) ⭐ EASIEST
-#   Right-click: scripts\start_api_task_admin.bat → "Run as administrator"
-
-# Method 2: Stable version (with auto-restart, but requires window open)
-.\scripts\start_api_stable_bypass.ps1
-
-# Method 3: Fast restart (Daily use, quick restart)
-powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
-
-# Method 4: Manual start (Development/Testing)
-python -m uvicorn backend.src.api.server:app --host 0.0.0.0 --port 8000 --reload
+# Right-click and run as administrator:
+scripts\start_api_task_admin.bat
 ```
 
-**⚠️ Important**: Methods 2-4 require keeping the terminal window open. Use Method 1 for background operation.
-
-**4. Access Dashboard**
-
-**Local Access**:
-```
-http://localhost:3000/monitor.html
+**Option B: Windows Service (Requires NSSM)**
+```powershell
+# Right-click and run as administrator:
+scripts\start_api_service_admin.bat
 ```
 
-**Public Access** (after deployment):
+**Option C: Development Mode (Requires window open)**
+```powershell
+cd backend
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
-https://your-username.github.io/ai-trader-ollama/monitor.html
-```
+
+**5. Access Dashboard**
+- Open `frontend/monitor.html` in your browser
+- Or access via: http://localhost:3000/monitor.html (if using a local server)
 
 ---
 
 ## ⚙️ Configuration
 
-### Main Config File: `backend/config/config.json`
+> **📝 Configuration Files**: All configuration is done through JSON/YAML files. No code changes required!
+
+### 📄 Main Config File: `backend/config/config.json`
 
 The main configuration file controls trading parameters, universe selection, and LLM settings.
+
+#### 📋 Complete Configuration Reference
 
 ```json
 {
@@ -157,9 +214,9 @@ The main configuration file controls trading parameters, universe selection, and
   "universe": ["NVDA", "MSFT", "AAPL", ...],
   "crypto": ["BTC-USD", "ETH-USD", ...],
   "initial_cash": 10000,
-  "position_limit_per_stock": 0.15,
-  "position_limit_total": 0.85,
-  "position_limit_min_per_stock": 0.03,
+  "_position_limit_per_stock": 0.15,
+  "_position_limit_total": 0.85,
+  "_position_limit_min_per_stock": 0.03,
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
   "discussion_tool_budget": 15,
@@ -170,33 +227,73 @@ The main configuration file controls trading parameters, universe selection, and
     "ollama_host": "http://localhost:11434",
     "auto_pull": true,
     "timeout_seconds": 8.0
-  }
+  },
+  "preferred_domains": [
+    "www.cboe.com",
+    "www.wsj.com",
+    "www.reuters.com"
+  ]
 }
 ```
 
-#### Key Parameters
+#### 🔧 Configuration Parameters
+
+| Parameter | Description | Options | Default Value |
+|-----------|-------------|---------|---------------|
+| **Trading Universe** |
+| `universe_source` | Universe source type | `"custom"`, `"nasdaq100"` | `"custom"` |
+| `universe_limit` | Maximum symbols to analyze | Positive integer | `100` |
+| `universe` | List of stock symbols | Array of strings | NASDAQ-100 + ETFs |
+| `crypto` | Cryptocurrency symbols | Array of strings | `["BTC-USD", "ETH-USD", ...]` |
+| **Capital & Position Limits** |
+| `initial_cash` | Starting capital | Float | `10000` (USD) |
+| `_position_limit_per_stock` | Max % per stock | `0.0-1.0` or commented out | **Commented out** (agent has freedom) |
+| `_position_limit_total` | Max % total equity | `0.0-1.0` or commented out | **Commented out** (agent has freedom) |
+| `_position_limit_min_per_stock` | Min % per stock | `0.0-1.0` or commented out | **Commented out** (agent has freedom) |
+| **Trading Behavior** |
+| `discussion_rounds` | Number of discussion rounds | `1-5` | `3` |
+| `discussion_auto_tools` | Enable automatic tool calls | `true`, `false` | `true` |
+| `discussion_tool_budget` | Max tool calls per cycle | Positive integer | `15` |
+| `max_orders_per_cycle` | Max orders per cycle | Positive integer | `20` |
+| `trade_cooldown_hours` | Hours before trading same symbol | Float | `24.0` |
+| **LLM Configuration** |
+| `llm.default_model` | LLM model name | `"deepseek-r1"`, `"deepseek-r1:7b"`, `"deepseek-r1:32b"`, etc. | `"deepseek-r1"` |
+| `llm.ollama_host` | Ollama server address | URL string | `"http://localhost:11434"` |
+| `llm.auto_pull` | Auto-pull model if not found | `true`, `false` | `true` |
+| `llm.timeout_seconds` | Request timeout | Float (seconds) | `8.0` |
+| **Data Sources** |
+| `preferred_domains` | Preferred news/data domains | Array of URLs | Financial news sites |
+
+#### 📊 Parameter Details
 
 **Trading Universe:**
-- `universe`: List of stock symbols to trade (includes inverse/leveraged ETFs like SQQQ, TQQQ)
-- `crypto`: List of cryptocurrency symbols (optional)
+- `universe`: List of stock symbols to trade (includes inverse/leveraged ETFs like SQQQ, TQQQ, TQQQ, SPXL, UPRO)
+- `crypto`: List of cryptocurrency symbols (optional, for crypto trading)
 - `universe_limit`: Maximum number of symbols to analyze (default: 100)
 
-**Position Limits:**
-- `position_limit_per_stock`: Max 15% per stock (guideline for agent decision-making)
-- `position_limit_total`: Max 85% total equity (guideline, leaves 15% cash reserve)
-- `position_limit_min_per_stock`: Min 3% per stock (for diversification)
+**Position Limits (Optional - Agent Freedom by Default):**
+- **Current System**: Position limits are **OPTIONAL** and **commented out by default**
+- If limits are commented out (with `_` prefix) or removed, agent has **complete freedom** to decide position sizes
+- Agent decides based on:
+  - VIX risk score (high VIX → smaller positions, low VIX → larger positions)
+  - Number of recommended stocks (many stocks → smaller positions, few stocks → larger positions)
+  - Signal strength and diversification needs
+- If you want to set limits, remove the `_` prefix and set values:
+  - `position_limit_per_stock`: Max % per stock (e.g., 0.15 = 15%)
+  - `position_limit_total`: Max % total equity (e.g., 0.85 = 85%, leaves 15% cash)
+  - `position_limit_min_per_stock`: Min % per stock (e.g., 0.03 = 3%)
 
 **Trading Behavior:**
 - `initial_cash`: Starting capital ($10,000 default)
-- `discussion_rounds`: Number of discussion rounds (3 default)
-- `discussion_tool_budget`: Max tool calls per cycle (15 default)
-- `max_orders_per_cycle`: Maximum orders per trading cycle (20 default)
+- `discussion_rounds`: Number of discussion rounds (3 default, each round includes all 4 analysts)
+- `discussion_tool_budget`: Max tool calls per cycle (15 default, shared across all analysts)
+- `max_orders_per_cycle`: Maximum orders per trading cycle (20 default, guideline for LLM)
 - `trade_cooldown_hours`: Hours to wait before trading same symbol again (24.0 default)
 
 **LLM Configuration:**
 - `llm.default_model`: LLM model to use (`deepseek-r1` default)
   - Available models: `deepseek-r1`, `deepseek-r1:7b`, `deepseek-r1:32b`, etc.
-  - To use a different model, change this value and ensure it's pulled in Ollama
+  - To use a different model, change this value and ensure it's pulled in Ollama: `ollama pull <model-name>`
 - `llm.ollama_host`: Ollama server address (default: `http://localhost:11434`)
 - `llm.auto_pull`: Automatically pull model if not found (true default)
 - `llm.timeout_seconds`: Request timeout (8.0 seconds default)
@@ -269,7 +366,7 @@ technical_analyst:
 
 ## 💾 Data Storage & Records
 
-### Data Directory Structure
+### 📁 Data Directory Structure
 
 **All agent-generated data, conversations, positions, and trading records are stored in `data/logs/` directory** (relative to project root).
 
@@ -277,6 +374,43 @@ technical_analyst:
 - **Project Root**: The directory containing `README.md` and `backend/` folder
 - **Data Directory**: `{project_root}/data/logs/`
 - **Example**: If project is at `C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\`, then data is stored at `C:\Users\wenyu\Desktop\investment\LLM AI trader\ai-trader-ollama\data\logs\`
+
+**Quick Access:**
+```powershell
+# View portfolio state
+Get-Content data\logs\portfolio_state.json | ConvertFrom-Json | ConvertTo-Json -Depth 10
+
+# View recent conversations (last 10)
+Get-Content data\logs\discussion_actions.jsonl -Tail 10
+
+# View equity history
+Get-Content data\logs\equity_history.jsonl
+
+# View filled orders
+Get-Content data\logs\filled_orders.jsonl
+```
+
+**Complete Directory Structure:**
+```
+data/logs/
+├── portfolio_state.json          # 持仓记录 (Current portfolio state: cash, positions, costs)
+├── equity_history.jsonl          # 净值历史 (Net value history, recorded every 30 minutes)
+├── discussion_actions.jsonl      # 聊天记录 (All agent conversations, analyses, tool calls)
+├── trades.jsonl                  # 交易记录 (All executed trades)
+├── filled_orders.jsonl            # 已成交订单 (Completed orders with realized P&L)
+├── pending_orders.jsonl          # 待处理订单 (Pending orders waiting for execution)
+├── portfolio_state_backup_*.json  # 备份文件 (Auto-backup files from initialization)
+├── discussion_actions_backup_*.jsonl  # 备份文件 (Backup files)
+└── memory/
+    ├── daily/                    # 每日快照 (Daily memory snapshots)
+    │   └── YYYY-MM-DD.json
+    ├── weekly/                   # 每周汇总 (Weekly summaries)
+    │   └── YYYY-W##.jsonl
+    ├── monthly/                  # 每月汇总 (Monthly summaries)
+    │   └── YYYY-MM.jsonl
+    └── index/                    # 内存索引 (Memory indices)
+        └── daily_index.json
+```
 
 After each agent execution cycle, the following data is automatically saved:
 
@@ -305,6 +439,42 @@ data/logs/
 - **Equity History**: Stored in `equity_history.jsonl` (portfolio value over time)
 
 All files are automatically created and updated by the system. No manual file management is required.
+
+### System Initialization
+
+**API Endpoint**: `POST /api/system/init?force=true`
+
+**Function**: Reset the system to initial state by deleting all trading data files.
+
+**What Gets Deleted**:
+- `portfolio_state.json` (automatically backed up before deletion)
+- `pending_orders.jsonl`
+- `filled_orders.jsonl`
+- `equity_history.jsonl`
+- `discussion_actions.jsonl`
+
+**What Gets Preserved**:
+- `memory/` directory (agent learning data is preserved)
+- Backup files (`portfolio_state_backup_*.json`, etc.)
+
+**Usage**:
+```bash
+# Via API
+curl -X POST "http://localhost:8000/api/system/init?force=true"
+
+# Or from frontend
+# Click "Initialize System" button (requires force=true confirmation)
+```
+
+**Safety Features**:
+- Requires `force=true` parameter to prevent accidental deletion
+- Automatically creates backup of `portfolio_state.json` before deletion
+- Backup filename format: `portfolio_state_backup_YYYYMMDD_HHMMSS.json`
+
+**Initialization Code Location**:
+- **File**: `backend/src/api/server.py`
+- **Function**: `system_init()` (lines 1055-1110)
+- **Data Directory**: Automatically determined from project root → `data/logs/`
 
 ### Portfolio State (`portfolio_state.json`)
 
@@ -453,8 +623,47 @@ All files are automatically created and updated by the system. No manual file ma
   "round": 0,
   "content": "Market analysis...",
   "type": "discussion",
+  "summary": "Market shows mixed sentiment...",
+  "stance": "NEUTRAL",
   "tools_used": ["get_market_indices", "get_sector_rotation"]
 }
+```
+
+**Key Fields**:
+- `agent`: Agent name (MarketAnalyst, TechnicalAnalyst, FundamentalAnalyst, SentimentAnalyst, DiscussionCoordinator, RiskAnalyst, TraderAgent)
+- `round`: Discussion round number (1, 2, 3, or 0 for non-discussion entries)
+- `summary`: Agent's analysis summary (extracted from content if not present)
+- `stance`: Market stance (BULLISH, BEARISH, NEUTRAL)
+- `tools_used`: List of tools called by the agent
+- `type`: Entry type (discussion, tool_call, decision, etc.)
+
+---
+
+### Quick Data Access Commands
+
+**View Portfolio State** (Windows PowerShell):
+```powershell
+Get-Content data\logs\portfolio_state.json | ConvertFrom-Json | ConvertTo-Json -Depth 10
+```
+
+**View Recent Conversations** (Last 10 entries):
+```powershell
+Get-Content data\logs\discussion_actions.jsonl -Tail 10
+```
+
+**View Equity History**:
+```powershell
+Get-Content data\logs\equity_history.jsonl
+```
+
+**View Filled Orders**:
+```powershell
+Get-Content data\logs\filled_orders.jsonl
+```
+
+**View Daily Memory Snapshot**:
+```powershell
+Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertTo-Json -Depth 10
 ```
 
 ---
@@ -1695,7 +1904,7 @@ Daily Summary:
 - `GET /api/portfolio/real-time`: Real-time portfolio with live prices
 - `GET /api/portfolio/equity-history`: Historical net value curve
 - `POST /api/trading/execute-trade`: Execute full trading cycle
-- `POST /api/system/init`: Reset portfolio to initial state
+- `POST /api/system/init?force=true`: Reset portfolio to initial state (deletes all trading data, preserves memory)
 
 ### Market Data
 - `GET /api/market/status`: Check if market is open
@@ -1962,6 +2171,47 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 
 **Recommendation**: Use **Task Scheduler** (Option 2) if you don't want to install NSSM. Use **Windows Service** (Option 1) if you need more control and automatic startup on system boot.
 
+### Long-Term Running (Weeks/Months)
+
+**For running the system continuously for weeks or months**, see the detailed guide:
+
+📖 **Complete Guide**: [`docs/LONG_TERM_RUNNING_GUIDE.md`](docs/LONG_TERM_RUNNING_GUIDE.md)
+
+**Quick Setup** (Recommended for long-term running):
+
+1. **Use Task Scheduler** (easiest, no additional software):
+   ```powershell
+   # Right-click and run as administrator:
+   scripts\start_api_task_admin.bat
+   ```
+
+2. **Features**:
+   - ✅ Auto-start on system boot
+   - ✅ Auto-restart on crash
+   - ✅ Background running (close CMD and keep running)
+   - ✅ Logging to `logs\api_task.log`
+
+3. **Management**:
+   ```powershell
+   # Start
+   Start-ScheduledTask -TaskName AITraderAPI
+   
+   # Stop
+   Stop-ScheduledTask -TaskName AITraderAPI
+   
+   # Restart
+   Stop-ScheduledTask -TaskName AITraderAPI
+   Start-ScheduledTask -TaskName AITraderAPI
+   
+   # Check status
+   Get-ScheduledTaskInfo -TaskName AITraderAPI
+   
+   # View logs
+   Get-Content logs\api_task.log -Tail 50
+   ```
+
+**This setup will keep the API running continuously, even after system restarts, for weeks or months.**
+
 ---
 
 ## 📖 Documentation
@@ -1986,6 +2236,50 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 | `docs/COMPLETE_FIX_SUMMARY.md` | Comprehensive summary of all recent fixes |
 | `docs/API_IMPLEMENTATION_COMPLETE.md` | API endpoint implementation status |
 | `docs/TOOL_RESULTS_DISPLAY_FIX.md` | Tool results display fix and Discussion Rounds Panel implementation |
+| `docs/DATA_STORAGE_GUIDE.md` | Complete data storage location and initialization guide |
+| `docs/LONG_TERM_RUNNING_GUIDE.md` | Guide for running the system continuously for weeks/months |
+| `docs/SYSTEM_PIPELINE_CHECK.md` | Complete system pipeline integrity check report |
+| `docs/COMPLETE_PIPELINE_DIAGRAM.md` | Complete system pipeline flow diagram |
+| `docs/PIPELINE_SUMMARY.md` | Complete system pipeline summary and verification |
+
+---
+
+## 🎯 Quick Reference
+
+### Setup Scripts
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `setup_step1_install_dependencies.ps1` | Install Python dependencies | `.\scripts\setup_step1_install_dependencies.ps1` |
+| `setup_step2_configure.ps1` | Configure system and initialize data | `.\scripts\setup_step2_configure.ps1` |
+| `setup_step3_start_services.ps1` | Start API server | `.\scripts\setup_step3_start_services.ps1` |
+| `setup_all_steps.ps1` | Run all setup steps at once | `.\scripts\setup_all_steps.ps1` |
+
+### Management Scripts
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `restart_api_fast.ps1` | Quick restart API server | `.\scripts\restart_api_fast.ps1` |
+| `start_api_task_admin.bat` | Setup Task Scheduler (long-term) | Right-click → Run as administrator |
+| `start_api_service_admin.bat` | Setup Windows Service | Right-click → Run as administrator |
+| `stop_all_services.ps1` | Stop all running services | `.\scripts\stop_all_services.ps1` |
+
+### Configuration Files
+
+| File | Purpose | Location |
+|------|---------|----------|
+| `config.json` | Main trading configuration | `backend/config/config.json` |
+| `agents.yaml` | Agent-specific settings | `backend/config/agents.yaml` |
+| Prompt files | Agent prompts | `prompts/*.yml` |
+
+### Data Files
+
+| File | Purpose | Location |
+|------|---------|----------|
+| `portfolio_state.json` | Current portfolio state | `data/logs/portfolio_state.json` |
+| `discussion_actions.jsonl` | Agent conversations | `data/logs/discussion_actions.jsonl` |
+| `equity_history.jsonl` | Net value history | `data/logs/equity_history.jsonl` |
+| `filled_orders.jsonl` | Completed orders | `data/logs/filled_orders.jsonl` |
 
 ---
 

@@ -207,7 +207,8 @@ async def execute_trade_direct():
         min_tools = config["min_tools"]
         
         # 检查市场状态
-        is_market_open_now = is_market_open(datetime.now())
+        # CRITICAL FIX: 传入 None 让函数直接获取美东时间，避免时区转换错误
+        is_market_open_now = is_market_open(None)
         
         # 执行交易循环
         result = execute_daily_trade(

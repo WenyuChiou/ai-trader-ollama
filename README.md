@@ -548,7 +548,34 @@ All files are automatically created and updated by the system. No manual file ma
 
 ## 📈 Trading Workflow
 
-**Trading Frequency**: Automatic trading runs every **30 minutes** during market hours (9:30 AM - 4:00 PM EST).
+### Trading Frequency & Schedule
+
+**Trading Cycle Frequency**: 
+- **Market Hours (9:30 AM - 4:00 PM ET)**: Automatic trading runs every **30 minutes**
+- **Market Closed**: Analysis runs continuously (every 30 minutes) but **no orders generated**
+- **Trading Days Only**: System respects market holidays and weekends
+
+**Schedule Example**:
+```
+Market Open Day (e.g., Monday):
+├── 9:30 AM ET  → First trading cycle (if market opens on time)
+├── 10:00 AM ET → Trading cycle
+├── 10:30 AM ET → Trading cycle
+├── 11:00 AM ET → Trading cycle
+├── ... (every 30 minutes)
+├── 3:30 PM ET  → Trading cycle
+└── 4:00 PM ET  → Last trading cycle (market closes)
+
+Market Closed (e.g., After 4:00 PM or Weekend):
+├── Analysis runs every 30 minutes
+├── No trading orders generated
+└── Results saved for next trading session
+```
+
+**Agent Conversation Frequency**:
+- **During Market Hours**: Full agent discussions every 30 minutes (4 analysts + coordinator + risk + trader)
+- **Market Closed**: Agents still analyze but trader generates no orders
+- **Discussion Rounds**: 3 rounds of discussion per cycle (all analysts participate in each round)
 
 ### Complete Trading Cycle Flow
 
@@ -975,14 +1002,469 @@ Trader Agent Decision:
 
 ---
 
+### Information Flow & Data Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    INFORMATION FLOW DIAGRAM                     │
+└─────────────────────────────────────────────────────────────────┘
+
+External Data Sources:
+├── Market Data (yfinance)
+│   ├── Real-time prices (118+ NASDAQ-100 stocks)
+│   ├── OHLCV data
+│   ├── Technical indicators (RSI, MACD, etc.)
+│   └── Market indices (S&P 500, NASDAQ, Dow)
+│
+├── Economic Data (FRED API)
+│   ├── Economic indicators
+│   ├── Labor market data
+│   └── Federal Reserve data
+│
+├── News & Sentiment
+│   ├── News APIs (news_scan, plan_and_scan_news)
+│   ├── Jin10 financial news
+│   ├── Fear & Greed Index (CNN)
+│   └── VIX term structure (CBOE)
+│
+└── Fundamental Data
+    ├── Company fundamentals (yfinance)
+    ├── Earnings history
+    └── Financial statements
+
+                    ▼
+        ┌───────────────────────┐
+        │  Market Data Layer    │
+        │  (fetch_market_batch) │
+        │                       │
+        │  • Aggregates all     │
+        │    external data      │
+        │  • Calculates         │
+        │    indicators         │
+        │  • Formats for agents │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │  Agent Analysis Layer │
+        │                       │
+        │  Round 1:             │
+        │  ├── Market Analyst   │
+        │  ├── Technical Analyst│
+        │  ├── Fundamental     │
+        │  └── Sentiment        │
+        │                       │
+        │  Round 2:             │
+        │  ├── (Same agents)    │
+        │  └── Tool calls       │
+        │                       │
+        │  Round 3:             │
+        │  ├── (Same agents)    │
+        │  └── Final synthesis  │
+        │                       │
+        │  Discussion Coordinator│
+        │  └── Consensus stance │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │  Risk Assessment Layer │
+        │                       │
+        │  • Position analysis   │
+        │  • VIX risk scoring    │
+        │  • Position limits     │
+        │  • Recommendations     │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │  Trading Decision     │
+        │  (Trader Agent)       │
+        │                       │
+        │  • Synthesizes all    │
+        │    inputs             │
+        │  • Generates orders   │
+        │  • Applies hard rules │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │  Execution Layer      │
+        │                       │
+        │  • Market orders      │
+        │  • Immediate fill     │
+        │  • Portfolio update   │
+        └───────────────────────┘
+                    ▼
+        ┌───────────────────────┐
+        │  Data Storage         │
+        │                       │
+        │  • portfolio_state.json│
+        │  • discussion_actions.jsonl│
+        │  • trades.jsonl       │
+        │  • equity_history.jsonl│
+        │  • memory/daily/      │
+        └───────────────────────┘
+```
+
+---
+
+### Market Open vs. Market Closed: Complete Analysis Flow
+
+#### Market Open Flow (9:30 AM - 4:00 PM ET)
+
+**Timing**: Every 30 minutes during trading hours
+
+**Complete Flow**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│         MARKET OPEN: FULL TRADING CYCLE (30 min)           │
+└─────────────────────────────────────────────────────────────┘
+
+T+0:00  → Data Collection (5-10 sec)
+         ├── Fetch market data (118+ stocks)
+         ├── Calculate indicators
+         └── Get economic/sentiment data
+              │
+              ▼
+T+0:10  → Multi-Agent Analysis (30-60 sec)
+         ├── Round 1: All 4 analysts analyze independently
+         │   ├── Market Analyst: Uses get_market_indices, get_sector_rotation
+         │   ├── Technical Analyst: Uses get_advanced_indicators, get_support_resistance
+         │   ├── Fundamental Analyst: Uses get_company_fundamentals, get_earnings_history
+         │   └── Sentiment Analyst: Uses fear_greed, vix_term, news_scan
+         │
+         ├── Round 2: Analysts refine analysis based on Round 1
+         │   └── Additional tool calls if needed
+         │
+         ├── Round 3: Final analysis and synthesis
+         │   └── Discussion Coordinator synthesizes all views
+         │
+         └── Output: Consensus stance (BULLISH/BEARISH/NEUTRAL)
+              │
+              ▼
+T+1:00  → Risk Assessment (10-20 sec)
+         ├── Analyze current positions
+         ├── Calculate VIX risk score (0-10)
+         ├── Check position limits
+         ├── Generate position recommendations
+         └── Output: Risk report with position control recommendations
+              │
+              ▼
+T+1:20  → Trader Agent Decision (5-10 sec)
+         ├── LLM processes all inputs:
+         │   ├── Analyst consensus (stance, recommended stocks)
+         │   ├── Risk report (risk level, VIX score, recommendations)
+         │   ├── Current positions (symbols, quantities, P&L)
+         │   └── Market data (prices, status)
+         │
+         ├── Hard rules check:
+         │   ├── ✓ Market open? (YES - can trade)
+         │   ├── ✓ Cash available?
+         │   ├── ✓ Position limits?
+         │   └── ✓ Position count?
+         │
+         └── Output: buy_orders[], sell_orders[], rationale
+              │
+              ▼
+T+1:30  → Order Execution (5-10 sec)
+         ├── For each BUY order:
+         │   ├── Check cash availability
+         │   ├── Get real-time price
+         │   ├── Execute market order (immediate fill)
+         │   └── Update portfolio
+         │
+         ├── For each SELL order:
+         │   ├── Check position exists
+         │   ├── Get real-time price
+         │   ├── Execute market order (immediate fill)
+         │   └── Update portfolio
+         │
+         └── All orders: FILLED immediately (no pending)
+              │
+              ▼
+T+1:40  → Portfolio Update (2-5 sec)
+         ├── Update portfolio_state.json
+         ├── Record to equity_history.jsonl (every 30 min)
+         ├── Save to discussion_actions.jsonl
+         ├── Save to trades.jsonl
+         └── Save memory snapshot to memory/daily/YYYY-MM-DD.json
+
+Total Time: ~2 minutes per cycle
+Frequency: Every 30 minutes
+Daily Cycles: ~13 cycles (9:30 AM - 4:00 PM)
+```
+
+**Agent Conversation Pattern (Market Open)**:
+```
+Cycle Start (T+0:00)
+│
+├── Market Analyst: "Market analysis based on current data..."
+│   └── Tool calls: get_market_indices, get_sector_rotation
+│
+├── Technical Analyst: "Technical indicators show..."
+│   └── Tool calls: get_advanced_indicators, get_support_resistance
+│
+├── Fundamental Analyst: "Fundamental analysis reveals..."
+│   └── Tool calls: get_company_fundamentals, get_earnings_history
+│
+└── Sentiment Analyst: "Market sentiment indicates..."
+    └── Tool calls: fear_greed, vix_term, news_scan
+
+Round 2 (T+0:30)
+│
+├── All analysts refine based on Round 1 results
+└── Additional tool calls if needed
+
+Round 3 (T+1:00)
+│
+├── Discussion Coordinator: "Synthesizing all analyst views..."
+│   └── Output: Final consensus stance
+│
+├── Risk Analyst: "Risk assessment complete..."
+│   └── Output: Risk report with recommendations
+│
+└── Trader Agent: "Based on analysis, generating orders..."
+    └── Output: Trading orders with rationale
+```
+
+---
+
+#### Market Closed Flow (Before 9:30 AM or After 4:00 PM ET)
+
+**Timing**: Every 30 minutes (same frequency, but no trading)
+
+**Complete Flow**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│      MARKET CLOSED: ANALYSIS ONLY (30 min intervals)        │
+└─────────────────────────────────────────────────────────────┘
+
+T+0:00  → Data Collection (5-10 sec)
+         ├── Fetch last available market data
+         ├── Calculate indicators (using last close prices)
+         └── Get economic/sentiment data (still available)
+              │
+              ▼
+T+0:10  → Multi-Agent Analysis (30-60 sec)
+         ├── Round 1-3: Same as market open
+         ├── All 4 analysts analyze independently
+         ├── Discussion Coordinator synthesizes
+         └── Output: Consensus stance (for next session)
+              │
+              ▼
+T+1:00  → Risk Assessment (10-20 sec)
+         ├── Analyze current positions (using last close prices)
+         ├── Calculate VIX risk score
+         ├── Check position limits
+         └── Output: Risk report (for next session)
+              │
+              ▼
+T+1:20  → Trader Agent Analysis (5-10 sec)
+         ├── LLM processes all inputs (same as market open)
+         ├── Hard rules check:
+         │   └── ✗ Market open? (NO - cannot trade)
+         │
+         └── Output: Analysis summary only, NO ORDERS
+              │
+              ▼
+T+1:30  → Data Storage Only (2-5 sec)
+         ├── Save analysis to discussion_actions.jsonl
+         ├── Save memory snapshot
+         └── NO portfolio updates (no trades executed)
+
+Total Time: ~2 minutes per cycle
+Frequency: Every 30 minutes
+Purpose: Prepare analysis for next trading session
+```
+
+**Agent Conversation Pattern (Market Closed)**:
+```
+Cycle Start (T+0:00)
+│
+├── All analysts run analysis (same as market open)
+│   └── Tool calls still work (using last available data)
+│
+└── Discussion Coordinator: "Synthesizing views for next session..."
+
+Risk Analyst: "Current portfolio risk assessment..."
+
+Trader Agent: "Market is currently closed. Analysis completed:
+              - Market stance: [BULLISH/BEARISH/NEUTRAL]
+              - VIX risk: [score]/10
+              - Recommended actions: [for next session]
+              - No trading orders generated (market orders only 
+                execute during trading hours: 9:30 AM - 4:00 PM ET)"
+```
+
+**Key Differences (Market Closed)**:
+- ✓ All agents still run analysis
+- ✓ Tool calls still work (using last available data)
+- ✓ Analysis saved to memory
+- ✗ **NO trading orders generated** (hard rule)
+- ✗ Portfolio state unchanged
+- ✗ No equity history updates
+
+---
+
+### Trading Rules & Constraints (Complete List)
+
+#### 1. Market Status Rules (Hard Rules - Enforced)
+
+```
+IF market_status == CLOSED:
+    ├── NO buy_orders generated
+    ├── NO sell_orders generated
+    ├── Analysis still runs
+    └── Results saved for next session
+
+IF market_status == OPEN:
+    ├── Orders can be generated
+    ├── Orders execute immediately (market orders)
+    └── Portfolio updates in real-time
+```
+
+**Market Hours**:
+- **Open**: 9:30 AM ET
+- **Close**: 4:00 PM ET
+- **Trading Days**: Monday-Friday (excluding holidays)
+- **Holidays**: System respects NYSE/NASDAQ holidays
+
+#### 2. Position Limits (Hard Rules - Enforced)
+
+| Rule | Limit | Type | Enforcement |
+|------|-------|------|-------------|
+| **Per Stock Maximum** | 15% of portfolio | Hard | Trader Agent + Execution Layer |
+| **Total Position Maximum** | 80% of portfolio | Hard | Trader Agent + Execution Layer |
+| **Cash Reserve Minimum** | 20% of portfolio | Hard | Execution Layer |
+| **Minimum Position Size** | 3% of portfolio | Guideline | Trader Agent decision |
+| **Maximum Positions** | 10 different stocks | Hard | Execution Layer |
+
+**Position Limit Logic**:
+```
+For each BUY order:
+    IF current_position[symbol] + new_order_value > 15% of portfolio:
+        Reduce quantity to stay within 15% limit
+    
+    IF total_positions_value + new_order_value > 80% of portfolio:
+        Reduce quantity to stay within 80% limit
+    
+    IF available_cash < order_cost:
+        Reduce quantity OR skip order
+    
+    IF position_count >= 10 AND symbol not in current_positions:
+        Skip order (max positions reached)
+```
+
+#### 3. Cash Management Rules (Hard Rules - Enforced)
+
+```
+Available Cash Calculation:
+    available_cash = portfolio.cash - (portfolio_value * 0.20)
+    
+For each BUY order:
+    IF order_cost > available_cash:
+        ├── Calculate max_affordable_qty = floor(available_cash / price)
+        ├── IF max_affordable_qty > 0:
+        │   └── Reduce quantity to max_affordable_qty
+        └── ELSE:
+            └── Skip order (insufficient cash)
+```
+
+#### 4. Order Execution Rules (Hard Rules - Enforced)
+
+```
+Order Type: MARKET ORDERS ONLY
+    ├── No limit orders
+    ├── No stop orders
+    └── Immediate execution at current price
+
+Execution Guarantee:
+    ├── Market open: Orders execute immediately
+    ├── Market closed: NO orders generated
+    └── All orders: FILLED or REJECTED (no PENDING)
+
+Order Status:
+    ├── FILLED: Order executed successfully
+    ├── REJECTED: Order failed (cash insufficient, limits exceeded)
+    └── PENDING: NOT USED (all orders fill immediately)
+```
+
+#### 5. Risk-Based Position Sizing (Guidelines - LLM Decision)
+
+**VIX Risk Score → Position Size Guidelines**:
+
+| VIX Risk Score | Risk Level | Position Size Range | Trader Agent Behavior |
+|----------------|------------|---------------------|----------------------|
+| 0-3 | LOW | 10-15% per stock | More aggressive, larger positions |
+| 4-6 | MEDIUM | 8-12% per stock | Normal position sizing |
+| 7-10 | HIGH | 5-8% per stock | Conservative, smaller positions |
+
+**Note**: These are **guidelines** that Trader Agent (LLM) considers, not hard rules. The LLM can make nuanced decisions based on multiple factors.
+
+#### 6. Conversation & Analysis Rules
+
+**Discussion Rounds**:
+- **Number of Rounds**: 3 rounds per cycle
+- **Participants**: All 4 analysts participate in each round
+- **Tool Budget**: 15 tool calls per cycle (shared across all analysts)
+- **Round Structure**:
+  - Round 1: Initial analysis, tool calls
+  - Round 2: Refinement based on Round 1, additional tool calls if needed
+  - Round 3: Final synthesis, Discussion Coordinator summarizes
+
+**Tool Call Rules**:
+- Each analyst can call tools independently
+- Tool results shared across rounds
+- Tool budget tracked per cycle
+- If budget exhausted, agents continue without tools
+
+---
+
+### Data Flow & Storage Timeline
+
+```
+Every 30 Minutes:
+├── Real-time Data Collection
+│   └── Market data, indicators, sentiment
+│
+├── Agent Analysis
+│   ├── 4 analysts × 3 rounds = 12 analysis entries
+│   ├── Discussion Coordinator synthesis
+│   └── Risk Analyst assessment
+│
+├── Trading Decision
+│   └── Trader Agent orders (if market open)
+│
+└── Data Storage
+    ├── discussion_actions.jsonl (all agent conversations)
+    ├── portfolio_state.json (updated if trades executed)
+    ├── equity_history.jsonl (updated every 30 min during market hours)
+    ├── trades.jsonl (new trades if any)
+    └── memory/daily/YYYY-MM-DD.json (snapshot every cycle)
+
+Daily Summary:
+└── memory/daily/YYYY-MM-DD.json
+    ├── Complete market view snapshot
+    ├── All agent discussions
+    ├── Risk reports
+    ├── Trading decisions
+    ├── Portfolio snapshot
+    └── Executed trades
+```
+
+---
+
 ### Key Points
 
-1. **Trader Agent is LLM-based**: Uses deepseek-r1 to make nuanced trading decisions
-2. **Hard Rules Enforced**: Market status, position limits, cash constraints are strictly enforced
-3. **Risk Integration**: Risk Analyst recommendations directly influence Trader Agent decisions
-4. **Multi-Factor Analysis**: Trader Agent considers all inputs simultaneously (not sequential)
-5. **Natural Language Rationale**: Every decision includes LLM-generated explanation
-6. **Market Orders Only**: All orders execute immediately at current price (no limit orders)
+1. **Trading Frequency**: Every 30 minutes during market hours (9:30 AM - 4:00 PM ET)
+2. **Analysis Frequency**: Every 30 minutes (even when market closed)
+3. **Agent Conversations**: 3 rounds per cycle, all 4 analysts participate
+4. **Trader Agent is LLM-based**: Uses deepseek-r1 to make nuanced trading decisions
+5. **Hard Rules Enforced**: Market status, position limits, cash constraints are strictly enforced
+6. **Risk Integration**: Risk Analyst recommendations directly influence Trader Agent decisions
+7. **Multi-Factor Analysis**: Trader Agent considers all inputs simultaneously (not sequential)
+8. **Natural Language Rationale**: Every decision includes LLM-generated explanation
+9. **Market Orders Only**: All orders execute immediately at current price (no limit orders)
+10. **Information Flow**: External data → Market layer → Agent analysis → Risk → Trading → Execution → Storage
 
 ---
 

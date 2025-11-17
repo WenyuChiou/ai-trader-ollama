@@ -609,25 +609,25 @@ async def get_portfolio_real_time():
         portfolio = Portfolio()
         if portfolio_file.exists():
             try:
-        with portfolio_file.open("r", encoding="utf-8") as f:
-            state = json.load(f)
-                portfolio.cash = float(state.get("cash", 10000.0))
-                portfolio.initial_value = float(state.get("initial_value", 10000.0))
-        
-        # 恢复持仓
-        from src.data.portfolio import Position
-        for symbol, pos_info in state.get("positions", {}).items():
-            if isinstance(pos_info, dict):
-                qty = int(pos_info.get("quantity", 0))
-                avg_cost = float(pos_info.get("avg_cost", 0))
-                total_cost = float(pos_info.get("total_cost", 0))
-                if total_cost <= 0:
-                    total_cost = avg_cost * qty
-                if qty > 0:
+                with portfolio_file.open("r", encoding="utf-8") as f:
+                    state = json.load(f)
+                    portfolio.cash = float(state.get("cash", 10000.0))
+                    portfolio.initial_value = float(state.get("initial_value", 10000.0))
+                
+                # 恢复持仓
+                from src.data.portfolio import Position
+                for symbol, pos_info in state.get("positions", {}).items():
+                    if isinstance(pos_info, dict):
+                        qty = int(pos_info.get("quantity", 0))
+                        avg_cost = float(pos_info.get("avg_cost", 0))
+                        total_cost = float(pos_info.get("total_cost", 0))
+                        if total_cost <= 0:
+                            total_cost = avg_cost * qty
+                        if qty > 0:
                             portfolio._positions[symbol] = Position(
-                        symbol=symbol,
-                        quantity=qty,
-                        avg_cost=avg_cost,
+                                symbol=symbol,
+                                quantity=qty,
+                                avg_cost=avg_cost,
                                 total_cost=total_cost,
                             )
             except Exception as e:
@@ -715,8 +715,8 @@ async def get_portfolio_real_time():
                 "Access-Control-Allow-Headers": "*",
             }
         )
-            except Exception as e:
-                import traceback
+    except Exception as e:
+        import traceback
         return JSONResponse(
             status_code=500,
             content={
@@ -1057,46 +1057,46 @@ async def system_init(force: bool = Query(False)):
     """系统初始化（删除所有数据）"""
     try:
         if not force:
-    return JSONResponse(
+            return JSONResponse(
                 status_code=400,
                 content={
                     "ok": False,
                     "error": "force parameter required"
                 },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                }
+            )
 
         logs_dir = _get_project_logs_dir()
         
         # 备份 portfolio_state.json（如果存在）
-    portfolio_file = logs_dir / "portfolio_state.json"
-    if portfolio_file.exists():
+        portfolio_file = logs_dir / "portfolio_state.json"
+        if portfolio_file.exists():
             backup_file = logs_dir / f"portfolio_state_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-                import shutil
-                shutil.copy2(portfolio_file, backup_file)
+            import shutil
+            shutil.copy2(portfolio_file, backup_file)
         
         # 删除所有数据文件
         files_to_delete = [
             "portfolio_state.json",
-        "pending_orders.jsonl",
+            "pending_orders.jsonl",
             "filled_orders.jsonl",
-        "equity_history.jsonl",
+            "equity_history.jsonl",
             "discussion_actions.jsonl",
-    ]
-    
+        ]
+        
         deleted = []
         for filename in files_to_delete:
-        file_path = logs_dir / filename
-        if file_path.exists():
+            file_path = logs_dir / filename
+            if file_path.exists():
                 file_path.unlink()
                 deleted.append(filename)
         
-    return JSONResponse(
-        status_code=200,
+        return JSONResponse(
+            status_code=200,
             content={
                 "ok": True,
                 "message": f"System initialized. Deleted {len(deleted)} files.",
@@ -1270,11 +1270,11 @@ async def get_tools_list():
                 "Access-Control-Allow-Headers": "*",
             }
         )
-                except Exception as e:
-                    import traceback
+    except Exception as e:
+        import traceback
         return JSONResponse(
             status_code=500,
-        content={
+            content={
                 "ok": False,
                 "error": str(e),
                 "traceback": traceback.format_exc()

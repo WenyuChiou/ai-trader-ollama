@@ -3548,8 +3548,11 @@
                     convData.conversations || [], 
                     convData.total || 0, 
                     convData.has_more || false,
-                    convData.discussion_rounds_summaries || null
+                    convData.tool_results_by_category || null,
+                    convData.discussion_rounds_summaries || {}
                 );
+                // CRITICAL FIX: 同时渲染经济数据
+                renderEconomicData(convData.tool_results_by_category || null);
             } catch (error) {
                 content.innerHTML = `
                     <div class="error">

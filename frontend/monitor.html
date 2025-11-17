@@ -2899,6 +2899,19 @@
                     console.log('[Trade Cycle] Refreshing data after trade execution...');
                     await refreshData(false, true);  // skipHealthCheck = true
                     console.log('[Trade Cycle] Data refresh completed');
+                    
+                    // CRITICAL FIX: 强制刷新市场状态（清除缓存，重新获取）
+                    // 因为 trading cycle 运行后，市场状态可能已经更新
+                    console.log('[Trade Cycle] Force refreshing market status after trade execution...');
+                    marketStatusCache = { value: null, timestamp: 0, ttl: 0 };  // 清除缓存
+                    try {
+                        const currentMarketStatus = await isMarketOpen(false, false);  // 不使用缓存，强制重新获取
+                        updateMarketStatus(currentMarketStatus);
+                        console.log(`[Trade Cycle] Market status updated: ${currentMarketStatus ? 'OPEN' : 'CLOSED'}`);
+                    } catch (e) {
+                        console.warn('[Trade Cycle] Failed to refresh market status:', e);
+                    }
+                    
                     // 刷新完成后，更新连接状态
                     updateConnectionStatus(true);
                 } else {

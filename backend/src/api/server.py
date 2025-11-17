@@ -1309,7 +1309,18 @@ async def system_init(force: bool = Query(False)):
 async def get_system_info():
     """获取系统信息，包括仓位限制配置状态"""
     try:
+        # CRITICAL FIX: 使用与 load_trading_config 相同的路径计算方式
+        # Path(__file__) = backend/src/api/server.py
+        # parent = backend/src/api
+        # parent.parent = backend/src
+        # parent.parent.parent = backend
+        # So config_path = backend/config/config.json
         config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
+        
+        # CRITICAL FIX: 如果路径不存在，尝试使用 _backend_dir（已在文件顶部定义）
+        if not config_path.exists():
+            config_path = _backend_dir / "config" / "config.json"
+        
         config_data = {}
         if config_path.exists():
             try:
@@ -1324,6 +1335,7 @@ async def get_system_info():
             print(f"[API] Config file not found at: {config_path}")
             print(f"[API] Current working directory: {Path.cwd()}")
             print(f"[API] __file__ path: {Path(__file__).resolve()}")
+            print(f"[API] _backend_dir: {_backend_dir}")
         
         # Check if position limits are configured (not commented out with underscore)
         position_limits = {}

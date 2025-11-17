@@ -31,10 +31,21 @@
     "DOT-USD"
   ],
   "initial_cash": 10000,
-  "_comment_position_limits": "Position limits are OPTIONAL. If not set, agent has complete freedom to decide position sizes based on VIX risk, signal strength, and diversification needs. Remove or comment out these lines to give agent complete freedom.",
-  "_position_limit_per_stock": 0.15,
-  "_position_limit_total": 0.85,
-  "_position_limit_min_per_stock": 0.03,
+  
+  "_comment_position_mode": "Position limit mode: 'auto' (LLM autonomous) or 'configured' (with constraints)",
+  "position_limit_mode": "auto",
+  "_comment_position_limits": "Position limits are OPTIONAL. Only used when position_limit_mode='configured'. If mode='auto' or these are not set, agent has complete freedom to decide position sizes based on VIX risk, signal strength, and diversification needs.",
+  
+  "_position_limit_per_stock": null,
+  "_position_limit_total": null,
+  "_position_limit_min_per_stock": null,
+  "min_cash_reserve_ratio": 0.20,
+  "_comment_min_cash_reserve": "Minimum cash reserve ratio (0.20 = 20%). This ensures we always keep some cash for opportunities and emergencies. Lower value = more cash available for trading.",
+  
+  "_comment_example_configured_mode": "To use configured mode with constraints, set position_limit_mode='configured' and uncomment/set the following:",
+  "_example_position_limit_per_stock": 0.15,
+  "_example_position_limit_total": 0.80,
+  "_example_position_limit_min_per_stock": 0.03,
   "date_range": {
     "start": "2024-01-02",
     "end": "2024-01-31"

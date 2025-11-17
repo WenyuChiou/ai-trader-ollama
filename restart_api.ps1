@@ -30,12 +30,12 @@ $pids = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue |
     Select-Object -ExpandProperty OwningProcess -Unique
 
 if ($pids) {
-    foreach ($pid in $pids) {
+    foreach ($processId in $pids) {
         try {
-            $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+            $proc = Get-Process -Id $processId -ErrorAction SilentlyContinue
             if ($proc) {
-                Write-Host "  Stopping process PID: $pid ($($proc.ProcessName))" -ForegroundColor Gray
-                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                Write-Host "  Stopping process PID: $processId ($($proc.ProcessName))" -ForegroundColor Gray
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
             }
         } catch {
             # Ignore errors

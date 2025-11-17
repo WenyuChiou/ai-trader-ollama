@@ -4898,6 +4898,11 @@
                             if (analysisText.length < 30) {
                                 analysisText = '';
                             }
+                            
+                            // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
+                            if (analysisText) {
+                                analysisText = convertPositionPnlToTable(analysisText);
+                            }
                         }
                         
                         // If filtering by agent, show tool results; otherwise show discussions

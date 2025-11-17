@@ -412,13 +412,14 @@ def run_trader(
             }
             
             # 准备 prompt
+            available_cash_str = f"${available_cash:,.2f}" if available_cash is not None else "unlimited (LLM autonomous mode)"
             summary_prompt = f"""The market is currently CLOSED. Based on the following analysis, generate a concise summary (100-150 words) explaining the market assessment:
 
 Market Status: CLOSED (no trading allowed)
 Market Stance: {final_stance}
 VIX Risk: {vix_risk:.1f}
 Portfolio Value: ${portfolio_value:,.2f}
-Available Cash: ${available_cash:,.2f} (if available)
+Available Cash: {available_cash_str}
 
 Current Positions:
 {positions_summary}
@@ -639,7 +640,11 @@ Write in natural language, approximately 100-150 words."""
             print(f"[TRADER] No position limits configured - agent has complete freedom")
             print(f"  - Agent will decide position sizes based on VIX risk, signal strength, diversification needs, etc.")
         
-        print(f"  - Available cash: ${available_cash:,.2f} (hard limit, cannot exceed)")
+        # CRITICAL FIX: 处理 available_cash 可能为 None 的情况
+        if available_cash is not None:
+            print(f"  - Available cash: ${available_cash:,.2f} (hard limit, cannot exceed)")
+        else:
+            print(f"  - Available cash: unlimited (no cash limit)")
         
         # Note: We no longer limit stock count based on stance - agent decides freely
         # Agent can consider stance when making decisions, but we don't enforce limits
@@ -673,7 +678,12 @@ Write in natural language, approximately 100-150 words."""
         
         # 计算可用资金（考虑总仓位限制）
         current_total_position_pct = current_total_value / portfolio_value if portfolio_value > 0 else 0.0
-        available_position_pct = max_total_position - current_total_position_pct
+        # CRITICAL FIX: 如果 max_total_position 是 None（没有限制），使用 1.0 (100%) 作为可用仓位空间
+        if max_total_position is not None:
+            available_position_pct = max_total_position - current_total_position_pct
+        else:
+            # 没有总仓位限制，agent 可以使用所有可用现金（100% 仓位空间）
+            available_position_pct = 1.0  # 100% of portfolio (limited only by cash)
         
         # CRITICAL: 跟踪累计使用的现金，确保总订单金额不超过可用现金
         remaining_cash = available_cash if available_cash is not None else float('inf')
@@ -682,7 +692,9 @@ Write in natural language, approximately 100-150 words."""
         print(f"[TRADER] Starting buy order generation:")
         print(f"  - Available cash: ${remaining_cash:,.2f}" if remaining_cash != float('inf') else "  - Available cash: unlimited")
         print(f"  - Current total position value: ${current_total_value:,.2f} ({current_total_position_pct:.1f}%)")
-        print(f"  - Available position space: {available_position_pct:.1f}%")
+        # CRITICAL FIX: 修复显示格式，1.0 应该显示为 100.0%（而不是 1.0%）
+        available_position_pct_display = available_position_pct * 100 if available_position_pct <= 1.0 else available_position_pct
+        print(f"  - Available position space: {available_position_pct_display:.1f}%")
         
         if available_position_pct <= 0:
             # 已达到总仓位上限，不买入新股票

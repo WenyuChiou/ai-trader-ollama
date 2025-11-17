@@ -2318,6 +2318,9 @@ def execute_daily_trade(
     # CRITICAL: 确保 coordinator_summary 被包含在返回结果中
     # 即使 convo 中已有，也显式添加到 discussion 中以便前端访问
     discussion_result = dict(convo) if isinstance(convo, dict) else {}
+    # CRITICAL FIX: Ensure optimization_stats is included in discussion_result
+    if "optimization_stats" in convo:
+        discussion_result["optimization_stats"] = convo["optimization_stats"]
     coordinator_summary = discussion_result.get("coordinator_summary")
     if coordinator_summary:
         # 确保 coordinator_summary 存在且有效

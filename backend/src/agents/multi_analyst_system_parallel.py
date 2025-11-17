@@ -68,13 +68,15 @@ def run_multi_analyst_discussion_parallel(
     shared_context.set_market_data(market_view)
     
     # Get market conditions and allocate budget
+    # Note: tool_calls will be available after sequential execution, but we need market_conditions before
+    # So we'll update it after execution
     market_conditions = get_market_conditions(market_view)
     budget_allocation = allocate_tool_budget(market_conditions, tool_budget)
     
     print(f"[PARALLEL] Budget allocation: {budget_allocation}")
-    print(f"[PARALLEL] Market conditions: VIX={market_conditions.get('vix', 20)}, "
+    print(f"[PARALLEL] Market conditions: VIX={market_conditions.get('vix', 20):.2f}, "
           f"News={market_conditions.get('news_count', 0)}, "
-          f"Volatility={market_conditions.get('volatility', 'normal')}")
+          f"Volatility={market_conditions.get('volatility', 'normal')} ({market_conditions.get('vix_level', 'normal')})")
     
     # Prepare shared context
     tools_str = f"Available: {', '.join(toolbox.list())}" if use_tools else "No tools"
@@ -167,6 +169,14 @@ def run_multi_analyst_discussion_parallel(
         portfolio_value=portfolio_value,
         available_cash=available_cash
     )
+    
+    # CRITICAL FIX: Update market_conditions with news count from tool calls
+    tool_calls = result.get("tool_calls", [])
+    if tool_calls:
+        market_conditions = get_market_conditions(market_view, tool_calls)
+        print(f"[PARALLEL] Updated market conditions: VIX={market_conditions.get('vix', 20):.2f}, "
+              f"News={market_conditions.get('news_count', 0)}, "
+              f"Volatility={market_conditions.get('volatility', 'normal')} (VIX={market_conditions.get('vix', 20):.2f})")
     
     # Add optimization statistics
     stats = tool_coordinator.get_statistics()

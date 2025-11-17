@@ -342,6 +342,117 @@ def run_multi_analyst_discussion(
                 if extracted_count > 0:
                     print(f"   ✅ Extracted {extracted_count} tool call(s) from analysis text")
             
+            # CRITICAL FIX: 移除技术分析师不应该使用的工具（新闻工具）
+            # 技术分析师只应该使用技术分析工具，不应该使用新闻工具
+            filtered_tool_calls = []
+            removed_news_tools = []
+            for tc in tool_calls_list:
+                tool_name = tc.get("name", "")
+                # 移除新闻相关工具
+                if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news", "web_search", "fetch_url"]:
+                    removed_news_tools.append(tool_name)
+                    print(f"   [FILTER] Removed news tool '{tool_name}' from Technical Analyst (news analysis is not part of technical analysis)")
+                else:
+                    filtered_tool_calls.append(tc)
+            
+            if removed_news_tools:
+                print(f"   [FILTER] Removed {len(removed_news_tools)} news tool(s) from Technical Analyst tool calls")
+            
+            tool_calls_list = filtered_tool_calls
+            
+            # CRITICAL FIX: 即使LLM返回了tool_calls，也要检查是否包含持仓/指数
+            # 优先级：持仓 > 指数 > 推荐股票
+            if tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                # 提取LLM已请求的symbols
+                existing_symbols = set()
+                for tc in tool_calls_list:
+                    args = tc.get("args", {})
+                    symbol = args.get("symbol")
+                    if symbol:
+                        existing_symbols.add(symbol.upper())
+                
+                # 收集应该分析的优先级symbols（按优先级顺序）
+                priority_symbols = []
+                
+                # 1. 最高优先级：添加持仓（如果有）
+                if current_positions:
+                    for symbol, pos_info in current_positions.items():
+                        if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+                            symbol_upper = symbol.upper()
+                            if symbol_upper not in existing_symbols:
+                                priority_symbols.append(symbol_upper)
+                                print(f"   [PRIORITY] Adding holding (HIGHEST PRIORITY): {symbol}")
+                
+                # 2. 第二优先级：添加主要指数（总是添加）
+                major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
+                for idx in major_indices:
+                    if idx not in existing_symbols and idx not in priority_symbols:
+                        priority_symbols.append(idx)
+                        print(f"   [PRIORITY] Adding major index: {idx}")
+                
+                # 3. 第三优先级：添加Market Analyst的推荐名单（如果还有预算）
+                recommended_stocks = []
+                if analyst_reports.get("market"):
+                    market_report = analyst_reports["market"]
+                    recommended_stocks = market_report.get("recommended_stocks", [])
+                    if recommended_stocks:
+                        if isinstance(recommended_stocks, str):
+                            recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
+                        elif not isinstance(recommended_stocks, list):
+                            recommended_stocks = []
+                        
+                        for sym in recommended_stocks:
+                            if sym and sym.upper() not in existing_symbols and sym.upper() not in priority_symbols:
+                                priority_symbols.append(sym.upper())
+                                print(f"   [PRIORITY] Adding recommended stock: {sym}")
+                
+                # 补充优先级股票到tool_calls_list（如果还有预算）
+                # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count
+                remaining_budget = tool_budget - tool_calls_count
+                if priority_symbols and remaining_budget > 0:
+                    print(f"   [PRIORITY] Found {len(priority_symbols)} priority symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
+                    added_count = 0
+                    
+                    # 首先为所有优先级symbols添加get_advanced_indicators
+                    for sym in priority_symbols:
+                        if tool_calls_count + len(tool_calls_list) >= tool_budget:
+                            print(f"   [PRIORITY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
+                            break
+                        tool_calls_list.append({
+                            "name": "get_advanced_indicators",
+                            "args": {"symbol": sym, "period": "3mo"},
+                            "why": f"Priority: Get technical indicators for {sym} (holding/index/recommended)"
+                        })
+                        added_count += 1
+                    
+                    # 然后为持仓和指数添加support/resistance（如果还有预算）
+                    priority_for_sr = []
+                    if current_positions:
+                        for symbol, pos_info in current_positions.items():
+                            if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+                                if symbol.upper() in priority_symbols:
+                                    priority_for_sr.append(symbol.upper())
+                    priority_for_sr.extend(["SPY", "QQQ", "DIA"])
+                    
+                    for sym in priority_for_sr:
+                        if tool_calls_count + len(tool_calls_list) >= tool_budget:
+                            break
+                        # 检查是否已经有这个symbol的support/resistance调用
+                        has_sr = any(
+                            tc.get("name") == "get_support_resistance" and tc.get("args", {}).get("symbol", "").upper() == sym
+                            for tc in tool_calls_list
+                        )
+                        if not has_sr:
+                            tool_calls_list.append({
+                                "name": "get_support_resistance",
+                                "args": {"symbol": sym},
+                                "why": f"Priority: Get support/resistance levels for {sym} (holding/index)"
+                            })
+                            added_count += 1
+                    
+                    if added_count > 0:
+                        print(f"   [PRIORITY] Added {added_count} priority tool calls (holdings + indices + recommended stocks)")
+            
             # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
             # CRITICAL FIX: 优先分析推荐名单 + 持仓 + 指数
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:

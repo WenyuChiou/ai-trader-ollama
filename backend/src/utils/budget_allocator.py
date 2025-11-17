@@ -147,18 +147,25 @@ def allocate_tool_budget(
     return allocation
 
 
-def get_market_conditions(market_view: Dict[str, Any]) -> Dict[str, Any]:
+def get_market_conditions(market_view: Dict[str, Any], tool_calls: List[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    Extract market conditions from market view
+    Extract market conditions from market view and tool calls
     
     Args:
         market_view: Market view dictionary
+        tool_calls: Optional list of tool calls to extract news count from
     
     Returns:
-        Market conditions dictionary
+        Market conditions dictionary with:
+        - vix: VIX level (float)
+        - vix_level: VIX level string ("high"/"normal"/"low")
+        - news_count: Number of news items (int)
+        - earnings_count: Number of earnings announcements (int)
+        - volatility: Volatility level string ("high"/"normal"/"low")
     """
     conditions = {
         "vix": 20,  # Default
+        "vix_level": "normal",  # Default
         "news_count": 0,
         "earnings_count": 0,
         "volatility": "normal"
@@ -171,20 +178,61 @@ def get_market_conditions(market_view: Dict[str, Any]) -> Dict[str, Any]:
             conditions["vix"] = float(vix_data["current"])
         elif isinstance(vix_data, (int, float)):
             conditions["vix"] = float(vix_data)
+    elif "vix_close" in market_view:
+        vix_data = market_view["vix_close"]
+        if isinstance(vix_data, (int, float)):
+            conditions["vix"] = float(vix_data)
     
-    # Extract news count
+    # Extract news count from market_view first
     if "news" in market_view:
         news_data = market_view["news"]
         if isinstance(news_data, list):
             conditions["news_count"] = len(news_data)
         elif isinstance(news_data, dict) and "items" in news_data:
             conditions["news_count"] = len(news_data["items"])
+        elif isinstance(news_data, dict) and "hits" in news_data:
+            # news_scan tool result format
+            hits = news_data.get("hits", [])
+            if isinstance(hits, list):
+                conditions["news_count"] = len(hits)
     
-    # Determine volatility level
-    if conditions["vix"] > 25:
+    # CRITICAL FIX: Extract news count from tool calls if not found in market_view
+    if conditions["news_count"] == 0 and tool_calls:
+        for tool_call in tool_calls:
+            tool_name = tool_call.get("tool", "") or tool_call.get("name", "")
+            tool_result = tool_call.get("result", {})
+            
+            # Handle nested result structure
+            if isinstance(tool_result, dict) and "ok" in tool_result and "result" in tool_result:
+                tool_result = tool_result["result"]
+            
+            # Check for news_scan, plan_and_scan_news, fetch_jin10_news
+            if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"]:
+                if isinstance(tool_result, dict):
+                    # news_scan format: {"hits": [...], "queries": [...]}
+                    hits = tool_result.get("hits", [])
+                    if isinstance(hits, list):
+                        conditions["news_count"] += len(hits)
+                    # plan_and_scan_news format: {"articles": [...]}
+                    articles = tool_result.get("articles", [])
+                    if isinstance(articles, list):
+                        conditions["news_count"] += len(articles)
+                    # fetch_jin10_news format: {"data": [...]}
+                    data = tool_result.get("data", [])
+                    if isinstance(data, list):
+                        conditions["news_count"] += len(data)
+    
+    # Determine volatility level based on VIX
+    vix_value = conditions["vix"]
+    if vix_value > 25:
         conditions["volatility"] = "high"
-    elif conditions["vix"] < 15:
+        conditions["vix_level"] = "high"
+    elif vix_value < 15:
         conditions["volatility"] = "low"
+        conditions["vix_level"] = "low"
+    else:
+        conditions["volatility"] = "normal"
+        conditions["vix_level"] = "normal"
     
     return conditions
 

@@ -20,14 +20,14 @@ system: |
   
   Also Available:
   - Sentiment: fear_greed
-  - News: news_scan, plan_and_scan_news, web_search, fetch_url
   - Economic: get_economic_summary, get_labor_market_data, fetch_fred_indicator
   - Fundamental: get_company_fundamentals, get_earnings_history, get_financial_statements
   - Market: get_market_breadth, get_sector_rotation, get_correlation_matrix
   - Crypto: fetch_crypto_batch, get_crypto_price
-  - Jin10: fetch_jin10_news, fetch_jin10_economic_data
   
-  Focus on technical tools but use others if needed for context.
+  **CRITICAL**: Do NOT use news tools (news_scan, plan_and_scan_news, web_search, fetch_url, fetch_jin10_news).
+  Technical analysis focuses on price action, indicators, and chart patterns - not news content.
+  Focus on technical tools only.
 
 user: |
   Context:

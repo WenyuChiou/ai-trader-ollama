@@ -1376,6 +1376,11 @@
                         <button class="agent-filter-btn" data-agent="TechnicalAnalyst" onclick="filterAgentTools('TechnicalAnalyst')" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
                             🔬 Technical
                         </button>
+                        <div id="stockFilterContainer" style="display: none; margin-left: 8px;">
+                            <select id="stockFilterSelect" onchange="filterTechnicalStocks(this.value)" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                <option value="all">All Stocks</option>
+                            </select>
+                        </div>
                         <button class="agent-filter-btn" data-agent="FundamentalAnalyst" onclick="filterAgentTools('FundamentalAnalyst')" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
                             📑 Fundamental
                         </button>
@@ -4527,6 +4532,9 @@
         // Global variable to store current agent filter
         let currentAgentFilter = 'all';
         
+        let currentStockFilter = 'all';
+        let availableTechnicalStocks = [];
+        
         // Filter agent tools function
         function filterAgentTools(agentName) {
             currentAgentFilter = agentName;
@@ -4559,7 +4567,67 @@
                 }
             });
             
+            // Show/hide stock filter for TechnicalAnalyst
+            const stockFilterContainer = document.getElementById('stockFilterContainer');
+            if (agentName === 'TechnicalAnalyst') {
+                if (stockFilterContainer) {
+                    stockFilterContainer.style.display = 'inline-block';
+                    // Extract available stocks from conversations
+                    extractTechnicalStocks();
+                }
+            } else {
+                if (stockFilterContainer) {
+                    stockFilterContainer.style.display = 'none';
+                }
+                currentStockFilter = 'all';
+            }
+            
             // Re-render conversations with filter
+            if (window.currentConversations) {
+                renderConversationsOverview(window.currentConversations);
+            }
+        }
+        
+        function extractTechnicalStocks() {
+            if (!window.currentConversations) return;
+            const stocks = new Set();
+            window.currentConversations.forEach(c => {
+                if (c.agent && c.agent.toLowerCase().includes('technical') && c.type === 'tool') {
+                    const toolInfo = parseToolInfo(c.content || '');
+                    if (toolInfo && toolInfo.name === 'get_advanced_indicators' && toolInfo.result) {
+                        const symbol = toolInfo.result.symbol || toolInfo.result.Symbol || 
+                                     (toolInfo.result.data && toolInfo.result.data.symbol) ||
+                                     (toolInfo.result.indicators && toolInfo.result.indicators.symbol);
+                        if (symbol) {
+                            stocks.add(symbol.toUpperCase());
+                        }
+                    }
+                    // Also check tool_result field
+                    if (c.tool_result && typeof c.tool_result === 'object') {
+                        const symbol = c.tool_result.symbol || c.tool_result.Symbol ||
+                                     (c.tool_result.indicators && c.tool_result.indicators.symbol);
+                        if (symbol) {
+                            stocks.add(symbol.toUpperCase());
+                        }
+                    }
+                    // Also check tool_result.indicators.symbol
+                    if (c.tool_result && c.tool_result.indicators && c.tool_result.indicators.symbol) {
+                        stocks.add(c.tool_result.indicators.symbol.toUpperCase());
+                    }
+                }
+            });
+            availableTechnicalStocks = Array.from(stocks).sort();
+            
+            // Update select dropdown
+            const select = document.getElementById('stockFilterSelect');
+            if (select) {
+                select.innerHTML = '<option value="all">All Stocks</option>' + 
+                    availableTechnicalStocks.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+        }
+        
+        function filterTechnicalStocks(symbol) {
+            currentStockFilter = symbol;
             if (window.currentConversations) {
                 renderConversationsOverview(window.currentConversations);
             }
@@ -4594,6 +4662,25 @@
             if (currentAgentFilter !== 'all') {
                 // Show only tool results for the selected agent
                 filteredConversations = filteredConversations.filter(c => (c.type || 'discussion') === 'tool');
+                
+                // CRITICAL FIX: Filter by stock symbol for TechnicalAnalyst
+                if (currentAgentFilter === 'TechnicalAnalyst' && currentStockFilter !== 'all') {
+                    filteredConversations = filteredConversations.filter(c => {
+                        const toolInfo = parseToolInfo(c.content || '');
+                        if (toolInfo && toolInfo.name === 'get_advanced_indicators' && toolInfo.result) {
+                            const symbol = toolInfo.result.symbol || toolInfo.result.Symbol || 
+                                         (toolInfo.result.data && toolInfo.result.data.symbol);
+                            return symbol && symbol.toUpperCase() === currentStockFilter;
+                        }
+                        // Also check tool_result field
+                        if (c.tool_result && typeof c.tool_result === 'object') {
+                            const symbol = c.tool_result.symbol || c.tool_result.Symbol;
+                            return symbol && symbol.toUpperCase() === currentStockFilter;
+                        }
+                        // If it's not get_advanced_indicators, show it (like get_support_resistance, get_market_indices)
+                        return true;
+                    });
+                }
             } else {
                 // Show all: discussion entries + tool entries
                 // Keep all entries

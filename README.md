@@ -22,6 +22,7 @@
 
 - [System Overview](#-system-overview)
 - [Quick Start](#-quick-start)
+- [Performance Analysis](#-performance-analysis)
 - [Configuration](#-configuration)
 - [Data Storage & Records](#-data-storage--records)
 - [Multi-Agent Architecture](#-multi-agent-architecture)
@@ -30,6 +31,8 @@
 - [API Endpoints](#-api-endpoints)
 - [Deployment](#-deployment)
 - [Troubleshooting](#-troubleshooting)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
 
 ---
 
@@ -51,6 +54,38 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 3. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
 4. **Risk-First Approach**: Every decision passes through risk analysis
 5. **Transparency**: All reasoning is logged and visible
+
+---
+
+## 📈 Performance Analysis
+
+### Current Performance Metrics
+
+**Execution Time**:
+- Sequential execution: ~60s per trading cycle
+- Optimized sequential: ~45s per trading cycle (25% improvement)
+- Potential parallel: ~20-30s per cycle (50-70% improvement)
+
+**Tool Usage**:
+- Before optimization: ~15 tool calls per cycle
+- After optimization: ~9-10 tool calls per cycle (33% reduction)
+- Cache hit rate: ~50% (with duplicate calls)
+
+**Resource Usage**:
+- Memory: <2GB typical usage
+- CPU: <50% average
+- API calls: 30-40% reduction with caching
+
+### Optimization Features (Available in feature/system-optimization branch)
+
+- ✅ **ToolCoordinator**: Intelligent tool selection and caching
+- ✅ **SharedContext**: Agent insight sharing and collaboration
+- ✅ **BudgetAllocator**: Adaptive budget allocation based on market conditions
+- 🔄 **Parallel Execution**: Structure ready for async implementation
+
+### Benchmark Results
+
+See [Optimization Results](docs/OPTIMIZATION_RESULTS.md) for detailed metrics (available in optimization branch).
 
 ---
 

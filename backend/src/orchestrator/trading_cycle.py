@@ -309,9 +309,10 @@ def execute_daily_trade(
     order_manager = OrderManager(root=str(_get_project_logs_dir()))
     
     # 检查市场是否开盘（用于确定订单日期，排除周末和节假日）
+    # CRITICAL FIX: 传入 None 让函数直接获取美东时间，避免时区转换错误
     from src.utils.trading_days import is_market_open as check_market_open
     now = datetime.now()
-    is_market_open = check_market_open(now)
+    is_market_open = check_market_open(None)  # 传入 None 直接获取美东时间
     
     # 确定要检查的订单日期
     if end:
@@ -739,9 +740,10 @@ def execute_daily_trade(
     order_manager = OrderManager(root=str(_get_project_logs_dir()))
     
     # 检查市场是否开盘，决定订单日期（排除周末和节假日）
+    # CRITICAL FIX: 传入 None 让函数直接获取美东时间，避免时区转换错误
     from src.utils.trading_days import is_market_open as check_market_open
     now = datetime.now()
-    is_market_open = check_market_open(now)
+    is_market_open = check_market_open(None)  # 传入 None 直接获取美东时间
     
     # 如果市场收盘后，订单日期应该是明天的日期
     # 注意：如果end参数被传递（用于测试或规划），优先使用end日期

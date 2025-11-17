@@ -2028,70 +2028,64 @@ Daily Summary:
 
 ---
 
-## 🚀 Deployment
+## 🚀 Running the System
 
-### GitHub Pages Deployment (Frontend)
+### Starting the API Server
 
-1. **Push to GitHub**
-   ```powershell
-   git add .
-   git commit -m "Prepare for GitHub Pages"
-   git push origin main
-   ```
+**Option A: Task Scheduler (Recommended for long-term running)**
+```powershell
+# Right-click and run as administrator:
+scripts\start_api_task_admin.bat
 
-2. **Enable GitHub Pages**
-   - Go to repository Settings → Pages
-   - Source: `Deploy from a branch`
-   - Branch: `main`
-   - Folder: `/frontend`
-   - Click Save
+# Or manually:
+powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
+```
+- ✅ Runs in background
+- ✅ Auto-starts on Windows login
+- ✅ Continues running even if CMD is closed
+- ✅ Auto-restarts on failure
 
-3. **Configure Backend API**
-   - Edit `frontend/config.js`
-   - Update `production` to your Railway backend URL
-
-4. **Deploy Backend to Railway**
-   - Connect GitHub repo to Railway
-   - Auto-deploy backend
-   - Get public URL
-
-### Daily Auto-Upload to Railway & GitHub Pages
-
-**快速设置** (推荐):
-   ```powershell
-# 右键点击并以管理员身份运行:
-scripts\setup_daily_upload_admin.bat
+**Option B: Windows Service (Requires NSSM)**
+```powershell
+# Right-click and run as administrator:
+scripts\start_api_service_admin.bat
 ```
 
-**手动设置**:
-   ```powershell
-# 以管理员身份运行 PowerShell:
-powershell -ExecutionPolicy Bypass -File .\scripts\schedule_daily_upload_only.ps1
+**Option C: Development Mode (Requires window open)**
+```powershell
+cd backend
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-**手动执行上传**:
-   ```powershell
-# 上传数据到 Railway 并更新 GitHub Pages:
-powershell -ExecutionPolicy Bypass -File .\scripts\daily_upload_and_deploy.ps1
+### Stopping the API Server
 
-# 或只上传数据到 Railway:
-python scripts\upload_data_to_railway.py
+**Stop Task Scheduler Service**:
+```powershell
+Stop-ScheduledTask -TaskName AITraderAPI
 ```
 
-**功能说明**:
-- ✅ 每天自动上传本地数据到 Railway 后端
-  - 上传数据包括：`portfolio_state.json`（持仓）、`equity_history.jsonl`（净值历史，包含时间戳）、`discussion_actions.jsonl`（对话记录）、`trades.jsonl`（交易记录）、`filled_orders.jsonl`（已成交订单）
-- ✅ 自动更新 GitHub Pages（如果有前端更改）
-- ✅ 可设置上传时间（推荐：18:00，市场收盘后）
-- ✅ 支持工作日或每天运行
+**Stop All Services**:
+```powershell
+# Run from project root:
+.\scripts\stop_all_services.ps1
+```
 
-**数据时间戳**:
-- 所有净值历史记录（`equity_history.jsonl`）都包含 `date` 和 `timestamp` 字段
-- `timestamp` 格式：ISO 8601 UTC 时间（例如：`"2025-01-28T10:00:00.000Z"`）
-- 每小时自动记录一次净值快照（即使净值没有变化）
-- Railway 上传脚本会保留所有时间戳信息
+### Managing Services
 
-> 📖 **详细指南**: See [`docs/DAILY_UPLOAD_SETUP.md`](docs/DAILY_UPLOAD_SETUP.md)
+**Check API Status**:
+```powershell
+.\scripts\check_api_status.ps1
+```
+
+**Check Running Services**:
+```powershell
+.\scripts\check_running_services.ps1
+```
+
+**Check Port Usage**:
+```powershell
+.\scripts\check_port.ps1
+```
 
 ---
 
@@ -2389,7 +2383,6 @@ The system includes integrated optimization components that improve performance:
 - **[Quick Start Guide](docs/QUICK_START.md)** - Installation and first run
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
 - **[API Reference](docs/API_REFERENCE.md)** - All API endpoints and usage
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Local and cloud deployment
 - **[Architecture Documentation](docs/ARCHITECTURE.md)** - System architecture overview
 - **[Testing Guide](docs/TESTING.md)** - Running and writing tests
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
@@ -2402,7 +2395,6 @@ The system includes integrated optimization components that improve performance:
 | `docs/TOOLS.md` | Detailed documentation for all 23 tools |
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
-| `docs/DAILY_UPLOAD_SETUP.md` | Daily upload to Railway and GitHub Pages setup guide |
 
 ## 🧪 Testing
 

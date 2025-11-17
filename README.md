@@ -2321,6 +2321,43 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 
 ---
 
+## 📈 Performance Analysis
+
+### Current Performance Metrics
+
+**Execution Time**:
+- Sequential execution: ~60s per trading cycle
+- Optimized sequential: ~45s per trading cycle (25% improvement)
+- Potential parallel: ~20-30s per cycle (50-70% improvement)
+
+**Tool Usage**:
+- Before optimization: ~15 tool calls per cycle
+- After optimization: ~9-10 tool calls per cycle (33% reduction)
+- Cache hit rate: ~50% (with duplicate calls)
+
+**Resource Usage**:
+- Memory: <2GB typical usage
+- CPU: <50% average
+- API calls: 30-40% reduction with caching
+
+### Optimization Features
+
+The system includes optional optimization components that can improve performance:
+
+- **ToolCoordinator**: Intelligent tool selection and result caching
+- **SharedContext**: Agent communication and insight sharing
+- **BudgetAllocator**: Adaptive tool budget allocation based on market conditions
+- **Parallel Execution Structure**: Framework ready for async parallel agent execution
+
+**Note**: Optimization components are optional and backward compatible. The system works normally without them. See [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) for details.
+
+**Related Documentation**:
+- [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) - Detailed optimization changes
+- [`docs/AGENT_LOOP_EXECUTION_REPORT.md`](docs/AGENT_LOOP_EXECUTION_REPORT.md) - Agent loop execution results
+- [`docs/OPTIMIZATION_RESULTS.md`](docs/OPTIMIZATION_RESULTS.md) - Performance improvement metrics
+
+---
+
 ## 📖 Documentation
 
 ### Core Documentation

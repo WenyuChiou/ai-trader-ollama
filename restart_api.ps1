@@ -85,7 +85,7 @@ if ($venvPath) {
 Write-Host ""
 Write-Host "[3/3] Starting new API server..." -ForegroundColor Yellow
 
-# Build command
+# Build command - must run from backend directory
 $backendDirEscaped = $backendDir -replace "'", "''"
 
 $cmd = "cd '$backendDirEscaped'; "
@@ -93,6 +93,8 @@ if ($venvPath) {
     $venvPathEscaped = $venvPath -replace "'", "''"
     $cmd += "& '$venvPathEscaped'; "
 }
+# Set PYTHONPATH to backend directory to ensure src module can be found
+$cmd += "`$env:PYTHONPATH='$backendDirEscaped'; "
 $cmd += "python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload"
 
 # Start new window

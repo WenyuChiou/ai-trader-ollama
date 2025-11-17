@@ -121,7 +121,7 @@ This will:
 After completing the setup:
 
 1. **Start Ollama** (if not already running):
-   ```powershell
+```powershell
    ollama serve
    ```
 
@@ -1950,19 +1950,36 @@ Daily Summary:
    - Auto-deploy backend
    - Get public URL
 
-### Daily Auto-Upload to Railway
+### Daily Auto-Upload to Railway & GitHub Pages
 
-**Setup Daily Upload Task**:
+**快速设置** (推荐):
    ```powershell
+# 右键点击并以管理员身份运行:
+scripts\setup_daily_upload_admin.bat
+```
+
+**手动设置**:
+   ```powershell
+# 以管理员身份运行 PowerShell:
 powershell -ExecutionPolicy Bypass -File .\scripts\schedule_daily_upload_only.ps1
 ```
 
-**Manual Upload**:
+**手动执行上传**:
    ```powershell
+# 上传数据到 Railway 并更新 GitHub Pages:
+powershell -ExecutionPolicy Bypass -File .\scripts\daily_upload_and_deploy.ps1
+
+# 或只上传数据到 Railway:
 python scripts\upload_data_to_railway.py
 ```
 
-> 📖 **Detailed Guide**: See [`docs/USER_MANUAL_RAILWAY_UPDATE.md`](docs/USER_MANUAL_RAILWAY_UPDATE.md)
+**功能说明**:
+- ✅ 每天自动上传本地数据到 Railway 后端
+- ✅ 自动更新 GitHub Pages（如果有前端更改）
+- ✅ 可设置上传时间（推荐：18:00，市场收盘后）
+- ✅ 支持工作日或每天运行
+
+> 📖 **详细指南**: See [`docs/DAILY_UPLOAD_SETUP.md`](docs/DAILY_UPLOAD_SETUP.md)
 
 ---
 

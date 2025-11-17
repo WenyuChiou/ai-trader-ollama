@@ -1,14 +1,14 @@
-# 一键重启 API 服务器
-# 使用方法：在项目根目录运行: .\restart_api.ps1
-# 或在 PowerShell 中: powershell -ExecutionPolicy Bypass -File .\restart_api.ps1
+# One-Click API Restart Script
+# Usage: .\restart_api.ps1
+# Or: powershell -ExecutionPolicy Bypass -File .\restart_api.ps1
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  API 服务器重启脚本" -ForegroundColor Cyan
+Write-Host "  API Server Restart" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 获取项目根目录（脚本所在目录）
+# Get project root directory
 $ProjectRoot = $PSScriptRoot
 if (-not $ProjectRoot) {
     $ProjectRoot = Get-Location
@@ -17,15 +17,15 @@ if (-not $ProjectRoot) {
 $backendDir = Join-Path $ProjectRoot "backend"
 $venvPath = Join-Path $ProjectRoot "venv\Scripts\Activate.ps1"
 
-# 检查 backend 目录是否存在
+# Check if backend directory exists
 if (-not (Test-Path $backendDir)) {
-    Write-Host "[错误] 找不到 backend 目录: $backendDir" -ForegroundColor Red
+    Write-Host "[ERROR] Backend directory not found: $backendDir" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[1/3] 停止现有 API 服务器..." -ForegroundColor Yellow
+Write-Host "[1/3] Stopping existing API server..." -ForegroundColor Yellow
 
-# 查找并停止占用 8000 端口的进程
+# Find and stop processes using port 8000
 $pids = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | 
     Select-Object -ExpandProperty OwningProcess -Unique
 
@@ -34,74 +34,75 @@ if ($pids) {
         try {
             $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
             if ($proc) {
-                Write-Host "  停止进程 PID: $pid ($($proc.ProcessName))" -ForegroundColor Gray
+                Write-Host "  Stopping process PID: $pid ($($proc.ProcessName))" -ForegroundColor Gray
                 Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
             }
         } catch {
-            # 忽略错误
+            # Ignore errors
         }
     }
     
-    # 等待端口释放（最多等待 3 秒）
+    # Wait for port to be released (max 3 seconds)
     $waitCount = 0
     while ($waitCount -lt 6) {
         Start-Sleep -Milliseconds 500
         $inUse = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
         if (-not $inUse) { 
-            Write-Host "  ✓ 端口已释放" -ForegroundColor Green
+            Write-Host "  [OK] Port released" -ForegroundColor Green
             break 
         }
         $waitCount++
     }
     
     if ($waitCount -ge 6) {
-        Write-Host "  ⚠ 警告: 端口可能仍被占用" -ForegroundColor Yellow
+        Write-Host "  [WARN] Port may still be in use" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "  ✓ 没有运行中的 API 服务器" -ForegroundColor Green
+    Write-Host "  [OK] No running API server found" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "[2/3] 检查虚拟环境..." -ForegroundColor Yellow
+Write-Host "[2/3] Checking virtual environment..." -ForegroundColor Yellow
 
-# 检查虚拟环境
+# Check virtual environment
 if (Test-Path $venvPath) {
-    Write-Host "  ✓ 找到虚拟环境: $venvPath" -ForegroundColor Green
+    Write-Host "  [OK] Virtual environment found: $venvPath" -ForegroundColor Green
 } else {
-    Write-Host "  ⚠ 警告: 未找到虚拟环境，将使用系统 Python" -ForegroundColor Yellow
-    Write-Host "    虚拟环境路径: $venvPath" -ForegroundColor Gray
+    Write-Host "  [WARN] Virtual environment not found, will use system Python" -ForegroundColor Yellow
+    Write-Host "    Virtual env path: $venvPath" -ForegroundColor Gray
 }
 
 Write-Host ""
-Write-Host "[3/3] 启动新的 API 服务器..." -ForegroundColor Yellow
+Write-Host "[3/3] Starting new API server..." -ForegroundColor Yellow
 
-# 构建启动命令
-$cmd = @"
-cd '$backendDir'
-if (Test-Path '$venvPath') { 
-    & '$venvPath'
+# Build command
+$backendDirEscaped = $backendDir -replace "'", "''"
+$venvPathEscaped = $venvPath -replace "'", "''"
+
+$cmd = "cd '$backendDirEscaped'; "
+if (Test-Path $venvPath) {
+    $cmd += "& '$venvPathEscaped'; "
 }
-python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
-"@
+$cmd += "python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload"
 
-# 启动新窗口
+# Start new window
 try {
-    Start-Process powershell -ArgumentList "-ExecutionPolicy", "Bypass", "-NoExit", "-Command", $cmd
-    Write-Host "  ✓ API 服务器已在新窗口启动" -ForegroundColor Green
+    $argList = @("-ExecutionPolicy", "Bypass", "-NoExit", "-Command", $cmd)
+    Start-Process powershell -ArgumentList $argList
+    Write-Host "  [OK] API server started in new window" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ 启动失败: $_" -ForegroundColor Red
+    Write-Host "  [ERROR] Failed to start: $_" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  API 服务器重启完成！" -ForegroundColor Green
+Write-Host "  API Server Restart Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "访问地址:" -ForegroundColor Cyan
-Write-Host "  • API 文档: http://127.0.0.1:8000/docs" -ForegroundColor White
-Write-Host "  • 监控页面: http://127.0.0.1:8000/monitor.html" -ForegroundColor White
+Write-Host "Access URLs:" -ForegroundColor Cyan
+Write-Host "  API Docs: http://127.0.0.1:8000/docs" -ForegroundColor White
+Write-Host "  Monitor: http://127.0.0.1:8000/monitor.html" -ForegroundColor White
 Write-Host ""
-Write-Host "提示: API 服务器在新窗口运行，关闭该窗口即可停止服务器" -ForegroundColor Gray
+Write-Host "Note: API server runs in new window. Close that window to stop the server." -ForegroundColor Gray
 Write-Host ""
-

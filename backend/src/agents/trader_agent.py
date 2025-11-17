@@ -357,10 +357,8 @@ def run_trader(
         # 生成分析rationale（不包含交易订单）
         rationale = f"Market is closed. Analysis completed but no trading orders generated (market orders only execute during trading hours: 9:30 AM - 4:00 PM ET). Market stance: {final_stance}, VIX risk: {vix_risk:.1f}"
         if coordinator_summary:
-            if len(coordinator_summary) > 5000:
-                rationale += f" Analysis: {coordinator_summary[:5000]}... (truncated)"
-            else:
-                rationale += f" Analysis: {coordinator_summary}"
+            # CRITICAL FIX: 移除5000字符限制，允许完整summary显示
+            rationale += f" Analysis: {coordinator_summary}"
         
         # CRITICAL: 使用 LLM 来生成市场关闭时的分析 summary
         print(f"[TRADER] ===== CALLING LLM FOR MARKET CLOSED SUMMARY =====")
@@ -458,10 +456,8 @@ Write in natural language, approximately 100-150 words."""
             trader_summary += "No trading orders can be generated when the market is closed, as we use market orders that execute immediately during trading hours only. "
             trader_summary += "Analysis and evaluation can continue 24/7, but actual trading only occurs during market hours (9:30 AM - 4:00 PM ET, Monday-Friday, excluding holidays)."
             if coordinator_summary:
-                if len(coordinator_summary) > 5000:
-                    trader_summary += f" Key insights: {coordinator_summary[:5000]}... (truncated)"
-                else:
-                    trader_summary += f" Key insights: {coordinator_summary}"
+                # CRITICAL FIX: 移除5000字符限制，允许完整summary显示
+                trader_summary += f" Key insights: {coordinator_summary}"
         
         # 返回分析结果（不包含任何订单）
         return {

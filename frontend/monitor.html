@@ -4884,7 +4884,10 @@
                             // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
                             analysisText = convertPositionPnlToTable(analysisText);
                             // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
-                            analysisText = convertMarkdownBoldToBlocks(analysisText);
+                            // 但对于 TraderAgent，只显示纯文本，不转换成块状
+                            if (c.agent !== 'TraderAgent') {
+                                analysisText = convertMarkdownBoldToBlocks(analysisText);
+                            }
                         } else if (entry_type === 'discussion' && content) {
                             // 提取完整的分析文本（summary），去掉Stance前缀
                             const analysisMatch = content.match(/Analysis:\s*(.+)/is);
@@ -4931,7 +4934,10 @@
                             if (analysisText) {
                                 analysisText = convertPositionPnlToTable(analysisText);
                                 // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
-                                analysisText = convertMarkdownBoldToBlocks(analysisText);
+                                // 但对于 TraderAgent，只显示纯文本，不转换成块状
+                                if (c.agent !== 'TraderAgent') {
+                                    analysisText = convertMarkdownBoldToBlocks(analysisText);
+                                }
                             }
                         }
                         
@@ -6450,7 +6456,10 @@
                     analysisText = convertPositionPnlToTable(analysisText);
                     
                     // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
-                    analysisText = convertMarkdownBoldToBlocks(analysisText);
+                    // 但对于 TraderAgent，只显示纯文本，不转换成块状
+                    if (agentName !== 'TraderAgent') {
+                        analysisText = convertMarkdownBoldToBlocks(analysisText);
+                    }
                     
                     // CRITICAL FIX: 将 "|" 分隔符转换为换行符，确保完整显示
                     // 如果内容包含 "|" 分隔符（可能是LLM返回的格式），将其转换为换行符

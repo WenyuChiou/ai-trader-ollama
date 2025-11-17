@@ -176,14 +176,14 @@ async def verify_updates():
         
         if result["stats"]["DiscussionRound"] > 0:
             result["diagnosis"].append("✅ Discussion Round 1/2/3 条目存在")
-                            else:
+        else:
             result["diagnosis"].append("❌ 没有 Discussion Round 1/2/3 条目 - 后端可能未重启")
         
         if result["stats"]["TraderAgent"] > 0:
             trader_with_decision = [e for e in result["recent_entries"] if e.get("agent") == "TraderAgent" and e.get("has_decision")]
             if trader_with_decision:
                 result["diagnosis"].append("✅ TraderAgent 包含 decision 对象")
-                    else:
+            else:
                 result["diagnosis"].append("⚠️  TraderAgent 条目存在但缺少 decision 对象")
         else:
             result["diagnosis"].append("❌ 没有 TraderAgent 条目")
@@ -196,14 +196,14 @@ async def verify_updates():
 async def execute_trade_direct():
     """执行交易循环（直接调用）"""
     try:
-    from src.orchestrator.trading_cycle import execute_daily_trade
+        from src.orchestrator.trading_cycle import execute_daily_trade
         from src.utils.trading_days import is_market_open
-    
+        
         # 加载配置
-    config = load_trading_config()
-    universe = config["universe"]
-    tool_budget = config["tool_budget"]
-    rounds = config["rounds"]
+        config = load_trading_config()
+        universe = config["universe"]
+        tool_budget = config["tool_budget"]
+        rounds = config["rounds"]
         min_tools = config["min_tools"]
         
         # 检查市场状态
@@ -230,8 +230,8 @@ async def execute_trade_direct():
         placed_orders = result.get("placed_orders", [])
         conversations_count = result.get("conversations_count", 0)
         
-    return JSONResponse(
-        status_code=200,
+        return JSONResponse(
+            status_code=200,
             content={
                 "ok": True,
                 "message": message,
@@ -242,12 +242,12 @@ async def execute_trade_direct():
                     **result
                 }
             },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-        }
-    )
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
     except Exception as e:
         import traceback
         error_msg = str(e)
@@ -348,7 +348,7 @@ async def fetch_conversations_api(
                         summary = content.split("Analysis:")[-1].strip()
                         if summary:
                             entry["summary"] = summary
-            else:
+                    else:
                         # 如果没有 "Analysis:"，使用 content 作为 summary
                         entry["summary"] = content[:500] if len(content) > 500 else content
                 else:

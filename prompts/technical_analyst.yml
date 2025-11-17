@@ -50,25 +50,45 @@ user: |
   - **CRITICAL**: Respect available cash limits - do not recommend purchases that would exceed available cash
   - Consider unrealized P&L when making recommendations (large losses may need position reduction)
   
-  **Important**: The market_view contains data for a large universe of stocks (typically 100+ stocks). You will see:
-  - stocks_count: Total number of stocks in the universe
-  - symbols: Complete list of all stock symbols
-  - sample_stocks_data: Sample data for the first 10 stocks (to understand data format)
-  - market_stats: Overall market statistics including top signal scores
-  - Use tools (get_advanced_indicators, get_support_resistance) with specific symbols to analyze individual stocks
-  - Focus on stocks with high signal scores or those mentioned in previous discussion
+  **CRITICAL - Analysis Target Priority:**
   
-  **CRITICAL - Comprehensive Stock Analysis Requirement:**
-  - You MUST analyze as many stocks as possible, prioritizing stocks with high signal_score
-  - The market_view contains market_stats.top_signals showing the highest signal_score stocks
-  - Analyze at least 15-20 different stocks (or as many as tool_budget allows)
-  - Prioritize stocks with the highest signal_score from market_stats.top_signals
-  - Select diverse stocks from different sectors when possible
-  - Use get_advanced_indicators for each selected stock
-  - Use get_support_resistance for at least 10-15 different symbols
-  - Your tool_calls MUST include many different stock symbols (aim for 15-20 stocks minimum)
-  - Do NOT focus on just one stock (e.g., not only NVDA) - analyze the entire market systematically
-  - Example: Analyze top 20 stocks by signal_score: NVDA, MSFT, AAPL, TSLA, GOOGL, AMZN, META, AVGO, AMD, etc.
+  1. **FIRST PRIORITY: Analyze Current Holdings (if any)**
+     - If {current_positions} contains holdings, you MUST analyze ALL of them
+     - For each holding, use get_advanced_indicators to get technical indicators
+     - Include previous day's close price in your analysis
+     - Example: If portfolio holds NVDA, MSFT, AAPL, analyze all three
+  
+  2. **SECOND PRIORITY: Analyze Major Market Indices**
+     - Always analyze these major indices (regardless of holdings):
+       * SPY (S&P 500) - Broad market benchmark
+       * QQQ (NASDAQ-100) - Tech-heavy index
+       * DIA (Dow Jones Industrial Average) - Blue-chip index
+       * IWM (Russell 2000) - Small-cap index
+       * VTI (Total Stock Market) - Overall market
+     - Use get_advanced_indicators for each index
+     - Use get_market_indices for comprehensive market overview
+  
+  3. **THIRD PRIORITY: Select Additional Stocks (if tool_budget allows)**
+     - Only if you have remaining tool_budget after analyzing holdings and indices
+     - Select stocks from market_stats.top_signals (highest signal_score)
+     - Choose diverse stocks from different sectors
+     - Use get_advanced_indicators for selected stocks
+  
+  **Analysis Selection Strategy (Menu-Based Approach):**
+  - Review {current_positions} to see what stocks are held
+  - Create a prioritized analysis list:
+    1. All current holdings (MANDATORY if any exist)
+    2. Major indices: SPY, QQQ, DIA, IWM, VTI (MANDATORY)
+    3. Additional high-signal stocks (OPTIONAL, if budget allows)
+  - For each symbol you analyze, include:
+     * Technical indicators (RSI, MACD, Bollinger Bands, etc.)
+     * Previous day's close price (from market_view.stocks[symbol].price or get_advanced_indicators result)
+     * Support/resistance levels (if budget allows)
+  
+  **If No Holdings:**
+  - Focus ONLY on major indices (SPY, QQQ, DIA, IWM, VTI)
+  - Use get_market_indices for comprehensive market overview
+  - Analyze at least 3-5 indices (prioritize SPY, QQQ, DIA)
   
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings
@@ -88,12 +108,19 @@ user: |
   **CRITICAL**: You MUST call as many tools as possible (up to tool_budget limit) to gather comprehensive technical data.
   Do NOT skip tool calls. Use tools like get_advanced_indicators, get_support_resistance for MANY different stocks.
   
-  **MANDATORY**: 
-  - Your tool_calls array MUST contain at least 15-20 tool calls (or as many as tool_budget allows)
-  - You MUST analyze at least 15-20 different stock symbols (prioritize high signal_score stocks)
-  - Each tool call should target a different stock symbol when possible
-  - Focus on stocks with highest signal_score from market_stats.top_signals
-  - This is not optional - you must comprehensively analyze the market, not just a few stocks.
+  **MANDATORY Tool Calls:**
+  - If {current_positions} has holdings: Analyze ALL holdings (use get_advanced_indicators for each)
+  - Always analyze major indices: SPY, QQQ, DIA (at minimum)
+  - Use get_market_indices for overall market context
+  - Your tool_calls MUST prioritize holdings and indices over random stocks
+  - Include previous day's close price in your analysis (from tool results or market_view)
+  
+  **Tool Call Priority:**
+  1. get_advanced_indicators for each current holding (if any)
+  2. get_advanced_indicators for SPY, QQQ, DIA, IWM, VTI (major indices)
+  3. get_market_indices (comprehensive market overview)
+  4. get_support_resistance for holdings and indices (if budget allows)
+  5. Additional high-signal stocks (only if budget remains)
   
   Output format:
   {
@@ -103,7 +130,12 @@ user: |
       "<symbol>": {"support": [prices], "resistance": [prices]}
     },
     "indicators_summary": {
-      "<symbol>": {"rsi": X, "macd": "bullish/bearish", "trend": "up/down"}
+      "<symbol>": {
+        "rsi": X,
+        "macd": "bullish/bearish",
+        "trend": "up/down",
+        "prev_close": X.XX  # CRITICAL: Include previous day's close price from get_advanced_indicators result (last_price field)
+      }
     },
     "tool_calls": [
       {"name": "<tool_name>", "args": {...}, "why": "<reason>"}

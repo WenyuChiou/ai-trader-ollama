@@ -48,9 +48,14 @@ def run_multi_analyst_discussion(
     
     # 准备仓位信息（如果有）
     positions_text = ""
+    holdings_list = []  # 用于Technical Analyst的选单
     if current_positions:
         positions_text = "\n\n**CURRENT PORTFOLIO POSITIONS**\n"
         total_position_value = 0.0
+        
+        # 从market_view获取前一交易日收盘价
+        stocks_data = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
+        
         for symbol, pos_info in current_positions.items():
             if isinstance(pos_info, dict):
                 quantity = pos_info.get("quantity", 0)
@@ -60,13 +65,23 @@ def run_multi_analyst_discussion(
                 total_position_value += market_value
                 
                 if quantity > 0:
+                    # 获取前一交易日收盘价
+                    prev_close = None
+                    if symbol in stocks_data:
+                        stock_data = stocks_data[symbol]
+                        prev_close = stock_data.get("price")  # price通常是前一交易日收盘价
+                    
                     unrealized_pnl = (current_price - avg_cost) * quantity
                     unrealized_pnl_pct = ((current_price - avg_cost) / avg_cost * 100.0) if avg_cost > 0 else 0.0
                     position_pct = (market_value / portfolio_value * 100.0) if portfolio_value and portfolio_value > 0 else 0.0
                     
-                    positions_text += f"  - {symbol}: {quantity} shares @ avg ${avg_cost:.2f}, current ${current_price:.2f}\n"
+                    prev_close_str = f", prev close: ${prev_close:.2f}" if prev_close else ""
+                    positions_text += f"  - {symbol}: {quantity} shares @ avg ${avg_cost:.2f}, current ${current_price:.2f}{prev_close_str}\n"
                     positions_text += f"    Market Value: ${market_value:.2f} ({position_pct:.1f}% of portfolio)\n"
                     positions_text += f"    Unrealized P&L: ${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%)\n"
+                    
+                    # 添加到持仓列表（用于Technical Analyst选单）
+                    holdings_list.append(symbol)
         
         if portfolio_value:
             cash = portfolio_value - total_position_value
@@ -77,6 +92,20 @@ def run_multi_analyst_discussion(
             positions_text += f"  - Positions Value: ${total_position_value:.2f} ({100.0 - cash_pct:.1f}%)\n"
             if available_cash is not None:
                 positions_text += f"  - Available Cash (after reserve): ${available_cash:.2f}\n"
+        
+        # CRITICAL: 添加持仓列表和指数列表，供Technical Analyst选单使用
+        if holdings_list:
+            positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
+            positions_text += f"**MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
+            positions_text += f"**MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
+            positions_text += f"**Select from this menu - prioritize holdings and indices over random stocks**\n"
+            positions_text += f"**For each symbol, include previous day's close price in your analysis**\n"
+        else:
+            positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
+            positions_text += f"**No holdings - Focus ONLY on indices:**\n"
+            positions_text += f"**MANDATORY Indices:** SPY, QQQ, DIA, IWM, VTI\n"
+            positions_text += f"**Select from this menu - analyze at least 3-5 indices**\n"
+            positions_text += f"**For each index, include previous day's close price in your analysis**\n"
         
         positions_text += "\n**[WARN] CRITICAL: You MUST use position information (P&L and position %) when making recommendations:**\n"
         positions_text += "- Check position_pct for each holding (avoid over-concentration >15%)\n"

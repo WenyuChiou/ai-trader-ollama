@@ -1,23 +1,21 @@
-# 如何启用优化组件
+# 优化组件状态
 
 **日期**: 2025-11-17  
-**状态**: ✅ 优化组件已整合，可通过配置启用
+**状态**: ✅ **优化组件已直接整合，默认启用**
 
 ## 概述
 
-系统现在包含可选的优化组件，可以提升性能：
+系统现在默认使用优化组件，自动提升性能：
 - **ToolCoordinator**: 工具协调和缓存（减少33%工具调用）
 - **SharedContext**: Agent通信和洞察共享
 - **BudgetAllocator**: 自适应预算分配
 - **Parallel Execution**: 并行执行框架（当前使用优化的顺序执行）
 
-**默认状态**: 系统使用标准版本（`multi_analyst_system.py`），不使用优化组件。
+**当前状态**: ✅ **优化组件已直接整合，系统默认使用优化版本**。不再需要配置开关。
 
-## 启用方法
+## 配置说明
 
-### 方法1: 通过配置文件启用（推荐）
-
-在 `backend/config/config.json` 中添加以下配置：
+`backend/config/config.json` 中的 `enable_optimizations` 设置已保留用于向后兼容，但不再影响行为：
 
 ```json
 {
@@ -26,7 +24,7 @@
   "discussion_auto_tools": true,
   "discussion_tool_budget": 15,
   
-  "_comment_optimization": "Enable optimization components for improved performance",
+  "_comment_optimization": "Optimization components are now integrated and enabled by default",
   "enable_optimizations": true,
   
   ...

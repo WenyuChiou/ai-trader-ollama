@@ -1368,6 +1368,10 @@ async def get_system_info():
                 "ollama_host": llm_base_url
             }
         
+        # CRITICAL FIX: 添加调试日志，确保正确提取 LLM 配置
+        print(f"[API] LLM config extracted: {llm_config}")
+        print(f"[API] default_model: {llm_config.get('default_model', 'NOT FOUND')}")
+        
         # Check optimization components status
         # Optimizations are now integrated and always enabled
         optimization_status = {
@@ -1390,8 +1394,8 @@ async def get_system_info():
             status_code=200,
             content={
             "ok": True,
-                "llm_model": llm_config.get("default_model", config_data.get("llm_model", "Unknown")),
-                "llm_base_url": llm_config.get("ollama_host", config_data.get("llm_base_url", "Unknown")),
+                "llm_model": llm_config.get("default_model") if llm_config.get("default_model") else (config_data.get("llm_model") or config_data.get("default_model") or "Unknown"),
+                "llm_base_url": llm_config.get("ollama_host") if llm_config.get("ollama_host") else (config_data.get("llm_base_url") or config_data.get("ollama_host") or "Unknown"),
                 "version": "1.0.0",
                 "position_limits": {
                     "enabled": has_position_limits,

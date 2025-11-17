@@ -1768,11 +1768,29 @@ def execute_daily_trade(
             actual_sell_orders_count = len([o for o in placed_orders if o.get("action") == "SELL" and o.get("order_id")])  # 新创建的SELL订单都有order_id
         else:
             actual_sell_orders_count = 0  # 没有创建新订单
+    else:
+        # CRITICAL FIX: 如果should_create_orders=False，确保actual_buy_orders_count和actual_sell_orders_count被正确设置
+        # 这些变量已经在1219-1220行被初始化为0，但这里再次确认
+        actual_buy_orders_count = 0
+        actual_sell_orders_count = 0
+        print(f"[TRADING CYCLE] Market closed or orders skipped - actual_buy_orders_count=0, actual_sell_orders_count=0")
     
-    # 写入Trader Agent的conversation entry（在订单创建后，以便反映实际创建的订单数量）
+    # CRITICAL FIX: 写入Trader Agent的conversation entry（无论should_create_orders是True还是False，都要写入）
+    # 这确保即使市场关闭或没有创建订单，Trader Agent的决策也会被记录
     try:
+        # 确保decision存在
+        if not decision:
+            print(f"[TRADING CYCLE] ⚠️  WARNING: decision is None or empty, cannot write Trader Agent entry")
+            decision = {}  # 使用空字典作为后备
+        
         # 更新 summary 以反映实际创建的订单数量
-        trader_summary = trader_summary_original
+        trader_summary = trader_summary_original if trader_summary_original else decision.get("summary", decision.get("rationale", "No summary available"))
+        trader_stance = trader_stance if trader_stance else decision.get("stance", "neutral")
+        
+        # 如果summary为空，使用decision中的其他字段
+        if not trader_summary or trader_summary.strip() == "":
+            trader_summary = decision.get("rationale", decision.get("summary", "No analysis provided"))
+        
         if actual_buy_orders_count is not None:
             # 检查 summary 中是否包含订单数量信息
             import re
@@ -1811,14 +1829,33 @@ def execute_daily_trade(
             "decision": decision,  # CRITICAL: 完整的 decision 对象供系统使用（包含 buy_orders, sell_orders 等）
             "buy_orders_count": len(buy_orders),  # 订单数量统计
             "sell_orders_count": len(sell_orders),  # 订单数量统计
+            "actual_buy_orders_created": actual_buy_orders_count,  # 实际创建的订单数量
+            "actual_sell_orders_created": actual_sell_orders_count,  # 实际创建的订单数量
         }
+        
+        # CRITICAL FIX: 确保convo_file存在且可写
+        if not convo_file:
+            logs_dir = _get_project_logs_dir()
+            convo_file = logs_dir / "discussion_actions.jsonl"
+            print(f"[TRADING CYCLE] Convo file not defined, using default: {convo_file}")
+        
+        # 确保目录存在
+        convo_file.parent.mkdir(parents=True, exist_ok=True)
         
         with convo_file.open("a", encoding="utf-8") as f:
             f.write(json.dumps(trader_entry, ensure_ascii=False) + "\n")
         
-        print(f"[TRADING CYCLE] Wrote Trader Agent conversation entry with summary (actual orders: {actual_buy_orders_count} buy, {actual_sell_orders_count} sell)")
+        print(f"[TRADING CYCLE] ✅ Wrote Trader Agent conversation entry to {convo_file}")
+        print(f"[TRADING CYCLE]   - Summary: {trader_summary[:100]}..." if len(trader_summary) > 100 else f"[TRADING CYCLE]   - Summary: {trader_summary}")
+        print(f"[TRADING CYCLE]   - Stance: {trader_stance}")
+        print(f"[TRADING CYCLE]   - Decision buy_orders: {len(buy_orders)}, sell_orders: {len(sell_orders)}")
+        print(f"[TRADING CYCLE]   - Actual orders created: {actual_buy_orders_count} buy, {actual_sell_orders_count} sell")
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         print(f"[TRADING CYCLE] ⚠️  Failed to write Trader Agent conversation entry: {e}")
+        print(f"[TRADING CYCLE] ⚠️  Traceback: {error_trace}")
+        # CRITICAL: 即使写入失败，也要继续执行，不要中断整个流程
     
     # CRITICAL FIX: 保存 portfolio 状态（在订单执行后立即保存）
     # 确保即使订单立即成交，portfolio 状态也会被保存

@@ -4443,7 +4443,7 @@
                                     ${entry_type === 'tool' ? (toolHtml + toolResultHtml) : ''}
                                     ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
                                         <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
-                                        <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${escapeHtml(analysisText)}</div>
+                                        <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${analysisText.includes('<table') ? analysisText : escapeHtml(analysisText)}</div>
                                     </div>` : ''}
                                     ${entry_type === 'discussion' && !analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${formatConversationContent(content_text, entry_type, agent)}</div>` : ''}
                                 </div>
@@ -6108,6 +6108,55 @@
             });
         }
 
+        // Convert position P&L list format to table
+        function convertPositionPnlToTable(text) {
+            // Match patterns like:
+            // - **PSQ:** Incurred a loss ($-10.82).
+            // - **BKR:** Profits increased (+$19.80).
+            // - **SYMBOL:** Incurred a loss ($-XX.XX).
+            // - **SYMBOL:** Profits increased (+$XX.XX).
+            const pnlPattern = /\*\*([A-Z]+):\*\*\s*(?:Incurred a loss|Profits increased)\s*\(([^)]+)\)\./g;
+            const matches = [];
+            let match;
+            
+            while ((match = pnlPattern.exec(text)) !== null) {
+                const symbol = match[1];
+                const amount = match[2].trim();
+                const isLoss = match[0].includes('Incurred a loss');
+                matches.push({ symbol, amount, isLoss });
+            }
+            
+            if (matches.length > 0) {
+                // Build HTML table
+                let tableHtml = '<div style="margin: 12px 0;"><table style="width: 100%; border-collapse: collapse; font-size: 13px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; overflow: hidden;">';
+                tableHtml += '<thead><tr style="background: rgba(34, 211, 238, 0.2);">';
+                tableHtml += '<th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">Symbol</th>';
+                tableHtml += '<th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">Status</th>';
+                tableHtml += '<th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">P&L</th>';
+                tableHtml += '</tr></thead><tbody>';
+                
+                matches.forEach((item, idx) => {
+                    const statusText = item.isLoss ? 'Loss' : 'Profit';
+                    const statusColor = item.isLoss ? '#ef4444' : '#10b981';
+                    const amountColor = item.isLoss ? '#ef4444' : '#10b981';
+                    const rowBg = idx % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(15, 23, 42, 0.3)';
+                    
+                    tableHtml += `<tr style="border-bottom: 1px solid rgba(34, 211, 238, 0.15); background: ${rowBg};">`;
+                    tableHtml += `<td style="padding: 10px 12px; color: #f1f5f9; font-weight: 700;">${escapeHtml(item.symbol)}</td>`;
+                    tableHtml += `<td style="padding: 10px 12px; color: ${statusColor}; font-weight: 600;">${statusText}</td>`;
+                    tableHtml += `<td style="padding: 10px 12px; text-align: right; color: ${amountColor}; font-weight: 700;">${escapeHtml(item.amount)}</td>`;
+                    tableHtml += '</tr>';
+                });
+                
+                tableHtml += '</tbody></table></div>';
+                
+                // Replace the matched text with table
+                return text.replace(pnlPattern, '').trim() + tableHtml;
+            }
+            
+            return text;
+        }
+
         function formatConversationContent(content, entryType, agentName = '') {
             if (!content) return '';
             
@@ -6120,6 +6169,9 @@
                 const analysisMatch = content.match(/Analysis:\s*([\s\S]+)$/i);
                 if (analysisMatch) {
                     let analysisText = analysisMatch[1].trim();
+                    
+                    // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
+                    analysisText = convertPositionPnlToTable(analysisText);
                     
                     // CRITICAL FIX: 将 "|" 分隔符转换为换行符，确保完整显示
                     // 如果内容包含 "|" 分隔符（可能是LLM返回的格式），将其转换为换行符
@@ -6151,7 +6203,22 @@
                             return escapeHtml(analysisText);
                         }
                     }
-                    // 如果不是JSON，直接返回Analysis部分（完整内容）
+                    // 如果不是JSON，检查是否包含表格HTML（从convertPositionPnlToTable返回）
+                    // 如果包含表格，需要特殊处理（不escape HTML）
+                    if (analysisText.includes('<table')) {
+                        // 包含表格HTML，需要分别处理文本和HTML
+                        // 提取表格部分和文本部分
+                        const tableMatch = analysisText.match(/(.*?)(<div[^>]*><table[\s\S]*?<\/table><\/div>)(.*)/);
+                        if (tableMatch) {
+                            const beforeTable = escapeHtml(tableMatch[1].trim());
+                            const tableHtml = tableMatch[2]; // 不escape，保留HTML
+                            const afterTable = escapeHtml(tableMatch[3].trim());
+                            return beforeTable + (beforeTable ? '<br><br>' : '') + tableHtml + (afterTable ? '<br><br>' + afterTable : '');
+                        }
+                        // 如果匹配失败，直接返回（可能整个都是表格）
+                        return analysisText;
+                    }
+                    // 如果没有表格，正常escape
                     return escapeHtml(analysisText);
                 } else {
                     // CRITICAL FIX: 如果匹配失败，尝试从"Stance:"后面提取所有内容

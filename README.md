@@ -2349,7 +2349,9 @@ The system includes optional optimization components that can improve performanc
 - **BudgetAllocator**: Adaptive tool budget allocation based on market conditions
 - **Parallel Execution Structure**: Framework ready for async parallel agent execution
 
-**Note**: Optimization components are optional and backward compatible. The system works normally without them. See [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) for details.
+**Note**: Optimization components are optional and backward compatible. The system works normally without them. 
+
+**To Enable Optimizations**: Set `"enable_optimizations": true` in `backend/config/config.json` and restart the API server. See [`docs/HOW_TO_ENABLE_OPTIMIZATIONS.md`](docs/HOW_TO_ENABLE_OPTIMIZATIONS.md) for detailed instructions.
 
 **Related Documentation**:
 - [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) - Detailed optimization changes

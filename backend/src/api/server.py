@@ -12,8 +12,8 @@ if Path.cwd() != _backend_dir and _backend_dir.exists():
     import os
     os.chdir(_backend_dir)
     # 确保 backend 目录在 Python 路径中
-    if str(_backend_dir) not in sys.path:
-        sys.path.insert(0, str(_backend_dir))
+if str(_backend_dir) not in sys.path:
+    sys.path.insert(0, str(_backend_dir))
 
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
@@ -176,14 +176,14 @@ async def verify_updates():
         
         if result["stats"]["DiscussionRound"] > 0:
             result["diagnosis"].append("✅ Discussion Round 1/2/3 条目存在")
-        else:
+                            else:
             result["diagnosis"].append("❌ 没有 Discussion Round 1/2/3 条目 - 后端可能未重启")
         
         if result["stats"]["TraderAgent"] > 0:
             trader_with_decision = [e for e in result["recent_entries"] if e.get("agent") == "TraderAgent" and e.get("has_decision")]
             if trader_with_decision:
                 result["diagnosis"].append("✅ TraderAgent 包含 decision 对象")
-            else:
+                    else:
                 result["diagnosis"].append("⚠️  TraderAgent 条目存在但缺少 decision 对象")
         else:
             result["diagnosis"].append("❌ 没有 TraderAgent 条目")
@@ -196,14 +196,14 @@ async def verify_updates():
 async def execute_trade_direct():
     """执行交易循环（直接调用）"""
     try:
-        from src.orchestrator.trading_cycle import execute_daily_trade
+    from src.orchestrator.trading_cycle import execute_daily_trade
         from src.utils.trading_days import is_market_open
-        
+    
         # 加载配置
-        config = load_trading_config()
-        universe = config["universe"]
-        tool_budget = config["tool_budget"]
-        rounds = config["rounds"]
+    config = load_trading_config()
+    universe = config["universe"]
+    tool_budget = config["tool_budget"]
+    rounds = config["rounds"]
         min_tools = config["min_tools"]
         
         # 检查市场状态
@@ -230,8 +230,8 @@ async def execute_trade_direct():
         placed_orders = result.get("placed_orders", [])
         conversations_count = result.get("conversations_count", 0)
         
-        return JSONResponse(
-            status_code=200,
+    return JSONResponse(
+        status_code=200,
             content={
                 "ok": True,
                 "message": message,
@@ -242,12 +242,12 @@ async def execute_trade_direct():
                     **result
                 }
             },
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "*",
-            }
-        )
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
     except Exception as e:
         import traceback
         error_msg = str(e)
@@ -348,7 +348,7 @@ async def fetch_conversations_api(
                         summary = content.split("Analysis:")[-1].strip()
                         if summary:
                             entry["summary"] = summary
-                    else:
+            else:
                         # 如果没有 "Analysis:"，使用 content 作为 summary
                         entry["summary"] = content[:500] if len(content) > 500 else content
                 else:
@@ -555,7 +555,7 @@ async def fetch_conversations_api(
         return JSONResponse(
             status_code=200,
             content={
-                "ok": True,
+            "ok": True,
                 "conversations": cleaned_conversations,
                 "count": len(cleaned_conversations),
                 "total": len(processed_conversations),
@@ -609,25 +609,25 @@ async def get_portfolio_real_time():
         portfolio = Portfolio()
         if portfolio_file.exists():
             try:
-                with portfolio_file.open("r", encoding="utf-8") as f:
-                    state = json.load(f)
+        with portfolio_file.open("r", encoding="utf-8") as f:
+            state = json.load(f)
                 portfolio.cash = float(state.get("cash", 10000.0))
                 portfolio.initial_value = float(state.get("initial_value", 10000.0))
-                
-                # 恢复持仓
-                from src.data.portfolio import Position
-                for symbol, pos_info in state.get("positions", {}).items():
-                    if isinstance(pos_info, dict):
-                        qty = int(pos_info.get("quantity", 0))
-                        avg_cost = float(pos_info.get("avg_cost", 0))
-                        total_cost = float(pos_info.get("total_cost", 0))
-                        if total_cost <= 0:
-                            total_cost = avg_cost * qty
-                        if qty > 0:
+        
+        # 恢复持仓
+        from src.data.portfolio import Position
+        for symbol, pos_info in state.get("positions", {}).items():
+            if isinstance(pos_info, dict):
+                qty = int(pos_info.get("quantity", 0))
+                avg_cost = float(pos_info.get("avg_cost", 0))
+                total_cost = float(pos_info.get("total_cost", 0))
+                if total_cost <= 0:
+                    total_cost = avg_cost * qty
+                if qty > 0:
                             portfolio._positions[symbol] = Position(
-                                symbol=symbol,
-                                quantity=qty,
-                                avg_cost=avg_cost,
+                        symbol=symbol,
+                        quantity=qty,
+                        avg_cost=avg_cost,
                                 total_cost=total_cost,
                             )
             except Exception as e:
@@ -651,8 +651,8 @@ async def get_portfolio_real_time():
                 
                 # 填充基本信息
                 positions_detail[symbol] = {
-                    "quantity": pos.quantity,
-                    "avg_cost": pos.avg_cost,
+                                "quantity": pos.quantity,
+                                "avg_cost": pos.avg_cost,
                     "total_cost": total_cost,
                     "cost_basis": total_cost,
                     "current_price": price,
@@ -673,8 +673,8 @@ async def get_portfolio_real_time():
                         pos = portfolio._positions[symbol]
                         total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
                         positions_detail[symbol] = {
-                            "quantity": pos.quantity,
-                            "avg_cost": pos.avg_cost,
+                    "quantity": pos.quantity,
+                    "avg_cost": pos.avg_cost,
                             "total_cost": total_cost,
                             "cost_basis": total_cost,
                             "current_price": price,
@@ -715,8 +715,8 @@ async def get_portfolio_real_time():
                 "Access-Control-Allow-Headers": "*",
             }
         )
-    except Exception as e:
-        import traceback
+            except Exception as e:
+                import traceback
         return JSONResponse(
             status_code=500,
             content={
@@ -968,7 +968,7 @@ async def get_vix_term():
         return JSONResponse(
             status_code=200,
             content={
-                "ok": True,
+            "ok": True,
                 "vix": vix_data.get("vix", 0) or 0,  # CRITICAL FIX: 直接返回数值
                 "vix3m": vix_data.get("vix3m", 0) or 0,  # CRITICAL FIX: 直接返回数值
                 "ratio": vix_data.get("ratio", 0) or 0,  # CRITICAL FIX: 直接返回数值
@@ -1019,7 +1019,7 @@ async def get_fear_greed():
         return JSONResponse(
             status_code=200,
             content={
-                "ok": True,
+                "ok": True, 
                 "value": fg_data.get("value", 0) or 0,  # CRITICAL FIX: 直接返回数值
                 "label": fg_data.get("label", "Unknown") or "Unknown",  # CRITICAL FIX: 直接返回标签
                 "fear_greed": fg_data,  # CRITICAL FIX: 同时保留完整对象供前端使用
@@ -1057,46 +1057,46 @@ async def system_init(force: bool = Query(False)):
     """系统初始化（删除所有数据）"""
     try:
         if not force:
-            return JSONResponse(
+    return JSONResponse(
                 status_code=400,
                 content={
                     "ok": False,
                     "error": "force parameter required"
                 },
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "POST, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
         logs_dir = _get_project_logs_dir()
         
         # 备份 portfolio_state.json（如果存在）
-        portfolio_file = logs_dir / "portfolio_state.json"
-        if portfolio_file.exists():
+    portfolio_file = logs_dir / "portfolio_state.json"
+    if portfolio_file.exists():
             backup_file = logs_dir / f"portfolio_state_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            import shutil
-            shutil.copy2(portfolio_file, backup_file)
+                import shutil
+                shutil.copy2(portfolio_file, backup_file)
         
         # 删除所有数据文件
         files_to_delete = [
             "portfolio_state.json",
-            "pending_orders.jsonl",
+        "pending_orders.jsonl",
             "filled_orders.jsonl",
-            "equity_history.jsonl",
+        "equity_history.jsonl",
             "discussion_actions.jsonl",
-        ]
-        
+    ]
+    
         deleted = []
         for filename in files_to_delete:
-            file_path = logs_dir / filename
-            if file_path.exists():
+        file_path = logs_dir / filename
+        if file_path.exists():
                 file_path.unlink()
                 deleted.append(filename)
         
-        return JSONResponse(
-            status_code=200,
+    return JSONResponse(
+        status_code=200,
             content={
                 "ok": True,
                 "message": f"System initialized. Deleted {len(deleted)} files.",
@@ -1126,7 +1126,7 @@ async def system_init(force: bool = Query(False)):
 
 @app.get("/api/system/info")
 async def get_system_info():
-    """获取系统信息"""
+    """获取系统信息，包括仓位限制配置状态"""
     try:
         config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
         config_data = {}
@@ -1137,13 +1137,43 @@ async def get_system_info():
             except:
                 pass
         
+        # Check if position limits are configured (not commented out with underscore)
+        position_limits = {}
+        has_position_limits = False
+        
+        # Check for position limit fields (excluding commented ones with underscore prefix)
+        if "position_limit_per_stock" in config_data:
+            position_limits["max_position_per_stock"] = config_data["position_limit_per_stock"]
+            has_position_limits = True
+        if "position_limit_total" in config_data:
+            position_limits["max_total_position"] = config_data["position_limit_total"]
+            has_position_limits = True
+        if "position_limit_min_per_stock" in config_data:
+            position_limits["min_position_per_stock"] = config_data["position_limit_min_per_stock"]
+            has_position_limits = True
+        if "max_positions" in config_data:
+            position_limits["max_positions"] = config_data["max_positions"]
+            has_position_limits = True
+        
+        # Get LLM config
+        llm_config = config_data.get("llm", {})
+        
         return JSONResponse(
             status_code=200,
             content={
             "ok": True,
-                "llm_model": config_data.get("llm_model", "Unknown"),
-                "llm_base_url": config_data.get("llm_base_url", "Unknown"),
-                "version": "1.0.0"
+                "llm_model": llm_config.get("default_model", config_data.get("llm_model", "Unknown")),
+                "llm_base_url": llm_config.get("ollama_host", config_data.get("llm_base_url", "Unknown")),
+                "version": "1.0.0",
+                "position_limits": {
+                    "enabled": has_position_limits,
+                    "limits": position_limits if has_position_limits else None,
+                    "mode": "restricted" if has_position_limits else "free"
+                },
+                "agent_freedom": {
+                    "position_sizing": "free" if not has_position_limits else "restricted",
+                    "description": "Agent has complete freedom to decide position sizes based on VIX risk, signal strength, and diversification needs" if not has_position_limits else "Agent will respect configured position limits"
+                }
             },
             headers={
                 "Access-Control-Allow-Origin": "*",
@@ -1240,11 +1270,11 @@ async def get_tools_list():
                 "Access-Control-Allow-Headers": "*",
             }
         )
-    except Exception as e:
-        import traceback
+                except Exception as e:
+                    import traceback
         return JSONResponse(
             status_code=500,
-            content={
+        content={
                 "ok": False,
                 "error": str(e),
                 "traceback": traceback.format_exc()

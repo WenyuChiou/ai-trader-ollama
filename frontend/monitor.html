@@ -3460,12 +3460,15 @@
             document.getElementById('statusSection').style.display = 'block';
 
             // Get LLM model info
+            // CRITICAL FIX: 后端返回的是 llm_model 和 llm_base_url，不是嵌套的 llm 对象
             let llmModel = 'Unknown';
-            if (systemInfo && systemInfo.llm) {
-                llmModel = systemInfo.llm.default_model || 'Unknown';
+            if (systemInfo) {
+                // 优先使用 llm_model（后端直接返回的字段）
+                llmModel = systemInfo.llm_model || systemInfo.llm?.default_model || 'Unknown';
+                // 如果后端返回了 agent_models，也显示
                 const agentModels = systemInfo.agent_models || {};
                 const uniqueModels = [...new Set(Object.values(agentModels))];
-                if (uniqueModels.length > 0 && uniqueModels[0] !== llmModel) {
+                if (uniqueModels.length > 0 && uniqueModels[0] !== llmModel && llmModel !== 'Unknown') {
                     llmModel += ` (${uniqueModels.join(', ')})`;
                 }
             }

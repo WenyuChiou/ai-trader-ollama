@@ -135,20 +135,14 @@ def is_market_open(check_datetime: Optional[datetime] = None) -> bool:
         
         # 如果check_datetime没有时区信息，需要先添加时区信息
         if check_datetime.tzinfo is None:
-            # 获取本地时区（更可靠的方法）
+            # 更可靠的方法：直接使用 UTC 作为基准，然后转换为美东时间
+            # 这样可以避免本地时区转换的复杂性
             try:
-                # 方法1: 使用datetime.now()的时区信息
-                local_now = datetime.now()
-                if local_now.tzinfo:
-                    # 如果系统有时区信息，使用它
-                    local_tz = local_now.tzinfo
-                else:
-                    # 方法2: 使用UTC偏移量计算
-                    import time
-                    offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
-                    from datetime import timedelta, timezone as dt_timezone
-                    local_tz = dt_timezone(timedelta(seconds=offset_seconds))
-                
+                # 方法1: 尝试获取本地时区
+                import time
+                offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
+                from datetime import timedelta, timezone as dt_timezone
+                local_tz = dt_timezone(timedelta(seconds=offset_seconds))
                 check_datetime = check_datetime.replace(tzinfo=local_tz)
             except Exception:
                 # 如果获取本地时区失败，假设是UTC

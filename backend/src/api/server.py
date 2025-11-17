@@ -914,16 +914,53 @@ async def check_market_open():
     """检查市场是否开放"""
     try:
         from src.utils.trading_days import is_market_open
+        import pytz
         
         now = datetime.now()
         market_open = is_market_open(now)
         
+        # 获取美东时间用于显示
+        et_tz = pytz.timezone('America/New_York')
+        if now.tzinfo is None:
+            import time
+            offset_seconds = -time.timezone if time.daylight == 0 else -time.altzone
+            from datetime import timedelta, timezone as dt_timezone
+            local_tz = dt_timezone(timedelta(seconds=offset_seconds))
+            now_with_tz = now.replace(tzinfo=local_tz)
+        else:
+            now_with_tz = now
+        et_time = now_with_tz.astimezone(et_tz)
+        
+        # 计算距离开盘/收盘的时间（分钟）
+        current_time = et_time.time()
+        market_open_time = datetime.strptime("09:30", "%H:%M").time()
+        market_close_time = datetime.strptime("16:00", "%H:%M").time()
+        
+        minutes_until_open = None
+        minutes_until_close = None
+        
+        if current_time < market_open_time:
+            # 市场尚未开盘
+            open_dt = datetime.combine(et_time.date(), market_open_time)
+            current_dt = datetime.combine(et_time.date(), current_time)
+            minutes_until_open = int((open_dt - current_dt).total_seconds() / 60)
+        elif current_time < market_close_time:
+            # 市场已开盘
+            close_dt = datetime.combine(et_time.date(), market_close_time)
+            current_dt = datetime.combine(et_time.date(), current_time)
+            minutes_until_close = int((close_dt - current_dt).total_seconds() / 60)
+        
         return JSONResponse(
             status_code=200,
             content={
-            "ok": True,
+                "ok": True,
                 "is_open": market_open,
-                "timestamp": now.isoformat()
+                "timestamp": now.isoformat(),
+                "eastern_time": et_time.strftime('%Y-%m-%d %H:%M:%S %Z'),
+                "current_et_time": current_time.strftime('%H:%M:%S'),
+                "market_hours": "9:30 AM - 4:00 PM ET",
+                "minutes_until_open": minutes_until_open,
+                "minutes_until_close": minutes_until_close,
             },
             headers={
                 "Access-Control-Allow-Origin": "*",

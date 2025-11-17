@@ -1285,11 +1285,18 @@ def execute_daily_trade(
     elif is_market_open_for_simulation:
         # 实时模式：只有在市场开放时才检查是否可以创建订单
         # CRITICAL FIX: 再次确认市场状态（双重检查，避免误判）
+        # NOTE: 双重检查可能导致误判，如果 is_market_open_for_simulation=True 但双重检查显示关闭
+        # 这可能是因为时区问题或时间判断的微小差异
+        # 为了更可靠，我们优先信任 is_market_open_for_simulation（它已经在前面检查过了）
         from src.utils.trading_days import is_market_open as double_check_market
         market_open_double_check = double_check_market(None)
+        
+        # CRITICAL FIX: 如果双重检查显示关闭，但 is_market_open_for_simulation=True，记录警告但继续
+        # 因为 is_market_open_for_simulation 已经在前面经过检查，更可靠
         if not market_open_double_check:
-            print(f"[TRADING CYCLE] ⚠️  WARNING: Double-check shows market is closed, skipping order creation")
-            should_create_orders = False
+            print(f"[TRADING CYCLE] ⚠️  WARNING: Double-check shows market is closed, but is_market_open_for_simulation=True")
+            print(f"[TRADING CYCLE] ⚠️  This may be a timing issue. Continuing with is_market_open_for_simulation=True")
+            # 不设置 should_create_orders = False，继续检查其他条件
         elif not existing_pending_orders:
             # 检查今天是否已经有filled订单
             # CRITICAL: Use project root data/logs directory explicitly

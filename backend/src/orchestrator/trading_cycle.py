@@ -1140,31 +1140,44 @@ def execute_daily_trade(
     # Path 已经在文件顶部导入，不需要重复导入
     # CRITICAL FIX: json 已在文件顶部导入，不需要重复导入
     
-    position_config = {
-        "max_position_per_stock": 0.15,  # 默认单股最大15%
-        "max_total_position": 0.85,  # 默认总仓位85%（保留15%现金）
-        "min_position_per_stock": 0.03,  # 默认单股最小3%（允许更小的仓位分散投资）
-    }
+    # NEW: Position limits are OPTIONAL - only enforce if explicitly set in config.json
+    # If not set, agent has complete freedom to decide position sizes
+    position_config = {}  # Empty by default - no restrictions
     
-    # 尝试从 config.json 读取仓位限制
+    # 尝试从 config.json 读取仓位限制（可选）
     config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
     try:
         if config_path.exists():
             with open(config_path, 'r', encoding="utf-8") as f:
                 config_data = json.load(f)
-                position_config["max_position_per_stock"] = float(config_data.get("position_limit_per_stock", 0.15))
-                position_config["max_total_position"] = float(config_data.get("position_limit_total", 0.85))
-                # min_position_per_stock 如果配置中没有，使用默认值
-                position_config["min_position_per_stock"] = float(config_data.get("position_limit_min_per_stock", 0.03))
-                print(f"[TRADING CYCLE] Loaded position limits from config.json:")
-                print(f"  - max_position_per_stock: {position_config['max_position_per_stock']:.1%}")
-                print(f"  - max_total_position: {position_config['max_total_position']:.1%}")
-                print(f"  - min_position_per_stock: {position_config['min_position_per_stock']:.1%}")
+                
+                # Only set limits if explicitly configured (not using defaults)
+                # If user wants limits, they must explicitly set them in config.json
+                if "position_limit_per_stock" in config_data:
+                    position_config["max_position_per_stock"] = float(config_data["position_limit_per_stock"])
+                    print(f"[TRADING CYCLE] Position limit configured: max_position_per_stock = {position_config['max_position_per_stock']:.1%}")
+                
+                if "position_limit_total" in config_data:
+                    position_config["max_total_position"] = float(config_data["position_limit_total"])
+                    print(f"[TRADING CYCLE] Position limit configured: max_total_position = {position_config['max_total_position']:.1%}")
+                
+                if "position_limit_min_per_stock" in config_data:
+                    position_config["min_position_per_stock"] = float(config_data["position_limit_min_per_stock"])
+                    print(f"[TRADING CYCLE] Position limit configured: min_position_per_stock = {position_config['min_position_per_stock']:.1%}")
+                
+                if "max_positions" in config_data:
+                    position_config["max_positions"] = int(config_data["max_positions"])
+                    print(f"[TRADING CYCLE] Position limit configured: max_positions = {position_config['max_positions']}")
+                
+                if position_config:
+                    print(f"[TRADING CYCLE] Position limits enabled from config.json (agent will respect these limits)")
+                else:
+                    print(f"[TRADING CYCLE] No position limits in config.json - agent has complete freedom")
         else:
-            print(f"[TRADING CYCLE] WARNING: Config file not found at {config_path}, using default position limits")
+            print(f"[TRADING CYCLE] Config file not found - agent has complete freedom (no position limits)")
     except Exception as e:
-        # 如果读取失败，使用默认值
-        print(f"[TRADING CYCLE] WARNING: Failed to load position limits from config: {e}, using defaults")
+        # 如果读取失败，不设置限制（给 agent 自由）
+        print(f"[TRADING CYCLE] Failed to load config: {e} - agent has complete freedom (no position limits)")
 
     # 计算可用现金（考虑现金储备要求）
     # 先计算，以便传递给 trader agent

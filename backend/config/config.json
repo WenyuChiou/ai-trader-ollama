@@ -31,9 +31,10 @@
     "DOT-USD"
   ],
   "initial_cash": 10000,
-  "position_limit_per_stock": 0.15,
-  "position_limit_total": 0.85,
-  "position_limit_min_per_stock": 0.03,
+  "_comment_position_limits": "Position limits are OPTIONAL. If not set, agent has complete freedom to decide position sizes based on VIX risk, signal strength, and diversification needs. Remove or comment out these lines to give agent complete freedom.",
+  "_position_limit_per_stock": 0.15,
+  "_position_limit_total": 0.85,
+  "_position_limit_min_per_stock": 0.03,
   "date_range": {
     "start": "2024-01-02",
     "end": "2024-01-31"

@@ -1312,7 +1312,7 @@ The system uses **two types of rules**:
 1. **LLM-Decided Rules (Guidelines)**: Trader Agent (LLM) makes decisions based on these guidelines, with flexibility to adjust based on market conditions
 2. **Configurable Hard Rules**: Can be set in `config.json` and are strictly enforced by the system
 
-**Current System Default**: **LLM-Decided** (Trader Agent makes all trading decisions based on guidelines)
+**Current System Default**: **Complete Agent Freedom** (Trader Agent has complete freedom to decide position sizes, only limited by available cash and market status)
 
 ---
 
@@ -1345,16 +1345,35 @@ IF market_status == OPEN:
 
 #### 2. Position Limits
 
-**Current System**: **LLM-Decided (Guidelines)** - Trader Agent makes decisions based on guidelines
+**Current System**: **Complete Agent Freedom** - Position limits are **OPTIONAL** and only enforced if explicitly set in `config.json`
 
-**Guidelines (LLM Considers)**:
+**Default Behavior (No Limits Set)**:
 
-| Rule | Default Guideline | Type | How It Works |
+| Rule | Default Behavior | Type | How It Works |
 |------|------------------|------|--------------|
-| **Per Stock Maximum** | 15% of portfolio | LLM Guideline | Trader Agent considers this as a guideline, can use smaller positions based on signals |
-| **Total Position Maximum** | 80% of portfolio | LLM Guideline | Trader Agent considers this as a guideline, can use less based on risk |
-| **Minimum Position Size** | 3% of portfolio | LLM Guideline | Trader Agent can use smaller positions for diversification |
-| **Maximum Positions** | 10 different stocks | LLM Guideline | Trader Agent considers this when selecting stocks |
+| **Per Stock Maximum** | **No Limit** | Agent Decision | Agent decides based on VIX risk, signal strength, diversification needs |
+| **Total Position Maximum** | **No Limit** | Agent Decision | Agent can use all available cash (limited only by cash balance) |
+| **Minimum Position Size** | **No Limit** | Agent Decision | Agent can use any position size based on market conditions |
+| **Maximum Positions** | **No Limit** | Agent Decision | Agent decides number of positions based on opportunities |
+
+**Agent Decision Logic (No Limits)**:
+- **VIX Risk-Based Sizing**:
+  - High VIX (7-10): 5-8% per stock (conservative)
+  - Medium VIX (4-6): 8-12% per stock (normal)
+  - Low VIX (0-3): 10-15% per stock (aggressive)
+- **Stock Count Adjustment**:
+  - Many stocks (>10): Smaller positions (5-8%)
+  - Few stocks (<5): Larger positions (12-15%)
+- **Signal Strength**: Strong signals → larger positions, weak signals → smaller positions
+
+**Optional Limits (If Set in `config.json`)**:
+
+| Rule | Configurable | Type | How It Works |
+|------|--------------|------|--------------|
+| **Per Stock Maximum** | Yes (`position_limit_per_stock`) | Hard Limit | Agent will respect this limit if set |
+| **Total Position Maximum** | Yes (`position_limit_total`) | Hard Limit | Agent will respect this limit if set |
+| **Minimum Position Size** | Yes (`position_limit_min_per_stock`) | Hard Limit | Agent will respect this limit if set |
+| **Maximum Positions** | Yes (`max_positions`) | Hard Limit | Agent will respect this limit if set |
 
 **LLM Decision Process**:
 ```
@@ -1550,11 +1569,11 @@ Rationale: "High VIX risk (7.5) suggests conservative position sizing. Using 6% 
 | Rule Category | Type | Configurable | Current Default | LLM Decision |
 |---------------|------|--------------|-----------------|--------------|
 | **Market Status** | Hard (System) | No | 9:30 AM - 4:00 PM ET | N/A (System-enforced) |
-| **Per Stock Max** | LLM Guideline | Yes (`position_limit_per_stock`) | 15% | ✅ LLM decides actual size |
-| **Total Position Max** | LLM Guideline | Yes (`position_limit_total`) | 80% | ✅ LLM decides actual usage |
-| **Min Position Size** | LLM Guideline | Yes (`position_limit_min_per_stock`) | 3% | ✅ LLM decides actual size |
-| **Max Positions** | LLM Guideline | Yes (`max_positions`) | 10 | ✅ LLM decides actual count |
-| **Cash Reserve** | LLM Guideline | Yes (`min_cash_reserve_ratio`) | 20% | ✅ LLM decides actual reserve |
+| **Per Stock Max** | Optional Limit | Yes (`position_limit_per_stock`) | **No Limit** (if not set) | ✅ Agent decides freely (or respects limit if set) |
+| **Total Position Max** | Optional Limit | Yes (`position_limit_total`) | **No Limit** (if not set) | ✅ Agent decides freely (or respects limit if set) |
+| **Min Position Size** | Optional Limit | Yes (`position_limit_min_per_stock`) | **No Limit** (if not set) | ✅ Agent decides freely (or respects limit if set) |
+| **Max Positions** | Optional Limit | Yes (`max_positions`) | **No Limit** (if not set) | ✅ Agent decides freely (or respects limit if set) |
+| **Cash Reserve** | Optional Limit | Yes (`min_cash_reserve_ratio`) | **No Limit** (if not set) | ✅ Agent decides freely (or respects limit if set) |
 | **Cash Safety** | Hard (System) | No | Must have cash | N/A (System-enforced) |
 | **Order Type** | Hard (System) | No | Market orders only | N/A (System-enforced) |
 | **Risk-Based Sizing** | LLM Guideline | No | VIX-based ranges | ✅ LLM decides based on risk |
@@ -1571,34 +1590,50 @@ Rationale: "High VIX risk (7.5) suggests conservative position sizing. Using 6% 
 
 ### How to Configure Rules
 
-**Option 1: Let LLM Decide (Current Default - Recommended)**
+**Option 1: Complete Agent Freedom (Current Default - Recommended)**
 
-Don't set position limits in `config.json`, or set them as guidelines:
+**Remove or comment out position limits in `config.json`** to give the agent complete freedom:
+
 ```json
 {
-  "position_limit_per_stock": 0.15,      // Guideline: LLM can use less
-  "position_limit_total": 0.85,          // Guideline: LLM can use less
-  "position_limit_min_per_stock": 0.03    // Guideline: LLM can use smaller
+  "_comment_position_limits": "Position limits are OPTIONAL. Remove these lines to give agent complete freedom.",
+  "_position_limit_per_stock": 0.15,      // Commented out - agent has freedom
+  "_position_limit_total": 0.85,          // Commented out - agent has freedom
+  "_position_limit_min_per_stock": 0.03    // Commented out - agent has freedom
 }
 ```
 
-The LLM will:
-- Consider these as maximum guidelines
-- Adjust based on market conditions, risk, and opportunities
-- Make nuanced decisions (e.g., use 8% if risk is high, 12% if signals are strong)
+**Or simply don't include these fields at all.**
 
-**Option 2: Set Strict Limits (Future Feature)**
+The agent will:
+- **Decide position sizes based on VIX risk**:
+  - High VIX (7-10): Use smaller positions (5-8% per stock)
+  - Medium VIX (4-6): Use normal positions (8-12% per stock)
+  - Low VIX (0-3): Use larger positions (10-15% per stock)
+- **Adjust based on number of recommended stocks**:
+  - Many stocks (>10): Use smaller positions (5-8%)
+  - Few stocks (<5): Use larger positions (12-15%)
+- **Consider signal strength, diversification needs, and market conditions**
+- **Only limited by available cash** (hard safety check)
 
-In the future, you can set strict limits that override LLM decisions:
+**Example Agent Decisions (No Limits)**:
+- **High VIX (7.5) + 8 recommended stocks**: Uses 6% per stock (conservative)
+- **Low VIX (2.0) + 3 recommended stocks**: Uses 14% per stock (aggressive)
+- **Medium VIX (5.0) + 15 recommended stocks**: Uses 7% per stock (diversified)
+
+**Option 2: Set Position Limits (Optional)**
+
+If you want to set limits, explicitly add them to `config.json`:
 ```json
 {
-  "position_limit_per_stock": 0.15,      // Strict limit: LLM cannot exceed
-  "position_limit_total": 0.85,          // Strict limit: LLM cannot exceed
-  "enforce_strict_limits": true          // Enable strict enforcement
+  "position_limit_per_stock": 0.15,      // Max 15% per stock (agent will respect)
+  "position_limit_total": 0.85,          // Max 85% total (agent will respect)
+  "position_limit_min_per_stock": 0.03,  // Min 3% per stock (agent will respect)
+  "max_positions": 10                     // Max 10 different stocks (agent will respect)
 }
 ```
 
-**Current System**: Uses Option 1 (LLM decides based on guidelines)
+**Current System**: Uses Option 1 (Complete agent freedom - no limits unless explicitly set)
 
 ---
 

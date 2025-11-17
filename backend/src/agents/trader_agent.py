@@ -11,43 +11,43 @@ def _calculate_position_size(
     risk_report: Optional[Dict[str, Any]] = None,
     current_positions: Optional[Dict[str, Any]] = None,
     *,
-    max_position_per_stock: float = 0.15,  # 单股最大仓位（可配置）
-    max_total_position: float = 0.80,  # 总仓位上限（可配置）
-    min_position_per_stock: float = 0.03,  # 单股最小仓位（新增：允许更小的仓位）
-    available_cash: Optional[float] = None,  # 新增：可用现金（如果提供，用于限制买入数量）
+    max_position_per_stock: Optional[float] = None,  # 单股最大仓位（可选，None=无限制）
+    max_total_position: Optional[float] = None,  # 总仓位上限（可选，None=无限制）
+    min_position_per_stock: Optional[float] = None,  # 单股最小仓位（可选，None=无限制）
+    available_cash: Optional[float] = None,  # 可用现金（如果提供，用于限制买入数量）
 ) -> int:
     """
     计算买入数量（改进版：支持多股票分散投资，更灵活的仓位分配）
     
     改进点：
     - 支持同时持有多只股票
-    - 单股仓位可以更小（最小3%），允许更多股票同时持有
-    - 考虑总仓位限制，避免过度杠杆
-    - 根据推荐股票数量动态调整单股仓位
+    - 仓位限制为可选（如果未设置，agent 完全自由决定）
+    - 根据推荐股票数量、VIX 风险、信号强度等因素动态调整单股仓位
+    - 如果设置了限制，则遵守限制；否则 agent 自由决定
     
     参数:
-    - max_position_per_stock: 单股最大仓位（默认15%，但可以根据推荐股票数量调整）
-    - max_total_position: 总仓位上限（默认80%，保留20%现金）
-    - min_position_per_stock: 单股最小仓位（默认3%，允许更小的仓位分散投资）
+    - max_position_per_stock: 单股最大仓位（可选，None=无限制，agent 自由决定）
+    - max_total_position: 总仓位上限（可选，None=无限制，agent 自由决定）
+    - min_position_per_stock: 单股最小仓位（可选，None=无限制，agent 自由决定）
     """
     if portfolio_value <= 0 or last_price <= 0:
         return 0
     
-    # 从风险报告获取推荐仓位大小
-    if risk_report:
+    # NEW: If no limits are set, agent has complete freedom
+    # Agent will decide based on VIX risk, signal strength, diversification needs, etc.
+    
+    # 从风险报告获取推荐仓位大小（如果有限制，则考虑风险报告的建议）
+    if risk_report and max_position_per_stock is not None:
         control_report = risk_report.get("position_control_report", {})
         recommended_sizes = control_report.get("recommended_position_sizes", {})
         if symbol in recommended_sizes:
-            # 修复：确保 recommended_sizes[symbol] 是字典类型
             size_info = recommended_sizes[symbol]
             if isinstance(size_info, dict):
                 suggested_max = size_info.get("max_pct", max_position_per_stock)
                 max_position_per_stock = min(max_position_per_stock, suggested_max)
             elif isinstance(size_info, (int, float)):
-                # 如果直接是数字，当作 max_pct 使用
                 suggested_max = float(size_info)
                 max_position_per_stock = min(max_position_per_stock, suggested_max)
-            # 如果是字符串，忽略（可能是 LLM 返回格式错误）
     
     # 计算当前总仓位（已持有的股票总价值占比）
     current_total_position = 0.0
@@ -64,33 +64,72 @@ def _calculate_position_size(
                 position_value = qty * current_price
                 current_total_position += position_value / portfolio_value
     
-    # 动态调整单股仓位：根据推荐股票数量、信号强度等因素调整
-    # Agent 可以根据情况灵活调整仓位大小（在指导原则范围内）
+    # NEW: Agent decision logic - if no limits, agent decides freely
     num_recommended = len(recommended_stocks) if recommended_stocks else 1
     
-    # 计算可用仓位空间
-    available_position_space = max_total_position - current_total_position
+    # If max_total_position is set, check if we've reached it
+    if max_total_position is not None:
+        available_position_space = max_total_position - current_total_position
+        if available_position_space <= 0:
+            # 已达到总仓位上限（硬限制）
+            return 0
+    else:
+        # No total position limit - agent can use all available cash
+        available_position_space = 1.0  # 100% of portfolio (limited only by cash)
     
-    if available_position_space <= 0:
-        # 已达到总仓位上限（硬限制）
-        return 0
-    
-    # Agent 决策逻辑：根据推荐股票数量动态调整单股仓位
-    # 这是 agent 的自主决策，在指导原则范围内灵活调整
-    if num_recommended > 1:
-        # 多个推荐股票：分散投资，每只股票仓位可以更小
-        # Agent 可以根据信号强度、市场条件等因素决定具体仓位
-        # 例如：3只股票时，每只10%；5只股票时，每只6%；10只股票时，每只5%
-        # 但不超过 max_position_per_stock（指导原则），也不小于 min_position_per_stock（指导原则）
-        dynamic_max_pct = min(max_position_per_stock, available_position_space / num_recommended)
-        dynamic_max_pct = max(min_position_per_stock, dynamic_max_pct)
+    # Agent 决策逻辑：根据推荐股票数量、VIX 风险等因素动态调整单股仓位
+    # If no limits are set, agent has complete freedom to decide
+    if max_position_per_stock is None:
+        # No per-stock limit - agent decides based on:
+        # - VIX risk (high VIX = smaller positions, low VIX = larger positions)
+        # - Number of recommended stocks (more stocks = smaller per-stock positions)
+        # - Signal strength (strong signals = larger positions)
+        # - Diversification needs
         
-        # 确保不超过可用仓位空间（硬限制）
+        # Default behavior: distribute based on number of stocks
+        # High VIX (7-10): 5-8% per stock
+        # Medium VIX (4-6): 8-12% per stock
+        # Low VIX (0-3): 10-15% per stock
+        # Many stocks (>10): smaller positions (5-8%)
+        # Few stocks (<5): larger positions (12-15%)
+        
+        # Get VIX risk score if available
+        vix_risk_score = None
+        if risk_report:
+            vix_info = risk_report.get("vix", {})
+            if isinstance(vix_info, dict):
+                vix_risk_score = vix_info.get("risk_score")
+        
+        # Determine base position size based on VIX and number of stocks
+        if vix_risk_score is not None:
+            if vix_risk_score >= 7:  # High risk
+                base_pct = 0.06  # 6% base (5-8% range)
+            elif vix_risk_score >= 4:  # Medium risk
+                base_pct = 0.10  # 10% base (8-12% range)
+            else:  # Low risk
+                base_pct = 0.12  # 12% base (10-15% range)
+        else:
+            base_pct = 0.10  # Default 10%
+        
+        # Adjust based on number of recommended stocks
+        if num_recommended > 10:
+            dynamic_max_pct = max(0.05, base_pct * 0.7)  # Smaller positions for many stocks
+        elif num_recommended > 5:
+            dynamic_max_pct = base_pct  # Use base
+        else:
+            dynamic_max_pct = min(0.15, base_pct * 1.2)  # Larger positions for few stocks
+        
+        # Ensure we don't exceed available space
         dynamic_max_pct = min(dynamic_max_pct, available_position_space)
     else:
-        # 只有1只推荐股票时：可以使用更大的仓位（在指导原则范围内）
-        # Agent 可以根据信号强度决定是否使用最大仓位或更小的仓位
-        dynamic_max_pct = min(max_position_per_stock, available_position_space)
+        # Limits are set - respect them
+        if num_recommended > 1:
+            dynamic_max_pct = min(max_position_per_stock, available_position_space / num_recommended)
+            if min_position_per_stock is not None:
+                dynamic_max_pct = max(min_position_per_stock, dynamic_max_pct)
+            dynamic_max_pct = min(dynamic_max_pct, available_position_space)
+        else:
+            dynamic_max_pct = min(max_position_per_stock, available_position_space)
     
     # 检查当前持仓
     current_symbol_position = 0.0
@@ -111,19 +150,27 @@ def _calculate_position_size(
                 print(f"[TRADER] {symbol}: Already has {current_qty} shares @ ${current_price:.2f}, position_pct={current_symbol_position:.2%}")
     
     # 计算目标仓位（考虑已有持仓）
-    # CRITICAL FIX: 确保单股仓位不超过 max_position_per_stock（硬性限制）
-    target_position_pct = min(dynamic_max_pct, max_position_per_stock)
-    if current_symbol_position >= target_position_pct:
-        # 已达到目标仓位
-        print(f"[TRADER] {symbol}: Skipping - already at target position (current={current_symbol_position:.2%}, target={target_position_pct:.2%})")
-        return 0
+    # If max_position_per_stock is set, respect it; otherwise agent decides freely
+    if max_position_per_stock is not None:
+        target_position_pct = min(dynamic_max_pct, max_position_per_stock)
+        if current_symbol_position >= target_position_pct:
+            print(f"[TRADER] {symbol}: Skipping - already at target position (current={current_symbol_position:.2%}, target={target_position_pct:.2%})")
+            return 0
+        
+        remaining_position_pct = target_position_pct - current_symbol_position
+        # Ensure we don't exceed the limit
+        if current_symbol_position + remaining_position_pct > max_position_per_stock:
+            remaining_position_pct = max(0, max_position_per_stock - current_symbol_position)
+            print(f"[TRADER] {symbol}: Capped position to {max_position_per_stock:.1%} (limit, current={current_symbol_position:.2%})")
+    else:
+        # No limit - agent decides freely
+        target_position_pct = dynamic_max_pct
+        if current_symbol_position >= target_position_pct:
+            print(f"[TRADER] {symbol}: Skipping - already at target position (current={current_symbol_position:.2%}, target={target_position_pct:.2%})")
+            return 0
+        
+        remaining_position_pct = target_position_pct - current_symbol_position
     
-    # 计算还需要买入的仓位百分比
-    remaining_position_pct = target_position_pct - current_symbol_position
-    # CRITICAL FIX: 再次确保不会超过硬性限制
-    if current_symbol_position + remaining_position_pct > max_position_per_stock:
-        remaining_position_pct = max(0, max_position_per_stock - current_symbol_position)
-        print(f"[TRADER] {symbol}: Capped position to {max_position_per_stock:.1%} (hard limit, current={current_symbol_position:.2%})")
     if current_qty > 0:
         print(f"[TRADER] {symbol}: Current position={current_symbol_position:.2%}, target={target_position_pct:.2%}, remaining={remaining_position_pct:.2%}")
     
@@ -559,39 +606,32 @@ Write in natural language, approximately 100-150 words."""
             print(f"[TRADER] Fallback: Using top {len(recs)} available stocks: {recs[:5]}...")
     
     if recs and portfolio_value > 0:
-        # 从配置中读取仓位限制参数
-        if position_config:
-            max_position_per_stock = position_config.get("max_position_per_stock", 0.15)
-            max_total_position = position_config.get("max_total_position", 0.80)
-            min_position_per_stock = position_config.get("min_position_per_stock", 0.03)
+        # NEW: Position limits are OPTIONAL - only use if explicitly set in config.json
+        # If not set, agent has complete freedom (no restrictions)
+        max_position_per_stock = position_config.get("max_position_per_stock") if position_config else None
+        max_total_position = position_config.get("max_total_position") if position_config else None
+        min_position_per_stock = position_config.get("min_position_per_stock") if position_config else None
+        max_positions = position_config.get("max_positions") if position_config else None
+        
+        # Print position limit status
+        if max_position_per_stock is not None or max_total_position is not None:
+            print(f"[TRADER] Position limits configured (agent will respect these):")
+            if max_position_per_stock is not None:
+                print(f"  - Max per stock: {max_position_per_stock:.1%}")
+            if max_total_position is not None:
+                print(f"  - Max total position: {max_total_position:.1%}")
+            if min_position_per_stock is not None:
+                print(f"  - Min per stock: {min_position_per_stock:.1%}")
+            if max_positions is not None:
+                print(f"  - Max positions: {max_positions}")
         else:
-            # 默认值
-            max_position_per_stock = 0.15  # 默认单股最大15%（硬性限制）
-            max_total_position = 0.80  # 默认总仓位80%
-            min_position_per_stock = 0.03  # 默认单股最小3%（允许更小的仓位）
+            print(f"[TRADER] No position limits configured - agent has complete freedom")
+            print(f"  - Agent will decide position sizes based on VIX risk, signal strength, diversification needs, etc.")
         
-        # CRITICAL FIX: 根据 stance 调整买入股票数量（更保守的策略）
-        original_recs_count = len(recs)
-        if final_stance == "NEUTRAL":
-            # NEUTRAL: 更保守，限制买入数量
-            max_stocks_to_buy = min(15, original_recs_count)
-            if original_recs_count > max_stocks_to_buy:
-                recs = recs[:max_stocks_to_buy]
-                print(f"[TRADER] NEUTRAL stance: Limited to {max_stocks_to_buy} stocks (from {original_recs_count} recommended)")
-        elif final_stance == "BEARISH":
-            # BEARISH: 非常保守，只买入少量股票
-            max_stocks_to_buy = min(10, original_recs_count)
-            if original_recs_count > max_stocks_to_buy:
-                recs = recs[:max_stocks_to_buy]
-                print(f"[TRADER] BEARISH stance: Limited to {max_stocks_to_buy} stocks (from {original_recs_count} recommended)")
-        # BULLISH: 可以买入更多股票（不限制）
-        
-        # 打印仓位限制信息（作为指导原则）
-        print(f"[TRADER] Position size guidelines (agent can adjust based on signals):")
-        print(f"  - Max per stock: {max_position_per_stock:.1%} (guideline, agent can use smaller)")
-        print(f"  - Max total position: {max_total_position:.1%} (guideline, agent can use less)")
-        print(f"  - Min per stock: {min_position_per_stock:.1%} (guideline, for diversification)")
         print(f"  - Available cash: ${available_cash:,.2f} (hard limit, cannot exceed)")
+        
+        # Note: We no longer limit stock count based on stance - agent decides freely
+        # Agent can consider stance when making decisions, but we don't enforce limits
         
         # CRITICAL: 计算当前总仓位（用于限制买入）
         # current_positions 包含完整信息：quantity, avg_cost, current_price, market_value, unrealized_pnl, unrealized_pnl_pct, position_pct

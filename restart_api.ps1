@@ -15,7 +15,15 @@ if (-not $ProjectRoot) {
 }
 
 $backendDir = Join-Path $ProjectRoot "backend"
-$venvPath = Join-Path $ProjectRoot "venv\Scripts\Activate.ps1"
+# Check both possible venv locations
+$venvPath1 = Join-Path $ProjectRoot "venv\Scripts\Activate.ps1"
+$venvPath2 = Join-Path $ProjectRoot "backend\venv\Scripts\Activate.ps1"
+$venvPath = $null
+if (Test-Path $venvPath1) {
+    $venvPath = $venvPath1
+} elseif (Test-Path $venvPath2) {
+    $venvPath = $venvPath2
+}
 
 # Check if backend directory exists
 if (-not (Test-Path $backendDir)) {
@@ -65,11 +73,13 @@ Write-Host ""
 Write-Host "[2/3] Checking virtual environment..." -ForegroundColor Yellow
 
 # Check virtual environment
-if (Test-Path $venvPath) {
+if ($venvPath) {
     Write-Host "  [OK] Virtual environment found: $venvPath" -ForegroundColor Green
 } else {
     Write-Host "  [WARN] Virtual environment not found, will use system Python" -ForegroundColor Yellow
-    Write-Host "    Virtual env path: $venvPath" -ForegroundColor Gray
+    Write-Host "    Checked paths:" -ForegroundColor Gray
+    Write-Host "      - $venvPath1" -ForegroundColor Gray
+    Write-Host "      - $venvPath2" -ForegroundColor Gray
 }
 
 Write-Host ""
@@ -77,10 +87,10 @@ Write-Host "[3/3] Starting new API server..." -ForegroundColor Yellow
 
 # Build command
 $backendDirEscaped = $backendDir -replace "'", "''"
-$venvPathEscaped = $venvPath -replace "'", "''"
 
 $cmd = "cd '$backendDirEscaped'; "
-if (Test-Path $venvPath) {
+if ($venvPath) {
+    $venvPathEscaped = $venvPath -replace "'", "''"
     $cmd += "& '$venvPathEscaped'; "
 }
 $cmd += "python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload"

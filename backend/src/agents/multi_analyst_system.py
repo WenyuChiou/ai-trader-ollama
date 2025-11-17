@@ -97,18 +97,21 @@ def run_multi_analyst_discussion(
                 positions_text += f"  - Available Cash (after reserve): ${available_cash:.2f}\n"
         
         # CRITICAL: 添加持仓列表和指数列表，供Technical Analyst选单使用
+        # Note: Recommended stocks will be added after Market Analyst completes (see Technical Analyst section)
         if holdings_list:
             positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
-            positions_text += f"**MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
-            positions_text += f"**MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
-            positions_text += f"**Select from this menu - prioritize holdings and indices over random stocks**\n"
+            positions_text += f"**Priority 1 - Recommended Stocks:** (Will be provided after Market Analyst analysis)\n"
+            positions_text += f"**Priority 2 - MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
+            positions_text += f"**Priority 3 - MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
+            positions_text += f"**Select from this menu - prioritize recommended stocks + holdings + indices**\n"
             positions_text += f"**For each symbol, include previous day's close price in your analysis**\n"
         else:
             positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
-            positions_text += f"**No holdings - Focus ONLY on indices:**\n"
-            positions_text += f"**MANDATORY Indices:** SPY, QQQ, DIA, IWM, VTI\n"
-            positions_text += f"**Select from this menu - analyze at least 3-5 indices**\n"
-            positions_text += f"**For each index, include previous day's close price in your analysis**\n"
+            positions_text += f"**Priority 1 - Recommended Stocks:** (Will be provided after Market Analyst analysis)\n"
+            positions_text += f"**Priority 2 - MANDATORY Indices:** SPY, QQQ, DIA, IWM, VTI\n"
+            positions_text += f"**Select from this menu - prioritize recommended stocks + indices**\n"
+            positions_text += f"**Analyze at least 3-5 indices**\n"
+            positions_text += f"**For each symbol, include previous day's close price in your analysis**\n"
         
         positions_text += "\n**[WARN] CRITICAL: You MUST use position information (P&L and position %) when making recommendations:**\n"
         positions_text += "- Check position_pct for each holding (avoid over-concentration >15%)\n"
@@ -320,32 +323,54 @@ def run_multi_analyst_discussion(
                     print(f"   ✅ Extracted {extracted_count} tool call(s) from analysis text")
             
             # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
-            # CRITICAL FIX: 优先分析持仓和指数，而不是随机股票
+            # CRITICAL FIX: 优先分析推荐名单 + 持仓 + 指数
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Technical analysis requires indicators)")
                 
-                # CRITICAL FIX: 优先分析持仓和指数
+                # CRITICAL FIX: 优先分析推荐名单 + 持仓 + 指数
                 selected_symbols = []
                 
-                # 1. 添加持仓（如果有）
+                # 1. 添加Market Analyst的推荐名单（最高优先级）
+                recommended_stocks = []
+                if analyst_reports.get("market"):
+                    market_report = analyst_reports["market"]
+                    recommended_stocks = market_report.get("recommended_stocks", [])
+                    if recommended_stocks:
+                        # 确保推荐股票是列表格式
+                        if isinstance(recommended_stocks, str):
+                            # 如果是字符串，尝试解析（可能是逗号分隔的列表）
+                            recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
+                        elif not isinstance(recommended_stocks, list):
+                            recommended_stocks = []
+                        
+                        # 添加到选择列表
+                        for sym in recommended_stocks:
+                            if sym and sym not in selected_symbols:
+                                selected_symbols.append(sym)
+                                print(f"   [FALLBACK] Adding recommended stock: {sym}")
+                
+                # 2. 添加持仓（如果有）
                 if current_positions:
                     for symbol, pos_info in current_positions.items():
                         if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                            selected_symbols.append(symbol)
-                            print(f"   [FALLBACK] Adding holding: {symbol}")
+                            if symbol not in selected_symbols:
+                                selected_symbols.append(symbol)
+                                print(f"   [FALLBACK] Adding holding: {symbol}")
                 
-                # 2. 添加主要指数（总是添加）
+                # 3. 添加主要指数（总是添加）
                 major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
-                selected_symbols.extend(major_indices)
+                for idx in major_indices:
+                    if idx not in selected_symbols:
+                        selected_symbols.append(idx)
                 print(f"   [FALLBACK] Adding major indices: {', '.join(major_indices)}")
                 
-                # 3. 如果还有预算，添加高信号股票
+                # 4. 如果还有预算，添加高信号股票（作为补充）
                 remaining_budget = tool_budget - tool_calls_count
                 if len(selected_symbols) < remaining_budget:
                     stocks = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
                     sorted_stocks = []
                     for sym in stocks.keys():
-                        # 跳过已经选择的持仓和指数
+                        # 跳过已经选择的推荐股票、持仓和指数
                         if sym not in selected_symbols:
                             try:
                                 score = float(stocks[sym].get("signal_score", 0))
@@ -358,7 +383,7 @@ def run_multi_analyst_discussion(
                     additional_symbols = [sym for sym, _ in sorted_stocks[:additional_count]]
                     selected_symbols.extend(additional_symbols)
                     if additional_symbols:
-                        print(f"   [FALLBACK] Adding {len(additional_symbols)} high-signal stocks: {', '.join(additional_symbols[:5])}...")
+                        print(f"   [FALLBACK] Adding {len(additional_symbols)} high-signal stocks (supplement): {', '.join(additional_symbols[:5])}...")
                 
                 tool_calls_list = []
                 # 为每个符号添加技术指标工具

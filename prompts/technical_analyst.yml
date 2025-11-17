@@ -86,9 +86,10 @@ user: |
      * Support/resistance levels (if budget allows)
   
   **If No Holdings:**
-  - Focus ONLY on major indices (SPY, QQQ, DIA, IWM, VTI)
+  - Focus on recommended stocks (from Market Analyst) + major indices (SPY, QQQ, DIA, IWM, VTI)
   - Use get_market_indices for comprehensive market overview
   - Analyze at least 3-5 indices (prioritize SPY, QQQ, DIA)
+  - If Market Analyst provided recommended_stocks, analyze those first, then indices
   
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings

@@ -1206,19 +1206,52 @@ def execute_daily_trade(
     # 市场开放时：可以评估、分析和交易
     # CRITICAL FIX: 更清晰的日志显示市场状态
     market_status = "OPEN (simulation)" if is_market_open_for_simulation and not is_market_open else ("OPEN" if is_market_open else "CLOSED")
+    print(f"[TRADING CYCLE] ===== STEP 4: TRADER AGENT ======")
     print(f"[TRADING CYCLE] Calling Trader Agent with is_market_open={is_market_open_for_simulation} (actual market: {market_status}, is_market_open={is_market_open})")
-    decision = run_trader(
-        market=market_view,
-        mview=enriched_market,
-        rview=risk_report,  # 传入 Risk Report
-        convo=convo,
-        last_prices=last_prices,
-        current_positions=current_positions_info if current_positions_info else None,
-        portfolio_value=portfolio_value,
-        position_config=position_config,  # 传入仓位配置
-        available_cash=available_cash_for_trading,  # 传入可用现金
-        is_market_open=is_market_open_for_simulation,  # CRITICAL: 传递市场状态，让agent知道是否可以交易
-    )
+    print(f"[TRADING CYCLE] Parameters:")
+    print(f"  - portfolio_value: ${portfolio_value:,.2f}")
+    print(f"  - available_cash: ${available_cash_for_trading:,.2f}")
+    print(f"  - current_positions: {len(current_positions_info) if current_positions_info else 0}")
+    print(f"  - enriched_market keys: {list(enriched_market.keys())[:5] if isinstance(enriched_market, dict) else 'N/A'}...")
+    print(f"  - convo keys: {list(convo.keys())[:5] if isinstance(convo, dict) else 'N/A'}...")
+    
+    # CRITICAL FIX: 添加 try-except 来捕获 run_trader 的异常，避免整个流程中断
+    try:
+        decision = run_trader(
+            market=market_view,
+            mview=enriched_market,
+            rview=risk_report,  # 传入 Risk Report
+            convo=convo,
+            last_prices=last_prices,
+            current_positions=current_positions_info if current_positions_info else None,
+            portfolio_value=portfolio_value,
+            position_config=position_config,  # 传入仓位配置
+            available_cash=available_cash_for_trading,  # 传入可用现金
+            is_market_open=is_market_open_for_simulation,  # CRITICAL: 传递市场状态，让agent知道是否可以交易
+        )
+        print(f"[TRADING CYCLE] ✅ Trader Agent completed successfully")
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[TRADING CYCLE] ❌ ERROR: Trader Agent failed with exception: {e}")
+        print(f"[TRADING CYCLE] ❌ Traceback:\n{error_trace}")
+        # CRITICAL: 即使 Trader Agent 失败，也要创建一个默认的 decision，确保流程继续
+        print(f"[TRADING CYCLE] ⚠️  Creating fallback decision due to Trader Agent failure")
+        decision = {
+            "action": "HOLD",
+            "targets": [],
+            "buy_orders": [],
+            "sell_orders": [],
+            "rationale": f"Trader Agent failed: {str(e)}",
+            "summary": f"Trader Agent encountered an error and could not generate trading decisions. Error: {str(e)}",
+            "stance": "neutral",
+            "vix_risk": 0.0,
+            "risk_compliance": {
+                "position_limits_ok": True,
+                "diversification_ok": True,
+                "warnings": [f"Trader Agent error: {str(e)}"],
+            },
+        }
     
     # 注意：Trader Agent 的 conversation entry 将在订单创建后写入，以便反映实际创建的订单数量
     # 先保存 summary 和 stance，稍后更新

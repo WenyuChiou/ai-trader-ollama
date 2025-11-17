@@ -173,6 +173,8 @@ def execute_daily_trade(
         print(f"[TRADING CYCLE] Single-day query detected, extended start to 7 days before: {start} -> {market_data_end}")
     
     print(f"[TRADING CYCLE] Fetching market data: start={start}, end={market_data_end}")
+    print(f"[TRADING CYCLE] Universe size: {len(universe)} symbols")
+    print(f"[TRADING CYCLE] Universe sample (first 10): {universe[:10]}")
     
     try:
         market_view: Dict[str, Any] = fetch_market_batch.invoke({
@@ -180,7 +182,15 @@ def execute_daily_trade(
             "start": start,
             "end": market_data_end,
         })
-        print(f"[TRADING CYCLE] Market data fetched successfully: {len(market_view.get('stocks', {}))} stocks")
+        stocks_count = len(market_view.get('stocks', {}))
+        print(f"[TRADING CYCLE] Market data fetched successfully: {stocks_count} stocks")
+        if stocks_count < len(universe):
+            print(f"[TRADING CYCLE] ⚠️  WARNING: Fetched {stocks_count} stocks but universe has {len(universe)} symbols")
+            # 显示哪些股票没有被获取
+            fetched_symbols = set(market_view.get('stocks', {}).keys())
+            missing_symbols = [s for s in universe if s not in fetched_symbols]
+            if missing_symbols:
+                print(f"[TRADING CYCLE] ⚠️  Missing symbols (first 10): {missing_symbols[:10]}")
     except Exception as e:
         print(f"[TRADING CYCLE] Failed to fetch market data: {e}")
         # 如果获取失败，返回错误信息

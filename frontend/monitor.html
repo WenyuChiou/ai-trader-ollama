@@ -3815,13 +3815,30 @@
                                 
                                 parts.forEach(part => {
                                     const trimmedPart = part.trim();
+                                    if (!trimmedPart) return; // 跳过空部分
                                     
-                                    // 匹配 "Agent Name: content" 格式
-                                    const agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*(.+)$/i);
+                                    // CRITICAL FIX: 匹配 "Agent Name: content" 格式，使用贪婪匹配确保获取完整内容
+                                    // 先尝试匹配带冒号的格式
+                                    let agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*(.+)$/i);
+                                    
+                                    // 如果没有匹配到，尝试匹配不带冒号的格式（可能格式不标准）
+                                    if (!agentMatch) {
+                                        agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\s+(.+)$/i);
+                                    }
                                     
                                     if (agentMatch) {
                                         const extractedAgentName = agentMatch[1].trim();
                                         let extractedContent = agentMatch[2].trim();
+                                        
+                                        // CRITICAL FIX: 确保内容完整（如果内容被截断，尝试从原始 summary 中获取完整内容）
+                                        // 检查内容是否以不完整的单词结尾（可能是截断）
+                                        if (extractedContent.length > 0 && !extractedContent.match(/[.!?]\s*$/)) {
+                                            // 如果内容看起来不完整，尝试从原始 summary 中查找完整内容
+                                            const fullMatch = coordinatorSummary.match(new RegExp(`${extractedAgentName}:\\s*([^|]+)`, 'i'));
+                                            if (fullMatch && fullMatch[1].trim().length > extractedContent.length) {
+                                                extractedContent = fullMatch[1].trim();
+                                            }
+                                        }
                                         
                                         // 标准化 agent 名称
                                         const agentNameMap = {
@@ -3848,7 +3865,7 @@
                                             html += `<span style="font-size: 10px; padding: 2px 4px; background: rgba(34, 211, 238, 0.2); color: #22d3ee; border-radius: 3px; font-weight: 500;">EXTRACTED</span>`;
                                             html += `</div>`;
                                             
-                                            html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px;">${escapeHtml(extractedContent)}</div>`;
+                                            html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">${escapeHtml(extractedContent)}</div>`;
                                             
                                             html += `</div>`;
                                         }

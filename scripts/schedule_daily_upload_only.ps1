@@ -10,7 +10,9 @@ Write-Host "================================================" -ForegroundColor C
 Write-Host "  AI-Trader Daily Upload Only Task Setup" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "This will create a scheduled task to upload existing data to Railway." -ForegroundColor Yellow
+Write-Host "This will create a scheduled task to:" -ForegroundColor Yellow
+Write-Host "  1. Upload local data to Railway" -ForegroundColor White
+Write-Host "  2. Update GitHub Pages (if frontend changes exist)" -ForegroundColor White
 Write-Host "It does NOT run trading cycles - only uploads data from local files." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Task Name: $TaskName" -ForegroundColor Green
@@ -89,10 +91,11 @@ if (-not $scheduleTime) {
     }
 }
 
-# Create task action
+# Create task action - Use PowerShell to run the daily upload and deploy script
+$DailyUploadScript = Join-Path $WorkingDir "scripts\daily_upload_and_deploy.ps1"
 $Action = New-ScheduledTaskAction `
-    -Execute $PythonPath `
-    -Argument "`"$ScriptPath`"" `
+    -Execute "powershell.exe" `
+    -Argument "-ExecutionPolicy Bypass -File `"$DailyUploadScript`"" `
     -WorkingDirectory $WorkingDir
 
 # Create trigger
@@ -144,7 +147,7 @@ try {
     Write-Host "Schedule:" -ForegroundColor Cyan
     Write-Host "  Time: $($scheduleTime.ToString('HH:mm'))" -ForegroundColor White
     Write-Host "  Days: $(if ($weekdaysOnly) { 'Weekdays (Mon-Fri)' } else { 'Every day' })" -ForegroundColor White
-    Write-Host "  Mode: Upload only (no trading cycle)" -ForegroundColor White
+    Write-Host "  Mode: Upload data to Railway + Update GitHub Pages" -ForegroundColor White
     Write-Host ""
     Write-Host "To view the task:" -ForegroundColor Cyan
     Write-Host "  Get-ScheduledTask -TaskName '$TaskName'" -ForegroundColor Gray
@@ -153,7 +156,7 @@ try {
     Write-Host "  Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false" -ForegroundColor Gray
     Write-Host ""
     Write-Host "To test manually:" -ForegroundColor Cyan
-    Write-Host "  python $ScriptPath" -ForegroundColor Gray
+    Write-Host "  powershell -ExecutionPolicy Bypass -File scripts\daily_upload_and_deploy.ps1" -ForegroundColor Gray
     Write-Host ""
     
 } catch {

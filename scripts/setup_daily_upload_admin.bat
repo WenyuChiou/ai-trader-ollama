@@ -1,28 +1,18 @@
 @echo off
-REM Setup Daily Upload Task with Admin Rights
-REM This batch file will request admin rights and run the PowerShell script
+REM Setup Daily Upload Task (Run as Administrator)
+REM This batch file should be run as administrator to set up daily data upload to Railway
 
 echo ================================================
-echo   AI-Trader Daily Upload Setup (Admin Required)
+echo   AI-Trader Daily Upload Setup
 echo ================================================
 echo.
-echo This will create a Windows scheduled task to upload data daily.
-echo Admin rights are required to create scheduled tasks.
+echo This will set up a daily task to upload local data to Railway.
+echo The task will run automatically every day at a specified time.
 echo.
-
-REM Check for admin rights
-net session >nul 2>&1
-if %errorLevel% == 0 (
-    echo [OK] Running with admin rights
-    echo.
-    powershell -ExecutionPolicy Bypass -File "%~dp0schedule_daily_upload_only.ps1"
-) else (
-    echo [INFO] Requesting admin rights...
-    echo.
-    REM Re-run with admin rights
-    powershell -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
-)
-
+echo IMPORTANT: This script must be run as Administrator!
+echo.
 pause
 
+powershell -ExecutionPolicy Bypass -File "%~dp0schedule_daily_upload_only.ps1"
+
+pause

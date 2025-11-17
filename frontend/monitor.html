@@ -1394,6 +1394,24 @@
                 </div>
             </div>
 
+            <!-- Economic Data Section -->
+            <div id="economic-data-section" style="margin-top: 20px;">
+                <div class="trades-section" id="economicDataSection">
+                    <div class="section-header">
+                        <h2>
+                            📊 Economic Data (FRED & Jin10)
+                        </h2>
+                        <span class="position-count" id="economicDataCount">0 indicators</span>
+                    </div>
+                    <div id="economicDataContent" style="padding: 16px;">
+                        <div style="text-align: center; color: #94a3b8; padding: 40px;">
+                            <p>No economic data available yet.</p>
+                            <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators or Jin10 economic data.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Execution Details (Below Chat) -->
             <div id="execution-section" style="margin-top: 20px;">
                 <div class="trades-section" id="executionDetailsSection">
@@ -8767,6 +8785,7 @@
                 }
                 renderBackendStatus(backendStatus, {}, [], systemInfo);
                 renderConversationsOverview(convData.conversations || [], convData.tool_results_by_category || null);  // CRITICAL FIX: 传递工具结果分类
+                renderEconomicData(convData.tool_results_by_category || null);  // CRITICAL FIX: 渲染经济数据
                 // 重置分页到第一页
                 executionPage = 1;
                 renderExecutionDetails(tradesData || []);  // Update execution details (including tomorrow's pending orders)

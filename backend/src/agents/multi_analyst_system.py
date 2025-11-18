@@ -601,12 +601,48 @@ def run_multi_analyst_discussion(
             
             # 格式化之前的对话历史（包含Market和Technical的讨论）
             previous_discussion_text = _format_discussion_history(discussion_history)
+            
+            # CRITICAL FIX: 添加Market Analyst的推荐名单和选单到Fundamental Analyst的prompt
+            fundamental_positions_text = positions_text
+            if analyst_reports.get("market"):
+                market_report = analyst_reports["market"]
+                recommended_stocks = market_report.get("recommended_stocks", [])
+                if recommended_stocks:
+                    # 确保推荐股票是列表格式
+                    if isinstance(recommended_stocks, str):
+                        recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
+                    elif not isinstance(recommended_stocks, list):
+                        recommended_stocks = []
+                    
+                    if recommended_stocks:
+                        # 添加到positions_text中，让Fundamental Analyst知道推荐名单
+                        recommended_text = f"\n**📋 RECOMMENDED STOCKS FROM MARKET ANALYST:**\n"
+                        recommended_text += f"**Priority 1 - MUST Analyze These:** {', '.join(recommended_stocks)}\n"
+                        recommended_text += f"**These are Market Analyst's top recommendations - analyze them first!**\n"
+                        fundamental_positions_text = recommended_text + "\n" + fundamental_positions_text
+            
+            # 添加Fundamental Analyst的选单（像Technical Analyst一样）
+            if holdings_list:
+                menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
+                menu_text += f"**MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
+                menu_text += f"**MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
+                menu_text += f"**Select from this menu - prioritize holdings and indices over random stocks**\n"
+                menu_text += f"**For each symbol, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
+                fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
+            else:
+                menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
+                menu_text += f"**No holdings - Focus ONLY on indices:**\n"
+                menu_text += f"**MANDATORY Indices:** SPY, QQQ, DIA, IWM, VTI\n"
+                menu_text += f"**Select from this menu - analyze at least 3-5 indices**\n"
+                menu_text += f"**For each index, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
+                fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
+            
             fundamental_prompt_vars = {
                 "market_view": json.dumps(market_summary, indent=2),
                 "previous_discussion": previous_discussion_text,
                 "tools_context": tools_str,
                 "order_status": order_status_text,  # 添加订单状态
-                "current_positions": positions_text,  # 添加仓位信息
+                "current_positions": fundamental_positions_text,  # 添加仓位信息、推荐名单和选单
             }
             
             fundamental_response = fundamental_analyst.run(fundamental_prompt_vars, expect_json=True)
@@ -640,13 +676,90 @@ def run_multi_analyst_discussion(
                 if len(tool_calls_list) == 1 and isinstance(fundamental_response, dict) and "name" in fundamental_response:
                     print(f"   ✅ Auto-wrapped single tool_call: {tool_calls_list[0].get('name', 'unknown')}")
             
+            # CRITICAL FIX: 即使LLM返回了tool_calls，也要检查是否包含持仓/指数/推荐股票
+            # 优先级：持仓 > 指数 > 推荐股票
+            if tool_calls_list and use_tools and tool_calls_count < tool_budget:
+                # 提取LLM已请求的symbols
+                existing_symbols = set()
+                for tc in tool_calls_list:
+                    args = tc.get("args", {})
+                    symbol = args.get("symbol")
+                    if symbol:
+                        existing_symbols.add(symbol.upper())
+                
+                # 收集应该分析的优先级symbols（按优先级顺序）
+                priority_symbols = []
+                
+                # 1. 最高优先级：添加持仓（如果有）
+                if current_positions:
+                    for symbol, pos_info in current_positions.items():
+                        if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+                            symbol_upper = symbol.upper()
+                            if symbol_upper not in existing_symbols:
+                                priority_symbols.append(symbol_upper)
+                                print(f"   [PRIORITY] Adding holding (HIGHEST PRIORITY): {symbol}")
+                
+                # 2. 第二优先级：添加主要指数（总是添加）
+                major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
+                for idx in major_indices:
+                    if idx not in existing_symbols and idx not in priority_symbols:
+                        priority_symbols.append(idx)
+                        print(f"   [PRIORITY] Adding major index: {idx}")
+                
+                # 3. 第三优先级：添加Market Analyst的推荐名单（如果还有预算）
+                recommended_stocks = []
+                if analyst_reports.get("market"):
+                    market_report = analyst_reports["market"]
+                    recs = market_report.get("recommended_stocks", [])
+                    if recs:
+                        if isinstance(recs, str):
+                            recs = [s.strip() for s in recs.split(",") if s.strip()]
+                        elif not isinstance(recs, list):
+                            recs = []
+                        recommended_stocks = [s.upper() for s in recs if s.upper() not in existing_symbols and s.upper() not in priority_symbols]
+                
+                for sym in recommended_stocks:
+                    priority_symbols.append(sym.upper())
+                    print(f"   [PRIORITY] Adding recommended stock: {sym}")
+                
+                # 补充优先级股票到tool_calls_list（如果还有预算）
+                # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count
+                remaining_budget = tool_budget - tool_calls_count
+                if priority_symbols and remaining_budget > 0:
+                    print(f"   [PRIORITY] Found {len(priority_symbols)} priority symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
+                    added_count = 0
+                    
+                    # 为所有优先级symbols添加get_company_fundamentals
+                    for sym in priority_symbols:
+                        if tool_calls_count + len(tool_calls_list) >= tool_budget:
+                            print(f"   [PRIORITY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
+                            break
+                        tool_calls_list.append({
+                            "name": "get_company_fundamentals",
+                            "args": {"symbol": sym},
+                            "why": f"Priority: Get fundamental data for {sym} (holding/index/recommended)"
+                        })
+                        added_count += 1
+                    
+                    if added_count > 0:
+                        print(f"   [PRIORITY] Added {added_count} priority tool calls (holdings + indices + recommended stocks)")
+            
             # Fallback: Fundamental Analyst可选使用工具（如果已有数据可以基于现有分析）
             # 但建议获取最新数据，所以如果没有调用工具，使用默认工具
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Recommended: Get latest fundamental data)")
-                sample_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                # 优先使用持仓和指数
+                fallback_symbols = []
+                if current_positions:
+                    for symbol, pos_info in current_positions.items():
+                        if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+                            fallback_symbols.append(symbol.upper())
+                fallback_symbols.extend(["SPY", "QQQ", "DIA"])
+                if not fallback_symbols:
+                    fallback_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                
                 tool_calls_list = []
-                for sym in sample_symbols:
+                for sym in fallback_symbols[:min(3, tool_budget - tool_calls_count)]:
                     tool_calls_list.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Fallback: Get fundamental data for {sym}"})
             
             # 收集工具调用结果

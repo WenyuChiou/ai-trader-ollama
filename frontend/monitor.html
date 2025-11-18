@@ -1380,6 +1380,11 @@
                         <button class="agent-filter-btn" data-agent="FundamentalAnalyst" onclick="filterAgentTools('FundamentalAnalyst')" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
                             📑 Fundamental
                         </button>
+                        <div id="fundamentalStockFilterContainer" style="display: none; margin-left: 8px;">
+                            <select id="fundamentalStockFilterSelect" onchange="filterFundamentalStocks(this.value)" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                <option value="all">All Stocks</option>
+                            </select>
+                        </div>
                         <button class="agent-filter-btn" data-agent="MarketAnalyst" onclick="filterAgentTools('MarketAnalyst')" style="padding: 6px 12px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
                             📈 Market
                         </button>
@@ -4594,6 +4599,7 @@
         
         let currentStockFilter = 'all';
         let availableTechnicalStocks = [];
+        let availableFundamentalStocks = [];
         
         // Filter agent tools function
         function filterAgentTools(agentName) {
@@ -4642,6 +4648,23 @@
                 currentStockFilter = 'all';
             }
             
+            // Show/hide Fundamental Analyst stock filter
+            const fundamentalStockFilterContainer = document.getElementById('fundamentalStockFilterContainer');
+            if (agentName === 'FundamentalAnalyst') {
+                if (fundamentalStockFilterContainer) {
+                    fundamentalStockFilterContainer.style.display = 'inline-block';
+                    // Extract available stocks from conversations
+                    extractFundamentalStocks();
+                }
+            } else {
+                if (fundamentalStockFilterContainer) {
+                    fundamentalStockFilterContainer.style.display = 'none';
+                }
+                if (agentName !== 'TechnicalAnalyst') {
+                    currentStockFilter = 'all';
+                }
+            }
+            
             // Re-render conversations with filter
             if (window.currentConversations) {
                 renderConversationsOverview(window.currentConversations);
@@ -4687,6 +4710,55 @@
         }
         
         function filterTechnicalStocks(symbol) {
+            currentStockFilter = symbol;
+            if (window.currentConversations) {
+                renderConversationsOverview(window.currentConversations);
+            }
+        }
+        
+        // Extract available stocks from Fundamental Analyst tool results
+        function extractFundamentalStocks() {
+            const stocks = new Set();
+            if (window.currentConversations) {
+                window.currentConversations.forEach(c => {
+                    if (c.type === 'tool' && c.agent === 'FundamentalAnalyst') {
+                        const toolInfo = parseToolInfo(c.content || '');
+                        if (toolInfo && toolInfo.name === 'get_company_fundamentals') {
+                            // Extract symbol from tool result
+                            if (toolInfo.result && toolInfo.result.symbol) {
+                                stocks.add(toolInfo.result.symbol.toUpperCase());
+                            }
+                            if (toolInfo.result && toolInfo.result.fundamentals) {
+                                const fund = toolInfo.result.fundamentals;
+                                if (fund.symbol) {
+                                    stocks.add(fund.symbol.toUpperCase());
+                                }
+                            }
+                        }
+                        // Also check tool_result field
+                        if (c.tool_result && c.tool_result.symbol) {
+                            stocks.add(c.tool_result.symbol.toUpperCase());
+                        }
+                        if (c.tool_result && c.tool_result.fundamentals) {
+                            const fund = c.tool_result.fundamentals;
+                            if (fund.symbol) {
+                                stocks.add(fund.symbol.toUpperCase());
+                            }
+                        }
+                    }
+                });
+            }
+            availableFundamentalStocks = Array.from(stocks).sort();
+            
+            // Update select dropdown
+            const select = document.getElementById('fundamentalStockFilterSelect');
+            if (select) {
+                select.innerHTML = '<option value="all">All Stocks</option>' + 
+                    availableFundamentalStocks.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+        }
+        
+        function filterFundamentalStocks(symbol) {
             currentStockFilter = symbol;
             if (window.currentConversations) {
                 renderConversationsOverview(window.currentConversations);

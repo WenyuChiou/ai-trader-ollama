@@ -1,15 +1,22 @@
 # Fundamental Analysis - Recommended Stocks & Holdings
 
-## Current Implementation
+## Current Implementation (Updated)
+
+### ✅ Analysis Targets (Updated)
+
+**Fundamental Analyst analyzes:**
+- **With Holdings**: Non-ETF holdings + Non-ETF recommended stocks
+- **Without Holdings**: Non-ETF recommended stocks only
+- **ETFs and indices are EXCLUDED** (ETFs don't need fundamental analysis)
 
 ### ✅ Recommended Stocks Integration
 
 **Market Analyst → Fundamental Analyst:**
 - Market Analyst provides `recommended_stocks` list
 - Fundamental Analyst receives this list in its prompt
-- Priority 1: MUST analyze recommended stocks first
+- **ETFs are filtered out** before analysis
 
-**Code location:** `multi_analyst_system.py` lines 704-721
+**Code location:** `multi_analyst_system.py` lines 761-784
 
 ```python
 # Add Market Analyst's recommended stocks to Fundamental Analyst prompt
@@ -20,67 +27,79 @@ if recommended_stocks:
     fundamental_positions_text = recommended_text + "\n" + fundamental_positions_text
 ```
 
-### ✅ Holdings Integration
+### ✅ Holdings Integration (Updated)
 
 **Current Holdings → Fundamental Analyst:**
 - System passes `current_positions` to Fundamental Analyst
-- Creates `holdings_list` from current positions
-- Priority 2: MUST analyze current holdings
+- **ETFs are filtered out** from holdings before analysis
+- Only non-ETF holdings are analyzed
 
-**Code location:** `multi_analyst_system.py` lines 723-737
+**Code location:** `multi_analyst_system.py` lines 786-808
 
 ```python
-# Add holdings to analysis menu
-if holdings_list:
-    menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
-    menu_text += f"**MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
-    menu_text += f"**MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
-    fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
+# Filter out ETF holdings
+non_etf_holdings = [h for h in holdings_list if not is_etf(h)]
+menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
+menu_text += f"**MANDATORY Analysis Targets (ALL must be analyzed, ETFs excluded):**\n"
+menu_text += f"  1. Recommended Stocks (non-ETF): (Will be filtered to exclude ETFs)\n"
+if non_etf_holdings:
+    menu_text += f"  2. Current Holdings (non-ETF): {', '.join(non_etf_holdings)}\n"
+menu_text += f"**CRITICAL: Do NOT analyze ETFs or indices (SPY, QQQ, DIA, IWM, VTI) - ETFs don't need fundamental analysis**\n"
 ```
 
-### ✅ Priority System
+### ✅ ETF Detection
 
-**Analysis Priority Order:**
-1. **Priority 1**: Market Analyst's recommended stocks
-2. **Priority 2**: Current holdings (positions)
-3. **Priority 3**: Major indices (SPY, QQQ, DIA, IWM, VTI)
+**ETF Detection Function:**
+- Location: `backend/src/utils/etf_checker.py`
+- Uses yfinance to check `quoteType`/`instrumentType`
+- Includes known ETF list for quick detection
 
-**Code location:** `multi_analyst_system.py` lines 778-799
+**Code location:** `multi_analyst_system.py` lines 864-895
 
 ```python
-# 1. Highest priority: Add holdings
+# Add holdings (if any, and non-ETF)
 if current_positions:
     for symbol, pos_info in current_positions.items():
-        if symbol_upper not in existing_symbols:
-            priority_symbols.append(symbol_upper)
-
-# 2. Second priority: Add indices
-priority_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
-for idx in priority_indices:
-    if idx not in existing_symbols:
-        priority_symbols.append(idx)
-
-# 3. Third priority: Add recommended stocks
-recommended_stocks = market_report.get("recommended_stocks", [])
-for sym in recommended_stocks:
-    if sym.upper() not in existing_symbols:
-        priority_symbols.append(sym.upper())
+        if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
+            symbol_upper = symbol.upper()
+            # CRITICAL: Skip ETF
+            if is_etf(symbol_upper):
+                print(f"   [SKIP] Skipping ETF holding for fundamental analysis: {symbol}")
+                continue
+            if symbol_upper not in existing_symbols:
+                mandatory_symbols.append(symbol_upper)
 ```
+
+### ✅ Priority System (Updated)
+
+**Analysis Targets:**
+1. **With Holdings**: Non-ETF holdings + Non-ETF recommended stocks (all required)
+2. **Without Holdings**: Non-ETF recommended stocks only (mandatory)
+
+**ETFs are automatically excluded** using `is_etf()` function.
 
 ## Verification
 
-✅ **Recommended stocks**: Passed from Market Analyst to Fundamental Analyst  
-✅ **Current holdings**: Extracted from `current_positions` and passed to Fundamental Analyst  
-✅ **Priority system**: Enforces analysis order (recommended → holdings → indices)  
-✅ **Tool calls**: System automatically adds tool calls for missing priority symbols
+✅ **Recommended stocks**: Passed from Market Analyst to Fundamental Analyst (ETFs filtered)  
+✅ **Current holdings**: Extracted from `current_positions` (ETFs filtered)  
+✅ **ETF exclusion**: All ETFs and indices are excluded from fundamental analysis  
+✅ **Tool calls**: System automatically adds tool calls for missing non-ETF symbols
 
 ## Example Flow
 
-1. **Market Analyst** analyzes market and recommends: `["NVDA", "AAPL", "MSFT"]`
+1. **Market Analyst** analyzes market and recommends: `["NVDA", "AAPL", "MSFT", "SPY", "TQQQ"]`
 2. **Fundamental Analyst** receives:
-   - Priority 1: Analyze NVDA, AAPL, MSFT (recommended)
-   - Priority 2: Analyze current holdings (e.g., TQQQ, SPXL)
-   - Priority 3: Analyze indices (SPY, QQQ, DIA, IWM, VTI)
-3. **System** automatically adds `get_company_fundamentals` calls for any missing symbols
-4. **Fundamental Analyst** analyzes all symbols in priority order
+   - Holdings: NVDA (stock), SPY (ETF - excluded), TQQQ (ETF - excluded)
+   - Recommended: NVDA, AAPL, MSFT (stocks), SPY (ETF - excluded), TQQQ (ETF - excluded)
+3. **System** filters ETFs:
+   - Non-ETF holdings: NVDA
+   - Non-ETF recommended: NVDA, AAPL, MSFT
+   - **Final targets**: NVDA, AAPL, MSFT (all non-ETF)
+4. **System** automatically adds `get_company_fundamentals` calls for all non-ETF symbols
+5. **Fundamental Analyst** analyzes only non-ETF symbols
 
+## Key Changes
+
+- ❌ **Removed**: Analysis of indices (SPY, QQQ, DIA, IWM, VTI)
+- ✅ **Added**: ETF detection and filtering
+- ✅ **Updated**: Only non-ETF holdings and recommended stocks are analyzed

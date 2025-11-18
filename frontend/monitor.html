@@ -7331,8 +7331,22 @@
                             while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
                                 parsed = parsed.result;
                             }
+                            
+                            // CRITICAL FIX: 如果解析出的结果是数组对象（键为数字），转换为数组
+                            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                                const keys = Object.keys(parsed);
+                                const numericKeys = keys.filter(k => /^\d+$/.test(String(k)));
+                                if (numericKeys.length >= keys.length * 0.8 || numericKeys.length >= 10) {
+                                    // 这是数组对象，转换为数组
+                                    parsed = Object.values(parsed);
+                                    console.log('[parseToolInfo] Converted array-like object to array:', numericKeys.length, 'items');
+                                }
+                            }
+                            
                             // 尝试从 parsed 中提取工具名
-                            const toolName = parsed.tool || parsed.name || parsed.tool_name || 'Unknown';
+                            const toolName = parsed && typeof parsed === 'object' && !Array.isArray(parsed) 
+                                ? (parsed.tool || parsed.name || parsed.tool_name || 'Unknown')
+                                : 'Unknown';
                             return { name: toolName, result: parsed, full: content };
                         }
                     }
@@ -7399,6 +7413,18 @@
                         while (parsed && typeof parsed === 'object' && 'ok' in parsed && 'result' in parsed) {
                             parsed = parsed.result;
                         }
+                        
+                        // CRITICAL FIX: 如果解析出的结果是数组对象（键为数字），转换为数组
+                        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                            const keys = Object.keys(parsed);
+                            const numericKeys = keys.filter(k => /^\d+$/.test(String(k)));
+                            if (numericKeys.length >= keys.length * 0.8 || numericKeys.length >= 10) {
+                                // 这是数组对象，转换为数组
+                                parsed = Object.values(parsed);
+                                console.log('[parseToolInfo] Converted array-like object to array (format 2):', numericKeys.length, 'items');
+                            }
+                        }
+                        
                         toolResult = parsed;
                     }
                 }
@@ -10559,14 +10585,24 @@
             const nextBtn = document.getElementById('executionNextPage');
             if (!tbody) return;
             
+            // CRITICAL: Filter only today's orders (consistent with updateOrderStatus)
+            const today = new Date().toISOString().split('T')[0];
+            const todayTrades = (trades || []).filter(t => {
+                const tradeDate = t.placed_at ? t.placed_at.split('T')[0] : 
+                                 (t.date ? t.date.split('T')[0] : 
+                                  (t.timestamp ? t.timestamp.split('T')[0] : 
+                                   (t.filled_at ? t.filled_at.split('T')[0] : '')));
+                return tradeDate === today;
+            });
+            
             // 保存所有交易数据用于分页
-            executionAllTrades = trades || [];
+            executionAllTrades = todayTrades || [];
             
             // 去重：使用 symbol|side|quantity|price 作为唯一键
             const seen = new Set();
             const uniqueTrades = [];
             
-            for (const trade of trades) {
+            for (const trade of todayTrades) {
                 const sym = trade.symbol || '';
                 const side = (trade.side || trade.action || '').toUpperCase();
                 const qty = parseInt(trade.quantity || 0);
@@ -10591,7 +10627,6 @@
             });
             
             // 检查是否有明日挂单（placed_at的日期是明天的日期）
-            const today = new Date().toISOString().split('T')[0];
             const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             const tomorrowOrders = pendingTrades.filter(t => {
                 const placedAt = t.placed_at || t.filled_at || '';
@@ -11872,7 +11907,13 @@
                     // fetch_jin10_news 返回 {items: [...], count, source, fetched_at}
                     let newsItems = null;
                     
-                    if (toolResult.hits && Array.isArray(toolResult.hits)) {
+                    // CRITICAL FIX: plan_and_scan_news 返回 {hits: [...], articles: [...]}
+                    // 优先使用 articles（包含 summary 和 keywords）
+                    if (toolResult.articles && Array.isArray(toolResult.articles)) {
+                        // plan_and_scan_news 格式（包含 LLM 生成的 summary 和 keywords）
+                        newsItems = toolResult.articles;
+                        console.log('[News] Found', newsItems.length, 'articles with content from', toolName);
+                    } else if (toolResult.hits && Array.isArray(toolResult.hits)) {
                         // news_scan 格式
                         newsItems = toolResult.hits;
                     } else if (toolResult.items && Array.isArray(toolResult.items)) {
@@ -11881,6 +11922,15 @@
                     } else if (Array.isArray(toolResult)) {
                         // 如果 tool_result 本身就是数组
                         newsItems = toolResult;
+                        console.log('[News] Found', newsItems.length, 'news items (direct array) from', toolName);
+                    } else if (toolResult && typeof toolResult === 'object') {
+                        // CRITICAL FIX: 检查是否是数组对象（键为数字字符串的对象）
+                        const keys = Object.keys(toolResult);
+                        if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
+                            // 这是一个数组对象，转换为数组
+                            newsItems = Object.values(toolResult);
+                            console.log('[News] Found', newsItems.length, 'news items (array-like object) from', toolName);
+                        }
                     }
                     
                     if (newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
@@ -11897,7 +11947,11 @@
                                     link: link,
                                     source: source,
                                     published: published,
+                                    excerpt: item.excerpt || '', // 保存内容摘要
+                                    summary: item.summary || '', // LLM 生成的摘要（优先）
+                                    keywords: item.keywords || [], // LLM 提取的关键字
                                     timestamp: newsTool.timestamp || '',
+                                    published_timestamp: published, // 用于排序（优先使用发布时间）
                                     agent: newsTool.agent || 'Unknown',
                                     tool: toolName
                                 });
@@ -12029,12 +12083,77 @@
                                 newsItems = result;
                                 console.log('[News] Found', newsItems.length, 'news items (direct array) from', toolName);
                             } else if (result && typeof result === 'object') {
-                                // 检查是否是数组对象（键为数字字符串的对象）
+                                // CRITICAL FIX: 首先检查是否是数组对象（键为数字字符串的对象）
                                 const keys = Object.keys(result);
-                                if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
+                                
+                                // CRITICAL FIX: 改进数组对象检测 - 检查键是否主要是数字
+                                // 1. 检查所有键是否都是数字字符串
+                                // 2. 或者检查键是否主要是连续的数字（0, 1, 2, ...）
+                                const numericKeys = keys.filter(k => {
+                                    const str = String(k);
+                                    return /^\d+$/.test(str);
+                                });
+                                
+                                // 检查键是否主要是数字（>=80%是数字，或者所有键都是数字）
+                                const isArrayLike = keys.length > 0 && (
+                                    numericKeys.length === keys.length || 
+                                    (numericKeys.length >= keys.length * 0.8 && numericKeys.length >= 3)
+                                );
+                                
+                                // DEBUG: 输出检查结果
+                                if (keys.length > 0 && keys.length <= 100) {
+                                    console.log('[News] Checking array-like object:', {
+                                        totalKeys: keys.length,
+                                        numericKeys: numericKeys.length,
+                                        firstKeys: keys.slice(0, 10),
+                                        firstNumericKeys: numericKeys.slice(0, 10),
+                                        isArrayLike: isArrayLike,
+                                        tool: toolName,
+                                        sampleKey: keys[0],
+                                        sampleKeyType: typeof keys[0],
+                                        sampleKeyValue: keys[0]
+                                    });
+                                }
+                                
+                                if (isArrayLike) {
                                     // 这是一个数组对象，转换为数组
                                     newsItems = Object.values(result);
                                     console.log('[News] Found', newsItems.length, 'news items (array-like object) from', toolName);
+                                    // CRITICAL FIX: 立即处理数组对象
+                                    if (newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
+                                        let processedCount = 0;
+                                        for (const item of newsItems) {
+                                            if (item && typeof item === 'object') {
+                                                // 尝试多种字段名匹配
+                                                const title = item.title || item.headline || item.name || '';
+                                                const link = item.link || item.href || item.url || '';
+                                                
+                                                // 只要有 title 或 link 就处理
+                                                if (title || link) {
+                                                    const source = item.source || result.source || 'Unknown';
+                                                    const published = item.published || item.published_timestamp || item.published_at || item.date || '';
+                                                    const excerpt = item.excerpt || item.content || item.description || '';
+                                                    
+                                                    newsData.push({
+                                                        title: title || 'No title',
+                                                        link: link,
+                                                        source: source,
+                                                        published: published,
+                                                        excerpt: excerpt,
+                                                        summary: item.summary || '', // LLM 生成的摘要（优先显示）
+                                                        keywords: item.keywords || [], // LLM 提取的关键字
+                                                        timestamp: conv.timestamp || conv.date || '',
+                                                        published_timestamp: published, // 用于排序（优先使用发布时间）
+                                                        agent: conv.agent || 'Unknown',
+                                                        tool: toolName
+                                                    });
+                                                    processedCount++;
+                                                }
+                                            }
+                                        }
+                                        console.log('[News] Processed', processedCount, 'items from array-like object');
+                                    }
+                                    // CRITICAL FIX: 数组对象已处理，跳过后续检查（使用else if链）
                                 } else if (result.hits && Array.isArray(result.hits)) {
                                     // news_scan 或 plan_and_scan_news 格式
                                     newsItems = result.hits;
@@ -12048,13 +12167,15 @@
                                         for (const article of result.articles) {
                                             const url = article.url || article.link || '';
                                             if (url && !existingUrls.has(url)) {
-                                                // 将 article 格式转换为 hit 格式
+                                                // 将 article 格式转换为 hit 格式（包含 summary 和 keywords）
                                                 newsItems.push({
                                                     title: article.title || 'No title',
                                                     link: url,
                                                     source: article.source || 'Unknown',
                                                     published: article.published || article.published_timestamp || '',
                                                     excerpt: article.excerpt || '', // 保存内容摘要
+                                                    summary: article.summary || '', // LLM 生成的摘要
+                                                    keywords: article.keywords || [], // LLM 提取的关键字
                                                     url: url
                                                 });
                                                 existingUrls.add(url);
@@ -12089,17 +12210,173 @@
                                             source: source,
                                             published: published,
                                             excerpt: excerpt, // 保存内容摘要供显示
+                                            summary: item.summary || '', // LLM 生成的摘要（优先显示）
+                                            keywords: item.keywords || [], // LLM 提取的关键字
                                             timestamp: conv.timestamp || conv.date || '',
+                                            published_timestamp: published, // 用于排序（优先使用发布时间）
                                             agent: conv.agent || 'Unknown',
                                             tool: toolName
                                         });
                                     }
                                 }
                             } else {
-                                console.warn('[News] No hits/items/articles array found in result:', result ? (Array.isArray(result) ? `Array(${result.length})` : `Object keys: [${Object.keys(result).join(', ')}]`) : 'null');
-                                // DEBUG: 输出更多信息
-                                if (result && typeof result === 'object') {
-                                    console.log('[News] Result structure:', JSON.stringify(result).substring(0, 500));
+                                // CRITICAL FIX: 最后尝试检查是否是数组对象（可能之前的检查没有匹配）
+                                if (result && typeof result === 'object' && !Array.isArray(result)) {
+                                    const keys = Object.keys(result);
+                                    
+                                    // CRITICAL FIX: 改进数组对象检测 - 更宽松的条件
+                                    const numericKeys = keys.filter(k => {
+                                        const str = String(k);
+                                        return /^\d+$/.test(str);
+                                    });
+                                    
+                                    // 检查键是否主要是数字（>=80%是数字，或者所有键都是数字，或者有足够多的数字键）
+                                    const isArrayLike = keys.length > 0 && (
+                                        numericKeys.length === keys.length || 
+                                        (numericKeys.length >= keys.length * 0.8 && numericKeys.length >= 3) ||
+                                        (numericKeys.length >= 10) // 如果有10个以上的数字键，也认为是数组对象
+                                    );
+                                    
+                                    // DEBUG: 输出检查信息
+                                    if (keys.length > 0 && keys.length <= 100) {
+                                        console.log('[News] Fallback check:', {
+                                            totalKeys: keys.length,
+                                            numericKeys: numericKeys.length,
+                                            firstKeys: keys.slice(0, 10),
+                                            firstNumericKeys: numericKeys.slice(0, 10),
+                                            isArrayLike: isArrayLike,
+                                            tool: toolName,
+                                            sampleKey: keys[0],
+                                            sampleKeyType: typeof keys[0],
+                                            sampleKeyValue: keys[0],
+                                            // 检查键是否连续
+                                            keysAreSequential: numericKeys.length > 0 && 
+                                                numericKeys.every((k, i) => parseInt(k) === i)
+                                        });
+                                    }
+                                    
+                                    if (isArrayLike) {
+                                        // 这是一个数组对象，转换为数组
+                                        newsItems = Object.values(result);
+                                        console.log('[News] Found', newsItems.length, 'news items (array-like object, fallback) from', toolName);
+                                        
+                                        // CRITICAL FIX: 立即处理数组对象
+                                        if (newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
+                                            let processedCount = 0;
+                                            for (const item of newsItems) {
+                                                if (item && typeof item === 'object') {
+                                                    // 尝试多种字段名匹配
+                                                    const title = item.title || item.headline || item.name || '';
+                                                    const link = item.link || item.href || item.url || '';
+                                                    
+                                                    // 只要有 title 或 link 就处理
+                                                    if (title || link) {
+                                                        const source = item.source || result.source || 'Unknown';
+                                                        const published = item.published || item.published_timestamp || item.published_at || item.date || '';
+                                                        const excerpt = item.excerpt || item.content || item.description || '';
+                                                        
+                                                    newsData.push({
+                                                        title: title || 'No title',
+                                                        link: link,
+                                                        source: source,
+                                                        published: published,
+                                                        excerpt: excerpt,
+                                                        summary: item.summary || '', // LLM 生成的摘要（优先显示）
+                                                        keywords: item.keywords || [], // LLM 提取的关键字
+                                                        timestamp: conv.timestamp || conv.date || '',
+                                                        published_timestamp: published, // 用于排序（优先使用发布时间）
+                                                        agent: conv.agent || 'Unknown',
+                                                        tool: toolName
+                                                    });
+                                                        processedCount++;
+                                                    }
+                                                }
+                                            }
+                                            console.log('[News] Processed', processedCount, 'items from array-like object');
+                                        }
+                                    } else {
+                                        // CRITICAL FIX: 即使不是严格的数组对象，如果大部分键是数字，也尝试处理
+                                        if (numericKeys.length > 0 && numericKeys.length >= keys.length * 0.5) {
+                                            console.log('[News] Partial array-like object detected, attempting to process:', numericKeys.length, 'numeric keys out of', keys.length);
+                                            const arrayItems = numericKeys.map(k => result[k]).filter(item => item != null);
+                                            if (arrayItems.length > 0) {
+                                                let processedCount = 0;
+                                                for (const item of arrayItems) {
+                                                    if (item && typeof item === 'object') {
+                                                        const title = item.title || item.headline || item.name || '';
+                                                        const link = item.link || item.href || item.url || '';
+                                                        if (title || link) {
+                                                            const source = item.source || result.source || 'Unknown';
+                                                            const published = item.published || item.published_timestamp || item.published_at || item.date || '';
+                                                            const excerpt = item.excerpt || item.content || item.description || '';
+                                                            
+                                                            newsData.push({
+                                                                title: title || 'No title',
+                                                                link: link,
+                                                                source: source,
+                                                                published: published,
+                                                                excerpt: excerpt,
+                                                                summary: item.summary || '', // LLM 生成的摘要（优先显示）
+                                                                keywords: item.keywords || [], // LLM 提取的关键字
+                                                                timestamp: conv.timestamp || conv.date || '',
+                                                                published_timestamp: published, // 用于排序（优先使用发布时间）
+                                                                agent: conv.agent || 'Unknown',
+                                                                tool: toolName
+                                                            });
+                                                            processedCount++;
+                                                        }
+                                                    }
+                                                }
+                                                console.log('[News] Processed', processedCount, 'items from partial array-like object');
+                                            }
+                                        } else {
+                                            // CRITICAL FIX: 最后尝试 - 如果有很多数字键，即使不满足80%条件，也尝试处理
+                                            if (numericKeys.length >= 5) {
+                                                console.log('[News] Attempting to process with', numericKeys.length, 'numeric keys (relaxed condition)');
+                                                const arrayItems = numericKeys.map(k => result[k]).filter(item => item != null);
+                                                if (arrayItems.length > 0) {
+                                                    let processedCount = 0;
+                                                    for (const item of arrayItems) {
+                                                        if (item && typeof item === 'object') {
+                                                            const title = item.title || item.headline || item.name || '';
+                                                            const link = item.link || item.href || item.url || '';
+                                                            if (title || link) {
+                                                                const source = item.source || result.source || 'Unknown';
+                                                                const published = item.published || item.published_timestamp || item.published_at || item.date || '';
+                                                                const excerpt = item.excerpt || item.content || item.description || '';
+                                                                
+                                                                newsData.push({
+                                                                    title: title || 'No title',
+                                                                    link: link,
+                                                                    source: source,
+                                                                    published: published,
+                                                                    excerpt: excerpt,
+                                                                    summary: item.summary || '', // LLM 生成的摘要（优先显示）
+                                                                    keywords: item.keywords || [], // LLM 提取的关键字
+                                                                    timestamp: conv.timestamp || conv.date || '',
+                                                                    published_timestamp: published, // 用于排序（优先使用发布时间）
+                                                                    agent: conv.agent || 'Unknown',
+                                                                    tool: toolName
+                                                                });
+                                                                processedCount++;
+                                                            }
+                                                        }
+                                                    }
+                                                    console.log('[News] Processed', processedCount, 'items from relaxed array-like object');
+                                                }
+                                            } else {
+                                                // 不是数组对象，输出警告
+                                                console.warn('[News] No hits/items/articles array found in result:', `Object keys: [${keys.slice(0, 20).join(', ')}${keys.length > 20 ? '...' : ''}]`);
+                                                // DEBUG: 输出第一个元素的结构以便调试
+                                                if (keys.length > 0 && result[keys[0]]) {
+                                                    console.log('[News] First item structure:', JSON.stringify(result[keys[0]]).substring(0, 200));
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // CRITICAL FIX: 如果result是null或undefined，尝试从其他地方获取
+                                    console.warn('[News] No hits/items/articles array found in result:', result ? (Array.isArray(result) ? `Array(${result.length})` : `Object keys: [${Object.keys(result).slice(0, 20).join(', ')}${Object.keys(result).length > 20 ? '...' : ''}]`) : 'null');
                                 }
                             }
                             
@@ -12170,14 +12447,37 @@
                     </div>
                 `;
             } else {
-                // 按时间排序（最新的在前）
+                // CRITICAL FIX: 按发布时间排序（最新的在前），优先使用published_timestamp
                 newsData.sort((a, b) => {
-                    const timeA = new Date(a.timestamp).getTime();
-                    const timeB = new Date(b.timestamp).getTime();
-                    return timeB - timeA;
+                    // 优先使用published时间，如果没有则使用timestamp
+                    const timeA = (a.published_timestamp || a.published || a.timestamp || '').trim();
+                    const timeB = (b.published_timestamp || b.published || b.timestamp || '').trim();
+                    
+                    if (!timeA && !timeB) return 0;
+                    if (!timeA) return 1; // 没有时间的排在后面
+                    if (!timeB) return -1;
+                    
+                    const dateA = new Date(timeA).getTime();
+                    const dateB = new Date(timeB).getTime();
+                    
+                    // 如果日期无效，使用timestamp
+                    if (isNaN(dateA) && a.timestamp) {
+                        const fallbackA = new Date(a.timestamp).getTime();
+                        if (!isNaN(fallbackA)) {
+                            return isNaN(dateB) ? (fallbackA - (new Date(b.timestamp || 0).getTime())) : (fallbackA - dateB);
+                        }
+                    }
+                    if (isNaN(dateB) && b.timestamp) {
+                        const fallbackB = new Date(b.timestamp).getTime();
+                        if (!isNaN(fallbackB)) {
+                            return isNaN(dateA) ? ((new Date(a.timestamp || 0).getTime()) - fallbackB) : (dateA - fallbackB);
+                        }
+                    }
+                    
+                    return isNaN(dateB) ? -1 : (isNaN(dateA) ? 1 : (dateB - dateA)); // 最新的在前
                 });
                 
-                // 按来源分组
+                // 按来源分组，并在每个来源内按时间排序（最新的在前）
                 const newsBySource = {};
                 for (const news of newsData) {
                     const source = news.source || 'Unknown';
@@ -12185,6 +12485,23 @@
                         newsBySource[source] = [];
                     }
                     newsBySource[source].push(news);
+                }
+                
+                // CRITICAL FIX: 每个来源内的新闻也按时间排序（最新的在前）
+                for (const source in newsBySource) {
+                    newsBySource[source].sort((a, b) => {
+                        const timeA = (a.published_timestamp || a.published || a.timestamp || '').trim();
+                        const timeB = (b.published_timestamp || b.published || b.timestamp || '').trim();
+                        
+                        if (!timeA && !timeB) return 0;
+                        if (!timeA) return 1;
+                        if (!timeB) return -1;
+                        
+                        const dateA = new Date(timeA).getTime();
+                        const dateB = new Date(timeB).getTime();
+                        
+                        return isNaN(dateB) ? -1 : (isNaN(dateA) ? 1 : (dateB - dateA)); // 最新的在前
+                    });
                 }
                 
                 let html = `<div style="margin-bottom: 24px;">
@@ -12198,15 +12515,61 @@
                         <div style="display: flex; flex-direction: column; gap: 12px;">`;
                     
                     for (const article of articles) {
-                        html += `<div style="padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 6px;">
-                            <div style="font-weight: 600; color: #ffffff; margin-bottom: 6px; font-size: 14px;">
-                                ${escapeHtml(article.title)}
+                        // CRITICAL: 优先显示 LLM 生成的 summary，如果没有则使用 excerpt
+                        const summaryText = article.summary || article.excerpt || '';
+                        const keywords = article.keywords || [];
+                        
+                        // 格式化发布时间
+                        let publishedTime = '';
+                        const publishedTimestamp = article.published_timestamp || article.published || article.timestamp || '';
+                        if (publishedTimestamp) {
+                            try {
+                                const pubDate = new Date(publishedTimestamp);
+                                if (!isNaN(pubDate.getTime())) {
+                                    // 显示相对时间（如果小于24小时）或绝对时间
+                                    const now = new Date();
+                                    const diffMs = now - pubDate;
+                                    const diffHours = diffMs / (1000 * 60 * 60);
+                                    
+                                    if (diffHours < 24) {
+                                        const diffMins = Math.floor(diffMs / (1000 * 60));
+                                        if (diffMins < 60) {
+                                            publishedTime = `${diffMins} minutes ago`;
+                                        } else {
+                                            publishedTime = `${Math.floor(diffHours)} hours ago`;
+                                        }
+                                    } else {
+                                        publishedTime = pubDate.toLocaleString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+                                    }
+                                }
+                            } catch (e) {
+                                publishedTime = publishedTimestamp;
+                            }
+                        }
+                        
+                        html += `<div style="padding: 16px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; margin-bottom: 12px; border-left: 2px solid rgba(34, 211, 238, 0.3);">
+                            <div style="font-weight: 600; color: #ffffff; margin-bottom: 8px; font-size: 16px; line-height: 1.4;">
+                                ${article.link ? `<a href="${escapeHtml(article.link)}" target="_blank" style="color: #ffffff; text-decoration: none; border-bottom: 1px solid rgba(255, 255, 255, 0.3);">${escapeHtml(article.title)}</a>` : escapeHtml(article.title)}
                             </div>
-                            <div style="display: flex; gap: 12px; font-size: 12px; color: #94a3b8; margin-top: 8px;">
-                                ${article.link ? `<a href="${escapeHtml(article.link)}" target="_blank" style="color: #6366f1; text-decoration: none;">🔗 Open Link</a>` : ''}
-                                <span>Agent: ${escapeHtml(article.agent)}</span>
-                                <span>Tool: ${escapeHtml(article.tool)}</span>
-                                ${article.timestamp ? `<span>${new Date(article.timestamp).toLocaleString()}</span>` : ''}
+                            ${summaryText ? `<div style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-bottom: 10px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 4px; border-left: 3px solid #22d3ee;">
+                                <div style="font-weight: 500; color: #22d3ee; margin-bottom: 4px; font-size: 12px;">Summary:</div>
+                                ${escapeHtml(summaryText.length > 400 ? summaryText.substring(0, 400) + '...' : summaryText)}
+                            </div>` : ''}
+                            ${keywords.length > 0 ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;">
+                                <span style="font-size: 11px; color: #94a3b8; margin-right: 4px;">Keywords:</span>
+                                ${keywords.slice(0, 5).map(kw => `<span style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); color: #22d3ee; border-radius: 4px; font-size: 11px;">${escapeHtml(kw)}</span>`).join('')}
+                            </div>` : ''}
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #94a3b8; margin-top: 8px; align-items: center; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                                ${article.link ? `<a href="${escapeHtml(article.link)}" target="_blank" style="color: #6366f1; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">🔗 Open Link</a>` : ''}
+                                <span style="color: #22d3ee; font-weight: 500;">📰 ${escapeHtml(article.source || 'Unknown')}</span>
+                                ${publishedTime ? `<span style="color: #10b981; font-weight: 500;">🕐 ${publishedTime}</span>` : ''}
+                                <span style="opacity: 0.7;">Agent: ${escapeHtml(article.agent || 'Unknown')}</span>
                             </div>
                         </div>`;
                     }

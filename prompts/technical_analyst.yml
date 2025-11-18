@@ -50,16 +50,23 @@ user: |
   - **CRITICAL**: Respect available cash limits - do not recommend purchases that would exceed available cash
   - Consider unrealized P&L when making recommendations (large losses may need position reduction)
   
-  **CRITICAL - Analysis Target Priority:**
+  **CRITICAL - Analysis Target Requirements (ALL must be analyzed):**
   
-  1. **FIRST PRIORITY: Analyze Current Holdings (if any)**
+  **MANDATORY Analysis Targets - You MUST analyze ALL of these categories:**
+  
+  1. **Recommended Stocks (from Market Analyst)**
+     - If Market Analyst provided recommended_stocks, you MUST analyze ALL of them
+     - Use get_advanced_indicators for each recommended stock
+     - Include previous day's close price in your analysis
+  
+  2. **Current Holdings (if any exist)**
      - If {current_positions} contains holdings, you MUST analyze ALL of them
      - For each holding, use get_advanced_indicators to get technical indicators
      - Include previous day's close price in your analysis
      - Example: If portfolio holds NVDA, MSFT, AAPL, analyze all three
   
-  2. **SECOND PRIORITY: Analyze Major Market Indices**
-     - Always analyze these major indices (regardless of holdings):
+  3. **Major Market Indices (ALWAYS required)**
+     - You MUST analyze these major indices (regardless of holdings):
        * SPY (S&P 500) - Broad market benchmark
        * QQQ (NASDAQ-100) - Tech-heavy index
        * DIA (Dow Jones Industrial Average) - Blue-chip index
@@ -68,28 +75,27 @@ user: |
      - Use get_advanced_indicators for each index
      - Use get_market_indices for comprehensive market overview
   
-  3. **THIRD PRIORITY: Select Additional Stocks (if tool_budget allows)**
-     - Only if you have remaining tool_budget after analyzing holdings and indices
-     - Select stocks from market_stats.top_signals (highest signal_score)
-     - Choose diverse stocks from different sectors
-     - Use get_advanced_indicators for selected stocks
+  **CRITICAL: You MUST analyze ALL three categories simultaneously:**
+  - If you have holdings: Analyze holdings + recommended stocks + major indices (ALL required)
+  - If you have NO holdings: Analyze recommended stocks + major indices (BOTH required)
+  - Do NOT skip any category - all must be analyzed
   
-  **Analysis Selection Strategy (Menu-Based Approach):**
+  **Analysis Selection Strategy:**
   - Review {current_positions} to see what stocks are held
-  - Create a prioritized analysis list:
-    1. All current holdings (MANDATORY if any exist)
-    2. Major indices: SPY, QQQ, DIA, IWM, VTI (MANDATORY)
-    3. Additional high-signal stocks (OPTIONAL, if budget allows)
+  - Create your analysis list to include ALL mandatory targets:
+    1. All recommended stocks from Market Analyst (MANDATORY)
+    2. All current holdings (MANDATORY if any exist)
+    3. All major indices: SPY, QQQ, DIA, IWM, VTI (MANDATORY)
   - For each symbol you analyze, include:
      * Technical indicators (RSI, MACD, Bollinger Bands, etc.)
      * Previous day's close price (from market_view.stocks[symbol].price or get_advanced_indicators result)
      * Support/resistance levels (if budget allows)
   
   **If No Holdings:**
-  - Focus on recommended stocks (from Market Analyst) + major indices (SPY, QQQ, DIA, IWM, VTI)
+  - You MUST analyze: recommended stocks (from Market Analyst) + major indices (SPY, QQQ, DIA, IWM, VTI)
   - Use get_market_indices for comprehensive market overview
   - Analyze at least 3-5 indices (prioritize SPY, QQQ, DIA)
-  - If Market Analyst provided recommended_stocks, analyze those first, then indices
+  - Both categories are MANDATORY - do not skip either
   
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings
@@ -109,19 +115,22 @@ user: |
   **CRITICAL**: You MUST call as many tools as possible (up to tool_budget limit) to gather comprehensive technical data.
   Do NOT skip tool calls. Use tools like get_advanced_indicators, get_support_resistance for MANY different stocks.
   
-  **MANDATORY Tool Calls:**
-  - If {current_positions} has holdings: Analyze ALL holdings (use get_advanced_indicators for each)
-  - Always analyze major indices: SPY, QQQ, DIA (at minimum)
+  **MANDATORY Tool Calls (ALL required):**
+  - Recommended stocks: Analyze ALL recommended stocks from Market Analyst (use get_advanced_indicators for each)
+  - Current holdings: If {current_positions} has holdings, analyze ALL holdings (use get_advanced_indicators for each)
+  - Major indices: Always analyze ALL major indices: SPY, QQQ, DIA, IWM, VTI (use get_advanced_indicators for each)
   - Use get_market_indices for overall market context
-  - Your tool_calls MUST prioritize holdings and indices over random stocks
+  - Your tool_calls MUST include ALL three categories: recommended stocks + holdings + indices
   - Include previous day's close price in your analysis (from tool results or market_view)
   
-  **Tool Call Priority:**
-  1. get_advanced_indicators for each current holding (if any)
-  2. get_advanced_indicators for SPY, QQQ, DIA, IWM, VTI (major indices)
-  3. get_market_indices (comprehensive market overview)
-  4. get_support_resistance for holdings and indices (if budget allows)
-  5. Additional high-signal stocks (only if budget remains)
+  **Tool Call Requirements (ALL must be called):**
+  1. get_advanced_indicators for each recommended stock (MANDATORY)
+  2. get_advanced_indicators for each current holding (MANDATORY if any exist)
+  3. get_advanced_indicators for SPY, QQQ, DIA, IWM, VTI (major indices - MANDATORY)
+  4. get_market_indices (comprehensive market overview - MANDATORY)
+  5. get_support_resistance for holdings and indices (if budget allows)
+  
+  **CRITICAL: Do NOT skip any category - all must be analyzed simultaneously**
   
   Output format:
   {

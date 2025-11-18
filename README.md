@@ -4,7 +4,8 @@
 > 📈 Analyzing **NASDAQ-100** (118+ symbols) with comprehensive fundamental, technical, and sentiment analysis  
 > 🧠 Fully autonomous agent collaboration with real-time market data integration  
 > 🎨 Dark tech-themed UI with live visualization and real-time updates  
-> 🧠 **RAG Memory System**: Agents learn from historical trading decisions
+> 🧠 **RAG Memory System**: Agents learn from historical trading decisions  
+> 📰 **Enhanced News Integration**: News data with summaries, sources, and timestamps displayed in frontend
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-Enabled-green.svg)](https://www.langchain.com/)
@@ -850,10 +851,18 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 #### 2. **Technical Analyst** 📈
 - **Specialty**: Chart patterns, indicators, support/resistance
 - **Priority Tools**: `get_advanced_indicators`, `get_support_resistance`, `vix_term`
+- **Analysis Targets**: 
+  - **With Holdings**: Current holdings + Recommended stocks + Major indices (SPY, QQQ, DIA, IWM, VTI)
+  - **Without Holdings**: Recommended stocks + Major indices (SPY, QQQ, DIA, IWM, VTI)
+  - **All targets must be analyzed simultaneously**
 
 #### 3. **Fundamental Analyst** 💼
 - **Specialty**: Financial statements, valuation, earnings
 - **Priority Tools**: `get_company_fundamentals`, `get_earnings_history`, `get_financial_statements`
+- **Analysis Targets**: 
+  - **With Holdings**: Non-ETF holdings + Non-ETF recommended stocks (ETFs excluded)
+  - **Without Holdings**: Non-ETF recommended stocks only
+  - **ETFs and indices are excluded** (ETFs don't need fundamental analysis)
 
 #### 4. **Sentiment Analyst** 😊
 - **Specialty**: Market psychology, news sentiment, fear/greed

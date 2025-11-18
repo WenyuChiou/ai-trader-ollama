@@ -51,13 +51,40 @@ user: |
   - **CRITICAL**: Respect available cash limits - do not recommend purchases that would exceed available cash
   - Consider unrealized P&L when making recommendations (large losses may need position reduction)
   
+  **CRITICAL - Analysis Target Requirements (non-ETF only):**
+  
+  **MANDATORY Analysis Targets - You MUST analyze ALL of these categories (ETFs excluded):**
+  
+  1. **Recommended Stocks (from Market Analyst, non-ETF only)**
+     - If Market Analyst provided recommended_stocks, you MUST analyze ALL of them
+     - **CRITICAL: Skip ETFs** - ETFs (like SPY, QQQ, DIA, IWM, VTI, TQQQ, SQQQ, etc.) do NOT need fundamental analysis
+     - Only analyze individual company stocks, not ETFs or indices
+     - Use get_company_fundamentals for each recommended non-ETF stock
+  
+  2. **Current Holdings (if any exist, non-ETF only)**
+     - If {current_positions} contains holdings, you MUST analyze ALL non-ETF holdings
+     - **CRITICAL: Skip ETF holdings** - If a holding is an ETF, skip it (ETFs don't need fundamental analysis)
+     - Only analyze individual company stocks in your holdings
+     - Use get_company_fundamentals for each non-ETF holding
+  
+  **CRITICAL: Do NOT analyze ETFs or indices:**
+  - Do NOT analyze SPY, QQQ, DIA, IWM, VTI (these are index ETFs)
+  - Do NOT analyze TQQQ, SQQQ, SPXL, SPXU, UPRO (these are leveraged/inverse ETFs)
+  - Do NOT analyze any ETF symbols - ETFs track indices and don't have company fundamentals
+  - Only analyze individual company stocks (like NVDA, MSFT, AAPL, etc.)
+  
+  **Analysis Requirements:**
+  - If you have holdings: Analyze non-ETF holdings + non-ETF recommended stocks (ALL required)
+  - If you have NO holdings: Analyze non-ETF recommended stocks only (MANDATORY)
+  - Do NOT skip any non-ETF symbol - all must be analyzed
+  
   **Important**: The market_view contains data for a large universe of stocks (typically 100+ stocks). You will see:
   - stocks_count: Total number of stocks in the universe
   - symbols: Complete list of all stock symbols
   - sample_stocks_data: Sample data for the first 10 stocks (to understand data format)
   - market_stats: Overall market statistics including top signal scores
   - Use tools (get_company_fundamentals, get_earnings_history, get_financial_statements) with specific symbols to analyze individual stocks
-  - Focus on stocks with high signal scores, recommended stocks, or those mentioned in previous discussion
+  - Focus on recommended stocks and holdings (but skip ETFs)
   
   **Important**: Review the previous discussion above. You should:
   - Acknowledge or build upon previous analysts' findings
@@ -66,7 +93,7 @@ user: |
   - Reference specific points from previous analysis when relevant
   
   Your task as Fundamental Analyst:
-  1. **Get company fundamentals** for each stock (valuation, profitability, growth)
+  1. **Get company fundamentals** for each non-ETF stock (valuation, profitability, growth)
   2. **Analyze earnings history** and quality
   3. **Review financial health** (debt, cashflow, liquidity)
   4. **Check recent news** for material events
@@ -74,10 +101,11 @@ user: |
   6. **Calculate fair value** based on fundamentals
   7. **Provide fundamental stance** with value assessment
   
-  **CRITICAL**: You MUST call at least 2-3 tools to gather fundamental data before providing your analysis.
+  **CRITICAL**: You MUST call tools to gather fundamental data for ALL non-ETF recommended stocks and holdings.
   Do NOT skip tool calls. Use tools like get_company_fundamentals, get_earnings_history, get_financial_statements.
+  **CRITICAL: Skip all ETFs - they don't need fundamental analysis.**
   
-  **MANDATORY**: Your tool_calls array MUST contain at least 2 tool calls. This is not optional - you must use tools to analyze the market.
+  **MANDATORY**: Your tool_calls array MUST contain tool calls for all non-ETF recommended stocks and holdings.
   
   Output format:
   {

@@ -10,6 +10,7 @@ import os
 from src.agents.factory import AgentFactory
 from src.agents.base import BaseAgent
 from src.agents.toolbox import ToolBox
+from src.utils.etf_checker import is_etf, filter_non_etf_symbols
 
 # Maximum number of discussion history entries to keep
 MAX_DISCUSSION_HISTORY_ENTRIES = 20  # 最多保留20条记录（约5轮完整讨论）
@@ -100,18 +101,21 @@ def run_multi_analyst_discussion(
         
         # CRITICAL: 添加持仓列表和指数列表，供Technical Analyst选单使用
         # Note: Recommended stocks will be added after Market Analyst completes (see Technical Analyst section)
+        # CRITICAL FIX: 技术分析必须同时分析：持仓 + 推荐名单 + 主要指数（都要分析）
         if holdings_list:
             positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
-            positions_text += f"**Priority 1 - Recommended Stocks:** (Will be provided after Market Analyst analysis)\n"
-            positions_text += f"**Priority 2 - MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
-            positions_text += f"**Priority 3 - MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
-            positions_text += f"**Select from this menu - prioritize recommended stocks + holdings + indices**\n"
+            positions_text += f"**MANDATORY Analysis Targets (ALL must be analyzed):**\n"
+            positions_text += f"  1. Recommended Stocks: (Will be provided after Market Analyst analysis)\n"
+            positions_text += f"  2. Current Holdings: {', '.join(holdings_list)}\n"
+            positions_text += f"  3. Major Indices: SPY, QQQ, DIA, IWM, VTI\n"
+            positions_text += f"**You MUST analyze ALL three categories: recommended stocks + holdings + indices**\n"
             positions_text += f"**For each symbol, include previous day's close price in your analysis**\n"
         else:
             positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
-            positions_text += f"**Priority 1 - Recommended Stocks:** (Will be provided after Market Analyst analysis)\n"
-            positions_text += f"**Priority 2 - MANDATORY Indices:** SPY, QQQ, DIA, IWM, VTI\n"
-            positions_text += f"**Select from this menu - prioritize recommended stocks + indices**\n"
+            positions_text += f"**MANDATORY Analysis Targets (ALL must be analyzed):**\n"
+            positions_text += f"  1. Recommended Stocks: (Will be provided after Market Analyst analysis)\n"
+            positions_text += f"  2. Major Indices: SPY, QQQ, DIA, IWM, VTI\n"
+            positions_text += f"**You MUST analyze BOTH categories: recommended stocks + indices**\n"
             positions_text += f"**Analyze at least 3-5 indices**\n"
             positions_text += f"**For each symbol, include previous day's close price in your analysis**\n"
         
@@ -292,8 +296,10 @@ def run_multi_analyst_discussion(
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 5,  # 获取前5篇文章的内容
-                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "tickers": tool_call.get("args", {}).get("tickers", []),
+                                "max_articles": tool_call.get("args", {}).get("max_articles", 10),
+                                "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
                             "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
                         }
@@ -325,7 +331,31 @@ def run_multi_analyst_discussion(
                                 else:
                                     print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error')}")
                         else:
-                            print(f"   [OK] Tool {tool_name} executed successfully")
+                            # CRITICAL FIX: 检查工具执行结果，特别是新闻工具
+                            if isinstance(tool_result, dict):
+                                if tool_result.get("ok") is False:
+                                    print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
+                                else:
+                                    # 对于新闻工具，检查是否有实际数据
+                                    # 基于测试结果，以下工具都可用：
+                                    # ✅ news_scan: 返回 hits
+                                    # ✅ plan_and_scan_news: 返回 hits 和 articles（推荐，有内容）
+                                    # ✅ fetch_jin10_news: 返回 items（通过ToolBox）
+                                    if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"]:
+                                        actual_result = tool_result.get("result", tool_result)
+                                        hits = actual_result.get("hits", [])
+                                        articles = actual_result.get("articles", [])
+                                        items = actual_result.get("items", [])
+                                        total_data = len(hits) + len(articles) + len(items)
+                                        if total_data > 0:
+                                            print(f"   [OK] Tool {tool_name} executed successfully ({len(hits)} hits, {len(articles)} articles, {len(items)} items)")
+                                        else:
+                                            print(f"   [WARN] Tool {tool_name} executed but returned no news data")
+                                            print(f"   [INFO] This may be normal if no recent news found for the given keywords/tickers")
+                                    else:
+                                        print(f"   [OK] Tool {tool_name} executed successfully")
+                            else:
+                                print(f"   [OK] Tool {tool_name} executed successfully")
                         # 格式化工具结果用于反馈
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
@@ -455,8 +485,8 @@ def run_multi_analyst_discussion(
             
             tool_calls_list = filtered_tool_calls
             
-            # CRITICAL FIX: 即使LLM返回了tool_calls，也要检查是否包含持仓/指数
-            # 优先级：持仓 > 指数 > 推荐股票
+            # CRITICAL FIX: 技术分析必须同时分析：持仓 + 推荐名单 + 主要指数（都要分析）
+            # 如果没有持仓：只分析推荐名单 + 主要指数
             if tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 # 提取LLM已请求的symbols
                 existing_symbols = set()
@@ -466,26 +496,26 @@ def run_multi_analyst_discussion(
                     if symbol:
                         existing_symbols.add(symbol.upper())
                 
-                # 收集应该分析的优先级symbols（按优先级顺序）
-                priority_symbols = []
+                # 收集必须分析的symbols（必须同时包含所有类别）
+                mandatory_symbols = []
                 
-                # 1. 最高优先级：添加持仓（如果有）
+                # 1. 添加持仓（如果有）
                 if current_positions:
                     for symbol, pos_info in current_positions.items():
                         if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
                             symbol_upper = symbol.upper()
                             if symbol_upper not in existing_symbols:
-                                priority_symbols.append(symbol_upper)
-                                print(f"   [PRIORITY] Adding holding (HIGHEST PRIORITY): {symbol}")
+                                mandatory_symbols.append(symbol_upper)
+                                print(f"   [MANDATORY] Adding holding: {symbol}")
                 
-                # 2. 第二优先级：添加主要指数（总是添加）
+                # 2. 添加主要指数（总是添加）
                 major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
                 for idx in major_indices:
-                    if idx not in existing_symbols and idx not in priority_symbols:
-                        priority_symbols.append(idx)
-                        print(f"   [PRIORITY] Adding major index: {idx}")
+                    if idx not in existing_symbols and idx not in mandatory_symbols:
+                        mandatory_symbols.append(idx)
+                        print(f"   [MANDATORY] Adding major index: {idx}")
                 
-                # 3. 第三优先级：添加Market Analyst的推荐名单（如果还有预算）
+                # 3. 添加Market Analyst的推荐名单（必须添加）
                 recommended_stocks = []
                 if analyst_reports.get("market"):
                     market_report = analyst_reports["market"]
@@ -497,39 +527,40 @@ def run_multi_analyst_discussion(
                             recommended_stocks = []
                         
                         for sym in recommended_stocks:
-                            if sym and sym.upper() not in existing_symbols and sym.upper() not in priority_symbols:
-                                priority_symbols.append(sym.upper())
-                                print(f"   [PRIORITY] Adding recommended stock: {sym}")
+                            if sym and sym.upper() not in existing_symbols and sym.upper() not in mandatory_symbols:
+                                mandatory_symbols.append(sym.upper())
+                                print(f"   [MANDATORY] Adding recommended stock: {sym}")
                 
-                # 补充优先级股票到tool_calls_list（如果还有预算）
+                # 补充必须分析的symbols到tool_calls_list（如果还有预算）
                 # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count
                 remaining_budget = tool_budget - tool_calls_count
-                if priority_symbols and remaining_budget > 0:
-                    print(f"   [PRIORITY] Found {len(priority_symbols)} priority symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
+                if mandatory_symbols and remaining_budget > 0:
+                    print(f"   [MANDATORY] Found {len(mandatory_symbols)} mandatory symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
                     added_count = 0
                     
-                    # 首先为所有优先级symbols添加get_advanced_indicators
-                    for sym in priority_symbols:
+                    # 首先为所有必须分析的symbols添加get_advanced_indicators
+                    for sym in mandatory_symbols:
                         if tool_calls_count + len(tool_calls_list) >= tool_budget:
-                            print(f"   [PRIORITY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
+                            print(f"   [MANDATORY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
                             break
                         tool_calls_list.append({
                             "name": "get_advanced_indicators",
                             "args": {"symbol": sym, "period": "3mo"},
-                            "why": f"Priority: Get technical indicators for {sym} (holding/index/recommended)"
+                            "why": f"MANDATORY: Get technical indicators for {sym} (holding/index/recommended - all must be analyzed)"
                         })
                         added_count += 1
                     
                     # 然后为持仓和指数添加support/resistance（如果还有预算）
-                    priority_for_sr = []
+                    symbols_for_sr = []
                     if current_positions:
                         for symbol, pos_info in current_positions.items():
                             if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                if symbol.upper() in priority_symbols:
-                                    priority_for_sr.append(symbol.upper())
-                    priority_for_sr.extend(["SPY", "QQQ", "DIA"])
+                                if symbol.upper() in mandatory_symbols:
+                                    symbols_for_sr.append(symbol.upper())
+                    # 主要指数也需要support/resistance
+                    symbols_for_sr.extend(["SPY", "QQQ", "DIA"])
                     
-                    for sym in priority_for_sr:
+                    for sym in symbols_for_sr:
                         if tool_calls_count + len(tool_calls_list) >= tool_budget:
                             break
                         # 检查是否已经有这个symbol的support/resistance调用
@@ -541,22 +572,23 @@ def run_multi_analyst_discussion(
                             tool_calls_list.append({
                                 "name": "get_support_resistance",
                                 "args": {"symbol": sym},
-                                "why": f"Priority: Get support/resistance levels for {sym} (holding/index)"
+                                "why": f"MANDATORY: Get support/resistance levels for {sym} (holding/index)"
                             })
                             added_count += 1
                     
                     if added_count > 0:
-                        print(f"   [PRIORITY] Added {added_count} priority tool calls (holdings + indices + recommended stocks)")
+                        print(f"   [MANDATORY] Added {added_count} mandatory tool calls (holdings + indices + recommended stocks)")
             
             # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
-            # CRITICAL FIX: 优先分析推荐名单 + 持仓 + 指数
+            # CRITICAL FIX: 必须同时分析：持仓 + 推荐名单 + 主要指数（都要分析）
+            # 如果没有持仓：只分析推荐名单 + 主要指数
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Technical analysis requires indicators)")
                 
-                # CRITICAL FIX: 优先分析推荐名单 + 持仓 + 指数
+                # CRITICAL FIX: 必须同时分析所有类别
                 selected_symbols = []
                 
-                # 1. 添加Market Analyst的推荐名单（最高优先级）
+                # 1. 添加Market Analyst的推荐名单（必须添加）
                 recommended_stocks = []
                 if analyst_reports.get("market"):
                     market_report = analyst_reports["market"]
@@ -662,8 +694,10 @@ def run_multi_analyst_discussion(
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 5,
-                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "tickers": tool_call.get("args", {}).get("tickers", []),
+                                "max_articles": tool_call.get("args", {}).get("max_articles", 10),
+                                "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
                             "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
                         }
@@ -749,20 +783,28 @@ def run_multi_analyst_discussion(
                         recommended_text += f"**These are Market Analyst's top recommendations - analyze them first!**\n"
                         fundamental_positions_text = recommended_text + "\n" + fundamental_positions_text
             
-            # 添加Fundamental Analyst的选单（像Technical Analyst一样）
+            # CRITICAL FIX: 基本面分析只分析持仓（非ETF）+ 推荐名单（非ETF）
+            # 不包括指数（ETF不需要基本面分析）
+            # 如果没有持仓：只分析推荐名单（非ETF）
             if holdings_list:
+                # 过滤掉ETF持仓
+                non_etf_holdings = [h for h in holdings_list if not is_etf(h)]
                 menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
-                menu_text += f"**MANDATORY Holdings to Analyze:** {', '.join(holdings_list)}\n"
-                menu_text += f"**MANDATORY Indices to Analyze:** SPY, QQQ, DIA, IWM, VTI\n"
-                menu_text += f"**Select from this menu - prioritize holdings and indices over random stocks**\n"
+                menu_text += f"**MANDATORY Analysis Targets (ALL must be analyzed, ETFs excluded):**\n"
+                menu_text += f"  1. Recommended Stocks (non-ETF): (Will be filtered to exclude ETFs)\n"
+                if non_etf_holdings:
+                    menu_text += f"  2. Current Holdings (non-ETF): {', '.join(non_etf_holdings)}\n"
+                else:
+                    menu_text += f"  2. Current Holdings: None (all holdings are ETFs, skip fundamental analysis)\n"
+                menu_text += f"**CRITICAL: Do NOT analyze ETFs or indices (SPY, QQQ, DIA, IWM, VTI) - ETFs don't need fundamental analysis**\n"
                 menu_text += f"**For each symbol, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
                 fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
             else:
                 menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
-                menu_text += f"**No holdings - Focus ONLY on indices:**\n"
-                menu_text += f"**MANDATORY Indices:** SPY, QQQ, DIA, IWM, VTI\n"
-                menu_text += f"**Select from this menu - analyze at least 3-5 indices**\n"
-                menu_text += f"**For each index, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
+                menu_text += f"**MANDATORY Analysis Targets (non-ETF only):**\n"
+                menu_text += f"  1. Recommended Stocks (non-ETF): (Will be filtered to exclude ETFs)\n"
+                menu_text += f"**CRITICAL: Do NOT analyze ETFs or indices (SPY, QQQ, DIA, IWM, VTI) - ETFs don't need fundamental analysis**\n"
+                menu_text += f"**For each symbol, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
                 fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
             
             fundamental_prompt_vars = {
@@ -804,8 +846,9 @@ def run_multi_analyst_discussion(
                 if len(tool_calls_list) == 1 and isinstance(fundamental_response, dict) and "name" in fundamental_response:
                     print(f"   ✅ Auto-wrapped single tool_call: {tool_calls_list[0].get('name', 'unknown')}")
             
-            # CRITICAL FIX: 即使LLM返回了tool_calls，也要检查是否包含持仓/指数/推荐股票
-            # 优先级：持仓 > 指数 > 推荐股票
+            # CRITICAL FIX: 基本面分析只分析：持仓（非ETF）+ 推荐名单（非ETF）
+            # 不包括指数（ETF不需要基本面分析）
+            # 如果没有持仓：只分析推荐名单（非ETF）
             if tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 # 提取LLM已请求的symbols
                 existing_symbols = set()
@@ -815,26 +858,23 @@ def run_multi_analyst_discussion(
                     if symbol:
                         existing_symbols.add(symbol.upper())
                 
-                # 收集应该分析的优先级symbols（按优先级顺序）
-                priority_symbols = []
+                # 收集必须分析的symbols（只包括非ETF）
+                mandatory_symbols = []
                 
-                # 1. 最高优先级：添加持仓（如果有）
+                # 1. 添加持仓（如果有，且非ETF）
                 if current_positions:
                     for symbol, pos_info in current_positions.items():
                         if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
                             symbol_upper = symbol.upper()
+                            # CRITICAL: 跳过ETF
+                            if is_etf(symbol_upper):
+                                print(f"   [SKIP] Skipping ETF holding for fundamental analysis: {symbol}")
+                                continue
                             if symbol_upper not in existing_symbols:
-                                priority_symbols.append(symbol_upper)
-                                print(f"   [PRIORITY] Adding holding (HIGHEST PRIORITY): {symbol}")
+                                mandatory_symbols.append(symbol_upper)
+                                print(f"   [MANDATORY] Adding non-ETF holding: {symbol}")
                 
-                # 2. 第二优先级：添加主要指数（总是添加）
-                major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
-                for idx in major_indices:
-                    if idx not in existing_symbols and idx not in priority_symbols:
-                        priority_symbols.append(idx)
-                        print(f"   [PRIORITY] Adding major index: {idx}")
-                
-                # 3. 第三优先级：添加Market Analyst的推荐名单（如果还有预算）
+                # 2. 添加Market Analyst的推荐名单（必须添加，但过滤ETF）
                 recommended_stocks = []
                 if analyst_reports.get("market"):
                     market_report = analyst_reports["market"]
@@ -844,56 +884,89 @@ def run_multi_analyst_discussion(
                             recs = [s.strip() for s in recs.split(",") if s.strip()]
                         elif not isinstance(recs, list):
                             recs = []
-                        # 确保推荐股票不在已有列表中
+                        # 确保推荐股票不在已有列表中，且不是ETF
                         for s in recs:
                             sym_upper = s.upper().strip()
-                            if sym_upper and sym_upper not in existing_symbols and sym_upper not in priority_symbols:
+                            if sym_upper and sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
+                                # CRITICAL: 跳过ETF
+                                if is_etf(sym_upper):
+                                    print(f"   [SKIP] Skipping ETF recommended stock for fundamental analysis: {sym_upper}")
+                                    continue
                                 recommended_stocks.append(sym_upper)
                 
-                # 添加推荐股票到优先级列表
+                # 添加推荐股票到必须分析列表
                 for sym in recommended_stocks:
-                    priority_symbols.append(sym)
-                    print(f"   [PRIORITY] Adding recommended stock: {sym}")
+                    mandatory_symbols.append(sym)
+                    print(f"   [MANDATORY] Adding non-ETF recommended stock: {sym}")
                 
-                # 补充优先级股票到tool_calls_list（如果还有预算）
+                # 补充必须分析的symbols到tool_calls_list（如果还有预算）
                 # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count
                 remaining_budget = tool_budget - tool_calls_count
-                if priority_symbols and remaining_budget > 0:
-                    print(f"   [PRIORITY] Found {len(priority_symbols)} priority symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
+                if mandatory_symbols and remaining_budget > 0:
+                    print(f"   [MANDATORY] Found {len(mandatory_symbols)} mandatory non-ETF symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
                     added_count = 0
                     
-                    # 为所有优先级symbols添加get_company_fundamentals
-                    for sym in priority_symbols:
+                    # 为所有必须分析的symbols添加get_company_fundamentals
+                    for sym in mandatory_symbols:
                         if tool_calls_count + len(tool_calls_list) >= tool_budget:
-                            print(f"   [PRIORITY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
+                            print(f"   [MANDATORY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
                             break
                         tool_calls_list.append({
                             "name": "get_company_fundamentals",
                             "args": {"symbol": sym},
-                            "why": f"Priority: Get fundamental data for {sym} (holding/index/recommended)"
+                            "why": f"MANDATORY: Get fundamental data for {sym} (non-ETF holding/recommended - ETFs excluded)"
                         })
                         added_count += 1
                     
                     if added_count > 0:
-                        print(f"   [PRIORITY] Added {added_count} priority tool calls (holdings + indices + recommended stocks)")
+                        print(f"   [MANDATORY] Added {added_count} mandatory tool calls (non-ETF holdings + non-ETF recommended stocks)")
             
             # Fallback: Fundamental Analyst可选使用工具（如果已有数据可以基于现有分析）
-            # 但建议获取最新数据，所以如果没有调用工具，使用默认工具
+            # CRITICAL FIX: 只分析非ETF的持仓和推荐名单，不包括指数
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Recommended: Get latest fundamental data)")
-                # 优先使用持仓和指数
+                # 只使用非ETF持仓和推荐名单
                 fallback_symbols = []
+                
+                # 1. 添加非ETF持仓（如果有）
                 if current_positions:
                     for symbol, pos_info in current_positions.items():
                         if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                            fallback_symbols.append(symbol.upper())
-                fallback_symbols.extend(["SPY", "QQQ", "DIA"])
+                            symbol_upper = symbol.upper()
+                            # CRITICAL: 跳过ETF
+                            if not is_etf(symbol_upper):
+                                fallback_symbols.append(symbol_upper)
+                                print(f"   [FALLBACK] Adding non-ETF holding: {symbol}")
+                
+                # 2. 添加非ETF推荐名单
+                if analyst_reports.get("market"):
+                    market_report = analyst_reports["market"]
+                    recs = market_report.get("recommended_stocks", [])
+                    if recs:
+                        if isinstance(recs, str):
+                            recs = [s.strip() for s in recs.split(",") if s.strip()]
+                        elif not isinstance(recs, list):
+                            recs = []
+                        for sym in recs:
+                            sym_upper = sym.upper().strip()
+                            if sym_upper and sym_upper not in fallback_symbols:
+                                # CRITICAL: 跳过ETF
+                                if not is_etf(sym_upper):
+                                    fallback_symbols.append(sym_upper)
+                                    print(f"   [FALLBACK] Adding non-ETF recommended stock: {sym_upper}")
+                
+                # 如果没有找到任何非ETF符号，使用示例股票（非ETF）
                 if not fallback_symbols:
-                    fallback_symbols = market_summary.get("sample_stocks", ["NVDA", "MSFT"])[:1]
+                    sample_stocks = market_summary.get("sample_stocks", ["NVDA", "MSFT", "AAPL"])
+                    for sym in sample_stocks:
+                        if not is_etf(sym.upper()):
+                            fallback_symbols.append(sym.upper())
+                            if len(fallback_symbols) >= 2:
+                                break
                 
                 tool_calls_list = []
                 for sym in fallback_symbols[:min(3, tool_budget - tool_calls_count)]:
-                    tool_calls_list.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Fallback: Get fundamental data for {sym}"})
+                    tool_calls_list.append({"name": "get_company_fundamentals", "args": {"symbol": sym}, "why": f"Fallback: Get fundamental data for {sym} (non-ETF only)"})
             
             # 收集工具调用结果
             tool_results_summary = []
@@ -922,8 +995,10 @@ def run_multi_analyst_discussion(
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 5,
-                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "tickers": tool_call.get("args", {}).get("tickers", []),
+                                "max_articles": tool_call.get("args", {}).get("max_articles", 10),
+                                "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
                             "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
                         }
@@ -1011,7 +1086,7 @@ def run_multi_analyst_discussion(
                 tool_calls_list = [
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
                     {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
-                    {"name": "plan_and_scan_news", "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 5}, "why": "Fallback: Get latest market news with article content (last 48 hours) for sentiment analysis"}
+                    {"name": "plan_and_scan_news", "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, "why": "Fallback: Get latest market news with article content (last 48 hours, top 10 articles) for sentiment analysis"}
                 ]
             # 即使agent请求了工具，也确保news_scan被包含（如果还没有）
             elif tool_calls_list and use_tools and tool_calls_count < tool_budget:
@@ -1020,14 +1095,17 @@ def run_multi_analyst_discussion(
                     print(f"   [INFO] Adding plan_and_scan_news to tool calls (news analysis with content is important for sentiment)")
                     tool_calls_list.append({
                         "name": "plan_and_scan_news", 
-                        "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 5}, 
-                        "why": "Added: News analysis with article content is critical for sentiment assessment (latest 48 hours, top 5 articles with content)"
+                        "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, 
+                        "why": "Added: News analysis with article content is critical for sentiment assessment (latest 48 hours, top 10 articles with content)"
                     })
             
             # 收集工具调用结果
             tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
+                # DEBUG: 打印请求的工具名称（特别是新闻工具）
+                tool_names = [tc.get("name", "unknown") for tc in tool_calls_list]
+                print(f"   [TOOL] Tool names: {', '.join(tool_names)}")
                 # 增加每个analyst的工具使用限制：从3个增加到5个
                 max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
                 for tool_call in tool_calls_list[:max_tools_per_analyst]:
@@ -1051,8 +1129,10 @@ def run_multi_analyst_discussion(
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 5,
-                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "tickers": tool_call.get("args", {}).get("tickers", []),
+                                "max_articles": tool_call.get("args", {}).get("max_articles", 10),
+                                "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
                             "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
                         }
@@ -1076,7 +1156,20 @@ def run_multi_analyst_discussion(
                             else:
                                 print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
                         else:
-                            print(f"   [OK] Tool {tool_name} executed successfully")
+                            # DEBUG: 对于新闻工具，显示更多信息
+                            if tool_name in ["plan_and_scan_news", "news_scan", "fetch_jin10_news"]:
+                                if isinstance(tool_result, dict):
+                                    if tool_result.get("ok"):
+                                        actual_result = tool_result.get("result", tool_result)
+                                        hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
+                                        articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
+                                        print(f"   [OK] Tool {tool_name} executed successfully - {hits_count} hits, {articles_count} articles")
+                                    else:
+                                        print(f"   [OK] Tool {tool_name} executed successfully")
+                                else:
+                                    print(f"   [OK] Tool {tool_name} executed successfully")
+                            else:
+                                print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
@@ -1695,20 +1788,32 @@ def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
             
             # CRITICAL: 优先使用 articles（包含内容），如果没有则使用 hits（只有标题）
             if articles:
-                # 有文章内容，优先显示
+                # 有文章内容，优先显示（包含 LLM 生成的 summary 和 keywords）
                 news_items = []
-                for article in articles[:5]:  # 显示前5篇有内容的文章
+                for article in articles[:10]:  # 显示前10篇有内容的文章（增加到10篇）
                     title = article.get("title", "No title")
                     source = article.get("source", "Unknown")
                     url = article.get("url", "")
                     excerpt = article.get("excerpt", "")
+                    summary = article.get("summary", "")  # LLM 生成的摘要
+                    keywords = article.get("keywords", [])  # LLM 提取的关键字
                     
                     news_str = f"  Title: {title}\n  Source: {source}"
                     if url:
                         news_str += f"\n  Link: {url}"
-                    if excerpt:
-                        # 显示文章内容（前800字符）
+                    
+                    # CRITICAL: 优先显示 LLM 生成的 summary，如果没有则使用 excerpt
+                    if summary:
+                        news_str += f"\n  Summary: {summary}"
+                    elif excerpt:
+                        # 显示文章内容（前500字符）
                         news_str += f"\n  Content: {excerpt[:500]}..." if len(excerpt) > 500 else f"\n  Content: {excerpt}"
+                    
+                    # 显示关键字（如果有）
+                    if keywords:
+                        keywords_str = ", ".join(keywords[:5])  # 最多5个关键字
+                        news_str += f"\n  Keywords: {keywords_str}"
+                    
                     news_items.append(news_str)
                 
                 # 如果有更多 hits 但没有内容，也列出标题
@@ -1829,10 +1934,10 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     
     # 处理 plan_and_scan_news 工具：确保有 mview 参数和 fetch_body_top
     if tool_name == "plan_and_scan_news":
-        # 如果没有设置 fetch_body_top，默认获取前5篇文章的内容
+        # 如果没有设置 fetch_body_top，默认获取前10篇文章的内容
         if "fetch_body_top" not in tool_args or tool_args.get("fetch_body_top", 0) == 0:
-            tool_args["fetch_body_top"] = 5
-            print(f"   [INFO] Auto-set fetch_body_top=5 for plan_and_scan_news to get article content")
+            tool_args["fetch_body_top"] = 10
+            print(f"   [INFO] Auto-set fetch_body_top=10 for plan_and_scan_news to get article content")
         
         # 如果没有提供 mview，从 market_summary 创建
         if "mview" not in tool_args and market_summary:
@@ -1877,20 +1982,61 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
             tool_args["keywords"] = keywords
             print(f"   [INFO] Auto-added keywords={keywords} to news_scan")
     
+    # CRITICAL FIX: 工具名称映射 - 将LLM可能使用的错误工具名映射到正确的工具名
+    # 基于实际测试结果：
+    # ✅ news_scan: 可用（返回hits）
+    # ✅ plan_and_scan_news: 可用（返回hits和articles，推荐使用）
+    # ✅ fetch_jin10_news: 可用（通过ToolBox，返回items）
+    tool_name_mapping = {
+        "get_news_scan": "plan_and_scan_news",  # LLM可能使用get_news_scan，映射到plan_and_scan_news（推荐，有内容）
+        "get_news": "plan_and_scan_news",  # CRITICAL FIX: get_news不存在，映射到plan_and_scan_news
+        "get_market_sentiment": "fear_greed",  # get_market_sentiment不存在，使用fear_greed代替
+        # 注意：news_scan已经在前面处理，会自动转换为plan_and_scan_news（带fetch_body_top）
+    }
+    
+    if tool_name in tool_name_mapping:
+        mapped_name = tool_name_mapping[tool_name]
+        print(f"   [INFO] Mapping tool name '{tool_name}' -> '{mapped_name}' (correct tool name)")
+        tool_name = mapped_name
+        tool_call["name"] = mapped_name  # Update the tool_call dict as well
+    
     # 检查工具是否存在
     if tool_name not in toolbox.list():
         print(f"   [WARN] Tool {tool_name} not found in toolbox")
-        return {"error": f"Tool {tool_name} not available"}
+        print(f"   [INFO] Available tools: {', '.join(sorted(toolbox.list()))}")
+        return {"ok": False, "error": f"Tool {tool_name} not available"}
     
     try:
         result = toolbox.invoke(tool_name, **tool_args)
         # 检查结果是否有效
         if result is None:
             print(f"   [WARN] Tool {tool_name} returned None")
-            return {"error": "Tool returned None"}
+            return {"ok": False, "error": "Tool returned None"}
         # 检查是否有错误字段
-        if isinstance(result, dict) and "error" in result:
-            print(f"   [WARN] Tool {tool_name} returned error: {result.get('error')}")
+        if isinstance(result, dict):
+            if "error" in result:
+                print(f"   [WARN] Tool {tool_name} returned error: {result.get('error')}")
+                return result
+            # CRITICAL FIX: 检查result字段（toolbox.invoke返回{"ok": True, "result": {...}}）
+            if "ok" in result and not result.get("ok"):
+                print(f"   [WARN] Tool {tool_name} execution failed: {result.get('error', 'Unknown error')}")
+                return result
+            # 对于新闻工具，检查是否有实际数据
+            # 基于测试结果，以下工具都可用：
+            # ✅ news_scan: 返回 hits
+            # ✅ plan_and_scan_news: 返回 hits 和 articles（推荐，有内容）
+            # ✅ fetch_jin10_news: 返回 items（通过ToolBox）
+            if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"]:
+                actual_result = result.get("result", result)
+                hits = actual_result.get("hits", [])
+                articles = actual_result.get("articles", [])
+                items = actual_result.get("items", [])
+                total_data = len(hits) + len(articles) + len(items)
+                if total_data > 0:
+                    print(f"   [OK] Tool {tool_name} returned news data (hits={len(hits)}, articles={len(articles)}, items={len(items)})")
+                else:
+                    print(f"   [WARN] Tool {tool_name} returned no news data (hits={len(hits)}, articles={len(articles)}, items={len(items)})")
+                    print(f"   [INFO] This may be normal if no recent news found for the given keywords/tickers")
         return result
     except Exception as e:
         print(f"   [ERROR] Tool {tool_name} failed: {e}")

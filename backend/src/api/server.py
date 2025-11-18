@@ -482,6 +482,7 @@ async def fetch_conversations_api(
         # 工具分类映射
         tool_category_map = {
             "news_scan": "news",
+            "get_news_scan": "news",  # CRITICAL FIX: 添加get_news_scan
             "plan_and_scan_news": "news",
             "fetch_jin10_news": "news",
             "web_search": "news",
@@ -684,18 +685,26 @@ async def get_portfolio_real_time():
                     "unrealized_pnl_pct": 0.0,
                 }
             
-            # CRITICAL FIX: 优先使用实时价格（如果市场开盘），否则使用历史收盘价
-            # 检查市场是否开盘
-            from src.utils.trading_days import is_market_open
+            # CRITICAL FIX: 智能价格获取 - 确保在所有情况下都能正常更新
+            # 价格获取策略（按优先级）：
+            # 1. 市场开盘时：优先使用实时价格
+            # 2. 市场收盘后（交易日）：使用今天的收盘价
+            # 3. 非交易日（周末/节假日）：使用最近一个交易日的收盘价
+            # 4. 所有情况都有多层fallback，确保总能获取到价格
+            
+            from src.utils.trading_days import is_market_open, is_trading_day
+            import yfinance as yf
+            from datetime import date, timedelta
+            
             is_market_open_now = is_market_open(None)  # 传入None直接获取美东时间
+            today_is_trading_day = is_trading_day(date.today())
+            
+            print(f"[API] Market status: open={is_market_open_now}, trading_day={today_is_trading_day}")
             
             try:
-                import yfinance as yf
-                from datetime import date, timedelta
-                
-                # 如果市场开盘，优先使用实时价格
+                # 策略1: 如果市场开盘，优先使用实时价格
                 if is_market_open_now:
-                    print(f"[API] Market is open, using real-time prices for {len(positions)} positions")
+                    print(f"[API] Market is OPEN - using real-time prices for {len(positions)} positions")
                     for symbol in positions:
                         try:
                             ticker = yf.Ticker(symbol)
@@ -719,53 +728,88 @@ async def get_portfolio_real_time():
                                         "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
                                     }
                                     positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
-                                    print(f"[API] Real-time price for {symbol}: ${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
+                                    print(f"[API] ✅ Real-time price for {symbol}: ${price:.2f}")
                                     continue
                         except Exception as e:
-                            print(f"[API] Failed to get real-time price for {symbol}: {e}, will try historical data")
+                            print(f"[API] ⚠️  Failed to get real-time price for {symbol}: {e}, will try close price")
                 
-                # 如果市场关闭或实时价格获取失败，使用历史收盘价
-                print(f"[API] Using historical close prices (market closed or real-time fetch failed)")
-                # 获取最近7天的数据（确保能获取到最新价格）
-                end_date = date.today().isoformat()
-                start_date = (date.today() - timedelta(days=7)).isoformat()
+                # 策略2: 市场关闭或非交易日 - 使用收盘价（多层fallback确保总能获取到价格）
+                market_status = "CLOSED (trading day)" if today_is_trading_day else "CLOSED (non-trading day)"
+                print(f"[API] Market is {market_status} - using latest close prices for {len(positions)} positions")
                 
-                # CRITICAL FIX: 使用 .invoke() 方法，传递正确的参数
-                market_data = fetch_market_batch.invoke({
-                    "symbols": positions,
-                    "start": start_date,
-                    "end": end_date,
-                })
-                
-                # CRITICAL FIX: 从正确的路径获取价格数据
-                stocks_data = market_data.get("stocks", {})
-                
+                # CRITICAL FIX: 优先使用 yfinance 直接获取最新收盘价（更可靠）
+                # 这样可以确保获取到今天的收盘价（如果市场已收盘）或最近一个交易日的收盘价
                 for symbol in positions:
                     # 如果已经通过实时价格获取了，跳过（last_prices 中只包含真实获取的价格）
                     if symbol in last_prices:
                         continue
                     
-                    if symbol in stocks_data:
-                        stock_info = stocks_data[symbol]
-                        # CRITICAL FIX: fetch_market_batch 返回的 price 字段是最新收盘价
-                        price = stock_info.get("price")
-                        if price is None or (isinstance(price, float) and (price != price or price <= 0)):  # Check for NaN or invalid
-                            # 如果没有 price 或 price 无效，尝试使用 get_latest_close 获取最新收盘价
-                            from src.data.market_data import get_latest_close
-                            try:
-                                price = get_latest_close(symbol, start_date, end_date)
-                                print(f"[API] Using get_latest_close for {symbol}: ${price:.2f}")
-                            except Exception as e:
-                                # 如果获取失败，使用 avg_cost（保持原逻辑）
-                                price = portfolio._positions[symbol].avg_cost
-                                print(f"[API] Failed to get latest price for {symbol}, using avg_cost: ${price:.2f} (error: {e})")
-                        else:
-                            price = float(price)
+                    try:
+                        # CRITICAL FIX: 多层fallback策略，确保在所有情况下都能获取到价格
+                        # 适用于：交易日收盘后、非交易日（周末/节假日）、盘前盘后
+                        ticker = yf.Ticker(symbol)
+                        price = None
+                        price_source = None
                         
-                        if price and price > 0 and price == price:  # Check for valid, non-NaN price
+                        # 方法1: 优先使用 history(period="1d") 获取今天的收盘价
+                        # 如果今天是交易日且已收盘，这会返回今天的收盘价
+                        # 如果今天是非交易日，这会返回最近一个交易日的收盘价
+                        try:
+                            hist = ticker.history(period="1d")
+                            if not hist.empty and "Close" in hist.columns:
+                                price = float(hist["Close"].iloc[-1])
+                                price_source = "today's close (1d history)"
+                                print(f"[API] ✅ Using {price_source} for {symbol}: ${price:.2f}")
+                        except Exception as e:
+                            print(f"[API] ⚠️  Failed to get 1d history for {symbol}: {e}")
+                        
+                        # 方法2: 如果1d失败，使用 history(period="5d") 获取最近5天的收盘价
+                        # 这会返回最近一个交易日的收盘价（包括今天如果是交易日）
+                        if price is None or price <= 0:
+                            try:
+                                hist = ticker.history(period="5d")
+                                if not hist.empty and "Close" in hist.columns:
+                                    price = float(hist["Close"].iloc[-1])
+                                    price_source = "latest close (5d history)"
+                                    print(f"[API] ✅ Using {price_source} for {symbol}: ${price:.2f}")
+                            except Exception as e:
+                                print(f"[API] ⚠️  Failed to get 5d history for {symbol}: {e}")
+                        
+                        # 方法3: 如果 history 失败，使用 ticker.info（备选方案）
+                        # 注意：info字段可能有时区延迟，但作为fallback仍然有用
+                        if price is None or price <= 0:
+                            try:
+                                info = ticker.info
+                                # CRITICAL: regularMarketClose 是当天的收盘价（如果市场已收盘）
+                                # 对于非交易日，这可能不存在，所以优先使用 regularMarketPreviousClose
+                                if "regularMarketClose" in info and info["regularMarketClose"]:
+                                    price = float(info["regularMarketClose"])
+                                    price_source = "regularMarketClose (info)"
+                                    print(f"[API] ✅ Using {price_source} for {symbol}: ${price:.2f}")
+                                elif "regularMarketPreviousClose" in info and info["regularMarketPreviousClose"]:
+                                    price = float(info["regularMarketPreviousClose"])
+                                    price_source = "regularMarketPreviousClose (info)"
+                                    print(f"[API] ✅ Using {price_source} for {symbol}: ${price:.2f}")
+                                elif "previousClose" in info and info["previousClose"]:
+                                    price = float(info["previousClose"])
+                                    price_source = "previousClose (info)"
+                                    print(f"[API] ✅ Using {price_source} for {symbol}: ${price:.2f}")
+                            except Exception as e:
+                                print(f"[API] ⚠️  Failed to get info for {symbol}: {e}")
+                        
+                        # 方法4: 如果所有方法都失败，尝试使用更长的历史数据（30天）
+                        if price is None or price <= 0:
+                            try:
+                                hist = ticker.history(period="30d")
+                                if not hist.empty and "Close" in hist.columns:
+                                    price = float(hist["Close"].iloc[-1])
+                                    price_source = "latest close (30d history)"
+                                    print(f"[API] ✅ Using {price_source} for {symbol}: ${price:.2f}")
+                            except Exception as e:
+                                print(f"[API] ⚠️  Failed to get 30d history for {symbol}: {e}")
+                        
+                        if price and price > 0:
                             last_prices[symbol] = price
-                            
-                            # 更新持仓详情（使用真实价格）
                             pos = portfolio._positions[symbol]
                             total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
                             positions_detail[symbol] = {
@@ -778,18 +822,80 @@ async def get_portfolio_real_time():
                                 "unrealized_pnl": (price - pos.avg_cost) * pos.quantity,
                                 "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
                             }
-                            
-                            # 计算盈亏
                             positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
-                            print(f"[API] Historical price for {symbol}: ${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
-                    else:
-                        # 如果 stocks_data 中没有该 symbol，使用 avg_cost 作为占位符
-                        print(f"[API] Symbol {symbol} not found in market data, using avg_cost as placeholder")
-                        last_prices[symbol] = portfolio._positions[symbol].avg_cost
-                else:
-                    # 如果 stocks_data 中没有该 symbol，使用 avg_cost 作为占位符
-                    print(f"[API] Symbol {symbol} not found in market data, using avg_cost as placeholder")
-                    last_prices[symbol] = portfolio._positions[symbol].avg_cost
+                            print(f"[API] ✅ Close price for {symbol}: ${price:.2f} (source: {price_source}), market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
+                            continue
+                    except Exception as e:
+                        print(f"[API] Failed to get latest close price for {symbol} via yfinance: {e}, will try fetch_market_batch")
+                    
+                    # Fallback: 如果直接获取失败，使用 fetch_market_batch
+                    # 获取最近7天的数据（确保能获取到最新价格）
+                    # CRITICAL FIX: end_date 应该是明天，这样 yfinance 才会包含今天的数据
+                    end_date = (date.today() + timedelta(days=1)).isoformat()
+                    start_date = (date.today() - timedelta(days=7)).isoformat()
+                    
+                    try:
+                        # CRITICAL FIX: 使用 .invoke() 方法，传递正确的参数
+                        market_data = fetch_market_batch.invoke({
+                            "symbols": [symbol],  # 只获取这个 symbol 的数据
+                            "start": start_date,
+                            "end": end_date,
+                        })
+                        
+                        # CRITICAL FIX: 从正确的路径获取价格数据
+                        stocks_data = market_data.get("stocks", {})
+                        
+                        if symbol in stocks_data:
+                            stock_info = stocks_data[symbol]
+                            # CRITICAL FIX: fetch_market_batch 返回的 price 字段是最新收盘价（Latest Close Price）
+                            # This is the closing price from the most recent trading day
+                            price = stock_info.get("price")
+                            if price is None or (isinstance(price, float) and (price != price or price <= 0)):  # Check for NaN or invalid
+                                # 如果没有 price 或 price 无效，尝试使用 get_latest_close 获取最新收盘价
+                                from src.data.market_data import get_latest_close
+                                try:
+                                    price = get_latest_close(symbol, start_date, end_date)
+                                    print(f"[API] Using get_latest_close for {symbol}: ${price:.2f}")
+                                except Exception as e:
+                                    # 如果获取失败，使用 avg_cost（保持原逻辑）
+                                    price = portfolio._positions[symbol].avg_cost
+                                    print(f"[API] Failed to get latest price for {symbol}, using avg_cost: ${price:.2f} (error: {e})")
+                            else:
+                                price = float(price)
+                            
+                            if price and price > 0 and price == price:  # Check for valid, non-NaN price
+                                last_prices[symbol] = price
+                                
+                                # 更新持仓详情（使用真实价格）
+                                pos = portfolio._positions[symbol]
+                                total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
+                                positions_detail[symbol] = {
+                                    "quantity": pos.quantity,
+                                    "avg_cost": pos.avg_cost,
+                                    "total_cost": total_cost,
+                                    "cost_basis": total_cost,
+                                    "current_price": price,
+                                    "market_value": pos.quantity * price,
+                                    "unrealized_pnl": (price - pos.avg_cost) * pos.quantity,
+                                    "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
+                                }
+                                
+                                # 计算盈亏
+                                positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
+                                print(f"[API] Historical price for {symbol} (via fetch_market_batch): ${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
+                            else:
+                                # 如果价格无效，使用 avg_cost
+                                print(f"[API] Invalid price for {symbol}, using avg_cost as placeholder")
+                                last_prices[symbol] = portfolio._positions[symbol].avg_cost
+                        else:
+                            # 如果 stocks_data 中没有该 symbol，使用 avg_cost 作为占位符
+                            print(f"[API] Symbol {symbol} not found in market data, using avg_cost as placeholder")
+                            last_prices[symbol] = portfolio._positions[symbol].avg_cost
+                    except Exception as e2:
+                        print(f"[API] Failed to get price for {symbol} via fetch_market_batch: {e2}")
+                        # 如果所有方法都失败，使用 avg_cost 作为占位符
+                        if symbol not in last_prices:
+                            last_prices[symbol] = portfolio._positions[symbol].avg_cost
             except Exception as e:
                 import traceback
                 print(f"[API] Failed to fetch market data: {e}")
@@ -819,8 +925,6 @@ async def get_portfolio_real_time():
                     snapshot_total_value = snapshot.get("total_value")
                     snapshot_equity_value = snapshot.get("equity_value")
                     
-                    print(f"[API] Checking snapshot values: snapshot_total_value={snapshot_total_value}, snapshot_equity_value={snapshot_equity_value}, current_total_value={total_value}, current_equity_value={equity_value}")
-                    
                     # CRITICAL FIX: 验证 snapshot 值的准确性
                     # snapshot 中的 total_value 应该等于 snapshot.cash + snapshot.equity_value
                     # 如果 snapshot 值不一致，应该使用当前计算的值
@@ -837,14 +941,10 @@ async def get_portfolio_real_time():
                             for pos_detail in positions_detail.values()
                         )
                         
-                        print(f"[API] Snapshot check: snapshot_total_value=${snapshot_total_value:.2f}, snapshot_calculated=${snapshot_calculated_total:.2f}, snapshot_consistent={snapshot_consistent}")
-                        print(f"[API] Price check: all_prices_equal_avg_cost={all_prices_equal_avg_cost}, positions_detail count={len(positions_detail)}")
-                        
                         # CRITICAL FIX: 只有在价格获取失败 AND snapshot 内部一致时，才使用 snapshot 的值
                         # 如果 snapshot 内部不一致，说明 snapshot 数据有问题，应该使用当前计算的值
                         if all_prices_equal_avg_cost and snapshot_consistent:
                             # 如果价格获取失败，且 snapshot 内部一致，使用 snapshot 的值
-                            print(f"[API] Price fetch failed (all prices = avg_cost) AND snapshot is consistent, using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
                             total_value = snapshot_total_value
                             equity_value = snapshot_equity_value
                             # 重新计算P&L
@@ -852,9 +952,7 @@ async def get_portfolio_real_time():
                             total_pnl_pct = (total_pnl / portfolio.initial_value * 100.0) if portfolio.initial_value > 0 else 0.0
                         elif not snapshot_consistent:
                             # CRITICAL FIX: snapshot 内部不一致，说明数据有问题，使用当前计算的值
-                            print(f"[API] WARNING: Snapshot values are inconsistent (total_value=${snapshot_total_value:.2f} != cash+equity=${snapshot_calculated_total:.2f}), using current calculated values: total_value=${total_value:.2f}")
-                        else:
-                            print(f"[API] Prices are valid, using current calculated values: total_value=${total_value:.2f}")
+                            pass  # 使用当前计算的值（默认行为）
             except Exception as e:
                 import traceback
                 print(f"[API] Failed to check snapshot values: {e}")
@@ -1051,16 +1149,17 @@ async def get_equity_history(
         if period:
             now = datetime.now(timezone.utc)
             if period == "day":
-                start_ts = (now - timedelta(days=1)).isoformat().replace('+00:00', 'Z')
+                # CRITICAL FIX: 统一时间戳格式 - 使用UTC格式（Z后缀）
+                start_ts = (now - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
             elif period == "week":
-                start_ts = (now - timedelta(days=7)).isoformat().replace('+00:00', 'Z')
+                start_ts = (now - timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
             elif period == "month":
-                start_ts = (now - timedelta(days=30)).isoformat().replace('+00:00', 'Z')
+                start_ts = (now - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
             else:
                 start_ts = None
             
             if start_ts:
-                end_ts = now.isoformat().replace('+00:00', 'Z')
+                end_ts = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
                 records = equity_tracker.load_equity_history(
                     start_timestamp=start_ts,
                     end_timestamp=end_ts,

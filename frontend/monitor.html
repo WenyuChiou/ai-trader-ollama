@@ -2032,51 +2032,103 @@
             }
             
             let html = '';
+            
+            // Extract company info from top level or nested structure
+            const companyName = fundamentals.company_name || symbol;
+            const sector = fundamentals.sector || '';
+            const industry = fundamentals.industry || '';
+            html += `<div style="font-size: 14px; color: #22d3ee; font-weight: 700; margin-bottom: 12px;">${companyName}${sector ? ` (${sector}${industry ? ` - ${industry}` : ''})` : ''}</div>`;
+            
+            // Handle nested structure: fundamentals.valuation, fundamentals.profitability, etc.
             const val = fundamentals.valuation || {};
             const prof = fundamentals.profitability || {};
             const growth = fundamentals.growth || {};
             const health = fundamentals.financial_health || {};
+            const dividend = fundamentals.dividend || {};
+            const analyst = fundamentals.analyst_ratings || {};
             
-            // Company basic information
-            const companyName = fundamentals.company_name || symbol;
-            const sector = fundamentals.sector || '';
-            const industry = fundamentals.industry || '';
-            html += `<div style="font-size: 14px; color: #22d3ee; font-weight: 700; margin-bottom: 8px;">${companyName}${sector ? ` (${sector}${industry ? ` - ${industry}` : ''})` : ''}</div>`;
-            
-            // Valuation metrics
+            // Valuation metrics (only show non-null values)
             const valItems = [];
-            if (val.pe_ratio !== undefined) valItems.push(`P/E: <strong style="color: #22d3ee;">${val.pe_ratio.toFixed(2)}</strong>`);
-            if (val.forward_pe !== undefined) valItems.push(`Forward P/E: <strong style="color: #22d3ee;">${val.forward_pe.toFixed(2)}</strong>`);
-            if (val.price_to_book !== undefined) valItems.push(`P/B: <strong style="color: #22d3ee;">${val.price_to_book.toFixed(2)}</strong>`);
-            if (val.price_to_sales !== undefined) valItems.push(`P/S: <strong style="color: #22d3ee;">${val.price_to_sales.toFixed(2)}</strong>`);
-            if (val.market_cap !== undefined) valItems.push(`Market Cap: <strong style="color: #10b981;">${formatNumber(val.market_cap)}</strong>`);
+            if (val.pe_ratio !== undefined && val.pe_ratio !== null && val.pe_ratio !== '-') valItems.push(`P/E: <strong style="color: #22d3ee;">${val.pe_ratio.toFixed(2)}</strong>`);
+            if (val.forward_pe !== undefined && val.forward_pe !== null && val.forward_pe !== '-') valItems.push(`Forward P/E: <strong style="color: #22d3ee;">${val.forward_pe.toFixed(2)}</strong>`);
+            if (val.price_to_book !== undefined && val.price_to_book !== null && val.price_to_book !== '-') valItems.push(`P/B: <strong style="color: #22d3ee;">${val.price_to_book.toFixed(2)}</strong>`);
+            if (val.price_to_sales !== undefined && val.price_to_sales !== null && val.price_to_sales !== '-') valItems.push(`P/S: <strong style="color: #22d3ee;">${val.price_to_sales.toFixed(2)}</strong>`);
+            if (val.market_cap !== undefined && val.market_cap !== null && val.market_cap !== '-') valItems.push(`Market Cap: <strong style="color: #10b981;">${formatNumber(val.market_cap)}</strong>`);
+            if (val.enterprise_value !== undefined && val.enterprise_value !== null && val.enterprise_value !== '-') valItems.push(`Enterprise Value: <strong style="color: #10b981;">${formatNumber(val.enterprise_value)}</strong>`);
             
-            // Profitability
+            // Profitability (only show non-null values)
             const profItems = [];
-            if (prof.net_margin !== undefined) profItems.push(`Net Margin: <strong style="color: #10b981;">${prof.net_margin.toFixed(2)}%</strong>`);
-            else if (prof.profit_margins !== undefined) profItems.push(`Profit Margin: <strong style="color: #10b981;">${(prof.profit_margins * 100).toFixed(2)}%</strong>`);
-            if (prof.roe !== undefined) profItems.push(`ROE: <strong style="color: #10b981;">${prof.roe.toFixed(2)}%</strong>`);
-            else if (prof.return_on_equity !== undefined) profItems.push(`ROE: <strong style="color: #10b981;">${(prof.return_on_equity * 100).toFixed(2)}%</strong>`);
+            if (prof.profit_margins !== undefined && prof.profit_margins !== null && prof.profit_margins !== '-') {
+                const margin = typeof prof.profit_margins === 'number' ? (prof.profit_margins * 100).toFixed(2) : prof.profit_margins;
+                profItems.push(`Profit Margin: <strong style="color: #10b981;">${margin}%</strong>`);
+            }
+            if (prof.operating_margins !== undefined && prof.operating_margins !== null && prof.operating_margins !== '-') {
+                const margin = typeof prof.operating_margins === 'number' ? (prof.operating_margins * 100).toFixed(2) : prof.operating_margins;
+                profItems.push(`Operating Margin: <strong style="color: #10b981;">${margin}%</strong>`);
+            }
+            if (prof.return_on_equity !== undefined && prof.return_on_equity !== null && prof.return_on_equity !== '-') {
+                const roe = typeof prof.return_on_equity === 'number' ? (prof.return_on_equity * 100).toFixed(2) : prof.return_on_equity;
+                profItems.push(`ROE: <strong style="color: #10b981;">${roe}%</strong>`);
+            }
+            if (prof.return_on_assets !== undefined && prof.return_on_assets !== null && prof.return_on_assets !== '-') {
+                const roa = typeof prof.return_on_assets === 'number' ? (prof.return_on_assets * 100).toFixed(2) : prof.return_on_assets;
+                profItems.push(`ROA: <strong style="color: #10b981;">${roa}%</strong>`);
+            }
+            if (prof.eps_trailing !== undefined && prof.eps_trailing !== null && prof.eps_trailing !== '-') profItems.push(`EPS (TTM): <strong style="color: #10b981;">${prof.eps_trailing.toFixed(2)}</strong>`);
+            if (prof.eps_forward !== undefined && prof.eps_forward !== null && prof.eps_forward !== '-') profItems.push(`EPS (Forward): <strong style="color: #10b981;">${prof.eps_forward.toFixed(2)}</strong>`);
             
-            // Growth
+            // Growth (only show non-null values)
             const growthItems = [];
-            if (growth.revenue_growth !== undefined) growthItems.push(`Revenue Growth: <strong style="color: #10b981;">${growth.revenue_growth.toFixed(2)}%</strong>`);
-            if (growth.earnings_growth !== undefined) growthItems.push(`Earnings Growth: <strong style="color: ${growth.earnings_growth >= 0 ? '#10b981' : '#ef4444'};">${growth.earnings_growth.toFixed(2)}%</strong>`);
+            if (growth.revenue_growth !== undefined && growth.revenue_growth !== null && growth.revenue_growth !== '-') {
+                const growthVal = typeof growth.revenue_growth === 'number' ? (growth.revenue_growth * 100).toFixed(2) : growth.revenue_growth;
+                growthItems.push(`Revenue Growth: <strong style="color: #10b981;">${growthVal}%</strong>`);
+            }
+            if (growth.earnings_growth !== undefined && growth.earnings_growth !== null && growth.earnings_growth !== '-') {
+                const growthVal = typeof growth.earnings_growth === 'number' ? (growth.earnings_growth * 100).toFixed(2) : growth.earnings_growth;
+                growthItems.push(`Earnings Growth: <strong style="color: ${parseFloat(growthVal) >= 0 ? '#10b981' : '#ef4444'};">${growthVal}%</strong>`);
+            }
             
-            // Financial health
+            // Financial health (only show non-null values)
             const healthItems = [];
-            if (health.current_ratio !== undefined) healthItems.push(`Current Ratio: <strong style="color: ${health.current_ratio >= 1 ? '#10b981' : '#ef4444'};">${health.current_ratio.toFixed(2)}</strong>`);
-            if (health.debt_to_equity !== undefined) healthItems.push(`Debt/Equity: <strong style="color: ${health.debt_to_equity <= 1 ? '#10b981' : '#ef4444'};">${health.debt_to_equity.toFixed(2)}</strong>`);
+            if (health.current_ratio !== undefined && health.current_ratio !== null && health.current_ratio !== '-') {
+                const ratio = parseFloat(health.current_ratio);
+                healthItems.push(`Current Ratio: <strong style="color: ${ratio >= 1 ? '#10b981' : '#ef4444'};">${ratio.toFixed(2)}</strong>`);
+            }
+            if (health.debt_to_equity !== undefined && health.debt_to_equity !== null && health.debt_to_equity !== '-') {
+                const de = parseFloat(health.debt_to_equity);
+                healthItems.push(`Debt/Equity: <strong style="color: ${de <= 1 ? '#10b981' : '#ef4444'};">${de.toFixed(2)}</strong>`);
+            }
+            if (health.free_cashflow !== undefined && health.free_cashflow !== null && health.free_cashflow !== '-') {
+                healthItems.push(`Free Cash Flow: <strong style="color: #22d3ee;">${formatNumber(health.free_cashflow)}</strong>`);
+            }
+            
+            // Dividend (only show non-null values)
+            const divItems = [];
+            if (dividend.dividend_yield !== undefined && dividend.dividend_yield !== null && dividend.dividend_yield !== '-') {
+                const yieldVal = typeof dividend.dividend_yield === 'number' ? (dividend.dividend_yield * 100).toFixed(2) : dividend.dividend_yield;
+                divItems.push(`Dividend Yield: <strong style="color: #10b981;">${yieldVal}%</strong>`);
+            }
+            
+            // Analyst ratings (only show non-null values)
+            const analystItems = [];
+            if (analyst.target_price !== undefined && analyst.target_price !== null && analyst.target_price !== '-') {
+                analystItems.push(`Target Price: <strong style="color: #f59e0b;">$${analyst.target_price.toFixed(2)}</strong>`);
+            }
+            if (analyst.recommendation !== undefined && analyst.recommendation !== null && analyst.recommendation !== '-') {
+                analystItems.push(`Recommendation: <strong style="color: #f59e0b;">${analyst.recommendation.toUpperCase()}</strong>`);
+            }
             
             // Combine all information
             const allItems = [];
-            if (valItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Valuation:</span> ${valItems.join(' • ')}`);
-            if (profItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Profitability:</span> ${profItems.join(' • ')}`);
-            if (growthItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Growth:</span> ${growthItems.join(' • ')}`);
-            if (healthItems.length > 0) allItems.push(`<span style="color: #94a3b8;">Financial Health:</span> ${healthItems.join(' • ')}`);
+            if (valItems.length > 0) allItems.push(`<span style="color: #94a3b8; font-weight: 600;">💎 Valuation:</span> ${valItems.join(' • ')}`);
+            if (profItems.length > 0) allItems.push(`<span style="color: #94a3b8; font-weight: 600;">📈 Profitability:</span> ${profItems.join(' • ')}`);
+            if (growthItems.length > 0) allItems.push(`<span style="color: #94a3b8; font-weight: 600;">📊 Growth:</span> ${growthItems.join(' • ')}`);
+            if (healthItems.length > 0) allItems.push(`<span style="color: #94a3b8; font-weight: 600;">💼 Financial Health:</span> ${healthItems.join(' • ')}`);
+            if (divItems.length > 0) allItems.push(`<span style="color: #94a3b8; font-weight: 600;">💰 Dividend:</span> ${divItems.join(' • ')}`);
+            if (analystItems.length > 0) allItems.push(`<span style="color: #94a3b8; font-weight: 600;">🎯 Analyst:</span> ${analystItems.join(' • ')}`);
             
             if (allItems.length > 0) {
-                html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 1.8;">' + allItems.join('<br>') + '</div>';
+                html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 2.0;">' + allItems.join('<br>') + '</div>';
             } else {
                 html += '<div style="color: #94a3b8; font-style: italic;">Limited fundamental data available</div>';
             }
@@ -5930,13 +5982,25 @@
                         if (data.balance_sheet && typeof data.balance_sheet === 'object') {
                             const bs = flattenObject(data.balance_sheet, 'balance_sheet');
                             html += '<div style="margin-bottom: 12px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">';
-                            html += '<div style="font-size: 12px; color: #fbbf24; font-weight: 600; margin-bottom: 6px;">Balance Sheet:</div>';
+                            html += '<div style="font-size: 12px; color: #fbbf24; font-weight: 600; margin-bottom: 8px;">📊 Balance Sheet:</div>';
                             const bsItems = [];
-                            if (bs.balance_sheet_total_assets !== undefined) bsItems.push(`Total Assets: <strong style="color: #10b981;">${formatNumber(bs.balance_sheet_total_assets)}</strong>`);
-                            if (bs.balance_sheet_total_liabilities !== undefined) bsItems.push(`Total Liabilities: <strong style="color: #ef4444;">${formatNumber(bs.balance_sheet_total_liabilities)}</strong>`);
-                            if (bs.balance_sheet_stockholders_equity !== undefined) bsItems.push(`Stockholders Equity: <strong style="color: #22d3ee;">${formatNumber(bs.balance_sheet_stockholders_equity)}</strong>`);
-                            if (bs.balance_sheet_cash_and_equivalents !== undefined) bsItems.push(`Cash & Equivalents: <strong style="color: #10b981;">${formatNumber(bs.balance_sheet_cash_and_equivalents)}</strong>`);
-                            html += '<div style="font-size: 13px; color: #e2e8f0;">' + bsItems.join(' • ') + '</div>';
+                            if (bs.balance_sheet_total_assets !== undefined && bs.balance_sheet_total_assets !== null && bs.balance_sheet_total_assets !== '-') {
+                                bsItems.push(`Total Assets: <strong style="color: #10b981;">${formatNumber(bs.balance_sheet_total_assets)}</strong>`);
+                            }
+                            if (bs.balance_sheet_total_liabilities !== undefined && bs.balance_sheet_total_liabilities !== null && bs.balance_sheet_total_liabilities !== '-') {
+                                bsItems.push(`Total Liabilities: <strong style="color: #ef4444;">${formatNumber(bs.balance_sheet_total_liabilities)}</strong>`);
+                            }
+                            if (bs.balance_sheet_stockholders_equity !== undefined && bs.balance_sheet_stockholders_equity !== null && bs.balance_sheet_stockholders_equity !== '-') {
+                                bsItems.push(`Stockholders Equity: <strong style="color: #22d3ee;">${formatNumber(bs.balance_sheet_stockholders_equity)}</strong>`);
+                            }
+                            if (bs.balance_sheet_cash_and_equivalents !== undefined && bs.balance_sheet_cash_and_equivalents !== null && bs.balance_sheet_cash_and_equivalents !== '-') {
+                                bsItems.push(`Cash & Equivalents: <strong style="color: #10b981;">${formatNumber(bs.balance_sheet_cash_and_equivalents)}</strong>`);
+                            }
+                            if (bsItems.length > 0) {
+                                html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 2.0;">' + bsItems.join(' • ') + '</div>';
+                            } else {
+                                html += '<div style="color: #94a3b8; font-style: italic;">No balance sheet data available</div>';
+                            }
                             html += '</div>';
                         }
                         
@@ -5944,13 +6008,27 @@
                         if (data.cashflow && typeof data.cashflow === 'object') {
                             const cf = flattenObject(data.cashflow, 'cashflow');
                             html += '<div style="padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">';
-                            html += '<div style="font-size: 12px; color: #fbbf24; font-weight: 600; margin-bottom: 6px;">Cash Flow:</div>';
+                            html += '<div style="font-size: 12px; color: #fbbf24; font-weight: 600; margin-bottom: 8px;">💰 Cash Flow:</div>';
                             const cfItems = [];
-                            if (cf.cashflow_operating_cashflow !== undefined) cfItems.push(`Operating: <strong style="color: #10b981;">${formatNumber(cf.cashflow_operating_cashflow)}</strong>`);
-                            if (cf.cashflow_investing_cashflow !== undefined) cfItems.push(`Investing: <strong style="color: ${cf.cashflow_investing_cashflow < 0 ? '#ef4444' : '#10b981'};">${formatNumber(cf.cashflow_investing_cashflow)}</strong>`);
-                            if (cf.cashflow_financing_cashflow !== undefined) cfItems.push(`Financing: <strong style="color: ${cf.cashflow_financing_cashflow < 0 ? '#ef4444' : '#10b981'};">${formatNumber(cf.cashflow_financing_cashflow)}</strong>`);
-                            if (cf.cashflow_free_cashflow !== undefined) cfItems.push(`Free Cash Flow: <strong style="color: #22d3ee;">${formatNumber(cf.cashflow_free_cashflow)}</strong>`);
-                            html += '<div style="font-size: 13px; color: #e2e8f0;">' + cfItems.join(' • ') + '</div>';
+                            if (cf.cashflow_operating_cashflow !== undefined && cf.cashflow_operating_cashflow !== null && cf.cashflow_operating_cashflow !== '-') {
+                                cfItems.push(`Operating: <strong style="color: #10b981;">${formatNumber(cf.cashflow_operating_cashflow)}</strong>`);
+                            }
+                            if (cf.cashflow_investing_cashflow !== undefined && cf.cashflow_investing_cashflow !== null && cf.cashflow_investing_cashflow !== '-') {
+                                const val = parseFloat(cf.cashflow_investing_cashflow);
+                                cfItems.push(`Investing: <strong style="color: ${val < 0 ? '#ef4444' : '#10b981'};">${formatNumber(cf.cashflow_investing_cashflow)}</strong>`);
+                            }
+                            if (cf.cashflow_financing_cashflow !== undefined && cf.cashflow_financing_cashflow !== null && cf.cashflow_financing_cashflow !== '-') {
+                                const val = parseFloat(cf.cashflow_financing_cashflow);
+                                cfItems.push(`Financing: <strong style="color: ${val < 0 ? '#ef4444' : '#10b981'};">${formatNumber(cf.cashflow_financing_cashflow)}</strong>`);
+                            }
+                            if (cf.cashflow_free_cashflow !== undefined && cf.cashflow_free_cashflow !== null && cf.cashflow_free_cashflow !== '-') {
+                                cfItems.push(`Free Cash Flow: <strong style="color: #22d3ee;">${formatNumber(cf.cashflow_free_cashflow)}</strong>`);
+                            }
+                            if (cfItems.length > 0) {
+                                html += '<div style="font-size: 13px; color: #e2e8f0; line-height: 2.0;">' + cfItems.join(' • ') + '</div>';
+                            } else {
+                                html += '<div style="color: #94a3b8; font-style: italic;">No cash flow data available</div>';
+                            }
                             html += '</div>';
                         }
                         

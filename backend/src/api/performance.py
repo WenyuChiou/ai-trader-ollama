@@ -48,14 +48,20 @@ def _load_equity_history(
                     record = json.loads(line.strip())
                     record_date = record.get("date") or (record.get("timestamp", "").split("T")[0] if record.get("timestamp") else "")
                     
-                    # Filter by date range
+                    # Skip if no date found
+                    if not record_date:
+                        continue
+                    
+                    # Filter by date range (inclusive on both ends)
                     if start_date and record_date < start_date:
                         continue
                     if end_date and record_date > end_date:
                         continue
                     
                     records.append(record)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, AttributeError, TypeError) as e:
+                    # Skip malformed records
+                    print(f"[Performance] Skipping malformed equity record: {e}")
                     continue
     
     # Sort by timestamp/date
@@ -93,13 +99,21 @@ def _load_filled_orders(
                     
                     # Filter by date
                     order_date = order.get("placed_at", "").split("T")[0] if order.get("placed_at") else order.get("date", "")
+                    
+                    # Skip if no date found
+                    if not order_date:
+                        continue
+                    
+                    # Filter by date range (inclusive on both ends)
                     if start_date and order_date < start_date:
                         continue
                     if end_date and order_date > end_date:
                         continue
                     
                     orders.append(order)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, AttributeError, TypeError) as e:
+                    # Skip malformed orders
+                    print(f"[Performance] Skipping malformed order: {e}")
                     continue
     
     # Sort by date
@@ -130,16 +144,35 @@ def _calculate_statistics(
     total_return_pct = (total_return / initial_value * 100.0) if initial_value > 0 else 0.0
     
     # Calculate annualized return (if we have enough data)
+    annualized_return_pct = 0.0
     if len(equity_history) > 1:
-        first_date = datetime.fromisoformat(equity_history[0].get("timestamp", "").replace("Z", "+00:00") if equity_history[0].get("timestamp") else equity_history[0].get("date", "") + "T00:00:00+00:00")
-        last_date = datetime.fromisoformat(equity_history[-1].get("timestamp", "").replace("Z", "+00:00") if equity_history[-1].get("timestamp") else equity_history[-1].get("date", "") + "T00:00:00+00:00")
-        days_diff = (last_date - first_date).days
-        if days_diff > 0:
-            annualized_return_pct = ((current_value / initial_value) ** (365.0 / days_diff) - 1) * 100.0
-        else:
+        try:
+            first_timestamp = equity_history[0].get("timestamp")
+            first_date_str = equity_history[0].get("date", "")
+            if first_timestamp:
+                first_date = datetime.fromisoformat(first_timestamp.replace("Z", "+00:00"))
+            elif first_date_str:
+                first_date = datetime.fromisoformat(first_date_str + "T00:00:00+00:00")
+            else:
+                first_date = None
+            
+            last_timestamp = equity_history[-1].get("timestamp")
+            last_date_str = equity_history[-1].get("date", "")
+            if last_timestamp:
+                last_date = datetime.fromisoformat(last_timestamp.replace("Z", "+00:00"))
+            elif last_date_str:
+                last_date = datetime.fromisoformat(last_date_str + "T00:00:00+00:00")
+            else:
+                last_date = None
+            
+            if first_date and last_date:
+                days_diff = (last_date - first_date).days
+                if days_diff > 0:
+                    annualized_return_pct = ((current_value / initial_value) ** (365.0 / days_diff) - 1) * 100.0
+        except (ValueError, TypeError, AttributeError) as e:
+            # If date parsing fails, skip annualized return calculation
+            print(f"[Performance] Failed to calculate annualized return: {e}")
             annualized_return_pct = 0.0
-    else:
-        annualized_return_pct = 0.0
     
     # Calculate maximum drawdown
     max_drawdown = 0.0
@@ -228,19 +261,48 @@ def get_performance_statistics(
     end_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """Get overall performance statistics"""
-    equity_history = _load_equity_history(start_date=start_date, end_date=end_date)
-    filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
-    
-    stats = _calculate_statistics(equity_history, filled_orders)
-    
-    return {
-        "ok": True,
-        "statistics": stats,
-        "period": {
-            "start_date": start_date,
-            "end_date": end_date
+    try:
+        # If no end_date specified, default to today to include today's data
+        if end_date is None:
+            end_date = date.today().isoformat()
+        
+        equity_history = _load_equity_history(start_date=start_date, end_date=end_date)
+        filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
+        
+        stats = _calculate_statistics(equity_history, filled_orders)
+        
+        # If stats contains an error, return it
+        if "error" in stats:
+            return {
+                "ok": False,
+                "error": stats["error"],
+                "statistics": {},
+                "period": {
+                    "start_date": start_date,
+                    "end_date": end_date
+                }
+            }
+        
+        return {
+            "ok": True,
+            "statistics": stats,
+            "period": {
+                "start_date": start_date,
+                "end_date": end_date
+            }
         }
-    }
+    except Exception as e:
+        import traceback
+        return {
+            "ok": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "statistics": {},
+            "period": {
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        }
 
 
 def get_trades_by_date(
@@ -249,46 +311,61 @@ def get_trades_by_date(
     limit: Optional[int] = None
 ) -> Dict[str, Any]:
     """Get trades grouped by date"""
-    filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
-    
-    # Group by date
-    trades_by_date = defaultdict(list)
-    for order in filled_orders:
-        order_date = order.get("placed_at", "").split("T")[0] if order.get("placed_at") else order.get("date", "")
-        if order_date:
-            trades_by_date[order_date].append(order)
-    
-    # Convert to list of date summaries
-    date_summaries = []
-    for date_str, orders in sorted(trades_by_date.items()):
-        buy_orders = [o for o in orders if o.get("action") == "BUY"]
-        sell_orders = [o for o in orders if o.get("action") == "SELL"]
+    try:
+        # If no end_date specified, default to today to include today's data
+        if end_date is None:
+            end_date = date.today().isoformat()
         
-        total_buy_value = sum(float(o.get("fill_price", 0.0)) * float(o.get("quantity", 0.0)) for o in buy_orders)
-        total_sell_value = sum(float(o.get("fill_price", 0.0)) * float(o.get("quantity", 0.0)) for o in sell_orders)
-        total_realized_pnl = sum(float(o.get("realized_pnl", 0.0)) for o in sell_orders if o.get("realized_pnl") is not None)
+        filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
         
-        date_summaries.append({
-            "date": date_str,
-            "total_orders": len(orders),
-            "buy_orders": len(buy_orders),
-            "sell_orders": len(sell_orders),
-            "total_buy_value": round(total_buy_value, 2),
-            "total_sell_value": round(total_sell_value, 2),
-            "total_realized_pnl": round(total_realized_pnl, 2),
-            "orders": orders[:limit] if limit else orders
-        })
-    
-    # Apply limit to date summaries
-    if limit:
-        date_summaries = date_summaries[-limit:]
-    
-    return {
-        "ok": True,
-        "trades_by_date": date_summaries,
-        "total_dates": len(date_summaries),
-        "total_orders": len(filled_orders)
-    }
+        # Group by date
+        trades_by_date = defaultdict(list)
+        for order in filled_orders:
+            order_date = order.get("placed_at", "").split("T")[0] if order.get("placed_at") else order.get("date", "")
+            if order_date:
+                trades_by_date[order_date].append(order)
+        
+        # Convert to list of date summaries
+        date_summaries = []
+        for date_str, orders in sorted(trades_by_date.items()):
+            buy_orders = [o for o in orders if o.get("action") == "BUY"]
+            sell_orders = [o for o in orders if o.get("action") == "SELL"]
+            
+            total_buy_value = sum(float(o.get("fill_price", 0.0)) * float(o.get("quantity", 0.0)) for o in buy_orders)
+            total_sell_value = sum(float(o.get("fill_price", 0.0)) * float(o.get("quantity", 0.0)) for o in sell_orders)
+            total_realized_pnl = sum(float(o.get("realized_pnl", 0.0)) for o in sell_orders if o.get("realized_pnl") is not None)
+            
+            date_summaries.append({
+                "date": date_str,
+                "total_orders": len(orders),
+                "buy_orders": len(buy_orders),
+                "sell_orders": len(sell_orders),
+                "total_buy_value": round(total_buy_value, 2),
+                "total_sell_value": round(total_sell_value, 2),
+                "total_realized_pnl": round(total_realized_pnl, 2),
+                "orders": orders[:limit] if limit else orders
+            })
+        
+        # Apply limit to date summaries
+        if limit:
+            date_summaries = date_summaries[-limit:]
+        
+        return {
+            "ok": True,
+            "trades_by_date": date_summaries,
+            "total_dates": len(date_summaries),
+            "total_orders": len(filled_orders)
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "ok": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "trades_by_date": [],
+            "total_dates": 0,
+            "total_orders": 0
+        }
 
 
 def get_symbol_analysis(
@@ -297,30 +374,44 @@ def get_symbol_analysis(
     end_date: Optional[str] = None
 ) -> Dict[str, Any]:
     """Get performance analysis by symbol"""
-    if not symbol:
-        # Get all symbols
-        filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
-        symbols = set(o.get("symbol") for o in filled_orders if o.get("symbol"))
+    try:
+        # If no end_date specified, default to today to include today's data
+        if end_date is None:
+            end_date = date.today().isoformat()
         
-        symbol_stats = []
-        for sym in sorted(symbols):
-            sym_orders = _load_filled_orders(start_date=start_date, end_date=end_date, symbol=sym)
-            stats = _calculate_symbol_stats(sym, sym_orders)
-            symbol_stats.append(stats)
-        
+        if not symbol:
+            # Get all symbols
+            filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
+            symbols = set(o.get("symbol") for o in filled_orders if o.get("symbol"))
+            
+            symbol_stats = []
+            for sym in sorted(symbols):
+                sym_orders = _load_filled_orders(start_date=start_date, end_date=end_date, symbol=sym)
+                stats = _calculate_symbol_stats(sym, sym_orders)
+                symbol_stats.append(stats)
+            
+            return {
+                "ok": True,
+                "symbols": symbol_stats,
+                "total_symbols": len(symbol_stats)
+            }
+        else:
+            # Get specific symbol
+            symbol_orders = _load_filled_orders(start_date=start_date, end_date=end_date, symbol=symbol)
+            stats = _calculate_symbol_stats(symbol, symbol_orders)
+            
+            return {
+                "ok": True,
+                "symbol": stats
+            }
+    except Exception as e:
+        import traceback
         return {
-            "ok": True,
-            "symbols": symbol_stats,
-            "total_symbols": len(symbol_stats)
-        }
-    else:
-        # Get specific symbol
-        symbol_orders = _load_filled_orders(start_date=start_date, end_date=end_date, symbol=symbol)
-        stats = _calculate_symbol_stats(symbol, symbol_orders)
-        
-        return {
-            "ok": True,
-            "symbol": stats
+            "ok": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "symbols": [],
+            "total_symbols": 0
         }
 
 
@@ -349,10 +440,21 @@ def _calculate_symbol_stats(symbol: str, orders: List[Dict[str, Any]]) -> Dict[s
         last_sell_date = max(o.get("placed_at", "").split("T")[0] if o.get("placed_at") else o.get("date", "") for o in sell_orders)
         if first_buy_date and last_sell_date:
             try:
-                first_date = datetime.fromisoformat(first_buy_date)
-                last_date = datetime.fromisoformat(last_sell_date)
+                # Handle date strings that might not have time component
+                if "T" in first_buy_date:
+                    first_date = datetime.fromisoformat(first_buy_date.replace("Z", "+00:00"))
+                else:
+                    first_date = datetime.fromisoformat(first_buy_date + "T00:00:00+00:00")
+                
+                if "T" in last_sell_date:
+                    last_date = datetime.fromisoformat(last_sell_date.replace("Z", "+00:00"))
+                else:
+                    last_date = datetime.fromisoformat(last_sell_date + "T00:00:00+00:00")
+                
                 avg_holding_days = (last_date - first_date).days
-            except:
+            except (ValueError, TypeError, AttributeError) as e:
+                # If date parsing fails, skip avg_holding_days calculation
+                print(f"[Performance] Failed to calculate avg_holding_days for {symbol}: {e}")
                 pass
     
     return {

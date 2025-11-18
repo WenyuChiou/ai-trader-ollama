@@ -667,23 +667,19 @@ async def get_portfolio_real_time():
         positions_pnl = {}
         
         if positions:
-            # 先填充所有持仓的基本信息（即使没有价格数据）
+            # 先填充所有持仓的基本信息（但不设置 last_prices，等获取真实价格后再设置）
             for symbol in positions:
                 pos = portfolio._positions[symbol]
                 total_cost = getattr(pos, "total_cost", pos.avg_cost * pos.quantity)
                 
-                # 默认使用 avg_cost 作为价格（如果没有市场数据）
-                price = pos.avg_cost
-                last_prices[symbol] = price
-                
-                # 填充基本信息
+                # 填充基本信息（使用 avg_cost 作为占位符，但不在 last_prices 中设置）
                 positions_detail[symbol] = {
                                 "quantity": pos.quantity,
                                 "avg_cost": pos.avg_cost,
                     "total_cost": total_cost,
                     "cost_basis": total_cost,
-                    "current_price": price,
-                    "market_value": pos.quantity * price,
+                    "current_price": pos.avg_cost,  # 占位符，会被真实价格替换
+                    "market_value": pos.quantity * pos.avg_cost,  # 占位符
                     "unrealized_pnl": 0.0,  # 默认0，等有真实价格再计算
                     "unrealized_pnl_pct": 0.0,
                 }
@@ -745,8 +741,8 @@ async def get_portfolio_real_time():
                 stocks_data = market_data.get("stocks", {})
                 
                 for symbol in positions:
-                    # 如果已经通过实时价格获取了，跳过
-                    if symbol in last_prices and last_prices[symbol] > 0:
+                    # 如果已经通过实时价格获取了，跳过（last_prices 中只包含真实获取的价格）
+                    if symbol in last_prices:
                         continue
                     
                     if symbol in stocks_data:
@@ -786,11 +782,23 @@ async def get_portfolio_real_time():
                             # 计算盈亏
                             positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
                             print(f"[API] Historical price for {symbol}: ${price:.2f}, market_value=${pos.quantity * price:.2f}, P&L=${(price - pos.avg_cost) * pos.quantity:.2f}")
+                    else:
+                        # 如果 stocks_data 中没有该 symbol，使用 avg_cost 作为占位符
+                        print(f"[API] Symbol {symbol} not found in market data, using avg_cost as placeholder")
+                        last_prices[symbol] = portfolio._positions[symbol].avg_cost
+                else:
+                    # 如果 stocks_data 中没有该 symbol，使用 avg_cost 作为占位符
+                    print(f"[API] Symbol {symbol} not found in market data, using avg_cost as placeholder")
+                    last_prices[symbol] = portfolio._positions[symbol].avg_cost
             except Exception as e:
                 import traceback
                 print(f"[API] Failed to fetch market data: {e}")
                 print(f"[API] Traceback: {traceback.format_exc()}")
                 # 即使失败，positions_detail 也已经填充了基本信息（使用 avg_cost）
+                # 需要确保 last_prices 中有值，否则 portfolio.equity_value() 会失败
+                for symbol in positions:
+                    if symbol not in last_prices:
+                        last_prices[symbol] = portfolio._positions[symbol].avg_cost
         
         # 计算总值
         equity_value = portfolio.equity_value(last_prices)

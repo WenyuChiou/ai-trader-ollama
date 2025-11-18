@@ -70,10 +70,22 @@ class EquityTracker:
         except Exception as e:
             print(f"[EQUITY WARNING] Failed to check market status: {e}, proceeding with record")
         
-        current_value = float(portfolio_snapshot.get("total_value", 0.0))
-        current_cash = float(portfolio_snapshot.get("cash", 0.0))
-        current_equity = float(portfolio_snapshot.get("equity_value", 0.0))
-        positions = portfolio_snapshot.get("positions_detail", {})
+        # CRITICAL FIX: 如果portfolio_snapshot包含snapshot字段，优先使用snapshot的值
+        # 这样可以正确处理从portfolio_state.json加载的数据结构
+        snapshot = portfolio_snapshot.get("snapshot", {})
+        if snapshot:
+            # 使用snapshot字段的值（优先级更高）
+            current_value = float(snapshot.get("total_value", portfolio_snapshot.get("total_value", 0.0)))
+            current_cash = float(snapshot.get("cash", portfolio_snapshot.get("cash", 0.0)))
+            current_equity = float(snapshot.get("equity_value", portfolio_snapshot.get("equity_value", 0.0)))
+            # positions_detail可能在顶层或snapshot中
+            positions = snapshot.get("positions_detail", portfolio_snapshot.get("positions_detail", {}))
+        else:
+            # 没有snapshot字段，使用顶层字段
+            current_value = float(portfolio_snapshot.get("total_value", 0.0))
+            current_cash = float(portfolio_snapshot.get("cash", 0.0))
+            current_equity = float(portfolio_snapshot.get("equity_value", 0.0))
+            positions = portfolio_snapshot.get("positions_detail", {})
         
         # CRITICAL FIX: 保留所有时间戳记录，不再按日期去重
         # 每30分钟的记录都会被保留，确保历史数据完整性
@@ -169,14 +181,22 @@ class EquityTracker:
         # 使用UTC时间，ISO 8601格式，确保前端能正确解析
         timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         
+        # CRITICAL FIX: 从snapshot或顶层获取total_pnl和total_pnl_pct
+        if snapshot:
+            total_pnl = float(snapshot.get("total_pnl", portfolio_snapshot.get("total_pnl", 0.0)))
+            total_pnl_pct = float(snapshot.get("total_pnl_pct", portfolio_snapshot.get("total_pnl_pct", 0.0)))
+        else:
+            total_pnl = float(portfolio_snapshot.get("total_pnl", 0.0))
+            total_pnl_pct = float(portfolio_snapshot.get("total_pnl_pct", 0.0))
+        
         record = {
             "date": date_str,
             "timestamp": timestamp_str,  # 使用 UTC 时区，ISO 8601 格式，确保包含 Z
             "cash": current_cash,
             "equity_value": current_equity,
             "total_value": current_value,
-            "total_pnl": float(portfolio_snapshot.get("total_pnl", 0.0)),
-            "total_pnl_pct": float(portfolio_snapshot.get("total_pnl_pct", 0.0)),
+            "total_pnl": total_pnl,
+            "total_pnl_pct": total_pnl_pct,
             "positions": positions,
         }
         

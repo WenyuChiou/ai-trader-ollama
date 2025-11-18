@@ -2462,6 +2462,32 @@ python scripts/init_data.py
 
 **Related Documentation**: See [`docs/FRONTEND_POSITIONS_FIX.md`](docs/FRONTEND_POSITIONS_FIX.md)
 
+### News Display & Analysis Target Updates
+
+**Recent Updates**:
+
+1. **News Display Enhancement**:
+   - ✅ Frontend now displays news with summaries, sources, and timestamps
+   - ✅ News sorted by recency (latest first)
+   - ✅ Supports multiple news data formats (hits, articles, items, array-like objects)
+   - ✅ Displays LLM-generated summaries and keywords when available
+
+2. **Technical Analysis Targets**:
+   - ✅ **With Holdings**: Analyzes current holdings + recommended stocks + major indices (all required)
+   - ✅ **Without Holdings**: Analyzes recommended stocks + major indices (both required)
+   - ✅ All targets must be analyzed simultaneously
+
+3. **Fundamental Analysis Targets**:
+   - ✅ **With Holdings**: Analyzes non-ETF holdings + non-ETF recommended stocks
+   - ✅ **Without Holdings**: Analyzes non-ETF recommended stocks only
+   - ✅ ETFs and indices are excluded (ETFs don't need fundamental analysis)
+   - ✅ ETF detection using `is_etf()` function (checks quoteType/instrumentType)
+
+4. **Tool Name Mapping**:
+   - ✅ `get_news` → `plan_and_scan_news` (automatic mapping)
+   - ✅ `get_news_scan` → `plan_and_scan_news` (automatic mapping)
+   - ✅ Enhanced debugging logs for news tool execution
+
 ### Portfolio P&L Calculation Issues
 
 **Error**: 

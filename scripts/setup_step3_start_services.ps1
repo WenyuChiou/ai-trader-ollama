@@ -140,10 +140,19 @@ Write-Host "Frontend Access:" -ForegroundColor Cyan
 Write-Host "  Local: http://localhost:3000/monitor.html" -ForegroundColor White
 Write-Host "  Or open: frontend\monitor.html in your browser" -ForegroundColor White
 Write-Host ""
+Write-Host "Optional: Setup Scheduled Tasks" -ForegroundColor Cyan
+Write-Host "  Run: .\scripts\setup_scheduled_tasks.ps1" -ForegroundColor White
+Write-Host "  This will configure:" -ForegroundColor Gray
+Write-Host "    - Auto trading cycle (daily)" -ForegroundColor Gray
+Write-Host "    - Equity recording (every 30 minutes)" -ForegroundColor Gray
+Write-Host "    - Data updates (every hour)" -ForegroundColor Gray
+Write-Host "    - Daily report generation" -ForegroundColor Gray
+Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Cyan
 Write-Host "  1. Open frontend/monitor.html in your browser" -ForegroundColor White
 Write-Host "  2. Click 'Execute Trade' to run a trading cycle" -ForegroundColor White
 Write-Host "  3. View agent conversations and portfolio status" -ForegroundColor White
+Write-Host "  4. (Optional) Setup scheduled tasks for automation" -ForegroundColor White
 Write-Host ""
 Read-Host "Press Enter to continue"
 

@@ -500,8 +500,10 @@ async def fetch_conversations_api(
             "get_financial_statements": "fundamental",
             "get_economic_summary": "economic",
             "get_labor_market_data": "economic",
+            "get_treasury_yield_curve": "economic",
             "fetch_fred_indicator": "economic",
             "fetch_jin10_economic_data": "economic",
+            "fetch_jin10_economic_calendar": "economic",
             "fetch_crypto_batch": "crypto",
             "get_crypto_price": "crypto",
         }
@@ -793,7 +795,10 @@ async def get_portfolio_real_time():
         # 计算总值
         equity_value = portfolio.equity_value(last_prices)
         total_value = portfolio.cash + equity_value
-        total_pnl = portfolio.total_pnl(last_prices)
+        # CRITICAL FIX: total_pnl 应该是 total_value - initial_value（包括现金和持仓的所有变化）
+        # portfolio.total_pnl(last_prices) 只计算持仓的未实现盈亏，不包括现金变化
+        # 所以应该使用 total_value - initial_value 来计算总盈亏
+        total_pnl = total_value - portfolio.initial_value
         total_pnl_pct = portfolio.total_pnl_pct(last_prices)
         
         # CRITICAL FIX: 如果从portfolio_state.json加载了数据，且snapshot中有更准确的total_value和equity_value，
@@ -808,36 +813,60 @@ async def get_portfolio_real_time():
                     
                     print(f"[API] Checking snapshot values: snapshot_total_value={snapshot_total_value}, snapshot_equity_value={snapshot_equity_value}, current_total_value={total_value}, current_equity_value={equity_value}")
                     
-                    # 如果snapshot中有值，且当前计算的值与snapshot差异超过1%（说明价格获取可能失败），使用snapshot的值
+                    # CRITICAL FIX: 验证 snapshot 值的准确性
+                    # snapshot 中的 total_value 应该等于 snapshot.cash + snapshot.equity_value
+                    # 如果 snapshot 值不一致，应该使用当前计算的值
                     if snapshot_total_value and snapshot_equity_value:
+                        snapshot_cash = snapshot.get("cash", portfolio.cash)
+                        snapshot_calculated_total = snapshot_cash + snapshot_equity_value
+                        
+                        # 检查 snapshot 内部一致性（允许小的浮点误差）
+                        snapshot_consistent = abs(snapshot_total_value - snapshot_calculated_total) < 0.01
+                        
                         # 检查是否所有持仓的价格都等于avg_cost（说明价格获取失败）
                         all_prices_equal_avg_cost = all(
                             pos_detail.get("current_price", 0) == pos_detail.get("avg_cost", 0)
                             for pos_detail in positions_detail.values()
                         )
                         
+                        print(f"[API] Snapshot check: snapshot_total_value=${snapshot_total_value:.2f}, snapshot_calculated=${snapshot_calculated_total:.2f}, snapshot_consistent={snapshot_consistent}")
                         print(f"[API] Price check: all_prices_equal_avg_cost={all_prices_equal_avg_cost}, positions_detail count={len(positions_detail)}")
                         
-                        # 如果价格获取失败（所有价格都等于avg_cost），直接使用snapshot的值（不检查差异阈值）
-                        if all_prices_equal_avg_cost:
-                            # CRITICAL FIX: 如果价格获取失败，直接使用snapshot的值，因为snapshot中的值是之前成功获取价格时计算的
-                            print(f"[API] Price fetch failed (all prices = avg_cost), using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
+                        # CRITICAL FIX: 只有在价格获取失败 AND snapshot 内部一致时，才使用 snapshot 的值
+                        # 如果 snapshot 内部不一致，说明 snapshot 数据有问题，应该使用当前计算的值
+                        if all_prices_equal_avg_cost and snapshot_consistent:
+                            # 如果价格获取失败，且 snapshot 内部一致，使用 snapshot 的值
+                            print(f"[API] Price fetch failed (all prices = avg_cost) AND snapshot is consistent, using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
                             total_value = snapshot_total_value
                             equity_value = snapshot_equity_value
                             # 重新计算P&L
                             total_pnl = total_value - portfolio.initial_value
                             total_pnl_pct = (total_pnl / portfolio.initial_value * 100.0) if portfolio.initial_value > 0 else 0.0
+                        elif not snapshot_consistent:
+                            # CRITICAL FIX: snapshot 内部不一致，说明数据有问题，使用当前计算的值
+                            print(f"[API] WARNING: Snapshot values are inconsistent (total_value=${snapshot_total_value:.2f} != cash+equity=${snapshot_calculated_total:.2f}), using current calculated values: total_value=${total_value:.2f}")
                         else:
-                            print(f"[API] Not all prices equal avg_cost, prices may be valid")
+                            print(f"[API] Prices are valid, using current calculated values: total_value=${total_value:.2f}")
             except Exception as e:
                 import traceback
                 print(f"[API] Failed to check snapshot values: {e}")
                 print(f"[API] Traceback: {traceback.format_exc()}")
         
-        # CRITICAL FIX: 自动记录净值历史（每小时最多记录一次）
-        # 即使没有运行trading cycle，也要记录净值变化
+        # CRITICAL FIX: 自动记录净值历史（每30分钟最多记录一次）
+        # 只在市场开盘时记录（9:30 AM - 4:00 PM ET），收盘后不记录
         # NOTE: 这个功能可以通过设置环境变量 DISABLE_AUTO_EQUITY_RECORDING=1 来禁用
         auto_record_equity = os.environ.get("DISABLE_AUTO_EQUITY_RECORDING", "0") != "1"
+        
+        # CRITICAL: 检查市场是否开盘，收盘后不记录
+        if auto_record_equity:
+            try:
+                from src.utils.trading_days import is_market_open
+                is_market_open_now = is_market_open(None)
+                if not is_market_open_now:
+                    auto_record_equity = False  # 市场收盘，不记录
+                    print(f"[API] Market is closed, skipping auto equity recording (will resume at next market open)")
+            except Exception as e:
+                print(f"[API WARNING] Failed to check market status: {e}, proceeding with auto record")
         
         if auto_record_equity:
             try:
@@ -859,10 +888,10 @@ async def get_portfolio_real_time():
                                     # 解析最后记录的时间戳
                                     last_time = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
                                     current_time = datetime.now(timezone.utc)
-                                    time_diff = (current_time - last_time).total_seconds() / 3600  # 小时
-                                    # CRITICAL FIX: 只要超过1小时就记录，不管净值变化多少
-                                    # 这样可以确保每小时都有记录，即使净值没有变化
-                                    if time_diff < 1.0:
+                                    time_diff = (current_time - last_time).total_seconds() / 1800  # 30分钟
+                                    # CRITICAL FIX: 每30分钟记录一次（市场开盘时）
+                                    # 这样可以确保每30分钟都有记录，即使净值没有变化
+                                    if time_diff < 0.5:  # 30分钟 = 0.5小时
                                         should_record = False
                     except Exception as e:
                         print(f"[API] Failed to check last equity record: {e}")
@@ -1739,3 +1768,161 @@ async def get_tools_list():
                 "Access-Control-Allow-Headers": "*",
             }
         )
+
+# ============================================================================
+# Performance Analysis Endpoints
+# ============================================================================
+
+@app.get("/api/performance/statistics")
+async def get_performance_statistics_endpoint(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+):
+    """Get overall performance statistics"""
+    try:
+        from src.api.performance import get_performance_statistics
+        
+        result = get_performance_statistics(start_date=start_date, end_date=end_date)
+        
+        return JSONResponse(
+            status_code=200,
+            content=result,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
+
+@app.options("/api/performance/statistics")
+async def options_performance_statistics():
+    """CORS preflight for performance statistics"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@app.get("/api/performance/trades-by-date")
+async def get_trades_by_date_endpoint(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Limit number of dates"),
+):
+    """Get trades grouped by date"""
+    try:
+        from src.api.performance import get_trades_by_date
+        
+        result = get_trades_by_date(start_date=start_date, end_date=end_date, limit=limit)
+        
+        return JSONResponse(
+            status_code=200,
+            content=result,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
+
+@app.options("/api/performance/trades-by-date")
+async def options_trades_by_date():
+    """CORS preflight for trades by date"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+
+@app.get("/api/performance/symbol-analysis")
+async def get_symbol_analysis_endpoint(
+    symbol: Optional[str] = Query(None, description="Stock symbol (optional, returns all symbols if not specified)"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+):
+    """Get performance analysis by symbol"""
+    try:
+        from src.api.performance import get_symbol_analysis
+        
+        result = get_symbol_analysis(symbol=symbol, start_date=start_date, end_date=end_date)
+        
+        return JSONResponse(
+            status_code=200,
+            content=result,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
+
+@app.options("/api/performance/symbol-analysis")
+async def options_symbol_analysis():
+    """CORS preflight for symbol analysis"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )

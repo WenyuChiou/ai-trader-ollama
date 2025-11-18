@@ -72,5 +72,13 @@ Write-Host "  🌐 API Server: http://localhost:8000" -ForegroundColor White
 Write-Host "  📊 API Docs: http://localhost:8000/docs" -ForegroundColor White
 Write-Host "  🎨 Frontend: Open frontend\monitor.html in your browser" -ForegroundColor White
 Write-Host ""
+Write-Host "Optional: Setup Scheduled Tasks" -ForegroundColor Cyan
+$setupTasks = Read-Host "Do you want to setup scheduled tasks now? (Y/N)"
+if ($setupTasks -eq "Y" -or $setupTasks -eq "y") {
+    Write-Host ""
+    Write-Host "Starting scheduled tasks setup..." -ForegroundColor Yellow
+    & "$PSScriptRoot\setup_scheduled_tasks.ps1"
+}
+Write-Host ""
 Read-Host "Press Enter to exit"
 

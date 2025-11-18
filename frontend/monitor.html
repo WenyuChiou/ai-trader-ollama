@@ -1269,6 +1269,9 @@
             <a href="#trade-history-section" class="nav-btn" onclick="scrollToSection('trade-history-section', event)">
                 <span>📋</span> Trade History
             </a>
+            <a href="#performance-section" class="nav-btn" onclick="scrollToSection('performance-section', event)">
+                <span>📊</span> Performance
+            </a>
         </div>
 
         <!-- Loading State -->
@@ -1296,8 +1299,11 @@
             <div id="chart-section">
             <div class="chart-section" id="chartSection" style="display: block;">
                 <div class="chart-header">
-                    <h2>📈 Total Asset Value Over Time</h2>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <h2>📈 Total Asset Value Over Time</h2>
+                        <span style="font-size: 12px; color: #94a3b8;" id="nextEquityUpdateTime">Next update: Calculating...</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px;">
                         <!-- Time Range Selector -->
                         <div style="display: flex; gap: 5px; align-items: center;">
                             <button id="timeRangeDay" onclick="setTimeRange('day')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Day</button>
@@ -1417,7 +1423,7 @@
                 <div class="trades-section" id="economicDataSection">
                     <div class="section-header">
                         <h2>
-                            📊 Economic Data (FRED)
+                            📊 FRED API
                         </h2>
                         <span class="position-count" id="economicDataCount">0 indicators</span>
                     </div>
@@ -1425,6 +1431,7 @@
                         <div style="text-align: center; color: #94a3b8; padding: 40px;">
                             <p>No economic data available yet.</p>
                             <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators.</p>
+                            <p style="font-size: 11px; margin-top: 6px; color: #64748b;">Data will be automatically categorized into Labor Market and Economic Indicators.</p>
                         </div>
                     </div>
                 </div>
@@ -1544,6 +1551,101 @@
                     </div>
                     <div id="conversationsInline">
                         <div class="loading"><div class="spinner"></div><p>Loading conversations...</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Analysis Page -->
+            <div id="performancePage" style="display: none;">
+                <div class="trades-section">
+                    <div class="section-header">
+                        <h2>📊 Performance Analysis</h2>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button class="refresh-btn" onclick="loadPerformanceData()" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px; font-weight: 500;">
+                                🔄 Refresh
+                            </button>
+                            <div style="display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
+                                <button onclick="setPerformanceDateRange('week')" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Last Week</button>
+                                <button onclick="setPerformanceDateRange('month')" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Last Month</button>
+                                <button onclick="setPerformanceDateRange('all')" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">All Time</button>
+                                <span style="color: #64748b; margin: 0 4px;">|</span>
+                                <input type="date" id="performanceStartDate" style="padding: 6px 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 12px;">
+                                <span style="color: #94a3b8; font-size: 12px;">to</span>
+                                <input type="date" id="performanceEndDate" style="padding: 6px 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; color: #e2e8f0; font-size: 12px;">
+                                <button onclick="loadPerformanceData()" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.3); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Statistics Cards -->
+                    <div id="performanceStatsCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Performance Metrics Table -->
+                    <div style="margin-bottom: 24px;">
+                        <h3 style="color: #e2e8f0; font-size: 16px; margin-bottom: 12px;">Key Metrics</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Metric</th>
+                                        <th>Value</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="performanceMetricsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Symbol Analysis -->
+                    <div style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="color: #e2e8f0; font-size: 16px; margin: 0;">Symbol Performance</h3>
+                            <span style="font-size: 12px; color: #94a3b8;" id="symbolCount">0 symbols</span>
+                        </div>
+                        <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="cursor: pointer; user-select: none;" onclick="sortSymbolAnalysis('symbol')" title="Click to sort">
+                                            Symbol ${symbolSortColumn === 'symbol' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('total_trades')" title="Click to sort">
+                                            Total Trades ${symbolSortColumn === 'total_trades' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('buy_orders')" title="Click to sort">
+                                            Buy Orders ${symbolSortColumn === 'buy_orders' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('sell_orders')" title="Click to sort">
+                                            Sell Orders ${symbolSortColumn === 'sell_orders' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('total_realized_pnl')" title="Click to sort">
+                                            Realized P&L ${symbolSortColumn === 'total_realized_pnl' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('realized_pnl_pct')" title="Click to sort">
+                                            P&L % ${symbolSortColumn === 'realized_pnl_pct' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('win_rate')" title="Click to sort">
+                                            Win Rate ${symbolSortColumn === 'win_rate' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                        <th style="cursor: pointer; user-select: none; text-align: right;" onclick="sortSymbolAnalysis('avg_holding_days')" title="Click to sort">
+                                            Avg Holding Days ${symbolSortColumn === 'avg_holding_days' ? (symbolSortDirection === 'asc' ? '↑' : '↓') : ''}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="symbolAnalysisBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Trades by Date -->
+                    <div>
+                        <h3 style="color: #e2e8f0; font-size: 16px; margin-bottom: 12px;">Trades by Date</h3>
+                        <div id="tradesByDateContainer">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1712,6 +1814,9 @@
                 window.READ_ONLY_MODE = false;
                 console.log('[Full Control Mode] Enabled: Localhost access detected. All controls available.');
             }
+            
+            // CRITICAL FIX: 启动净值更新倒计时
+            startEquityUpdateCountdown();
         });
         const REFRESH_INTERVAL = 30000; // 30 seconds for data refresh (continuous, independent of trading cycle)
         const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (trading hours)
@@ -1724,6 +1829,93 @@
         let orderCheckTimer = null; // Order check timer
         let equityHistory = [];
         let lastEquityChartUpdate = 0; // Timestamp of last equity chart update
+        let nextEquityUpdateTime = null; // Next scheduled update time (next :00 or :30)
+        let equityUpdateCountdownTimer = null; // Timer for updating countdown display
+        
+        // Calculate next equity update time (next :00 or :30)
+        function calculateNextEquityUpdateTime() {
+            const now = new Date();
+            const currentMinutes = now.getMinutes();
+            const currentSeconds = now.getSeconds();
+            const currentMilliseconds = now.getMilliseconds();
+            
+            // Calculate minutes until next :00 or :30
+            let minutesUntilNext;
+            if (currentMinutes < 30) {
+                // Next update is at :30
+                minutesUntilNext = 30 - currentMinutes;
+            } else {
+                // Next update is at next hour :00
+                minutesUntilNext = 60 - currentMinutes;
+            }
+            
+            // Create next update time
+            const nextUpdate = new Date(now);
+            nextUpdate.setMinutes(currentMinutes + minutesUntilNext);
+            nextUpdate.setSeconds(0);
+            nextUpdate.setMilliseconds(0);
+            
+            return nextUpdate.getTime();
+        }
+        
+        // Update next equity update time display
+        function updateNextEquityUpdateDisplay() {
+            const displayEl = document.getElementById('nextEquityUpdateTime');
+            if (!displayEl) return;
+            
+            if (!nextEquityUpdateTime) {
+                nextEquityUpdateTime = calculateNextEquityUpdateTime();
+            }
+            
+            const now = Date.now();
+            const timeUntil = nextEquityUpdateTime - now;
+            
+            if (timeUntil <= 0) {
+                // Time reached, reset to next update time
+                nextEquityUpdateTime = calculateNextEquityUpdateTime();
+                const nextDate = new Date(nextEquityUpdateTime);
+                const hours = String(nextDate.getHours()).padStart(2, '0');
+                const minutes = String(nextDate.getMinutes()).padStart(2, '0');
+                displayEl.textContent = `Next update: ${hours}:${minutes}`;
+            } else {
+                const minutes = Math.floor(timeUntil / 60000);
+                const seconds = Math.floor((timeUntil % 60000) / 1000);
+                const nextDate = new Date(nextEquityUpdateTime);
+                const hours = String(nextDate.getHours()).padStart(2, '0');
+                const mins = String(nextDate.getMinutes()).padStart(2, '0');
+                displayEl.textContent = `Next update: ${hours}:${mins} (in ${minutes}m ${seconds}s)`;
+            }
+        }
+        
+        // Start equity update countdown timer
+        function startEquityUpdateCountdown() {
+            // Clear existing timer
+            if (equityUpdateCountdownTimer) {
+                clearInterval(equityUpdateCountdownTimer);
+            }
+            
+            // Initialize next update time
+            if (!nextEquityUpdateTime) {
+                nextEquityUpdateTime = calculateNextEquityUpdateTime();
+            }
+            
+            // Update immediately
+            updateNextEquityUpdateDisplay();
+            
+            // Update every second
+            equityUpdateCountdownTimer = setInterval(() => {
+                updateNextEquityUpdateDisplay();
+            }, 1000);
+        }
+        
+        // Stop equity update countdown timer
+        function stopEquityUpdateCountdown() {
+            if (equityUpdateCountdownTimer) {
+                clearInterval(equityUpdateCountdownTimer);
+                equityUpdateCountdownTimer = null;
+            }
+        }
+        
         let hasCheckedAfterClose = false; // Track if we've already checked pending orders after market close today
         let lastCheckedDate = null; // Track the date when we last checked after close (to reset daily)
         let demoTimer = null;
@@ -2485,8 +2677,20 @@
             }
         }
 
-        // Record equity to backend
+        // Record equity to backend (only during market hours)
         async function recordEquityToBackend(equityData) {
+            // CRITICAL: 检查市场是否开盘，收盘后不记录
+            try {
+                const marketOpen = await isMarketOpen(true, true); // Use cache, silent mode
+                if (!marketOpen) {
+                    console.log('[Equity Record] Market is closed, skipping equity recording (will resume at next market open)');
+                    return; // 市场收盘，不记录
+                }
+            } catch (err) {
+                console.warn('[Equity Record] Failed to check market status:', err.message);
+                // 如果检查失败，继续记录（fallback）
+            }
+            
             try {
                 const response = await fetch(`${getApiBase()}/api/portfolio/record-equity`, {
                     method: 'POST',
@@ -3245,16 +3449,70 @@
             }
         }
         
+        // Track next auto-trade execution time
+        // CRITICAL FIX: 从 localStorage 恢复 nextAutoTradeTime，避免页面刷新时重置
+        let nextAutoTradeTime = null;
+        try {
+            const stored = localStorage.getItem('nextAutoTradeTime');
+            if (stored) {
+                const storedTime = parseInt(stored, 10);
+                // 只恢复未来的时间（如果时间已过，则设为 null）
+                if (storedTime > Date.now()) {
+                    nextAutoTradeTime = storedTime;
+                    console.log('[Auto Trade] Restored nextAutoTradeTime from localStorage:', new Date(nextAutoTradeTime).toLocaleString());
+                } else {
+                    console.log('[Auto Trade] Stored nextAutoTradeTime has passed, clearing');
+                    localStorage.removeItem('nextAutoTradeTime');
+                }
+            }
+        } catch (e) {
+            console.warn('[Auto Trade] Failed to restore nextAutoTradeTime from localStorage:', e);
+        }
+        let nextTradeCountdownTimer = null;
+        
+        // Helper function to save nextAutoTradeTime to localStorage
+        function saveNextAutoTradeTime() {
+            try {
+                if (nextAutoTradeTime) {
+                    localStorage.setItem('nextAutoTradeTime', nextAutoTradeTime.toString());
+                } else {
+                    localStorage.removeItem('nextAutoTradeTime');
+                }
+            } catch (e) {
+                console.warn('[Auto Trade] Failed to save nextAutoTradeTime to localStorage:', e);
+            }
+        }
+        
         function startAutoTrade() {
             // Prevent auto-trade in read-only mode
             if (window.READ_ONLY_MODE) {
                 console.log('[Auto Trade] Read-only mode: Auto-trade disabled');
                 updateAutoTradeStatus('Read-Only Mode (Disabled)');
+                if (nextTradeCountdownTimer) {
+                    clearInterval(nextTradeCountdownTimer);
+                    nextTradeCountdownTimer = null;
+                }
+                nextAutoTradeTime = null;
+                saveNextAutoTradeTime(); // CRITICAL FIX: 清除 localStorage
                 return;
             }
             
+            // CRITICAL FIX: 如果 timer 已经存在，只更新倒计时显示，不重置时间
             if (tradeCheckTimer) {
-                clearInterval(tradeCheckTimer);
+                console.log('[Auto Trade] Timer already exists, updating countdown only');
+                // 如果 nextAutoTradeTime 存在，确保倒计时正在运行
+                if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
+                    if (!nextTradeCountdownTimer) {
+                        startNextTradeCountdown();
+                    }
+                    updateAutoTradeStatus('Active');
+                }
+                return; // 不重新初始化，避免重置时间
+            }
+            
+            if (nextTradeCountdownTimer) {
+                clearInterval(nextTradeCountdownTimer);
+                nextTradeCountdownTimer = null;
             }
             
             // Automatic intelligent scheduling: automatically manage based on market status
@@ -3282,6 +3540,11 @@
                             // CRITICAL FIX: Pass isManualTrigger=false for auto-trade
                             await executeTradeCycle(false);
                             console.log('[Auto Trade] Trade cycle completed successfully');
+                            // Update next execution time after successful execution
+                            const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
+                            nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
+                            saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
+                            updateNextTradeTime();
                         } catch (e) {
                             console.error('[Auto Trade] Error during trade cycle:', e);
                             // Continue even if failed, retry next time
@@ -3326,13 +3589,36 @@
                             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
                             console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
                             console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
-                            // CRITICAL FIX: Do NOT execute immediately on startup
-                            // The first trade after initialization/refresh must be manual
-                            // Auto-trade will execute after the first 30-minute interval
-                            if (hasManualTradeExecuted()) {
-                                console.log('[Auto Trade] First manual trade already executed, auto-trade will run after 30 minutes');
-                                updateAutoTradeStatus('Active - Next run in 30 min');
+                            
+                            // Set next execution time
+                            // CRITICAL FIX: 如果已经有保存的时间，使用保存的时间；否则根据情况设置
+                            if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
+                                // 使用已保存的时间（页面刷新后恢复）
+                                console.log('[Auto Trade] Using restored nextAutoTradeTime:', new Date(nextAutoTradeTime).toLocaleString());
+                                updateAutoTradeStatus('Active');
+                                startNextTradeCountdown();
+                            } else if (hasManualTradeExecuted()) {
+                                // CRITICAL FIX: 如果手动交易已执行，但 nextAutoTradeTime 不存在或已过期，才设置新时间
+                                // 如果 nextAutoTradeTime 存在但已过期，说明应该立即执行，不需要重置
+                                if (!nextAutoTradeTime || nextAutoTradeTime <= Date.now()) {
+                                    // 只有在没有有效时间时才设置新时间
+                                    nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
+                                    saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
+                                    console.log('[Auto Trade] First manual trade already executed, auto-trade will run after 30 minutes');
+                                } else {
+                                    // 时间仍然有效，使用现有时间
+                                    console.log('[Auto Trade] Using existing nextAutoTradeTime:', new Date(nextAutoTradeTime).toLocaleString());
+                                }
+                                updateAutoTradeStatus('Active');
+                                startNextTradeCountdown();
                             } else {
+                                // Wait for first manual trade
+                                // CRITICAL FIX: 只有在确实没有手动交易时才清除时间
+                                // 如果 nextAutoTradeTime 存在且有效，保留它（可能是从之前的会话恢复的）
+                                if (!nextAutoTradeTime || nextAutoTradeTime <= Date.now()) {
+                                    nextAutoTradeTime = null;
+                                    saveNextAutoTradeTime(); // CRITICAL FIX: 清除 localStorage
+                                }
                                 console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
                                 updateAutoTradeStatus('Waiting for First Manual Trade');
                             }
@@ -3364,7 +3650,20 @@
         function updateAutoTradeStatus(status) {
             const statusEl = document.getElementById('autoTradeStatus');
             if (statusEl) {
-                statusEl.textContent = status;
+                // If status doesn't include next time info and we have nextAutoTradeTime, append it
+                let displayStatus = status;
+                if (nextAutoTradeTime && !status.includes('Next:') && !status.includes('Waiting for First') && !status.includes('Market Closed')) {
+                    const timeUntil = nextAutoTradeTime - Date.now();
+                    if (timeUntil > 0) {
+                        const minutes = Math.floor(timeUntil / 60000);
+                        const seconds = Math.floor((timeUntil % 60000) / 1000);
+                        displayStatus = `${status} | Next: ${minutes}m ${seconds}s`;
+                    } else {
+                        displayStatus = `${status} | Next: Now`;
+                    }
+                }
+                
+                statusEl.textContent = displayStatus;
                 // Set color based on status
                 if (status.includes('Running') || status.includes('Completed')) {
                     statusEl.style.color = '#10b981'; // Green
@@ -3378,12 +3677,61 @@
             }
         }
         
+        function startNextTradeCountdown() {
+            // Clear existing countdown timer
+            if (nextTradeCountdownTimer) {
+                clearInterval(nextTradeCountdownTimer);
+            }
+            
+            // Update countdown every second
+            nextTradeCountdownTimer = setInterval(() => {
+                if (nextAutoTradeTime) {
+                    const timeUntil = nextAutoTradeTime - Date.now();
+                    if (timeUntil > 0) {
+                        const minutes = Math.floor(timeUntil / 60000);
+                        const seconds = Math.floor((timeUntil % 60000) / 1000);
+                        const statusEl = document.getElementById('autoTradeStatus');
+                        if (statusEl) {
+                            const baseStatus = statusEl.textContent.split(' | ')[0];
+                            statusEl.textContent = `${baseStatus} | Next: ${minutes}m ${seconds}s`;
+                        }
+                    } else {
+                        // Time reached, update status
+                        const statusEl = document.getElementById('autoTradeStatus');
+                        if (statusEl) {
+                            const baseStatus = statusEl.textContent.split(' | ')[0];
+                            statusEl.textContent = `${baseStatus} | Next: Now`;
+                        }
+                    }
+                } else {
+                    // No next time set, stop countdown
+                    if (nextTradeCountdownTimer) {
+                        clearInterval(nextTradeCountdownTimer);
+                        nextTradeCountdownTimer = null;
+                    }
+                }
+            }, 1000); // Update every second
+        }
+        
+        function updateNextTradeTime() {
+            // Update the countdown display
+            if (nextAutoTradeTime) {
+                startNextTradeCountdown();
+            }
+        }
+        
         function stopAutoTrade() {
             if (tradeCheckTimer) {
                 clearInterval(tradeCheckTimer);
                 tradeCheckTimer = null;
                 console.log('[Auto Trade] Trade check stopped');
             }
+            if (nextTradeCountdownTimer) {
+                clearInterval(nextTradeCountdownTimer);
+                nextTradeCountdownTimer = null;
+            }
+            nextAutoTradeTime = null;
+            saveNextAutoTradeTime(); // CRITICAL FIX: 清除 localStorage
         }
         
         // CRITICAL: Force stop all operations (trading cycles, timers, etc.)
@@ -5297,8 +5645,282 @@
             try {
                 // 检查是否是纯文本标记
                 if (typeof resultText === 'object' && resultText._is_plain_text && resultText.raw_text) {
-                    // 如果是纯文本，直接返回格式化的文本
-                    return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(resultText.raw_text)}</div>`;
+                    // CRITICAL FIX: 如果是FRED工具，即使标记为纯文本也要特殊处理
+                    if (toolName === 'get_economic_summary' || toolName === 'get_labor_market_data' || toolName === 'get_treasury_yield_curve' || toolName === 'fetch_fred_indicator') {
+                        // 继续处理，不直接返回
+                    } else {
+                        // 如果是纯文本，直接返回格式化的文本
+                        return `<div style="font-family: monospace; white-space: pre-wrap; color: #cbd5e1; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;">${escapeHtml(resultText.raw_text)}</div>`;
+                    }
+                }
+                
+                // CRITICAL FIX: 优先检查FRED工具（字符串格式），在JSON解析之前处理
+                // FRED工具返回的是纯文本字符串，需要特殊处理
+                if ((toolName === 'get_economic_summary' || toolName === 'get_labor_market_data' || toolName === 'get_treasury_yield_curve' || toolName === 'fetch_fred_indicator')) {
+                    let fredText = null;
+                    if (typeof resultText === 'string') {
+                        fredText = resultText;
+                    } else if (typeof resultText === 'object' && resultText.result && typeof resultText.result === 'string') {
+                        fredText = resultText.result;
+                    } else if (typeof resultText === 'object' && resultText._is_plain_text && resultText.raw_text) {
+                        fredText = resultText.raw_text;
+                    } else if (typeof resultText === 'object') {
+                        // 尝试从对象中提取字符串
+                        let resultData = resultText.result;
+                        let depth = 0;
+                        while (resultData && typeof resultData === 'object' && resultData.result && depth < 5) {
+                            resultData = resultData.result;
+                            depth++;
+                        }
+                        if (typeof resultData === 'string') {
+                            fredText = resultData;
+                        }
+                    }
+                    
+                    // 特殊处理：国债收益率曲线
+                    // CRITICAL FIX: 确保能识别国债收益率曲线数据（检查多种可能的标识）
+                    if (fredText && toolName === 'get_treasury_yield_curve' && (fredText.includes('=== US Treasury Yield Curve') || fredText.includes('Treasury Yield Curve') || fredText.includes('Short-Term Rates') || fredText.includes('Long-Term Rates') || fredText.includes('DGS'))) {
+                        const lines = fredText.split('\n').filter(line => line.trim());
+                        const shortTermRates = [];
+                        const longTermRates = [];
+                        let yieldSpread = null;
+                        let spreadStatus = null;
+                        let retrievedDate = null;
+                        
+                        let currentSection = null;
+                        lines.forEach((line) => {
+                            if (line.includes('Retrieved:')) {
+                                const dateMatch = line.match(/Retrieved:\s*(.+)/);
+                                if (dateMatch) retrievedDate = dateMatch[1].trim();
+                                return;
+                            }
+                            if (line.includes('Short-Term Rates:')) {
+                                currentSection = 'short';
+                                return;
+                            }
+                            if (line.includes('Long-Term Rates:')) {
+                                currentSection = 'long';
+                                return;
+                            }
+                            if (line.includes('Yield Curve Spread')) {
+                                const spreadMatch = line.match(/Yield Curve Spread \(10Y - 2Y\):\s*([\d.+-]+)%/);
+                                if (spreadMatch) {
+                                    yieldSpread = parseFloat(spreadMatch[1]);
+                                }
+                                return;
+                            }
+                            if (line.includes('Inverted Yield Curve') || line.includes('Flat Yield Curve') || line.includes('Normal Yield Curve')) {
+                                if (line.includes('Inverted')) spreadStatus = { text: 'Inverted Yield Curve (Recession Signal)', color: '#ef4444', icon: '⚠️' };
+                                else if (line.includes('Flat')) spreadStatus = { text: 'Flat Yield Curve (Caution)', color: '#f59e0b', icon: '⚠️' };
+                                else spreadStatus = { text: 'Normal Yield Curve', color: '#10b981', icon: '✅' };
+                                return;
+                            }
+                            if (line.includes('===') || line.includes('Data source') || line.trim() === '') {
+                                return;
+                            }
+                            
+                            // 解析利率数据：  "  1-Month Treasury Rate (%): 4.04% (as of 2025-11-14)"
+                            // 支持格式： "  Label: Value% (as of Date)" 或 "  Label: Value%"
+                            const match = line.match(/^\s*(.+?):\s*([\d.]+)%?\s*(?:\(as of\s*(.+?)\))?$/);
+                            if (match) {
+                                const label = match[1].trim();
+                                let value = match[2].trim();
+                                // 确保值包含%符号
+                                if (!value.includes('%')) {
+                                    value = value + '%';
+                                }
+                                const date = match[3] ? match[3].trim() : null;
+                                const rate = { label, value, date };
+                                
+                                if (currentSection === 'short') {
+                                    shortTermRates.push(rate);
+                                } else if (currentSection === 'long') {
+                                    longTermRates.push(rate);
+                                }
+                            }
+                        });
+                        
+                        function generateTreasuryTable(rates, categoryName, categoryColor, categoryIcon) {
+                            if (rates.length === 0) return '';
+                            let tableRows = '';
+                            rates.forEach((rate, idx) => {
+                                const isEven = idx % 2 === 0;
+                                tableRows += `
+                                    <tr style="border-bottom: 1px solid ${categoryColor}33; ${isEven ? 'background: rgba(255,255,255,0.02);' : 'background: rgba(15, 23, 42, 0.3);'} transition: background 0.2s;" 
+                                        onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
+                                        onmouseout="this.style.background='${isEven ? 'rgba(255,255,255,0.02)' : 'rgba(15, 23, 42, 0.3)'}'">
+                                        <td style="padding: 12px 16px; color: #f1f5f9; font-weight: 500; font-size: 14px;">${escapeHtml(rate.label)}</td>
+                                        <td style="padding: 12px 16px; text-align: right; color: #10b981; font-weight: 700; font-size: 15px;">
+                                            ${escapeHtml(rate.value)}
+                                            ${rate.date ? `<br><span style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 4px; display: block;">as of ${escapeHtml(rate.date)}</span>` : ''}
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                            return `
+                                <div style="margin-bottom: 20px; background: rgba(15, 23, 42, 0.7); border-radius: 10px; border: 1px solid ${categoryColor}40; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, ${categoryColor}20 0%, ${categoryColor}10 100%); padding: 16px 18px; border-bottom: 2px solid ${categoryColor}60; cursor: pointer; user-select: none;"
+                                         onclick="(function(el){const content = el.nextElementSibling; const toggle = el.querySelector('.toggle-icon'); if(content.style.display === 'none'){content.style.display='block';toggle.textContent='▼';}else{content.style.display='none';toggle.textContent='▶';}})(this)">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <span style="font-size: 20px;">${categoryIcon}</span>
+                                                <h4 style="margin: 0; color: ${categoryColor}; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;">${categoryName}</h4>
+                                                <span style="background: ${categoryColor}30; color: ${categoryColor}; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${rates.length}</span>
+                                            </div>
+                                            <span class="toggle-icon" style="color: ${categoryColor}; font-size: 13px; transition: transform 0.2s;">▼</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: block;">
+                                        <div style="overflow-x: auto;">
+                                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                                <thead>
+                                                    <tr style="background: ${categoryColor}25;">
+                                                        <th style="padding: 12px 16px; text-align: left; color: ${categoryColor}; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Maturity</th>
+                                                        <th style="padding: 12px 16px; text-align: right; color: ${categoryColor}; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Yield</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${tableRows}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        // CRITICAL FIX: 移除内部标题，因为 renderEconomicData 已经在外层添加了标题
+                        let tableHtml = `
+                            <div style="padding: 0;">
+                                ${retrievedDate ? `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 12px; text-align: right;">Retrieved: ${escapeHtml(retrievedDate)}</div>` : ''}
+                                <div style="display: grid; grid-template-columns: ${shortTermRates.length === 0 || longTermRates.length === 0 ? '1fr' : '1fr 1fr'}; gap: 16px;">
+                                    ${generateTreasuryTable(shortTermRates, 'Short-Term Rates', '#3b82f6', '📅')}
+                                    ${generateTreasuryTable(longTermRates, 'Long-Term Rates', '#10b981', '📊')}
+                                </div>
+                                ${yieldSpread !== null ? `
+                                    <div style="margin-top: 16px; padding: 14px; background: rgba(15, 23, 42, 0.7); border-radius: 8px; border: 1px solid ${spreadStatus ? spreadStatus.color + '40' : 'rgba(34, 211, 238, 0.2)'};">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <span style="font-size: 18px;">${spreadStatus ? spreadStatus.icon : '📊'}</span>
+                                                <div>
+                                                    <div style="font-weight: 600; color: #f1f5f9; font-size: 14px;">Yield Curve Spread (10Y - 2Y)</div>
+                                                    <div style="color: ${spreadStatus ? spreadStatus.color : '#10b981'}; font-weight: 700; font-size: 18px; margin-top: 4px;">${yieldSpread > 0 ? '+' : ''}${yieldSpread.toFixed(2)}%</div>
+                                                </div>
+                                            </div>
+                                            ${spreadStatus ? `<div style="color: ${spreadStatus.color}; font-weight: 600; font-size: 13px;">${spreadStatus.text}</div>` : ''}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${shortTermRates.length === 0 && longTermRates.length === 0 ? `
+                                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                                        No treasury yield data parsed. Raw data format may be different.
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                        
+                        return tableHtml;
+                    }
+                    
+                    if (fredText && (fredText.includes('=== US Economic Indicators') || fredText.includes('=== US Labor Market') || fredText.includes('FRED') || fredText.includes('GDP') || fredText.includes('Unemployment'))) {
+                        // 这是FRED数据，使用特殊格式化处理
+                        const lines = fredText.split('\n').filter(line => line.trim());
+                        const laborIndicators = [];
+                        const economicIndicators = [];
+                        let retrievedDate = null;
+                        const laborKeywords = ['unemployment', 'payroll', 'employment', 'labor', 'job', 'wage'];
+                        
+                        lines.forEach((line) => {
+                            if (line.includes('Retrieved:')) {
+                                const dateMatch = line.match(/Retrieved:\s*(.+)/);
+                                if (dateMatch) retrievedDate = dateMatch[1].trim();
+                                return;
+                            }
+                            if (line.includes('===') || line.includes('Data source') || line.trim() === '') {
+                                return;
+                            }
+                            const match = line.match(/^(.+?):\s*(.+?)(?:\s*\(as of\s*(.+?)\))?$/);
+                            if (match) {
+                                const label = match[1].trim();
+                                const value = match[2].trim();
+                                const date = match[3] ? match[3].trim() : null;
+                                const indicator = { label, value, date };
+                                const isLabor = laborKeywords.some(keyword => label.toLowerCase().includes(keyword));
+                                if (isLabor) {
+                                    laborIndicators.push(indicator);
+                                } else {
+                                    economicIndicators.push(indicator);
+                                }
+                            }
+                        });
+                        
+                        function generateCategoryTable(indicators, categoryName, categoryColor, categoryIcon) {
+                            if (indicators.length === 0) return '';
+                            let tableRows = '';
+                            indicators.forEach((indicator, idx) => {
+                                const isEven = idx % 2 === 0;
+                                tableRows += `
+                                    <tr style="border-bottom: 1px solid ${categoryColor}33; ${isEven ? 'background: rgba(255,255,255,0.02);' : 'background: rgba(15, 23, 42, 0.3);'} transition: background 0.2s;" 
+                                        onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
+                                        onmouseout="this.style.background='${isEven ? 'rgba(255,255,255,0.02)' : 'rgba(15, 23, 42, 0.3)'}'">
+                                        <td style="padding: 12px 16px; color: #f1f5f9; font-weight: 500; font-size: 14px;">${escapeHtml(indicator.label)}</td>
+                                        <td style="padding: 12px 16px; text-align: right; color: #10b981; font-weight: 700; font-size: 15px;">
+                                            ${escapeHtml(indicator.value)}
+                                            ${indicator.date ? `<br><span style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 4px; display: block;">as of ${escapeHtml(indicator.date)}</span>` : ''}
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                            return `
+                                <div style="margin-bottom: 20px; background: rgba(15, 23, 42, 0.7); border-radius: 10px; border: 1px solid ${categoryColor}40; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, ${categoryColor}20 0%, ${categoryColor}10 100%); padding: 16px 18px; border-bottom: 2px solid ${categoryColor}60; cursor: pointer; user-select: none;"
+                                         onclick="(function(el){const content = el.nextElementSibling; const toggle = el.querySelector('.toggle-icon'); if(content.style.display === 'none'){content.style.display='block';toggle.textContent='▼';}else{content.style.display='none';toggle.textContent='▶';}})(this)">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <span style="font-size: 20px;">${categoryIcon}</span>
+                                                <h4 style="margin: 0; color: ${categoryColor}; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;">${categoryName}</h4>
+                                                <span style="background: ${categoryColor}30; color: ${categoryColor}; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${indicators.length}</span>
+                                            </div>
+                                            <span class="toggle-icon" style="color: ${categoryColor}; font-size: 13px; transition: transform 0.2s;">▼</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: block;">
+                                        <div style="overflow-x: auto;">
+                                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                                <thead>
+                                                    <tr style="background: ${categoryColor}25;">
+                                                        <th style="padding: 12px 16px; text-align: left; color: ${categoryColor}; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Indicator</th>
+                                                        <th style="padding: 12px 16px; text-align: right; color: ${categoryColor}; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${tableRows}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        // CRITICAL FIX: 移除内部标题，因为 renderEconomicData 已经在外层添加了标题
+                        let tableHtml = `
+                            <div style="padding: 0;">
+                                ${retrievedDate ? `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 12px; text-align: right;">Retrieved: ${escapeHtml(retrievedDate)}</div>` : ''}
+                                <div style="display: grid; grid-template-columns: ${laborIndicators.length === 0 || economicIndicators.length === 0 ? '1fr' : '1fr 1fr'}; gap: 16px;">
+                                    ${generateCategoryTable(laborIndicators, 'Labor Market', '#3b82f6', '👥')}
+                                    ${generateCategoryTable(economicIndicators, 'Economic Indicators', '#10b981', '📈')}
+                                </div>
+                                ${laborIndicators.length === 0 && economicIndicators.length === 0 ? `
+                                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                                        No indicators parsed. Raw data format may be different.
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                        
+                        return tableHtml;
+                    }
                 }
                 
                 // 尝试解析JSON
@@ -5682,30 +6304,216 @@
                         }
                     }
                     
-                    // 特殊处理：FRED 经济数据（字符串格式）
-                    if ((toolName === 'get_economic_summary' || toolName === 'get_labor_market_data' || toolName === 'fetch_fred_indicator') && typeof data === 'object' && data.result && typeof data.result === 'string') {
+                    // 特殊处理：基本面数据 - 优化表格显示（按分类显示）
+                    if (toolName === 'get_company_fundamentals' && typeof data === 'object' && data !== null) {
+                        // 检查是否是多个公司的数据（数组格式）
+                        let companies = [];
+                        if (Array.isArray(data)) {
+                            companies = data;
+                        } else if (data.fundamentals && Array.isArray(data.fundamentals)) {
+                            companies = data.fundamentals;
+                        } else if (data.symbol || data.fundamentals) {
+                            // 单公司数据
+                            companies = [data];
+                        }
+                        
+                        if (companies.length > 0) {
+                            // 提取所有公司的指标，按分类组织
+                            const categories = {
+                                'valuation': { name: 'Valuation', icon: '💎', color: '#22d3ee', fields: ['market_cap', 'enterprise_value', 'pe_ratio', 'forward_pe', 'peg_ratio', 'price_to_book', 'price_to_sales', 'ev_to_revenue', 'ev_to_ebitda'] },
+                                'profitability': { name: 'Profitability', icon: '📈', color: '#10b981', fields: ['profit_margins', 'operating_margins', 'return_on_assets', 'return_on_equity', 'revenue', 'revenue_per_share', 'gross_profits', 'ebitda', 'net_income', 'eps_trailing', 'eps_forward'] },
+                                'growth': { name: 'Growth', icon: '📊', color: '#3b82f6', fields: ['revenue_growth', 'earnings_growth', 'earnings_quarterly_growth'] },
+                                'financial_health': { name: 'Financial Health', icon: '💼', color: '#f59e0b', fields: ['total_cash', 'total_debt', 'debt_to_equity', 'current_ratio', 'quick_ratio', 'free_cashflow', 'operating_cashflow'] },
+                                'dividend': { name: 'Dividend', icon: '💰', color: '#a855f7', fields: ['dividend_rate', 'dividend_yield', 'payout_ratio', 'five_year_avg_dividend_yield'] },
+                                'analyst_ratings': { name: 'Analyst Ratings', icon: '🎯', color: '#ec4899', fields: ['target_price', 'target_high', 'target_low', 'recommendation', 'number_of_analysts'] }
+                            };
+                            
+                            // 格式化数值
+                            function formatValue(value, fieldName) {
+                                if (value === null || value === undefined || value === '-' || value === '') return '-';
+                                if (typeof value === 'number') {
+                                    // 根据字段类型格式化
+                                    if (fieldName.includes('cap') || fieldName.includes('value') || fieldName.includes('revenue') || fieldName.includes('income') || fieldName.includes('cashflow') || fieldName.includes('debt') || fieldName.includes('cash')) {
+                                        // 大数值：格式化（B=十亿, M=百万）
+                                        if (Math.abs(value) >= 1e9) return (value / 1e9).toFixed(2) + 'B';
+                                        if (Math.abs(value) >= 1e6) return (value / 1e6).toFixed(2) + 'M';
+                                        return value.toFixed(2);
+                                    } else if (fieldName.includes('ratio') || fieldName.includes('pe') || fieldName.includes('pb') || fieldName.includes('ps') || fieldName.includes('ev')) {
+                                        return value.toFixed(2);
+                                    } else if (fieldName.includes('margin') || fieldName.includes('return') || fieldName.includes('growth') || fieldName.includes('yield')) {
+                                        return (value * 100).toFixed(2) + '%';
+                                    } else if (fieldName.includes('price')) {
+                                        return '$' + value.toFixed(2);
+                                    } else {
+                                        return value.toFixed(2);
+                                    }
+                                }
+                                return String(value);
+                            }
+                            
+                            // 生成分类表格
+                            function generateCategoryTable(categoryKey, categoryInfo) {
+                                const categoryData = categoryInfo;
+                                const rows = [];
+                                
+                                // 为每个字段创建一行
+                                categoryData.fields.forEach(field => {
+                                    const row = [field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())];
+                                    
+                                    // 为每个公司添加该字段的值
+                                    companies.forEach(company => {
+                                        const fund = company.fundamentals || company;
+                                        let value = null;
+                                        
+                                        // 根据分类查找值
+                                        if (categoryKey === 'valuation' && fund.valuation) {
+                                            value = fund.valuation[field];
+                                        } else if (categoryKey === 'profitability' && fund.profitability) {
+                                            value = fund.profitability[field];
+                                        } else if (categoryKey === 'growth' && fund.growth) {
+                                            value = fund.growth[field];
+                                        } else if (categoryKey === 'financial_health' && fund.financial_health) {
+                                            value = fund.financial_health[field];
+                                        } else if (categoryKey === 'dividend' && fund.dividend) {
+                                            value = fund.dividend[field];
+                                        } else if (categoryKey === 'analyst_ratings' && fund.analyst_ratings) {
+                                            value = fund.analyst_ratings[field];
+                                        }
+                                        
+                                        row.push(formatValue(value, field));
+                                    });
+                                    
+                                    // 只显示至少有一个非空值的行
+                                    if (row.slice(1).some(v => v !== '-')) {
+                                        rows.push(row);
+                                    }
+                                });
+                                
+                                if (rows.length === 0) return '';
+                                
+                                // 生成表头
+                                const headerRow = ['<th style="padding: 10px 14px; text-align: left; color: ' + categoryData.color + '; font-weight: 700; font-size: 12px;">Metric</th>'];
+                                companies.forEach((company, idx) => {
+                                    const symbol = company.symbol || (company.fundamentals && company.fundamentals.symbol) || `Company ${idx + 1}`;
+                                    headerRow.push('<th style="padding: 10px 14px; text-align: right; color: ' + categoryData.color + '; font-weight: 700; font-size: 12px;">' + escapeHtml(symbol) + '</th>');
+                                });
+                                
+                                // 生成表格行
+                                const tableRows = rows.map((row, idx) => {
+                                    const isEven = idx % 2 === 0;
+                                    const cells = row.map((cell, cellIdx) => {
+                                        if (cellIdx === 0) {
+                                            return '<td style="padding: 10px 14px; color: #f1f5f9; font-weight: 500; font-size: 13px;">' + escapeHtml(cell) + '</td>';
+                                        } else {
+                                            const isValue = cell !== '-';
+                                            return '<td style="padding: 10px 14px; text-align: right; color: ' + (isValue ? '#10b981' : '#94a3b8') + '; font-weight: ' + (isValue ? '700' : '400') + '; font-size: 13px;">' + escapeHtml(cell) + '</td>';
+                                        }
+                                    }).join('');
+                                    return '<tr style="border-bottom: 1px solid ' + categoryData.color + '33; ' + (isEven ? 'background: rgba(255,255,255,0.02);' : 'background: rgba(15, 23, 42, 0.3);') + '">' + cells + '</tr>';
+                                });
+                                
+                                const uniqueId = 'fundamental-' + categoryKey + '-' + Date.now();
+                                
+                                return `
+                                    <div style="margin-bottom: 20px; background: rgba(15, 23, 42, 0.7); border-radius: 10px; border: 1px solid ${categoryData.color}40; overflow: hidden;">
+                                        <div style="background: linear-gradient(135deg, ${categoryData.color}20 0%, ${categoryData.color}10 100%); padding: 14px 16px; border-bottom: 2px solid ${categoryData.color}60; cursor: pointer; user-select: none;"
+                                             onclick="(function(el){const content = el.nextElementSibling; const toggle = el.querySelector('.toggle-icon'); if(content.style.display === 'none'){content.style.display='block';toggle.textContent='▼';}else{content.style.display='none';toggle.textContent='▶';}})(this)">
+                                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                <div style="display: flex; align-items: center; gap: 10px;">
+                                                    <span style="font-size: 18px;">${categoryData.icon}</span>
+                                                    <h4 style="margin: 0; color: ${categoryData.color}; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">${categoryData.name}</h4>
+                                                    <span style="background: ${categoryData.color}30; color: ${categoryData.color}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">${rows.length} metrics</span>
+                                                </div>
+                                                <span class="toggle-icon" style="color: ${categoryData.color}; font-size: 12px; transition: transform 0.2s;">▼</span>
+                                            </div>
+                                        </div>
+                                        <div style="display: block;">
+                                            <div style="overflow-x: auto;">
+                                                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                                                    <thead>
+                                                        <tr style="background: ${categoryData.color}25;">
+                                                            ${headerRow.join('')}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${tableRows.join('')}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            
+                            let tableHtml = `
+                                <div style="margin-top: 8px; padding: 16px; background: rgba(236, 72, 153, 0.08); border-radius: 10px; border: 1px solid rgba(236, 72, 153, 0.2);">
+                                    <div style="font-weight: 600; color: #ec4899; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <span style="font-size: 20px;">📑</span>
+                                            <span style="font-size: 15px;">Company Fundamentals (${companies.length} ${companies.length === 1 ? 'company' : 'companies'})</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                                        ${Object.keys(categories).map(key => generateCategoryTable(key, categories[key])).join('')}
+                                    </div>
+                                </div>
+                            `;
+                            
+                            return tableHtml;
+                        }
+                    }
+                    
+                    // 特殊处理：FRED 经济数据（字符串格式）- 分类显示为Labor和Economic
+                    // CRITICAL FIX: 处理多种数据格式（字符串、对象中的result字段、纯文本标记）
+                    let fredText = null;
+                    if ((toolName === 'get_economic_summary' || toolName === 'get_labor_market_data' || toolName === 'fetch_fred_indicator')) {
+                        // 情况1: 数据是对象，且有result字段（字符串）
+                        if (typeof data === 'object' && data.result && typeof data.result === 'string') {
+                            fredText = data.result;
+                        }
+                        // 情况2: 数据本身就是字符串
+                        else if (typeof data === 'string') {
+                            fredText = data;
+                        }
+                        // 情况3: 数据是纯文本标记对象
+                        else if (typeof data === 'object' && data._is_plain_text && data.raw_text) {
+                            fredText = data.raw_text;
+                        }
+                        // 情况4: 数据是对象，尝试从result字段提取（可能是嵌套的）
+                        else if (typeof data === 'object' && data.result) {
+                            // 递归提取result
+                            let resultData = data.result;
+                            let depth = 0;
+                            while (resultData && typeof resultData === 'object' && resultData.result && depth < 5) {
+                                resultData = resultData.result;
+                                depth++;
+                            }
+                            if (typeof resultData === 'string') {
+                                fredText = resultData;
+                            }
+                        }
+                    }
+                    
+                    if (fredText) {
                         // FRED 数据通常是字符串格式，需要格式化显示
-                        const fredText = data.result;
                         const lines = fredText.split('\n').filter(line => line.trim());
                         
-                        let tableHtml = `
-                            <div style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee;">
-                                <div style="font-weight: 600; color: #22d3ee; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                                    <span>📊</span>
-                                    <span>${toolName === 'get_economic_summary' ? 'US Economic Indicators (FRED)' : toolName === 'get_labor_market_data' ? 'US Labor Market Data (FRED)' : 'FRED Indicator'}</span>
-                                </div>
-                                <div style="overflow-x: auto;">
-                                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
-                                        <thead>
-                                            <tr style="background: rgba(34, 211, 238, 0.25);">
-                                                <th style="padding: 8px 12px; text-align: left; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">INDICATOR</th>
-                                                <th style="padding: 8px 12px; text-align: right; border-bottom: 2px solid rgba(34, 211, 238, 0.4); color: #22d3ee; font-weight: 700;">VALUE</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                        `;
+                        // 分类指标
+                        const laborIndicators = [];
+                        const economicIndicators = [];
+                        let retrievedDate = null;
                         
-                        lines.forEach((line, idx) => {
+                        // 定义劳动力市场指标关键词
+                        const laborKeywords = ['unemployment', 'payroll', 'employment', 'labor', 'job', 'wage'];
+                        
+                        lines.forEach((line) => {
+                            // 提取检索日期
+                            if (line.includes('Retrieved:')) {
+                                const dateMatch = line.match(/Retrieved:\s*(.+)/);
+                                if (dateMatch) retrievedDate = dateMatch[1].trim();
+                                return;
+                            }
+                            
                             // 跳过标题行和空行
                             if (line.includes('===') || line.includes('Data source') || line.trim() === '') {
                                 return;
@@ -5718,30 +6526,101 @@
                                 const value = match[2].trim();
                                 const date = match[3] ? match[3].trim() : null;
                                 
-                                const isEven = idx % 2 === 0;
-                                tableHtml += `
-                                    <tr style="border-bottom: 1px solid rgba(34, 211, 238, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
-                                        <td style="padding: 8px 12px; color: #f1f5f9; font-weight: 600;">${escapeHtml(label)}</td>
-                                        <td style="padding: 8px 12px; text-align: right; color: #10b981; font-weight: 700;">${escapeHtml(value)}${date ? `<br><span style="font-size: 10px; color: #94a3b8; font-weight: 400;">as of ${escapeHtml(date)}</span>` : ''}</td>
-                                    </tr>
-                                `;
-                            } else {
-                                // 如果不是标准格式，显示为普通文本
-                                const isEven = idx % 2 === 0;
-                                tableHtml += `
-                                    <tr style="border-bottom: 1px solid rgba(34, 211, 238, 0.15); ${isEven ? 'background: rgba(255,255,255,0.03);' : 'background: rgba(15, 23, 42, 0.3);'}">
-                                        <td colspan="2" style="padding: 8px 12px; color: #f1f5f9;">${escapeHtml(line)}</td>
-                                    </tr>
-                                `;
+                                const indicator = { label, value, date };
+                                
+                                // 判断是否为劳动力指标
+                                const isLabor = laborKeywords.some(keyword => 
+                                    label.toLowerCase().includes(keyword)
+                                );
+                                
+                                if (isLabor) {
+                                    laborIndicators.push(indicator);
+                                } else {
+                                    economicIndicators.push(indicator);
+                                }
                             }
                         });
                         
-                        tableHtml += `
-                                        </tbody>
-                                    </table>
+                        // 生成分类表格HTML
+                        function generateCategoryTable(indicators, categoryName, categoryColor, categoryIcon) {
+                            if (indicators.length === 0) return '';
+                            
+                            let tableRows = '';
+                            indicators.forEach((indicator, idx) => {
+                                const isEven = idx % 2 === 0;
+                                tableRows += `
+                                    <tr style="border-bottom: 1px solid ${categoryColor}33; ${isEven ? 'background: rgba(255,255,255,0.02);' : 'background: rgba(15, 23, 42, 0.3);'} transition: background 0.2s;" 
+                                        onmouseover="this.style.background='rgba(255,255,255,0.05)'" 
+                                        onmouseout="this.style.background='${isEven ? 'rgba(255,255,255,0.02)' : 'rgba(15, 23, 42, 0.3)'}'">
+                                        <td style="padding: 12px 16px; color: #f1f5f9; font-weight: 500; font-size: 14px;">${escapeHtml(indicator.label)}</td>
+                                        <td style="padding: 12px 16px; text-align: right; color: #10b981; font-weight: 700; font-size: 15px;">
+                                            ${escapeHtml(indicator.value)}
+                                            ${indicator.date ? `<br><span style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-top: 4px; display: block;">as of ${escapeHtml(indicator.date)}</span>` : ''}
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            const uniqueId = 'fred-' + categoryName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+                            
+                            return `
+                                <div style="margin-bottom: 20px; background: rgba(15, 23, 42, 0.7); border-radius: 10px; border: 1px solid ${categoryColor}40; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, ${categoryColor}20 0%, ${categoryColor}10 100%); padding: 16px 18px; border-bottom: 2px solid ${categoryColor}60; cursor: pointer; user-select: none;"
+                                         onclick="(function(el){const content = el.nextElementSibling; const toggle = el.querySelector('.toggle-icon'); if(content.style.display === 'none'){content.style.display='block';toggle.textContent='▼';}else{content.style.display='none';toggle.textContent='▶';}})(this)">
+                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <span style="font-size: 20px;">${categoryIcon}</span>
+                                                <h4 style="margin: 0; color: ${categoryColor}; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;">${categoryName}</h4>
+                                                <span style="background: ${categoryColor}30; color: ${categoryColor}; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${indicators.length}</span>
+                                            </div>
+                                            <span class="toggle-icon" style="color: ${categoryColor}; font-size: 13px; transition: transform 0.2s;">▼</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: block;">
+                                        <div style="overflow-x: auto;">
+                                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                                <thead>
+                                                    <tr style="background: ${categoryColor}25;">
+                                                        <th style="padding: 12px 16px; text-align: left; color: ${categoryColor}; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Indicator</th>
+                                                        <th style="padding: 12px 16px; text-align: right; color: ${categoryColor}; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    ${tableRows}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
+                            `;
+                        }
+                        
+                        let tableHtml = `
+                            <div style="padding: 0;">
+                                <div style="font-weight: 600; color: #22d3ee; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 22px;">📊</span>
+                                        <span style="font-size: 16px;">${toolName === 'get_economic_summary' ? 'US Economic Indicators (FRED)' : toolName === 'get_labor_market_data' ? 'US Labor Market Data (FRED)' : 'FRED Indicator'}</span>
+                                    </div>
+                                    ${retrievedDate ? `<span style="font-size: 12px; color: #94a3b8; font-weight: 400;">Retrieved: ${escapeHtml(retrievedDate)}</span>` : ''}
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                    ${generateCategoryTable(laborIndicators, 'Labor Market', '#3b82f6', '👥')}
+                                    ${generateCategoryTable(economicIndicators, 'Economic Indicators', '#10b981', '📈')}
+                                </div>
+                                ${laborIndicators.length === 0 && economicIndicators.length === 0 ? `
+                                    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 13px;">
+                                        No indicators parsed. Raw data format may be different.
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
+                        
+                        // 如果只有一个分类有数据，使用单列布局
+                        if (laborIndicators.length === 0 || economicIndicators.length === 0) {
+                            tableHtml = tableHtml.replace('grid-template-columns: 1fr 1fr;', 'grid-template-columns: 1fr;');
+                        }
+                        
                         return tableHtml;
                     }
                     
@@ -7021,16 +7900,72 @@
             const valuePct = initialValue > 0 ? ((totalValue - initialValue) / initialValue * 100) : 0;
 
             // 确保 totalValue 正确计算（现金 + 股票价值）
+            let calculatedTotalValue = totalValue;
             if (totalValue === 0 && cash !== undefined && equityValue !== undefined) {
-                totalValue = cash + equityValue;
+                calculatedTotalValue = cash + equityValue;
             }
+            
+            // 计算未实现损益（从持仓数据）
+            let totalUnrealizedPnL = 0;
+            const positionsPnL = portfolio.positions_pnl || {};
+            Object.values(positionsPnL).forEach(pnl => {
+                if (pnl && typeof pnl.unrealized_pnl === 'number') {
+                    totalUnrealizedPnL += pnl.unrealized_pnl;
+                }
+            });
+            
+            // 计算未实现损益百分比（基于持仓成本）
+            // CRITICAL FIX: 优先使用 positions_detail（包含完整信息），如果没有则使用 positions
+            let totalCostBasis = 0;
+            const positionsDetail = portfolio.positions_detail || portfolio.positions || {};
+            Object.values(positionsDetail).forEach(pos => {
+                if (pos && typeof pos === 'object') {
+                    // 是详细对象格式
+                    if (typeof pos.cost_basis === 'number') {
+                        totalCostBasis += pos.cost_basis;
+                    } else if (typeof pos.total_cost === 'number') {
+                        totalCostBasis += pos.total_cost;
+                    } else if (typeof pos.avg_cost === 'number' && typeof pos.quantity === 'number') {
+                        // 从 avg_cost 和 quantity 计算
+                        totalCostBasis += pos.avg_cost * pos.quantity;
+                    }
+                }
+            });
+            const unrealizedPnLPct = totalCostBasis > 0 ? (totalUnrealizedPnL / totalCostBasis * 100) : 0;
+            
+            // CRITICAL FIX: 修复 Total P&L 计算
+            // 后端返回的 total_pnl 可能只包含持仓的未实现盈亏，不包括现金变化
+            // Total P&L 应该是 total_value - initial_value（包括现金和持仓的所有变化）
+            let correctedTotalPnL = totalPnL;
+            let correctedTotalPnLPct = totalPnLPct;
+            
+            if (initialValue > 0) {
+                const calculatedPnL = calculatedTotalValue - initialValue;
+                const calculatedPnLPct = (calculatedPnL / initialValue) * 100;
+                
+                // CRITICAL FIX: 如果后端返回的 total_pnl 与计算值不一致，使用计算值
+                // 允许小的误差（0.01），但如果有明显差异，说明后端计算有误
+                const diff = Math.abs(calculatedPnL - totalPnL);
+                if (diff > 0.01) {
+                    correctedTotalPnL = calculatedPnL;
+                    correctedTotalPnLPct = calculatedPnLPct;
+                    console.warn(`[P&L] Corrected total_pnl: $${totalPnL.toFixed(2)} -> $${correctedTotalPnL.toFixed(2)} (diff: $${diff.toFixed(2)})`);
+                    console.warn(`[P&L] Corrected total_pnl_pct: ${totalPnLPct.toFixed(2)}% -> ${correctedTotalPnLPct.toFixed(2)}%`);
+                } else if ((calculatedPnL >= 0 && totalPnLPct < 0) || (calculatedPnL < 0 && totalPnLPct >= 0)) {
+                    // 如果金额和百分比符号不一致，至少修复百分比
+                    correctedTotalPnLPct = calculatedPnLPct;
+                    console.warn(`[P&L] Corrected total_pnl_pct (sign mismatch): ${totalPnLPct.toFixed(2)}% -> ${correctedTotalPnLPct.toFixed(2)}%`);
+                }
+            }
+            
+            const totalPnLIsPositive = correctedTotalPnL >= 0;
             
             container.innerHTML = `
                 <div class="card">
                     <div class="card-label">Total Portfolio Value</div>
-                    <div class="card-value ${valueUp ? 'value-positive' : 'value-negative'}">${formatCurrency(totalValue)}</div>
+                    <div class="card-value ${valueUp ? 'value-positive' : 'value-negative'}">${formatCurrency(calculatedTotalValue)}</div>
                     <div class="value-subpercent ${valueUp ? 'value-positive' : 'value-negative'}">${valueUp ? '+' : ''}${formatNumber(valuePct)}%</div>
-                    <div class="card-subtitle">Cash + Equity: ${formatCurrency(cash)} + ${formatCurrency(equityValue)} = ${formatCurrency(totalValue)}</div>
+                    <div class="card-subtitle">Cash + Equity: ${formatCurrency(cash)} + ${formatCurrency(equityValue)} = ${formatCurrency(calculatedTotalValue)}</div>
                     <div class="card-subtitle" style="margin-top: 4px;">Initial: ${formatCurrency(initialValue)}</div>
                 </div>
                 <div class="card" style="border: 2px solid rgba(34, 211, 238, 0.5); box-shadow: 0 0 30px rgba(34, 211, 238, 0.3);">
@@ -7038,10 +7973,17 @@
                     <div class="card-value" style="font-size: 32px;">${formatCurrency(cash)}</div>
                     <div class="card-subtitle" style="color: #22d3ee; font-weight: 600;">${cashPercent}% of portfolio</div>
                 </div>
-                <div class="card pnl ${totalPnL >= 0 ? 'positive' : 'negative'}">
+                <div class="card pnl ${totalPnLIsPositive ? 'positive' : 'negative'}">
                     <div class="card-label">Total P&L</div>
-                    <div class="card-value">${totalPnL >= 0 ? '+' : ''}${formatCurrency(totalPnL)}</div>
-                    <div class="card-percent">${totalPnLPct >= 0 ? '+' : ''}${formatNumber(totalPnLPct)}%</div>
+                    <div class="card-value">${totalPnLIsPositive ? '+' : ''}${formatCurrency(correctedTotalPnL)}</div>
+                    <div class="card-percent">${correctedTotalPnLPct >= 0 ? '+' : ''}${formatNumber(correctedTotalPnLPct)}%</div>
+                    <div class="card-subtitle" style="margin-top: 4px; font-size: 11px; color: #94a3b8;">Total Value - Initial Value</div>
+                </div>
+                <div class="card pnl ${totalUnrealizedPnL >= 0 ? 'positive' : 'negative'}" style="border-left: 3px solid ${totalUnrealizedPnL >= 0 ? '#10b981' : '#ef4444'};">
+                    <div class="card-label">📈 Unrealized P&L</div>
+                    <div class="card-value" style="font-size: 28px;">${totalUnrealizedPnL >= 0 ? '+' : ''}${formatCurrency(totalUnrealizedPnL)}</div>
+                    <div class="card-percent">${unrealizedPnLPct >= 0 ? '+' : ''}${formatNumber(unrealizedPnLPct)}%</div>
+                    <div class="card-subtitle" style="margin-top: 4px; font-size: 11px; color: #94a3b8;">Current positions P&L</div>
                 </div>
                 <div class="card">
                     <div class="card-label">Equity Value</div>
@@ -8157,6 +9099,379 @@
             }
         }
 
+        // Performance Analysis Functions
+        async function loadPerformanceData() {
+            // Show loading state
+            const statsCards = document.getElementById('performanceStatsCards');
+            const metricsBody = document.getElementById('performanceMetricsBody');
+            const symbolBody = document.getElementById('symbolAnalysisBody');
+            const tradesContainer = document.getElementById('tradesByDateContainer');
+            
+            if (statsCards) {
+                statsCards.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">
+                    <div class="spinner" style="margin: 0 auto 16px;"></div>
+                    <p>Loading performance data...</p>
+                </div>`;
+            }
+            if (metricsBody) {
+                metricsBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 40px; color: #94a3b8;">Loading...</td></tr>`;
+            }
+            if (symbolBody) {
+                symbolBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">Loading...</td></tr>`;
+            }
+            if (tradesContainer) {
+                tradesContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8;">Loading...</div>`;
+            }
+            
+            try {
+                const startDate = document.getElementById('performanceStartDate')?.value || '';
+                const endDate = document.getElementById('performanceEndDate')?.value || '';
+                
+                // Build query parameters
+                const params = new URLSearchParams();
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+                
+                const queryString = params.toString();
+                const baseUrl = getApiBase();
+                
+                // Fetch all three endpoints in parallel with timeout
+                const fetchWithTimeout = (url, timeout = 30000) => {
+                    return Promise.race([
+                        fetch(url, { mode: 'cors' }),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Request timeout')), timeout)
+                        )
+                    ]);
+                };
+                
+                const [statsResp, tradesByDateResp, symbolResp] = await Promise.all([
+                    fetchWithTimeout(`${baseUrl}/api/performance/statistics${queryString ? '?' + queryString : ''}`),
+                    fetchWithTimeout(`${baseUrl}/api/performance/trades-by-date${queryString ? '?' + queryString : ''}`),
+                    fetchWithTimeout(`${baseUrl}/api/performance/symbol-analysis${queryString ? '?' + queryString : ''}`)
+                ]);
+                
+                const statsData = statsResp.ok ? await statsResp.json() : { ok: false, error: `HTTP ${statsResp.status}` };
+                const tradesByDateData = tradesByDateResp.ok ? await tradesByDateResp.json() : { ok: false, error: `HTTP ${tradesByDateResp.status}` };
+                const symbolData = symbolResp.ok ? await symbolResp.json() : { ok: false, error: `HTTP ${symbolResp.status}` };
+                
+                renderPerformanceStats(statsData);
+                renderTradesByDate(tradesByDateData);
+                renderSymbolAnalysis(symbolData);
+            } catch (error) {
+                console.error('[Performance] Failed to load performance data:', error);
+                const errorMsg = error.message || 'Unknown error';
+                if (statsCards) {
+                    statsCards.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #ef4444;">
+                        <div style="font-size: 18px; margin-bottom: 8px;">❌ Error</div>
+                        <div style="font-size: 14px;">Failed to load performance data: ${escapeHtml(errorMsg)}</div>
+                        <button onclick="loadPerformanceData()" style="margin-top: 16px; padding: 8px 16px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; font-size: 12px;">Retry</button>
+                    </div>`;
+                }
+                if (metricsBody) {
+                    metricsBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 40px; color: #ef4444;">Error: ${escapeHtml(errorMsg)}</td></tr>`;
+                }
+                if (symbolBody) {
+                    symbolBody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #ef4444;">Error: ${escapeHtml(errorMsg)}</td></tr>`;
+                }
+                if (tradesContainer) {
+                    tradesContainer.innerHTML = `<div style="text-align: center; padding: 40px; color: #ef4444;">Error: ${escapeHtml(errorMsg)}</div>`;
+                }
+            }
+        }
+        
+        function renderPerformanceStats(data) {
+            const statsCards = document.getElementById('performanceStatsCards');
+            const metricsBody = document.getElementById('performanceMetricsBody');
+            
+            if (!data.ok || !data.statistics) {
+                const errorMsg = data.error || 'No performance data available';
+                if (statsCards) {
+                    statsCards.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">${errorMsg}</div>`;
+                }
+                if (metricsBody) {
+                    metricsBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 40px; color: #94a3b8;">${errorMsg}</td></tr>`;
+                }
+                return;
+            }
+            
+            const stats = data.statistics;
+            
+            // Render stat cards
+            if (statsCards) {
+                const cards = [
+                    { label: 'Total Return', value: `$${stats.total_return?.toFixed(2) || '0.00'}`, pct: `${stats.total_return_pct?.toFixed(2) || '0.00'}%`, color: stats.total_return >= 0 ? '#10b981' : '#ef4444' },
+                    { label: 'Current Value', value: `$${stats.current_value?.toFixed(2) || '0.00'}`, pct: null, color: '#22d3ee' },
+                    { label: 'Initial Value', value: `$${stats.initial_value?.toFixed(2) || '0.00'}`, pct: null, color: '#94a3b8' },
+                    { label: 'Win Rate', value: `${stats.win_rate?.toFixed(2) || '0.00'}%`, pct: `${stats.winning_trades || 0}/${stats.total_trades || 0}`, color: '#8b5cf6' },
+                    { label: 'Max Drawdown', value: `$${stats.max_drawdown?.toFixed(2) || '0.00'}`, pct: `${stats.max_drawdown_pct?.toFixed(2) || '0.00'}%`, color: '#ef4444' },
+                    { label: 'Sharpe Ratio', value: stats.sharpe_ratio?.toFixed(3) || 'N/A', pct: null, color: '#f59e0b' }
+                ];
+                
+                statsCards.innerHTML = cards.map(card => `
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid ${card.color}40; border-radius: 10px; padding: 16px;">
+                        <div style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">${card.label}</div>
+                        <div style="color: ${card.color}; font-size: 20px; font-weight: 700; margin-bottom: 4px;">${card.value}</div>
+                        ${card.pct ? `<div style="color: #64748b; font-size: 11px;">${card.pct}</div>` : ''}
+                    </div>
+                `).join('');
+            }
+            
+            // Render metrics table
+            if (metricsBody) {
+                const metrics = [
+                    { name: 'Total Return', value: `$${stats.total_return?.toFixed(2) || '0.00'} (${stats.total_return_pct?.toFixed(2) || '0.00'}%)`, desc: 'Total profit/loss from initial investment' },
+                    { name: 'Annualized Return', value: stats.annualized_return_pct ? `${stats.annualized_return_pct.toFixed(2)}%` : 'N/A', desc: 'Annualized return percentage' },
+                    { name: 'Max Drawdown', value: `$${stats.max_drawdown?.toFixed(2) || '0.00'} (${stats.max_drawdown_pct?.toFixed(2) || '0.00'}%)`, desc: 'Maximum peak-to-trough decline' },
+                    { name: 'Win Rate', value: `${stats.win_rate?.toFixed(2) || '0.00'}%`, desc: `Winning trades: ${stats.winning_trades || 0} / ${stats.total_trades || 0}` },
+                    { name: 'Total Trades', value: `${stats.total_trades || 0}`, desc: 'Total number of closed trades' },
+                    { name: 'Realized P&L', value: `$${stats.total_realized_pnl?.toFixed(2) || '0.00'}`, desc: 'Total realized profit/loss from closed trades' },
+                    { name: 'Avg Trade Return', value: `$${stats.avg_trade_return?.toFixed(2) || '0.00'}`, desc: 'Average profit/loss per trade' },
+                    { name: 'Sharpe Ratio', value: stats.sharpe_ratio?.toFixed(3) || 'N/A', desc: 'Risk-adjusted return measure' },
+                    { name: 'Trading Days', value: `${stats.trading_days || 0}`, desc: 'Number of days with trading activity' },
+                    { name: 'Data Points', value: `${stats.data_points || 0}`, desc: 'Number of equity records' }
+                ];
+                
+                metricsBody.innerHTML = metrics.map(m => `
+                    <tr>
+                        <td style="color: #e2e8f0; font-weight: 600;">${m.name}</td>
+                        <td style="color: #22d3ee; font-weight: 700;">${m.value}</td>
+                        <td style="color: #94a3b8; font-size: 12px;">${m.desc}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        
+        // Trades by date expand state
+        const expandedDates = new Set();
+        
+        function renderTradesByDate(data) {
+            const container = document.getElementById('tradesByDateContainer');
+            if (!container) return;
+            
+            if (!data.ok || !data.trades_by_date || data.trades_by_date.length === 0) {
+                container.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8;">No trades by date data available</div>`;
+                return;
+            }
+            
+            const tradesByDate = data.trades_by_date;
+            container.innerHTML = tradesByDate.map((day, idx) => {
+                const isExpanded = expandedDates.has(day.date);
+                const orders = day.orders || [];
+                const hasOrders = orders.length > 0;
+                
+                return `
+                <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${isExpanded && hasOrders ? '12px' : '0'};">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <h4 style="color: #e2e8f0; font-size: 14px; font-weight: 700; margin: 0;">${escapeHtml(day.date)}</h4>
+                            ${hasOrders ? `<span style="font-size: 11px; color: #64748b; cursor: pointer; user-select: none;" onclick="toggleTradeDate('${day.date}')">${isExpanded ? '▼ Hide' : '▶ Show'} Details</span>` : ''}
+                        </div>
+                        <div style="display: flex; gap: 16px; font-size: 12px;">
+                            <span style="color: #94a3b8;">Total: <span style="color: #22d3ee;">${day.total_orders || 0}</span></span>
+                            <span style="color: #94a3b8;">Buy: <span style="color: #10b981;">${day.buy_orders || 0}</span></span>
+                            <span style="color: #94a3b8;">Sell: <span style="color: #ef4444;">${day.sell_orders || 0}</span></span>
+                            <span style="color: #94a3b8;">P&L: <span style="color: ${(day.total_realized_pnl || 0) >= 0 ? '#10b981' : '#ef4444'};">$${(day.total_realized_pnl || 0).toFixed(2)}</span></span>
+                        </div>
+                    </div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: ${isExpanded && hasOrders ? '12px' : '0'};">
+                        Buy Value: $${(day.total_buy_value || 0).toFixed(2)} | Sell Value: $${(day.total_sell_value || 0).toFixed(2)}
+                    </div>
+                    ${isExpanded && hasOrders ? `
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(34, 211, 238, 0.2);">
+                            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px; font-weight: 600;">Order Details:</div>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background: rgba(34, 211, 238, 0.1);">
+                                            <th style="padding: 6px; text-align: left; color: #22d3ee;">Time</th>
+                                            <th style="padding: 6px; text-align: left; color: #22d3ee;">Symbol</th>
+                                            <th style="padding: 6px; text-align: left; color: #22d3ee;">Action</th>
+                                            <th style="padding: 6px; text-align: right; color: #22d3ee;">Qty</th>
+                                            <th style="padding: 6px; text-align: right; color: #22d3ee;">Price</th>
+                                            <th style="padding: 6px; text-align: right; color: #22d3ee;">P&L</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${orders.map((order, oIdx) => {
+                                            const action = (order.action || order.side || '').toUpperCase();
+                                            const time = order.placed_at || order.filled_at || order.timestamp || '';
+                                            const timeDisplay = time ? new Date(time).toLocaleTimeString() : '-';
+                                            return `
+                                            <tr style="${oIdx % 2 === 0 ? 'background: rgba(255,255,255,0.02);' : ''}">
+                                                <td style="padding: 6px; color: #94a3b8;">${timeDisplay}</td>
+                                                <td style="padding: 6px; color: #e2e8f0; font-weight: 600;">${escapeHtml(order.symbol || '-')}</td>
+                                                <td style="padding: 6px; color: ${action === 'BUY' ? '#10b981' : '#ef4444'}; font-weight: 600;">${action}</td>
+                                                <td style="padding: 6px; text-align: right; color: #e2e8f0;">${(order.quantity || 0).toFixed(2)}</td>
+                                                <td style="padding: 6px; text-align: right; color: #e2e8f0;">$${(order.fill_price || order.price || 0).toFixed(2)}</td>
+                                                <td style="padding: 6px; text-align: right; color: ${(order.realized_pnl || 0) >= 0 ? '#10b981' : '#ef4444'}; font-weight: ${order.realized_pnl !== undefined ? '600' : '400'};">${order.realized_pnl !== undefined ? `$${(order.realized_pnl || 0).toFixed(2)}` : '-'}</td>
+                                            </tr>
+                                        `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            }).join('');
+        }
+        
+        function toggleTradeDate(date) {
+            if (expandedDates.has(date)) {
+                expandedDates.delete(date);
+            } else {
+                expandedDates.add(date);
+            }
+            // Re-render trades by date (need to reload data or store it)
+            // For now, just reload
+            loadPerformanceData();
+        }
+        
+        // Set performance date range presets
+        function setPerformanceDateRange(range) {
+            const startDateInput = document.getElementById('performanceStartDate');
+            const endDateInput = document.getElementById('performanceEndDate');
+            if (!startDateInput || !endDateInput) return;
+            
+            const today = new Date();
+            const endDate = new Date(today);
+            endDate.setDate(today.getDate() + 1); // Include today
+            endDateInput.value = endDate.toISOString().split('T')[0];
+            
+            const startDate = new Date(today);
+            if (range === 'week') {
+                startDate.setDate(today.getDate() - 7);
+            } else if (range === 'month') {
+                startDate.setMonth(today.getMonth() - 1);
+            } else if (range === 'all') {
+                startDateInput.value = '';
+                endDateInput.value = '';
+                loadPerformanceData();
+                return;
+            }
+            
+            startDateInput.value = startDate.toISOString().split('T')[0];
+            loadPerformanceData();
+        }
+        
+        // Symbol analysis sorting state
+        let symbolSortColumn = null;
+        let symbolSortDirection = 'desc';
+        
+        function renderSymbolAnalysis(data) {
+            const tbody = document.getElementById('symbolAnalysisBody');
+            const countEl = document.getElementById('symbolCount');
+            if (!tbody) return;
+            
+            if (!data.ok || !data.symbols || data.symbols.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">No symbol analysis data available</td></tr>`;
+                if (countEl) countEl.textContent = '0 symbols';
+                return;
+            }
+            
+            if (countEl) {
+                countEl.textContent = `${data.symbols.length} symbol${data.symbols.length > 1 ? 's' : ''}`;
+            }
+            
+            let symbols = data.symbols;
+            
+            // Apply sorting if column is selected
+            if (symbolSortColumn) {
+                symbols = [...symbols].sort((a, b) => {
+                    let aVal = a[symbolSortColumn];
+                    let bVal = b[symbolSortColumn];
+                    
+                    // Handle null/undefined values
+                    if (aVal === null || aVal === undefined) aVal = symbolSortColumn.includes('pct') || symbolSortColumn.includes('rate') ? -Infinity : 0;
+                    if (bVal === null || bVal === undefined) bVal = symbolSortColumn.includes('pct') || symbolSortColumn.includes('rate') ? -Infinity : 0;
+                    
+                    // Convert to numbers for comparison
+                    if (typeof aVal === 'string' && aVal !== 'N/A') aVal = parseFloat(aVal) || 0;
+                    if (typeof bVal === 'string' && bVal !== 'N/A') bVal = parseFloat(bVal) || 0;
+                    
+                    if (symbolSortDirection === 'asc') {
+                        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                    } else {
+                        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+                    }
+                });
+            }
+            
+            tbody.innerHTML = symbols.map((s, idx) => `
+                <tr style="${idx % 2 === 0 ? 'background: rgba(255,255,255,0.02);' : ''}">
+                    <td style="color: #e2e8f0; font-weight: 700;">${escapeHtml(s.symbol)}</td>
+                    <td style="color: #22d3ee; text-align: right;">${s.total_trades || 0}</td>
+                    <td style="color: #10b981; text-align: right;">${s.buy_orders || 0}</td>
+                    <td style="color: #ef4444; text-align: right;">${s.sell_orders || 0}</td>
+                    <td style="color: ${(s.total_realized_pnl || 0) >= 0 ? '#10b981' : '#ef4444'}; font-weight: 700; text-align: right;">$${(s.total_realized_pnl || 0).toFixed(2)}</td>
+                    <td style="color: ${(s.realized_pnl_pct || 0) >= 0 ? '#10b981' : '#ef4444'}; text-align: right;">${(s.realized_pnl_pct || 0).toFixed(2)}%</td>
+                    <td style="color: #8b5cf6; text-align: right;">${(s.win_rate || 0).toFixed(2)}%</td>
+                    <td style="color: #94a3b8; text-align: right;">${s.avg_holding_days || 'N/A'}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function sortSymbolAnalysis(column) {
+            if (symbolSortColumn === column) {
+                // Toggle direction if same column
+                symbolSortDirection = symbolSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // New column, default to descending
+                symbolSortColumn = column;
+                symbolSortDirection = 'desc';
+            }
+            
+            // Get current data and re-render (don't reload from API)
+            const tbody = document.getElementById('symbolAnalysisBody');
+            if (tbody && tbody.children.length > 0) {
+                // Extract data from current table rows
+                const rows = Array.from(tbody.children);
+                const symbols = rows.map(row => {
+                    const cells = row.children;
+                    return {
+                        symbol: cells[0].textContent.trim(),
+                        total_trades: parseInt(cells[1].textContent.trim()) || 0,
+                        buy_orders: parseInt(cells[2].textContent.trim()) || 0,
+                        sell_orders: parseInt(cells[3].textContent.trim()) || 0,
+                        total_realized_pnl: parseFloat(cells[4].textContent.replace('$', '').trim()) || 0,
+                        realized_pnl_pct: parseFloat(cells[5].textContent.replace('%', '').trim()) || 0,
+                        win_rate: parseFloat(cells[6].textContent.replace('%', '').trim()) || 0,
+                        avg_holding_days: cells[7].textContent.trim() === 'N/A' ? null : parseInt(cells[7].textContent.trim()) || null
+                    };
+                });
+                
+                // Sort and re-render
+                const sorted = [...symbols].sort((a, b) => {
+                    let aVal = a[column];
+                    let bVal = b[column];
+                    
+                    if (aVal === null || aVal === undefined) aVal = column.includes('pct') || column.includes('rate') ? -Infinity : 0;
+                    if (bVal === null || bVal === undefined) bVal = column.includes('pct') || column.includes('rate') ? -Infinity : 0;
+                    
+                    if (symbolSortDirection === 'asc') {
+                        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                    } else {
+                        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+                    }
+                });
+                
+                tbody.innerHTML = sorted.map((s, idx) => `
+                    <tr style="${idx % 2 === 0 ? 'background: rgba(255,255,255,0.02);' : ''}">
+                        <td style="color: #e2e8f0; font-weight: 700;">${escapeHtml(s.symbol)}</td>
+                        <td style="color: #22d3ee; text-align: right;">${s.total_trades}</td>
+                        <td style="color: #10b981; text-align: right;">${s.buy_orders}</td>
+                        <td style="color: #ef4444; text-align: right;">${s.sell_orders}</td>
+                        <td style="color: ${s.total_realized_pnl >= 0 ? '#10b981' : '#ef4444'}; font-weight: 700; text-align: right;">$${s.total_realized_pnl.toFixed(2)}</td>
+                        <td style="color: ${s.realized_pnl_pct >= 0 ? '#10b981' : '#ef4444'}; text-align: right;">${s.realized_pnl_pct.toFixed(2)}%</td>
+                        <td style="color: #8b5cf6; text-align: right;">${s.win_rate.toFixed(2)}%</td>
+                        <td style="color: #94a3b8; text-align: right;">${s.avg_holding_days || 'N/A'}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
         function renderTrades(trades) {
             const tbody = document.getElementById('tradesBody');
             const countEl = document.getElementById('tradesCount');
@@ -8998,6 +10313,10 @@
                     
                     // 如果需要更新，添加最新点到history（每30分钟一次）并记录到后端
                     if (needsUpdate) {
+                        // CRITICAL FIX: 重置下一次更新时间（因为刚刚更新了图表）
+                        nextEquityUpdateTime = calculateNextEquityUpdateTime();
+                        updateNextEquityUpdateDisplay();
+                        
                         const latestPoint = {
                             date: today,
                             timestamp: timestamp,
@@ -9049,11 +10368,19 @@
                     if (shouldUpdateEquityChart) {
                         await renderEquityChart();      // 更新净值曲线图（每30分钟一次）
                         console.log('[Refresh] Equity chart updated (30min)');
+                        // CRITICAL FIX: 重置下一次更新时间（因为刚刚更新了图表）
+                        nextEquityUpdateTime = calculateNextEquityUpdateTime();
+                        updateNextEquityUpdateDisplay();
                     } else {
                         // 不更新图表，但确保图表存在
                         if (!equityChart) {
                             await renderEquityChart();
                         }
+                    }
+                    
+                    // CRITICAL FIX: 启动净值更新倒计时（如果还没有启动）
+                    if (!equityUpdateCountdownTimer) {
+                        startEquityUpdateCountdown();
                     }
                     
                     renderDistributionChart(portfolio); // 更新持仓圆饼图（每30秒）
@@ -9515,6 +10842,19 @@
                 // CRITICAL FIX: Pass isManualTrigger=true for manual button click
                 await executeTradeCycle(true);
                 
+                // Update next auto-trade time after manual trade execution
+                // This allows auto-trade to start scheduling after first manual trade
+                // CRITICAL FIX: 只有在没有保存的时间时才设置新时间（避免覆盖已保存的时间）
+                if (tradeCheckTimer && (!nextAutoTradeTime || nextAutoTradeTime <= Date.now())) {
+                    const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
+                    nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
+                    saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
+                    updateNextTradeTime();
+                    console.log('[Manual] Next auto-trade scheduled in 30 minutes');
+                } else if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
+                    console.log('[Manual] Using existing nextAutoTradeTime:', new Date(nextAutoTradeTime).toLocaleString());
+                }
+                
                 // ✅ Auto Trade 现在自动管理，不需要手动启动
             } catch (e) {
                 console.error('[Manual] Error:', e);
@@ -9655,14 +10995,19 @@
             // 过滤掉 Jin10 经济数据，只保留 FRED 数据
             const fredData = economicData.filter(entry => {
                 const toolName = entry.tool_name || '';
-                return toolName !== 'fetch_jin10_economic_data';
+                return toolName !== 'fetch_jin10_economic_data' && toolName !== 'fetch_jin10_economic_calendar';
             });
+            
+            // Debug: Log what tools we have
+            console.log('[Economic Data] Total economic tools:', economicData.length);
+            console.log('[Economic Data] FRED tools:', fredData.map(e => e.tool_name));
             
             if (fredData.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; color: #94a3b8; padding: 40px;">
                         <p>No economic data available yet.</p>
                         <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators.</p>
+                        <p style="font-size: 11px; margin-top: 6px; color: #64748b;">Available tools: get_economic_summary, get_labor_market_data, get_treasury_yield_curve, fetch_fred_indicator</p>
                     </div>
                 `;
                 if (countElement) countElement.textContent = '0 indicators';
@@ -9678,11 +11023,30 @@
             let html = '';
             fredData.forEach((toolEntry, index) => {
                 const toolName = toolEntry.tool_name || 'Unknown';
-                const toolResult = toolEntry.tool_result || {};
+                let toolResult = toolEntry.tool_result;
                 const timestamp = toolEntry.timestamp || '';
                 const agent = toolEntry.agent || 'Unknown';
                 
+                // CRITICAL FIX: 处理FRED数据格式
+                // tool_result 可能是字符串、对象、或包含result字段的对象
+                // 需要统一转换为 formatToolResultAsTable 能处理的格式
+                if (toolResult === null || toolResult === undefined) {
+                    toolResult = {};
+                } else if (typeof toolResult === 'string') {
+                    // 如果是字符串，直接传递给 formatToolResultAsTable（它会处理FRED字符串）
+                    // 不需要包装，因为 formatToolResultAsTable 已经能处理字符串格式的FRED数据
+                } else if (typeof toolResult === 'object' && !toolResult.result && !toolResult._is_plain_text) {
+                    // 如果对象没有result字段，尝试查找字符串字段
+                    // 检查是否有直接的字符串值
+                    const stringValues = Object.values(toolResult).filter(v => typeof v === 'string' && v.length > 50);
+                    if (stringValues.length > 0) {
+                        // 使用第一个长字符串值作为result（可能是FRED数据）
+                        toolResult = stringValues[0];
+                    }
+                }
+                
                 // 使用已有的 formatToolResultAsTable 函数格式化显示
+                // CRITICAL FIX: 直接传递 toolResult（可能是字符串），让 formatToolResultAsTable 处理
                 const formattedResult = formatToolResultAsTable(toolResult, toolName);
                 
                 // 确定工具显示名称（只显示 FRED 数据，不包括 Jin10）
@@ -9691,18 +11055,21 @@
                     displayName = 'US Economic Indicators (FRED)';
                 } else if (toolName === 'get_labor_market_data') {
                     displayName = 'US Labor Market Data (FRED)';
+                } else if (toolName === 'get_treasury_yield_curve') {
+                    displayName = 'US Treasury Yield Curve (FRED)';
                 } else if (toolName === 'fetch_fred_indicator') {
                     displayName = 'FRED Indicator';
-                } else if (toolName === 'fetch_jin10_economic_data') {
+                } else if (toolName === 'fetch_jin10_economic_data' || toolName === 'fetch_jin10_economic_calendar') {
                     // 跳过 Jin10 经济数据，不显示
                     return;
                 }
                 
+                // CRITICAL FIX: 统一使用外层包装，简化层级结构
                 html += `
-                    <div style="margin-bottom: 24px; padding: 16px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.2);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 18px;">📊</span>
+                    <div style="margin-bottom: 24px; padding: 18px; background: rgba(15, 23, 42, 0.6); border-radius: 10px; border: 1px solid rgba(34, 211, 238, 0.2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 20px;">📊</span>
                                 <h3 style="margin: 0; color: #22d3ee; font-size: 16px; font-weight: 600;">${escapeHtml(displayName)}</h3>
                             </div>
                             <div style="display: flex; align-items: center; gap: 12px;">
@@ -9710,9 +11077,7 @@
                                 ${timestamp ? `<span style="font-size: 11px; color: #6b7280;">${new Date(timestamp).toLocaleString()}</span>` : ''}
                             </div>
                         </div>
-                        <div style="margin-top: 12px;">
-                            ${formattedResult}
-                        </div>
+                        ${formattedResult}
                     </div>
                 `;
             });
@@ -10067,9 +11432,11 @@
                 const dashboardPage = document.getElementById('dashboardPage');
                 const tradesPageEl = document.getElementById('tradesPage');
                 const allocationPage = document.getElementById('allocationPage');
+                const performancePage = document.getElementById('performancePage');
                 
                 if (dashboardPage) dashboardPage.style.display = 'none';
                 if (allocationPage) allocationPage.style.display = 'none';
+                if (performancePage) performancePage.style.display = 'none';
                 if (tradesPageEl) {
                     tradesPageEl.style.display = 'block';
                     // 重置分页到第一页（直接设置，renderTrades会处理）
@@ -10103,6 +11470,39 @@
                 return;
             }
             
+            // 特殊处理：Performance Analysis 页面切换
+            if (sectionId === 'performance-section') {
+                const dashboardPage = document.getElementById('dashboardPage');
+                const tradesPageEl = document.getElementById('tradesPage');
+                const allocationPage = document.getElementById('allocationPage');
+                const performancePage = document.getElementById('performancePage');
+                
+                if (dashboardPage) dashboardPage.style.display = 'none';
+                if (tradesPageEl) tradesPageEl.style.display = 'none';
+                if (allocationPage) allocationPage.style.display = 'none';
+                if (performancePage) {
+                    performancePage.style.display = 'block';
+                    // Set default date range (last week) if not already set
+                    const startDateInput = document.getElementById('performanceStartDate');
+                    const endDateInput = document.getElementById('performanceEndDate');
+                    if (startDateInput && !startDateInput.value) {
+                        setPerformanceDateRange('week');
+                    } else {
+                        loadPerformanceData();
+                    }
+                }
+                
+                // Update active nav button
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                if (event && event.target) {
+                    const navBtn = event.target.closest('.nav-btn');
+                    if (navBtn) navBtn.classList.add('active');
+                }
+                return;
+            }
+            
             // 其他section：在dashboardPage中滚动
             const dashboardPage = document.getElementById('dashboardPage');
             if (dashboardPage) {
@@ -10115,6 +11515,10 @@
             const allocationPage = document.getElementById('allocationPage');
             if (allocationPage) {
                 allocationPage.style.display = 'none';
+            }
+            const performancePage = document.getElementById('performancePage');
+            if (performancePage) {
+                performancePage.style.display = 'none';
             }
             
             const section = document.getElementById(sectionId);

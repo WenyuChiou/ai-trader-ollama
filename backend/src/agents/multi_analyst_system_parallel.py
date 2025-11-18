@@ -35,6 +35,7 @@ def run_multi_analyst_discussion_parallel(
     portfolio_value: Optional[float] = None,
     available_cash: Optional[float] = None,
     enable_parallel: bool = True,
+    historical_memories: Optional[List[Dict[str, Any]]] = None,  # 新增：历史记忆
 ) -> Dict[str, Any]:
     """
     Run multi-analyst discussion with parallel execution (optimized version)
@@ -160,6 +161,7 @@ def run_multi_analyst_discussion_parallel(
     
     # Use sequential version but with optimizations
     # In the future, this can be replaced with true parallel execution
+    # CRITICAL FIX: 传递 historical_memories 给 sequential version
     result = run_sequential(
         market_view=market_view,
         use_tools=use_tools,
@@ -167,7 +169,8 @@ def run_multi_analyst_discussion_parallel(
         order_status=order_status,
         current_positions=current_positions,
         portfolio_value=portfolio_value,
-        available_cash=available_cash
+        available_cash=available_cash,
+        historical_memories=historical_memories,  # 传递历史记忆
     )
     
     # CRITICAL FIX: Update market_conditions with news count from tool calls

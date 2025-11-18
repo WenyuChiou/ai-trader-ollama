@@ -107,14 +107,28 @@ if (Test-Path $initScript) {
 
 Write-Host ""
 
-Write-Host "[Step 2.4] Checking environment variables..." -ForegroundColor Yellow
+Write-Host "[Step 2.4] Checking environment variables and API keys..." -ForegroundColor Yellow
 $fredKey = $env:FRED_API_KEY
-if ($fredKey) {
-    Write-Host "[OK] FRED_API_KEY is set" -ForegroundColor Green
+$fredKeyInConfig = $null
+# Check both config.json root level and llm section
+if ($configContent.fred_api_key) {
+    $fredKeyInConfig = $configContent.fred_api_key
+} elseif ($configContent.llm -and $configContent.llm.fred_api_key) {
+    $fredKeyInConfig = $configContent.llm.fred_api_key
+}
+
+if ($fredKey -or $fredKeyInConfig) {
+    if ($fredKey) {
+        Write-Host "[OK] FRED_API_KEY found in environment variable" -ForegroundColor Green
+    }
+    if ($fredKeyInConfig) {
+        Write-Host "[OK] FRED_API_KEY found in config.json" -ForegroundColor Green
+    }
 } else {
     Write-Host "[INFO] FRED_API_KEY not set (optional, for economic data)" -ForegroundColor Yellow
     Write-Host "  Get free API key from: https://fred.stlouisfed.org/docs/api/api_key.html" -ForegroundColor White
-    Write-Host "  Set with: `$env:FRED_API_KEY='your_key_here'" -ForegroundColor White
+    Write-Host "  Option 1: Set environment variable: `$env:FRED_API_KEY='your_key_here'" -ForegroundColor White
+    Write-Host "  Option 2: Add to config.json: `"fred_api_key`": `"your_key_here`"" -ForegroundColor White
 }
 
 Write-Host ""

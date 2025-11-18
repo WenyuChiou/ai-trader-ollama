@@ -1,48 +1,53 @@
+# Agent Configuration
+# NOTE: All agents use the unified model from config.json -> llm.default_model
+# If you need a specific agent to use a different model, uncomment and set the "model" field for that agent
+# Model priority: agents.yaml model field > config.json llm.default_model > "llama3.1"
+
 market_agent:
   name: Market Data & Quotes
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.2
   prompt_file: ../prompts/market_agent.yml
 
 risk_analyst:
   name: Risk Analyst
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.2
   prompt_file: ../prompts/risk_analyst.yml
 
 market_analyst:
   name: Market Analyst (TA / bias)
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.3
   prompt_file: ../prompts/market_analyst.yml
 
 technical_analyst:
   name: Technical Analyst
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.2
   prompt_file: ../prompts/technical_analyst.yml
 
 fundamental_analyst:
   name: Fundamental Analyst
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.2
   prompt_file: ../prompts/fundamental_analyst.yml
 
 sentiment_analyst:
   name: Sentiment Analyst
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.3
   prompt_file: ../prompts/sentiment_analyst.yml
 
 discussion_agent:
   name: Discussion / Consensus
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.3
   prompt_file: ../prompts/discussion_agent.yml
 
 trader_agent:
   name: Trader / Order Proposals
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.25
   prompt_file: ../prompts/trader_agent.yml
 

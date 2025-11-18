@@ -1,7 +1,7 @@
 {
-  "cash": 180.3890151977539,
+  "cash": 13.196717262268066,
   "initial_value": 10000.0,
-  "total_value": 10001.429180145264,
+  "total_value": 9997.476883888245,
   "positions": {
     "PSQ": {
       "quantity": 36,
@@ -49,16 +49,16 @@
       "total_cost": 1073.39990234375
     },
     "SQQQ": {
-      "quantity": 67,
-      "avg_cost": 15.213731381430554,
-      "total_cost": 1019.3200025558472
+      "quantity": 78,
+      "avg_cost": 15.211696160145294,
+      "total_cost": 1186.512300491333
     }
   },
-  "timestamp": "2025-11-18T18:43:40.543463Z",
+  "timestamp": "2025-11-18T22:13:35.054459Z",
   "snapshot": {
-    "cash": 180.3890151977539,
-    "total_value": 10001.429180145264,
-    "equity_value": 9821.04016494751,
+    "cash": 13.196717262268066,
+    "total_value": 9997.476883888245,
+    "equity_value": 9984.280166625977,
     "positions_count": 10
   }
 }

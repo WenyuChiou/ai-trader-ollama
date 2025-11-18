@@ -9,9 +9,9 @@ from src.tools.news_tools import (
     search_web, fetch_url, news_scan, plan_and_scan_news
 )
 from src.tools.crypto_tools import fetch_crypto_batch, get_crypto_price
-from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data
+from src.tools.jin10_tools import fetch_jin10_news, fetch_jin10_economic_data, fetch_jin10_economic_calendar
 from src.tools.economic_indicators import (
-    get_economic_summary, get_labor_market_data, fetch_fred_indicator
+    get_economic_summary, get_labor_market_data, fetch_fred_indicator, get_treasury_yield_curve
 )
 from src.tools.technical_indicators import (
     calculate_advanced_indicators, get_support_resistance
@@ -58,6 +58,7 @@ class ToolBox:
         # fetch_jin10_news 和 fetch_jin10_economic_data 是 LangChain StructuredTool，需要适配器
         self.register(Tool("fetch_jin10_news", self._jin10_news_adapter, "Fetch financial news and market flash from Jin10 (https://www.jin10.com/) - Chinese financial data platform"))
         self.register(Tool("fetch_jin10_economic_data", self._jin10_economic_data_adapter, "Fetch economic and employment data from Jin10 news (non-VIP content) - extracts CPI, PMI, GDP, employment data, etc."))
+        self.register(Tool("fetch_jin10_economic_calendar", self._jin10_economic_calendar_adapter, "Fetch economic calendar from Jin10 (forecast, previous, actual values, release times) - includes scheduled economic data releases"))
 
         # news / web primitives
         self.register(Tool("web_search", self._web_search_adapter, "DuckDuckGo search (whitelist domains)"))
@@ -69,7 +70,8 @@ class ToolBox:
         # economic data (FRED API)
         self.register(Tool("get_economic_summary", self._economic_summary_adapter, "Get summary of key US economic indicators (GDP, unemployment, CPI, Fed funds rate, etc.) from FRED API"))
         self.register(Tool("get_labor_market_data", self._labor_market_adapter, "Get US labor market data (unemployment rate, nonfarm payrolls, labor force, initial claims) from FRED API"))
-        self.register(Tool("fetch_fred_indicator", self._fred_indicator_adapter, "Fetch specific economic indicator from FRED API by series_id (e.g., GDP, UNRATE, CPIAUCSL, FEDFUNDS)"))
+        self.register(Tool("get_treasury_yield_curve", self._treasury_yield_curve_adapter, "Get US Treasury yield curve (short-term: 1M, 3M, 6M, 1Y, 2Y and long-term: 5Y, 10Y, 30Y rates) from FRED API"))
+        self.register(Tool("fetch_fred_indicator", self._fred_indicator_adapter, "Fetch specific economic indicator from FRED API by series_id (e.g., GDP, UNRATE, CPIAUCSL, FEDFUNDS, DGS2, DGS10, DGS30)"))
         
         # technical indicators (advanced)
         self.register(Tool("get_advanced_indicators", self._advanced_indicators_adapter, "Calculate advanced technical indicators (RSI, MACD, Bollinger Bands, ADX, Stochastic, ATR, OBV, Volume) for a stock"))
@@ -315,6 +317,20 @@ class ToolBox:
             return fetch_jin10_economic_data.invoke(kwargs)
         # 否则直接调用
         return fetch_jin10_economic_data(**kwargs)
+    
+    def _jin10_economic_calendar_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：fetch_jin10_economic_calendar 是 LangChain StructuredTool，需要使用 .invoke()
+        """
+        # 设置默认参数（如果 kwargs 为空）
+        if not kwargs:
+            kwargs = {"days_ahead": 7, "country": "all"}
+        
+        # 如果 fetch_jin10_economic_calendar 是 StructuredTool，使用 .invoke()
+        if hasattr(fetch_jin10_economic_calendar, 'invoke'):
+            return fetch_jin10_economic_calendar.invoke(kwargs)
+        # 否则直接调用
+        return fetch_jin10_economic_calendar(**kwargs)
 
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """
@@ -327,9 +343,9 @@ class ToolBox:
             tickers = kwargs.pop("stocks", None)
             if isinstance(tickers, str):
                 tickers = [tickers]
-            elif not tickers:
-                # 如果没有提供，使用默认值
-                tickers = ["AAPL", "MSFT", "NVDA"]  # 默认股票列表
+            elif not tickers or (isinstance(tickers, list) and len(tickers) == 0):
+                # 如果没有提供或为空列表，使用默认值（用于通用市场新闻搜索）
+                tickers = ["AAPL", "MSFT", "NVDA", "TSLA", "GOOGL"]  # 默认股票列表
         
         # 确保 tickers 是列表
         if isinstance(tickers, str):
@@ -369,6 +385,16 @@ class ToolBox:
         except Exception as e:
             return {"ok": False, "error": str(e)}
     
+    def _treasury_yield_curve_adapter(self, **kwargs) -> Dict[str, Any]:
+        """
+        适配器：get_treasury_yield_curve 不需要参数，返回字符串摘要
+        """
+        try:
+            result = get_treasury_yield_curve()
+            return {"ok": True, "result": result}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
     def _fred_indicator_adapter(self, **kwargs) -> Dict[str, Any]:
         """
         适配器：fetch_fred_indicator 需要 series_id 参数

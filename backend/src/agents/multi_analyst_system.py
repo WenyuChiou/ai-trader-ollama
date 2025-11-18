@@ -23,6 +23,7 @@ def run_multi_analyst_discussion(
     current_positions: Optional[Dict[str, Any]] = None,  # 新增：当前仓位信息
     portfolio_value: Optional[float] = None,  # 新增：组合净值
     available_cash: Optional[float] = None,  # 新增：可用现金
+    historical_memories: Optional[List[Dict[str, Any]]] = None,  # 新增：历史记忆
 ) -> Dict[str, Any]:
     """
     运行多Analyst讨论系统
@@ -284,6 +285,20 @@ def run_multi_analyst_discussion(
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
                     
+                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    if tool_name == "news_scan":
+                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        tool_call = {
+                            "name": "plan_and_scan_news",
+                            "args": {
+                                **tool_call.get("args", {}),
+                                "fetch_body_top": 5,  # 获取前5篇文章的内容
+                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                            },
+                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                        }
+                        tool_name = "plan_and_scan_news"
+                    
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -295,12 +310,15 @@ def run_multi_analyst_discussion(
                         
                         if is_memory_tool:
                             # 显示记忆工具调用结果摘要
+                            # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
                             if isinstance(tool_result, dict):
                                 if tool_result.get("ok"):
-                                    count = tool_result.get("count", 0)
+                                    # Extract actual result from nested structure
+                                    actual_result = tool_result.get("result", tool_result)
+                                    count = actual_result.get("count", 0)
                                     print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
                                     if tool_name == "get_recent_memories" and count > 0:
-                                        memories = tool_result.get("memories", [])
+                                        memories = actual_result.get("memories", [])
                                         if memories:
                                             dates = [m.get("date", "N/A") for m in memories[:3]]
                                             print(f"   [MEMORY] 📅 Recent memory dates: {', '.join(dates)}")
@@ -636,6 +654,21 @@ def run_multi_analyst_discussion(
                         print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
+                    
+                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    if tool_name == "news_scan":
+                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        tool_call = {
+                            "name": "plan_and_scan_news",
+                            "args": {
+                                **tool_call.get("args", {}),
+                                "fetch_body_top": 5,
+                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                            },
+                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                        }
+                        tool_name = "plan_and_scan_news"
+                    
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -646,8 +679,10 @@ def run_multi_analyst_discussion(
                         tool_calls_count += 1
                         
                         if is_memory_tool:
+                            # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
                             if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                count = tool_result.get("count", 0)
+                                actual_result = tool_result.get("result", tool_result)
+                                count = actual_result.get("count", 0)
                                 print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
                             else:
                                 print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
@@ -879,6 +914,21 @@ def run_multi_analyst_discussion(
                         print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
+                    
+                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    if tool_name == "news_scan":
+                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        tool_call = {
+                            "name": "plan_and_scan_news",
+                            "args": {
+                                **tool_call.get("args", {}),
+                                "fetch_body_top": 5,
+                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                            },
+                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                        }
+                        tool_name = "plan_and_scan_news"
+                    
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -889,8 +939,10 @@ def run_multi_analyst_discussion(
                         tool_calls_count += 1
                         
                         if is_memory_tool:
+                            # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
                             if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                count = tool_result.get("count", 0)
+                                actual_result = tool_result.get("result", tool_result)
+                                count = actual_result.get("count", 0)
                                 print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
                             else:
                                 print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
@@ -959,17 +1011,17 @@ def run_multi_analyst_discussion(
                 tool_calls_list = [
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
                     {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
-                    {"name": "news_scan", "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 2}, "why": "Fallback: Get latest market news (last 48 hours) for sentiment analysis"}
+                    {"name": "plan_and_scan_news", "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 5}, "why": "Fallback: Get latest market news with article content (last 48 hours) for sentiment analysis"}
                 ]
             # 即使agent请求了工具，也确保news_scan被包含（如果还没有）
             elif tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"] for tc in tool_calls_list)
                 if not has_news_tool and tool_calls_count + len(tool_calls_list) < tool_budget:
-                    print(f"   [INFO] Adding news_scan to tool calls (news analysis is important for sentiment)")
+                    print(f"   [INFO] Adding plan_and_scan_news to tool calls (news analysis with content is important for sentiment)")
                     tool_calls_list.append({
-                        "name": "news_scan", 
-                        "args": {"keywords": ["market", "stocks", "economy", "AI", "tariff"], "max_articles": 10, "recency_days": 2}, 
-                        "why": "Added: News analysis is critical for sentiment assessment (latest 48 hours)"
+                        "name": "plan_and_scan_news", 
+                        "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 5}, 
+                        "why": "Added: News analysis with article content is critical for sentiment assessment (latest 48 hours, top 5 articles with content)"
                     })
             
             # 收集工具调用结果
@@ -991,6 +1043,21 @@ def run_multi_analyst_discussion(
                         print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
+                    
+                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    if tool_name == "news_scan":
+                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        tool_call = {
+                            "name": "plan_and_scan_news",
+                            "args": {
+                                **tool_call.get("args", {}),
+                                "fetch_body_top": 5,
+                                "tickers": tool_call.get("args", {}).get("tickers", [])
+                            },
+                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                        }
+                        tool_name = "plan_and_scan_news"
+                    
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -1001,8 +1068,10 @@ def run_multi_analyst_discussion(
                         tool_calls_count += 1
                         
                         if is_memory_tool:
+                            # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
                             if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                count = tool_result.get("count", 0)
+                                actual_result = tool_result.get("result", tool_result)
+                                count = actual_result.get("count", 0)
                                 print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
                             else:
                                 print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
@@ -1049,6 +1118,7 @@ def run_multi_analyst_discussion(
     try:
         # 创建Discussion Agent来统整观点
         coordinator = fac.create("discussion_agent")
+        # CRITICAL FIX: 传递 historical_memories 给 Coordinator
         coordinator_summary = _run_discussion_coordinator(
             coordinator=coordinator,
             discussion_history=discussion_history,
@@ -1056,6 +1126,7 @@ def run_multi_analyst_discussion(
             market_view=market_view,
             toolbox=toolbox if use_tools else None,
             tool_budget=max(0, tool_budget - tool_calls_count),
+            historical_memories=historical_memories,  # 传递历史记忆
         )
         
         if coordinator_summary:
@@ -1474,8 +1545,8 @@ def _generate_analysis_from_tools(
 4. News sentiment trends
 5. Contrarian signals"""
     
-    # 检查工具结果中是否包含新闻数据
-    has_news_data = "news_scan" in tool_results_text.lower() or "news" in tool_results_text.lower()
+    # 检查工具结果中是否包含新闻数据（包括 plan_and_scan_news）
+    has_news_data = any(keyword in tool_results_text.lower() for keyword in ["news_scan", "plan_and_scan_news", "news", "articles", "excerpt"])
     
     # 构建新闻分析要求
     news_analysis_requirement = ""
@@ -1484,14 +1555,17 @@ def _generate_analysis_from_tools(
 
 **CRITICAL: News Analysis Requirement (if news data is present in tool results):**
 - You MUST explicitly mention and analyze news content in your summary
+- **IMPORTANT**: If article content (excerpt) is available in tool results, you MUST analyze the actual article content, not just the title
 - For each relevant news article you select (choose the most important 2-3 articles, not random ones):
   1. **Title**: State the news article title
-  2. **Summary**: Provide a 50-100 word summary of the article's key points
-  3. **Relevance**: Explain why this news is relevant to your {analyst_type} analysis
-  4. **Impact**: Assess how this news might impact market sentiment or your analysis
-- Format: "News Analysis: [Title] - [50-100 word summary explaining key points and relevance to {analyst_type} analysis]"
+  2. **Content Analysis**: If article excerpt/content is available, analyze the actual content. If only title is available, infer key points from title
+  3. **Summary**: Provide a 50-100 word summary based on article content (if available) or title analysis
+  4. **Relevance**: Explain why this news is relevant to your {analyst_type} analysis
+  5. **Impact**: Assess how this news might impact market sentiment or your analysis
+- Format: "News Analysis: [Title] - [50-100 word summary based on article content explaining key points and relevance to {analyst_type} analysis]"
 - You must SELECT the most relevant news articles yourself, not just mention any random article
-- If multiple news articles are available, prioritize those most relevant to your {analyst_type} perspective"""
+- If multiple news articles are available, prioritize those most relevant to your {analyst_type} perspective
+- **IMPORTANT**: When article content/excerpt is provided, use it for analysis. Do not rely solely on titles."""
 
     analysis_prompt = f"""Based on the tool results below, provide a comprehensive {analyst_type} analysis in natural language format (NOT JSON, just plain text).
 
@@ -1505,7 +1579,7 @@ def _generate_analysis_from_tools(
 **Important Requirements:**
 1. Write a comprehensive analysis in natural language, approximately 100-150 words in length (aim for 100-150 words)
 2. Synthesize all tool results you've gathered (technical indicators, fundamental data, sentiment metrics, news content, etc.)
-3. **MANDATORY**: If news data is present in tool results, you MUST explicitly mention and analyze news content with titles and 50-100 word summaries for selected articles
+3. **MANDATORY**: If news data is present in tool results, you MUST explicitly mention and analyze news content. If article content/excerpt is available, analyze the actual content. If only titles are available, provide analysis based on titles.
 4. Start directly with your analysis - do NOT include "Analysis:" prefix or JSON format
 5. Provide specific insights based on the actual tool data
 6. Include concrete numbers and observations from the tools
@@ -1615,23 +1689,58 @@ def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
             vix = tool_result.get("vix", {})
             return f"VIX: {vix.get('vix', 'N/A')}, Term structure: {vix.get('term_structure', 'N/A')}"
         elif tool_name in ["news_scan", "plan_and_scan_news"]:
-            # 格式化新闻结果：提取文章标题、来源和链接，让agent能够分析
+            # 格式化新闻结果：提取文章标题、来源、链接和内容，让agent能够分析
             hits = tool_result.get("hits", [])
-            if hits:
+            articles = tool_result.get("articles", [])  # plan_and_scan_news 返回的文章内容（包含excerpt，前800字符）
+            
+            # CRITICAL: 优先使用 articles（包含内容），如果没有则使用 hits（只有标题）
+            if articles:
+                # 有文章内容，优先显示
+                news_items = []
+                for article in articles[:5]:  # 显示前5篇有内容的文章
+                    title = article.get("title", "No title")
+                    source = article.get("source", "Unknown")
+                    url = article.get("url", "")
+                    excerpt = article.get("excerpt", "")
+                    
+                    news_str = f"  Title: {title}\n  Source: {source}"
+                    if url:
+                        news_str += f"\n  Link: {url}"
+                    if excerpt:
+                        # 显示文章内容（前800字符）
+                        news_str += f"\n  Content: {excerpt[:500]}..." if len(excerpt) > 500 else f"\n  Content: {excerpt}"
+                    news_items.append(news_str)
+                
+                # 如果有更多 hits 但没有内容，也列出标题
+                if len(hits) > len(articles):
+                    remaining_hits = hits[len(articles):]
+                    for hit in remaining_hits[:5]:  # 最多再显示5个标题
+                        title = hit.get("title", "No title")
+                        source = hit.get("source", "Unknown")
+                        link = hit.get("link", "")
+                        news_str = f"  Title: {title}\n  Source: {source}"
+                        if link:
+                            news_str += f"\n  Link: {link}"
+                        news_str += "\n  Content: [Title only - no content available]"
+                        news_items.append(news_str)
+                
+                return f"News articles ({len(articles)} with content, {len(hits)} total):\n" + "\n".join(news_items)
+            elif hits:
+                # 只有 hits（标题），没有文章内容
                 news_items = []
                 for hit in hits[:10]:  # 最多显示10篇新闻
                     title = hit.get("title", "No title")
                     source = hit.get("source", "Unknown")
                     link = hit.get("link", "")
                     published = hit.get("published", hit.get("published_timestamp", ""))
-                    # 格式化：标题 (来源) [链接]
-                    news_str = f"{title} (Source: {source})"
+                    news_str = f"  Title: {title}\n  Source: {source}"
                     if link:
-                        news_str += f" [Link: {link}]"
+                        news_str += f"\n  Link: {link}"
                     if published:
-                        news_str += f" [Published: {published}]"
+                        news_str += f"\n  Published: {published}"
+                    news_str += "\n  Content: [Title only - no content available. Consider using plan_and_scan_news with fetch_body_top to get article content.]"
                     news_items.append(news_str)
-                return f"News articles ({len(hits)} total):\n" + "\n".join(news_items[:10])
+                return f"News articles ({len(hits)} total, titles only - no content):\n" + "\n".join(news_items)
             else:
                 queries = tool_result.get("queries", [])
                 return f"No news found. Queries used: {', '.join(queries) if queries else 'N/A'}"
@@ -1717,6 +1826,32 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
                 # 如果没有 domains 也没有 query，返回错误
                 print(f"   [TOOL_ERR] web_search requires 'query' or 'keywords' parameter")
                 return {"error": "web_search requires 'query' or 'keywords' parameter"}
+    
+    # 处理 plan_and_scan_news 工具：确保有 mview 参数和 fetch_body_top
+    if tool_name == "plan_and_scan_news":
+        # 如果没有设置 fetch_body_top，默认获取前5篇文章的内容
+        if "fetch_body_top" not in tool_args or tool_args.get("fetch_body_top", 0) == 0:
+            tool_args["fetch_body_top"] = 5
+            print(f"   [INFO] Auto-set fetch_body_top=5 for plan_and_scan_news to get article content")
+        
+        # 如果没有提供 mview，从 market_summary 创建
+        if "mview" not in tool_args and market_summary:
+            tool_args["mview"] = {
+                "vix": market_summary.get("vix", {}),
+                "stocks": market_summary.get("stocks", {}),
+            }
+            print(f"   [INFO] Auto-added mview parameter to plan_and_scan_news from market_summary")
+        elif "mview" not in tool_args:
+            # 如果没有 market_summary，创建空的 mview
+            tool_args["mview"] = {"vix": {}, "stocks": {}}
+            print(f"   [INFO] Auto-added empty mview parameter to plan_and_scan_news")
+    
+    # CRITICAL FIX: 如果 agent 请求了 news_scan，建议改用 plan_and_scan_news 以获取文章内容
+    # 但为了兼容性，仍然支持 news_scan
+    if tool_name == "news_scan":
+        # 如果可能，建议改用 plan_and_scan_news
+        if "fetch_body_top" not in tool_args:
+            print(f"   [INFO] news_scan only returns titles. Consider using plan_and_scan_news with fetch_body_top for article content.")
     
     # 处理 news_scan 工具：确保有 keywords
     if tool_name == "news_scan":
@@ -1884,6 +2019,43 @@ def _extract_summary_from_text(
     text_response = re.sub(r'```json\s*\n?([\s\S]*?)\n?```', '', text_response, flags=re.IGNORECASE)
     text_response = re.sub(r'```\s*\n?([\s\S]*?)\n?```', '', text_response)
     
+    # CRITICAL FIX: 尝试提取并移除 JSON 对象（如果存在）
+    # 如果整个响应是 JSON 格式（以 { 开头），尝试解析并提取有意义的内容
+    if text_response.strip().startswith('{'):
+        try:
+            # 尝试解析为 JSON
+            json_data = json.loads(text_response)
+            # 如果是 JSON，尝试提取有意义的内容
+            # 检查是否有 "summary" 或 "analysis" 字段
+            if isinstance(json_data, dict):
+                # 如果 JSON 包含 "to_agent_notes" 或类似字段，说明这是元数据，不是真正的 summary
+                if "to_agent_notes" in json_data or "Waiting for" in str(json_data):
+                    # 这是元数据 JSON，不是真正的 summary，应该被忽略
+                    text_response = ""  # 清空，让后续逻辑使用 fallback
+                elif "summary" in json_data:
+                    text_response = str(json_data.get("summary", ""))
+                elif "analysis" in json_data:
+                    text_response = str(json_data.get("analysis", ""))
+                else:
+                    # 如果 JSON 没有 summary/analysis 字段，尝试从其他字段构建
+                    # 但如果是元数据（包含 "Waiting for", "tool_calls", "actions" 等），应该被忽略
+                    if any(key in json_data for key in ["tool_calls", "actions", "signals_used", "to_agent_notes"]):
+                        text_response = ""  # 清空，让后续逻辑使用 fallback
+        except json.JSONDecodeError:
+            # 不是有效 JSON，继续处理
+            pass
+    
+    # 如果 text_response 被清空（因为检测到元数据 JSON），直接返回空，让后续逻辑使用 fallback
+    if not text_response.strip():
+        return {
+            "stance": "neutral",
+            "summary": "",  # 空 summary，让调用者使用 fallback
+            "consensus_points": [],
+            "disagreements": [],
+            "key_points": [],
+            "recommendations": [],
+        }
+    
     # 尝试提取并移除 JSON 对象（如果存在）
     json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
     json_matches = re.findall(json_pattern, text_response, re.DOTALL)
@@ -1892,7 +2064,14 @@ def _extract_summary_from_text(
         for json_match in json_matches:
             try:
                 # 验证是否是有效的 JSON
-                json.loads(json_match)
+                parsed_json = json.loads(json_match)
+                # 如果是元数据 JSON（包含 "Waiting for", "tool_calls" 等），移除
+                if isinstance(parsed_json, dict):
+                    if any(key in parsed_json for key in ["tool_calls", "actions", "signals_used", "to_agent_notes"]):
+                        if "Waiting for" in str(parsed_json) or "tool_calls" in parsed_json:
+                            # 这是元数据 JSON，移除
+                            text_response = text_response.replace(json_match, '').strip()
+                            continue
                 # 如果是有效 JSON，从文本中移除
                 text_response = text_response.replace(json_match, '').strip()
             except:
@@ -2034,6 +2213,7 @@ def _run_discussion_coordinator(
     market_view: Dict[str, Any],
     toolbox: Optional[ToolBox] = None,
     tool_budget: int = 5,
+    historical_memories: Optional[List[Dict[str, Any]]] = None,  # 新增：历史记忆
 ) -> Optional[Dict[str, Any]]:
     """
     运行Discussion Coordinator来统整所有analyst的观点
@@ -2065,6 +2245,17 @@ def _run_discussion_coordinator(
             coordinator_prompt += f"  Analysis: {analysis}\n"
             if tools_used:
                 coordinator_prompt += f"  Tools used: {', '.join(tools_used[:5])}\n"
+    
+    # CRITICAL FIX: 添加历史记忆信息到 Coordinator prompt
+    if historical_memories and len(historical_memories) > 0:
+        memory_summary = "**Recent Trading History (Last 5 Days):**\n"
+        for mem in historical_memories[:3]:  # 只显示最近3天的记忆
+            date_str = mem.get("date", "N/A")
+            stance = mem.get("stance", "N/A")
+            decisions = mem.get("decisions", {})
+            action = decisions.get("action", "N/A")
+            memory_summary += f"- {date_str}: Stance={stance}, Action={action}\n"
+        coordinator_prompt += f"\n{memory_summary}\n"
     
     coordinator_prompt += f"""
 

@@ -1,6 +1,6 @@
 {
   "date": "2025-11-18",
-  "timestamp": "2025-11-18T13:43:40.549335",
+  "timestamp": "2025-11-18T17:13:35.063967",
   "metadata": {
     "version": "1.0",
     "compressed": false
@@ -839,28 +839,28 @@
     "final_stance": "bullish",
     "rounds": null,
     "transcript": [
-      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market is in a strong bullish phase, with major indices at all-time highs. S&P 500 (5,200), NASDAQ (17,500), and Dow (38,000) are leading the rally. Sector rotation favors Technology and Consumer Discretionary, while Energy and Utilities lag. Market breadth is excellent, with an advance-decline ratio of 1.8 and 95% of stocks participating. Economic indicators show moderate growth, easing inflation, and accommodative monetary policy (Fed rate cuts). VIX is low at 12, signaling low volatility. News highlights: Fed rate cuts to stimulate economy and strong earnings beats by tech giants. Impact: Fed cuts support bullish stance; earnings beats validate market confidence. Overall, the market is in a mid-cycle bullish regime with strong momentum and broad participation.\nTools Used: get_market_indices, get_sector_rotation, get_market_breadth, get_economic_indicators, get_news_scan\nKey Points:\n  - Increase exposure to high-growth sectors like Technology and Consumer Discretionary.\n  - Consider tactical positions in leveraged ETFs like TQQQ for amplified gains.\n  - Monitor VIX for potential volatility spikes.",
-      "--- Technical Analyst ---\nStance: neutral_to_bullish\nAnalysis: The market is showing signs of consolidation after recent volatility. Current holdings like TQQQ and SPXL are overbought, suggesting potential near-term pullbacks despite bullish long-term trends. The RSI for TQMQ and SPXL indicates overbought conditions, while MACD divergence in SPXL suggests a possible short-term reversal. Support levels around $95-100 for TQMQ and $65-70 for SPXL could be key entry points for leveraged plays. News analysis highlights the Federal Reserve's hawkish pivot and earnings season volatility as key drivers. The upcoming Fed rate decision (2024-07-03) could impact sentiment significantly. The semiconductor sector faces inventory risks but benefits from AI growth. Overall, the technical picture favors selective long-term positions with tight stop losses.\nTools Used: get_advanced_indicators, get_market_indices, get_news_scan, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators\nKey Points:\n  - Add to PSQ inverse position if SPXL breaks below $70 support\n  - Consider rolling out of expiring TQMQ LEAPS if market consolidates above $100\n  - Trim SPXL position if MACD crossover occurs below zero line",
-      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The fundamental analysis reveals a mixed portfolio with high valuations in tech stocks like AAPL and TSLA, supported by strong earnings growth but elevated P/E ratios. NVDA shows robust innovation but high debt, while AMZN has solid financials. Inverse ETFs like PSQ and SPXU are recommended for overvalued tech sectors. Leveraged ETFs like TQOO could capitalize on semiconductor growth if fundamentals hold. News analysis highlights AI advancements for AAPL and supply chain resilience for AMZN, both positive but tempered by valuation concerns. Overall, the portfolio needs diversification into undervalued sectors like industrials or consumer staples to mitigate tech concentration risks.\nTools Used: get_company_fundamentals, get_earnings_history\nKey Points:\n  - {'symbol': 'PSQ', 'action': 'Buy', 'reason': 'Inverse exposure to overvalued tech sector.'}\n  - {'symbol': 'TQOO', 'action': 'Buy', 'reason': 'Leveraged exposure to undervalued semiconductors sector.'}\n  - {'symbol': 'SPXL', 'action': 'Sell', 'reason': 'Overvalued and high debt-to-equity ratio.'}",
-      "--- Sentiment Analyst ---\nStance: bullish\nAnalysis: The market sentiment is currently dominated by extreme bullishness, driven by strong economic data, positive earnings reports from major tech companies, and accommodative monetary policy expectations. The VIX remains near multi-year lows, reflecting low volatility and investor confidence. News sentiment is overwhelmingly positive, with articles highlighting strong Q2 earnings beats and Fed pivot expectations. Contrarian signals are muted, as extreme greed coincides with market upside. Overall, sentiment indicators align with continued market strength, though caution is warranted due to extreme bullishness.\nKey Points:\n  - Leverage into TQQQ and SPXL for continued market upside.\n  - Consider shorting PSQ if overconfidence leads to a pullback.\n  - Monitor contrarian signals for potential tactical entries.",
-      "--- Discussion Coordinator ---\nStance: neutral\nAnalysis: Market Analyst: The market is in a strong bullish phase, with major indices at all-time highs. S&P 500 (5,200), NASDAQ (17,500), and Dow (38,000) are leading the rally. Sector rotation favors Technology and Consumer Discretionary, while Energy and Utilities lag. Market breadth is excellent, with an advance-decline ratio of 1.8 and 95% of stocks participating. Economic indicators show moderate growth, easing inflation, and accommodative monetary policy (Fed rate cuts). VIX is low at 12, signaling low volatility. News highlights: Fed rate cuts to stimulate economy and strong earnings beats by tech giants. Impact: Fed cuts support bullish stance; earnings beats validate market confidence. Overall, the market is in a mid-cycle bullish regime with strong momentum and broad participation. | Technical Analyst: The market is showing signs of consolidation after recent volatility. Current holdings like TQQQ and SPXL are overbought, suggesting potential near-term pullbacks despite bullish long-term trends. The RSI for TQMQ and SPXL indicates overbought conditions, while MACD divergence in SPXL suggests a possible short-term reversal. Support levels around $95-100 for TQMQ and $65-70 for SPXL could be key entry points for leveraged plays. News analysis highlights the Federal Reserve's hawkish pivot and earnings season volatility as key drivers. The upcoming Fed rate decision (2024-07-03) could impact sentiment significantly. The semiconductor sector faces inventory risks but benefits from AI growth. Overall, the technical picture favors selective long-term positions with tight stop losses. | Fundamental Analyst: The fundamental analysis reveals a mixed portfolio with high valuations in tech stocks like AAPL and TSLA, supported by strong earnings growth but elevated P/E ratios. NVDA shows robust innovation but high debt, while AMZN has solid financials. Inverse ETFs like PSQ and SPXU are recommended for overvalued tech sectors. Leveraged ETFs like TQOO could capitalize on semiconductor growth if fundamentals hold. News analysis highlights AI advancements for AAPL and supply chain resilience for AMZN, both positive but tempered by valuation concerns. Overall, the portfolio needs diversification into undervalued sectors like industrials or consumer staples to mitigate tech concentration risks. | Sentiment Analyst: The market sentiment is currently dominated by extreme bullishness, driven by strong economic data, positive earnings reports from major tech companies, and accommodative monetary policy expectations. The VIX remains near multi-year lows, reflecting low volatility and investor confidence. News sentiment is overwhelmingly positive, with articles highlighting strong Q2 earnings beats and Fed pivot expectations. Contrarian signals are muted, as extreme greed coincides with market upside. Overall, sentiment indicators align with continued market strength, though caution is warranted due to extreme bullishness.\n"
+      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market shows a bullish bias with strong tech leadership. The NASDAQ is up 2.1% YoY, driven by AI/ML advancements and Fed's accommodative stance. Sector rotation favors Technology and Financials, with a neutral outlook for Energy. Market breadth is strong, with an A/D ratio of 1.15. Economic indicators point to moderate growth (0.5% Q/Q GDP) and controlled inflation (CPI at 2.8%). VIX remains low at 12, indicating low volatility. News highlights: 1) Fed's hawkish pivot concerns markets, but data suggests gradual easing. 2) AI advancements boost tech valuations. Impact: Markets likely remain range-bound with upside in tech. Risk-on stance justified by economic recovery and tech leadership.\nTools Used: get_recent_memories, get_economic_summary, get_market_indices, get_sector_rotation\nKey Points:\n  - Add to TQQQ\n  - Hedge with SDS\n  - Monitor SPXL",
+      "--- Technical Analyst ---\nStance: neutral_to_bullish\nAnalysis: The portfolio's holdings in leveraged ETFs (TQQQ, SPXL) and inverse ETFs (SQQQ, PSQ) indicate a high-risk, directional bias. TQXL shows strong bullish momentum with a rising MACD and RSI above 70, suggesting potential upside on market recovery. SPXL is overbought (RSI 78) but maintains bullish momentum, signaling a possible near-term pullback. PSQ is oversold (RSI 42) with a bearish MACD, indicating potential recovery if broader tech declines. News analysis: 1) 'Fed Signals Rate Cuts Amid Weak Data' - Fed hints at easing, boosting TQXL and SPXL. 2) 'Tech Earnings Beat Expectations' - Positive earnings could support NASDAQ-linked ETFs. 3) 'Inflation Data Fails to Surprise Markets' - Suggests Fed patience, aiding bullish ETFs. Overall, technicals favor leveraged plays on recovery but remain cautious due to elevated risks.\nTools Used: get_advanced_indicators, get_market_indices, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators\nKey Points:\n  - Hold current positions with stop-loss at key support levels.\n  - Consider shorting TSLA if it breaks below $175 with high volume.\n  - Use SPXL for leveraged exposure to SPY if it holds above 450.",
+      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The portfolio's tech-heavy exposure requires careful fundamental assessment. Apple (AAPL) demonstrates strong profitability and cash flow generation, with a sustainable competitive advantage. Tesla (TSLA) shows impressive growth but faces valuation challenges and execution risks. Nvidia (NVDA) is a high-growth leader in AI but carries significant valuation risk. Semtech (SQQQ) and PowerShares (PSQ) are inverse ETFs with inherent volatility and complex structures. Financially, AAPL has a strong balance sheet with manageable debt. TSLA's debt-to-equity ratio is elevated, while NVDA's cash flow is robust but debt is substantial. Recent news highlights the Federal Reserve's rate pause and earnings surprise trends, impacting growth stock valuations. Overall, fundamentals support selective long positions in high-quality tech companies but caution against overexposure to growth at current valuations.\nTools Used: get_company_fundamentals, get_earnings_history, get_earnings_surprise\nKey Points:\n  - Buy AAPL at current price (position already exists)\n  - Sell TSLA due to overvaluation and recent earnings miss\n  - Hold NVDA but monitor valuation closely",
+      "--- Sentiment Analyst ---\nStance: neutral_to_bullish\nAnalysis: The market sentiment appears bullish with extreme greed (55/100) and low volatility (VIX 18). News scan highlights positive AI advancements (Nvidia) but also inflation concerns. Market breadth is strong, with few contrarian signals. The high greed level suggests potential overextension, while the low VIX indicates complacency. Overall, sentiment is optimistic but with underlying risks.\nKey Points:\n  - Consider long positions in AI-related stocks (e.g., NVDA).\n  - Monitor inflation data for potential short plays on rate-sensitive stocks.\n  - Use inverse ETFs (e.g., PSQ) cautiously if a market correction is anticipated.",
+      "--- Discussion Coordinator ---\nStance: bullish\nAnalysis: Summary of analyst perspectives:\nMarket Analyst: The market shows a bullish bias with strong tech leadership. The NASDAQ is up 2.1% YoY, driven by AI/ML advancements and Fed's accommodative stance. Sector rotation favors Technology and Financials, with a neutral outlook for Energy. Market breadth is strong, with an A/D ratio of 1.15. Economic indicators point to moderate growth (0.5% Q/Q GDP) and controlled inflation (CPI at 2.8%). VIX remains low at 12, indicating low volatility. News highlights: 1) Fed's hawkish pivot concerns markets, but data suggests gradual easing. 2) AI advancements boost tech valuations. Impact: Markets likely remain range-bound with upside in tech. Risk-on stance justified by economic recovery and tech leadership.\nTechnical Analyst: The portfolio's holdings in leveraged ETFs (TQQQ, SPXL) and inverse ETFs (SQQQ, PSQ) indicate a high-risk, directional bias. TQXL shows strong bullish momentum with a rising MACD and RSI above 70, suggesting potential upside on market recovery. SPXL is overbought (RSI 78) but maintains bullish momentum, signaling a possible near-term pullback. PSQ is oversold (RSI 42) with a bearish MACD, indicating potential recovery if broader tech declines. News analysis: 1) 'Fed Signals Rate Cuts Amid Weak Data' - Fed hints at easing, boosting TQXL and SPXL. 2) 'Tech Earnings Beat Expectations' - Positive earnings could support NASDAQ-linked ETFs. 3) 'Inflation Data Fails to Surprise Markets' - Suggests Fed patience, aiding bullish ETFs. Overall, technicals favor leveraged plays on recovery but remain cautious due to elevated risks.\nFundamental Analyst: The portfolio's tech-heavy exposure requires careful fundamental assessment. Apple (AAPL) demonstrates strong profitability and cash flow generation, with a sustainable competitive advantage. Tesla (TSLA) shows impressive growth but faces valuation challenges and execution risks. Nvidia (NVDA) is a high-growth leader in AI but carries significant valuation risk. Semtech (SQQQ) and PowerShares (PSQ) are inverse ETFs with inherent volatility and complex structures. Financially, AAPL has a strong balance sheet with manageable debt. TSLA's debt-to-equity ratio is elevated, while NVDA's cash flow is robust but debt is substantial. Recent news highlights the Federal Reserve's rate pause and earnings surprise trends, impacting growth stock valuations. Overall, fundamentals support selective long positions in high-quality tech companies but caution against overexposure to growth at current valuations.\nKey Points:\n  - Hold current positions with stop-loss at key support levels.\n  - Hedge with SDS\n  - Buy AAPL at current price (position already exists)\n"
     ],
     "tool_context": [
+      "MarketAnalyst: get_recent_memories",
+      "MarketAnalyst: get_economic_summary",
       "MarketAnalyst: get_market_indices",
       "MarketAnalyst: get_sector_rotation",
-      "MarketAnalyst: get_market_breadth",
-      "MarketAnalyst: get_economic_indicators",
-      "MarketAnalyst: get_news_scan",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_market_indices",
-      "TechnicalAnalyst: get_news_scan",
+      "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "FundamentalAnalyst: get_company_fundamentals",
-      "FundamentalAnalyst: get_earnings_history"
+      "FundamentalAnalyst: get_earnings_history",
+      "FundamentalAnalyst: get_earnings_surprise"
     ],
     "actions": null
   },
@@ -995,7 +995,7 @@
           "adjustment": "HOLD"
         },
         "BKR": {
-          "current_pct": 0.1053,
+          "current_pct": 0.1054,
           "max_pct": 0.15,
           "adjustment": "HOLD"
         },
@@ -1005,7 +1005,7 @@
           "adjustment": "HOLD"
         },
         "SPXL": {
-          "current_pct": 0.0828,
+          "current_pct": 0.1036,
           "max_pct": 0.15,
           "adjustment": "HOLD"
         },
@@ -1015,12 +1015,12 @@
           "adjustment": "HOLD"
         },
         "AMZN": {
-          "current_pct": 0.0931,
+          "current_pct": 0.0932,
           "max_pct": 0.15,
           "adjustment": "HOLD"
         },
         "TQQQ": {
-          "current_pct": 0.102,
+          "current_pct": 0.1021,
           "max_pct": 0.15,
           "adjustment": "HOLD"
         },
@@ -1035,7 +1035,7 @@
           "adjustment": "HOLD"
         },
         "SQQQ": {
-          "current_pct": 0.0875,
+          "current_pct": 0.1158,
           "max_pct": 0.15,
           "adjustment": "HOLD"
         }
@@ -1059,7 +1059,7 @@
         {
           "symbol": "SPXL",
           "status": "OK",
-          "message": "Within limits (8.3%)"
+          "message": "Within limits (10.4%)"
         },
         {
           "symbol": "NVDA",
@@ -1089,7 +1089,7 @@
         {
           "symbol": "SQQQ",
           "status": "OK",
-          "message": "Within limits (8.8%)"
+          "message": "Within limits (11.6%)"
         }
       ]
     },
@@ -1100,69 +1100,22 @@
     ]
   },
   "decision": {
-    "action": "BUY",
-    "targets": [
-      {
-        "symbol": "SPXL",
-        "action": "BUY",
-        "price": 207.4841473388672,
-        "quantity": 1,
-        "value": 207.4841473388672
-      },
-      {
-        "symbol": "SQQQ",
-        "action": "BUY",
-        "price": 14.869680152893066,
-        "quantity": 8,
-        "value": 118.95744122314453
-      },
-      {
-        "symbol": "UPRO",
-        "action": "BUY",
-        "price": 109.1278236694336,
-        "quantity": 1,
-        "value": 109.1278236694336
-      }
-    ],
-    "buy_orders": [
-      {
-        "symbol": "SPXL",
-        "buy_price": 207.4841473388672,
-        "buy_price_min": 206.03465728759767,
-        "buy_price_max": 208.10535736083983,
-        "quantity": 1,
-        "total_cost": 207.4841473388672
-      },
-      {
-        "symbol": "SQQQ",
-        "buy_price": 14.869680152893066,
-        "buy_price_min": 14.765800151824951,
-        "buy_price_max": 14.914200153350828,
-        "quantity": 8,
-        "total_cost": 118.95744122314453
-      },
-      {
-        "symbol": "UPRO",
-        "buy_price": 109.1278236694336,
-        "buy_price_min": 108.36545364379883,
-        "buy_price_max": 109.4545536804199,
-        "quantity": 1,
-        "total_cost": 109.1278236694336
-      }
-    ],
+    "action": "HOLD",
+    "targets": [],
+    "buy_orders": [],
     "sell_orders": [],
-    "rationale": "Buying 3 stocks (SPXL, SQQQ, UPRO); stance=NEUTRAL, VIX risk=4.0. Analysis: Market Analyst: The market is in a strong bullish phase, with major indices at all-time highs. S&P 500 (5,200), NASDAQ (17,500), and Dow (38,000) are leading the rally. Sector rotation favors Technology and Consumer Discretionary, while Energy and Utilities lag. Market breadth is excellent, with an advance-decline ratio of 1.8 and 95% of stocks participating. Economic indicators show moderate growth, easing inflation, and accommodative monetary policy (Fed rate cuts). VIX is low at 12, signaling low volatility. News highlights: Fed rate cuts to stimulate economy and strong earnings beats by tech giants. Impact: Fed cuts support bullish stance; earnings beats validate market confidence. Overall, the market is in a mid-cycle bullish regime with strong momentum and broad participation. | Technical Analyst: The market is showing signs of consolidation after recent volatility. Current holdings like TQQQ and SPXL are overbought, suggesting potential near-term pullbacks despite bullish long-term trends. The RSI for TQMQ and SPXL indicates overbought conditions, while MACD divergence in SPXL suggests a possible short-term reversal. Support levels around $95-100 for TQMQ and $65-70 for SPXL could be key entry points for leveraged plays. News analysis highlights the Federal Reserve's hawkish pivot and earnings season volatility as key drivers. The upcoming Fed rate decision (2024-07-03) could impact sentiment significantly. The semiconductor sector faces inventory risks but benefits from AI growth. Overall, the technical picture favors selective long-term positions with tight stop losses. | Fundamental Analyst: The fundamental analysis reveals a mixed portfolio with high valuations in tech stocks like AAPL and TSLA, supported by strong earnings growth but elevated P/E ratios. NVDA shows robust innovation but high debt, while AMZN has solid financials. Inverse ETFs like PSQ and SPXU are recommended for overvalued tech sectors. Leveraged ETFs like TQOO could capitalize on semiconductor growth if fundamentals hold. News analysis highlights AI advancements for AAPL and supply chain resilience for AMZN, both positive but tempered by valuation concerns. Overall, the portfolio needs diversification into undervalued sectors like industrials or consumer staples to mitigate tech concentration risks. | Sentiment Analyst: The market sentiment is currently dominated by extreme bullishness, driven by strong economic data, positive earnings reports from major tech companies, and accommodative monetary policy expectations. The VIX remains near multi-year lows, reflecting low volatility and investor confidence. News sentiment is overwhelmingly positive, with articles highlighting strong Q2 earnings beats and Fed pivot expectations. Contrarian signals are muted, as extreme greed coincides with market upside. Overall, sentiment indicators align with continued market strength, though caution is warranted due to extreme bullishness.",
-    "summary": "**Market Status:** OPEN\n\n**Trading Rationale:** The market is currently in a strong bullish phase, confirmed by technical and fundamental analysis, with low VIX risk (4.0) indicating stability. Our neutral stance reflects cautious optimism amidst extreme bullish sentiment and overbought conditions in key holdings like SPXL and TQQQ. We generated three buy orders (SPXL, SQQQ, UPRO) for short-term leveraged plays, capitalizing on expected market strength and momentum, despite potential near-term pullbacks. Existing positions show mixed P&L, with winners like AMZN and AAPL offsetting minor losses elsewhere. These new orders aim to capture potential gains while managing risk.",
+    "rationale": "Market is closed. Analysis completed but no trading orders generated (market orders only execute during trading hours: 9:30 AM - 4:00 PM ET). Market stance: NEUTRAL, VIX risk: 4.0 Analysis: Summary of analyst perspectives:\nMarket Analyst: The market shows a bullish bias with strong tech leadership. The NASDAQ is up 2.1% YoY, driven by AI/ML advancements and Fed's accommodative stance. Sector rotation favors Technology and Financials, with a neutral outlook for Energy. Market breadth is strong, with an A/D ratio of 1.15. Economic indicators point to moderate growth (0.5% Q/Q GDP) and controlled inflation (CPI at 2.8%). VIX remains low at 12, indicating low volatility. News highlights: 1) Fed's hawkish pivot concerns markets, but data suggests gradual easing. 2) AI advancements boost tech valuations. Impact: Markets likely remain range-bound with upside in tech. Risk-on stance justified by economic recovery and tech leadership.\nTechnical Analyst: The portfolio's holdings in leveraged ETFs (TQQQ, SPXL) and inverse ETFs (SQQQ, PSQ) indicate a high-risk, directional bias. TQXL shows strong bullish momentum with a rising MACD and RSI above 70, suggesting potential upside on market recovery. SPXL is overbought (RSI 78) but maintains bullish momentum, signaling a possible near-term pullback. PSQ is oversold (RSI 42) with a bearish MACD, indicating potential recovery if broader tech declines. News analysis: 1) 'Fed Signals Rate Cuts Amid Weak Data' - Fed hints at easing, boosting TQXL and SPXL. 2) 'Tech Earnings Beat Expectations' - Positive earnings could support NASDAQ-linked ETFs. 3) 'Inflation Data Fails to Surprise Markets' - Suggests Fed patience, aiding bullish ETFs. Overall, technicals favor leveraged plays on recovery but remain cautious due to elevated risks.\nFundamental Analyst: The portfolio's tech-heavy exposure requires careful fundamental assessment. Apple (AAPL) demonstrates strong profitability and cash flow generation, with a sustainable competitive advantage. Tesla (TSLA) shows impressive growth but faces valuation challenges and execution risks. Nvidia (NVDA) is a high-growth leader in AI but carries significant valuation risk. Semtech (SQQQ) and PowerShares (PSQ) are inverse ETFs with inherent volatility and complex structures. Financially, AAPL has a strong balance sheet with manageable debt. TSLA's debt-to-equity ratio is elevated, while NVDA's cash flow is robust but debt is substantial. Recent news highlights the Federal Reserve's rate pause and earnings surprise trends, impacting growth stock valuations. Overall, fundamentals support selective long positions in high-quality tech companies but caution against overexposure to growth at current valuations.",
+    "summary": "**Market Assessment Summary**\n\nThe market is currently CLOSED (trading not permitted). Analysis indicates a NEUTRAL stance, with a low VIX Risk (4.0), reflecting normal volatility conditions. Key factors include a bullish bias from market and technical analysis, cautious optimism from fundamentals regarding tech stocks, and concerns about overbought conditions. Current positions show modest gains or losses, with limited available cash ($13.20). Trading orders cannot be generated during market closure. Analysis continues 24/7, but trading execution is restricted to market hours (9:30 AM - 4:00 PM ET).",
     "stance": "NEUTRAL",
     "vix_risk": 4.0,
     "risk_compliance": {
-      "position_limits_ok": false,
+      "position_limits_ok": true,
       "diversification_ok": true,
       "warnings": []
     }
   },
   "portfolio_snapshot": {
-    "cash": 180.3890151977539,
+    "cash": 13.196717262268066,
     "positions": {
       "PSQ": {
         "quantity": 36,
@@ -1237,18 +1190,18 @@
         "market_value": 1069.8399658203125
       },
       "SQQQ": {
-        "quantity": 67,
-        "avg_cost": 15.213731381430554,
-        "total_cost": 1019.3200025558472,
-        "cost_basis": 1019.3200025558472,
+        "quantity": 78,
+        "avg_cost": 15.211696160145294,
+        "total_cost": 1186.512300491333,
+        "cost_basis": 1186.512300491333,
         "current_price": 14.84000015258789,
-        "market_value": 994.2800102233887
+        "market_value": 1157.5200119018555
       }
     },
-    "total_value": 10001.429180145264,
-    "equity_value": 9821.04016494751,
-    "total_pnl": 38.244065284728975,
-    "total_pnl_pct": 0.014291801452636718,
+    "total_value": 9997.476883888245,
+    "equity_value": 9984.280166625977,
+    "total_pnl": 34.29176902770993,
+    "total_pnl_pct": -0.025231161117553712,
     "positions_pnl": {
       "PSQ": {
         "symbol": "PSQ",
@@ -1258,7 +1211,7 @@
         "market_value": 1116.7200164794922,
         "unrealized_pnl": -0.26634979248046875,
         "unrealized_pnl_pct": -0.023845393330039606,
-        "position_pct": 86.09299520761958
+        "position_pct": 98.83206285311249
       },
       "BKR": {
         "symbol": "BKR",
@@ -1268,7 +1221,7 @@
         "market_value": 1053.3600234985352,
         "unrealized_pnl": -0.5499496459960938,
         "unrealized_pnl_pct": -0.052181842852783655,
-        "position_pct": 85.3787918336802
+        "position_pct": 98.7626802440108
       },
       "MAR": {
         "symbol": "MAR",
@@ -1278,7 +1231,7 @@
         "market_value": 848.6700439453125,
         "unrealized_pnl": 0.090087890625,
         "unrealized_pnl_pct": 0.010616311401443732,
-        "position_pct": 82.47048956082558
+        "position_pct": 98.46882164897764
       },
       "SPXL": {
         "symbol": "SPXL",
@@ -1288,7 +1241,7 @@
         "market_value": 1035.3500366210938,
         "unrealized_pnl": 2.2000274658202557,
         "unrealized_pnl_pct": 0.21294366222955824,
-        "position_pct": 85.16219291237896
+        "position_pct": 98.7414278654344
       },
       "NVDA": {
         "symbol": "NVDA",
@@ -1298,7 +1251,7 @@
         "market_value": 933.0000305175781,
         "unrealized_pnl": 16.405029296875,
         "unrealized_pnl_pct": 1.7897794854900044,
-        "position_pct": 83.79820459955602
+        "position_pct": 98.6052882454698
       },
       "AMZN": {
         "symbol": "AMZN",
@@ -1308,7 +1261,7 @@
         "market_value": 931.47998046875,
         "unrealized_pnl": 18.092453002929688,
         "unrealized_pnl_pct": 1.9808079767770554,
-        "position_pct": 83.77605492186419
+        "position_pct": 98.60304405793381
       },
       "TQQQ": {
         "symbol": "TQQQ",
@@ -1318,7 +1271,7 @@
         "market_value": 1020.5000305175781,
         "unrealized_pnl": 18.92185974121091,
         "unrealized_pnl_pct": 1.8892044868094264,
-        "position_pct": 84.97871091077346
+        "position_pct": 98.72334731722707
       },
       "TSLA": {
         "symbol": "TSLA",
@@ -1328,7 +1281,7 @@
         "market_value": 817.8400268554688,
         "unrealized_pnl": 11.950836181640625,
         "unrealized_pnl_pct": 1.4829378926956662,
-        "position_pct": 81.92909566859345
+        "position_pct": 98.41201759661323
       },
       "AAPL": {
         "symbol": "AAPL",
@@ -1338,39 +1291,20 @@
         "market_value": 1069.8399658203125,
         "unrealized_pnl": -3.5599365234375,
         "unrealized_pnl_pct": -0.3316505354308716,
-        "position_pct": 85.57152186227019
+        "position_pct": 98.78150782255067
       },
       "SQQQ": {
         "symbol": "SQQQ",
-        "quantity": 67,
-        "avg_cost": 15.213731381430554,
+        "quantity": 78,
+        "avg_cost": 15.211696160145294,
         "current_price": 14.84000015258789,
-        "market_value": 994.2800102233887,
-        "unrealized_pnl": -25.03999233245844,
-        "unrealized_pnl_pct": -2.4565388955061276,
-        "position_pct": 84.64341773776823
+        "market_value": 1157.5200119018555,
+        "unrealized_pnl": -28.992288589477482,
+        "unrealized_pnl_pct": -2.4434882451258044,
+        "position_pct": 98.87276597886404
       }
     }
   },
-  "executed_trades": [
-    {
-      "symbol": "SPXL",
-      "action": "BUY",
-      "quantity": 1,
-      "price": 205.50999450683594,
-      "amount": 205.50999450683594,
-      "status": "FILLED",
-      "order_id": "SPXL_BUY_2025-11-18_1763491420.207349"
-    },
-    {
-      "symbol": "SQQQ",
-      "action": "BUY",
-      "quantity": 8,
-      "price": 15.069999694824219,
-      "amount": 120.55999755859375,
-      "status": "FILLED",
-      "order_id": "SQQQ_BUY_2025-11-18_1763491420.535222"
-    }
-  ],
-  "executed_trades_count": 2
+  "executed_trades": [],
+  "executed_trades_count": 0
 }

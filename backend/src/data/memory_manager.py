@@ -162,7 +162,8 @@ class MemoryManager:
         压缩30天前的记忆到 weekly/monthly 目录
         周级别浓缩：只保留周一开始和周末的记录，其他天的记录删除
         """
-        cutoff_date = (date.today() - timedelta(days=days_threshold)).date()
+        # CRITICAL FIX: date.today() already returns a date object, no need to call .date()
+        cutoff_date = date.today() - timedelta(days=days_threshold)
         
         # 按周分组记忆文件
         weekly_groups: Dict[str, List[tuple[Path, date]]] = defaultdict(list)

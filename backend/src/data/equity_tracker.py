@@ -58,7 +58,18 @@ class EquityTracker:
         参数:
         - date_str: 日期 (YYYY-MM-DD)
         - portfolio_snapshot: Portfolio 快照（从 trading_cycle 返回的 portfolio 字段）
+        
+        注意：只在市场开盘时记录（9:30 AM - 4:00 PM ET），收盘后不记录
         """
+        # CRITICAL: 检查市场是否开盘，收盘后不记录
+        try:
+            from src.utils.trading_days import is_market_open
+            if not is_market_open(None):
+                print(f"[EQUITY] Market is closed, skipping equity recording (will resume at next market open)")
+                return
+        except Exception as e:
+            print(f"[EQUITY WARNING] Failed to check market status: {e}, proceeding with record")
+        
         current_value = float(portfolio_snapshot.get("total_value", 0.0))
         current_cash = float(portfolio_snapshot.get("cash", 0.0))
         current_equity = float(portfolio_snapshot.get("equity_value", 0.0))

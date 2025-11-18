@@ -1014,11 +1014,7 @@
   "2025-11-18": {
     "date": "2025-11-18",
     "stance": "bullish",
-    "stocks_involved": [
-      "SQQQ",
-      "UPRO",
-      "SPXL"
-    ],
+    "stocks_involved": [],
     "recommended_stocks": [
       "GOOG",
       "GOOGL",
@@ -1041,7 +1037,7 @@
       "CCEP",
       "KDP"
     ],
-    "action": "BUY",
+    "action": "HOLD",
     "risk_level": "low"
   }
 }

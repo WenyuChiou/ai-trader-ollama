@@ -361,3 +361,131 @@ def fetch_jin10_economic_data(
             "count": 0
         }
 
+
+@tool("fetch_jin10_economic_calendar", return_direct=False)
+def fetch_jin10_economic_calendar(
+    days_ahead: int = 7,
+    country: str = "all",
+) -> Dict[str, Any]:
+    """
+    从金十数据获取经济日历（包含预测值、实际值、发布时间）。
+    注意：由于Jin10网站结构可能变化，此工具会尝试从页面中提取经济日历信息。
+    如果无法获取，将返回空列表。
+    
+    Args:
+        days_ahead: 获取未来多少天的经济日历，默认 7 天
+        country: 国家筛选，可选 "all", "US", "CN", "EU", "JP", "GB" 等
+    
+    Returns:
+        {
+            "ok": True/False,
+            "events": [
+                {
+                    "date": "2025-11-19",
+                    "time": "08:30",
+                    "country": "US",
+                    "indicator": "CPI",
+                    "importance": "high",  # high, medium, low
+                    "forecast": "2.5%",  # 预测值
+                    "previous": "2.3%",  # 前值
+                    "actual": null,  # 实际值（如果已发布）
+                    "status": "scheduled",  # scheduled, released, cancelled
+                    "description": "消费者物价指数"
+                }
+            ],
+            "count": 事件数量,
+            "note": "经济日历数据需要从Jin10网站抓取，可能因网站结构变化而失效"
+        }
+    """
+    # 金十经济日历URL
+    calendar_url = "https://www.jin10.com/calendar"
+    
+    try:
+        resp = requests.get(calendar_url, timeout=DEFAULT_TIMEOUT, headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Charset": "UTF-8",
+        })
+        
+        if resp.status_code != 200:
+            return {
+                "ok": False,
+                "error": f"HTTP {resp.status_code}",
+                "events": [],
+                "count": 0,
+                "note": "无法访问Jin10经济日历页面"
+            }
+        
+        resp.encoding = resp.apparent_encoding or 'utf-8'
+        html = resp.text
+        soup = BeautifulSoup(html, 'html.parser', from_encoding='utf-8')
+        
+        events = []
+        
+        # 尝试查找经济日历数据
+        # Jin10经济日历通常使用特定的class或data属性
+        calendar_items = soup.find_all(['tr', 'div', 'li'], 
+                                      class_=re.compile(r'calendar|event|economic|data|item', re.IGNORECASE))
+        
+        # 如果找不到，尝试从页面文本中提取
+        if not calendar_items:
+            # 查找包含日期、时间、指标名称的文本模式
+            date_time_pattern = re.compile(r'(\d{1,2}[-/]\d{1,2})\s+(\d{1,2}:\d{2})')
+            matches = date_time_pattern.findall(html)
+            
+            for match in matches[:50]:  # 限制数量
+                date_str, time_str = match
+                # 尝试在附近查找指标名称和数值
+                # 这里简化处理，实际需要更复杂的解析逻辑
+                events.append({
+                    "date": date_str,
+                    "time": time_str,
+                    "country": "Unknown",
+                    "indicator": "Unknown",
+                    "importance": "medium",
+                    "forecast": None,
+                    "previous": None,
+                    "actual": None,
+                    "status": "scheduled",
+                    "description": ""
+                })
+        
+        # 如果仍然没有找到数据，返回提示信息
+        if not events:
+            return {
+                "ok": False,
+                "error": "无法从Jin10页面提取经济日历数据",
+                "events": [],
+                "count": 0,
+                "note": "Jin10经济日历页面结构可能已变化，或需要登录访问。建议使用其他经济日历数据源。"
+            }
+        
+        # 去重并排序
+        seen_events = set()
+        unique_events = []
+        for event in events:
+            event_key = f"{event.get('date', '')}-{event.get('time', '')}-{event.get('indicator', '')}"
+            if event_key not in seen_events:
+                seen_events.add(event_key)
+                unique_events.append(event)
+        
+        return {
+            "ok": True if unique_events else False,
+            "events": unique_events[:days_ahead * 10],
+            "count": len(unique_events),
+            "source": "jin10",
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "days_ahead": days_ahead,
+            "country_filter": country,
+            "note": "经济日历数据抓取可能不完整，建议使用专业经济日历API"
+        }
+        
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": str(e),
+            "events": [],
+            "count": 0,
+            "note": f"抓取经济日历时出错: {str(e)}"
+        }

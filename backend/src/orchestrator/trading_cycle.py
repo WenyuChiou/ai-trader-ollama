@@ -461,6 +461,7 @@ def execute_daily_trade(
     
     # CRITICAL: Use optimized parallel version as default (direct integration)
     print("[TRADING CYCLE] ✅ Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
+    # CRITICAL FIX: 传递 historical_memories 给 discussion system
     convo = run_multi_analyst_discussion_parallel(
         market_view=market_view,  # 传入完整的market_view
         use_tools=auto_tools,
@@ -470,6 +471,7 @@ def execute_daily_trade(
         portfolio_value=portfolio_value,
         available_cash=portfolio.cash if portfolio else None,
         enable_parallel=True,
+        historical_memories=historical_memories,  # 传递历史记忆
     )
     final_stance = convo.get("final_stance", "neutral")
     
@@ -761,7 +763,7 @@ def execute_daily_trade(
                 tool_category = "market"
             elif tool_name in ["get_company_fundamentals", "get_earnings_history", "get_financial_statements"]:
                 tool_category = "fundamental"
-            elif tool_name in ["get_economic_summary", "get_labor_market_data", "fetch_fred_indicator", "fetch_jin10_economic_data"]:
+            elif tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator", "fetch_jin10_economic_data", "fetch_jin10_economic_calendar"]:
                 tool_category = "economic"
             elif tool_name in ["fetch_crypto_batch", "get_crypto_price"]:
                 tool_category = "crypto"
@@ -2323,7 +2325,24 @@ def execute_daily_trade(
         # 使用 end 日期作为今天的日期（如果 end 是 None，使用当前日期）
         # 在多日模拟中，end 就是当天的日期，应该使用 end 来记录净值
         # 这样可以确保每天使用不同的日期记录净值
-        equity_date = end if end else date.today().isoformat()
+        # CRITICAL FIX: Ensure equity_date is always a string (YYYY-MM-DD format)
+        # Handle all possible types: date, str, datetime, or None
+        if end:
+            if isinstance(end, date):
+                equity_date = end.isoformat()
+            elif isinstance(end, datetime):
+                equity_date = end.date().isoformat()
+            elif isinstance(end, str):
+                # Ensure it's in YYYY-MM-DD format (remove time part if present)
+                equity_date = end.split('T')[0].split(' ')[0]
+            else:
+                equity_date = date.today().isoformat()
+        else:
+            equity_date = date.today().isoformat()
+        
+        # CRITICAL FIX: Double-check that equity_date is a string before passing to functions
+        if not isinstance(equity_date, str):
+            equity_date = str(equity_date) if hasattr(equity_date, 'isoformat') else date.today().isoformat()
         
         # Portfolio 快照
         portfolio_snapshot = {

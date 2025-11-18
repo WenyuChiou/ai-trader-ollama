@@ -23,7 +23,8 @@
 
 - [System Overview](#-system-overview)
 - [Quick Start](#-quick-start)
-- [Performance Analysis](#-performance-analysis)
+- [Historical Performance Analysis](#-historical-performance-analysis)
+- [Scheduled Tasks & Automation](#-scheduled-tasks--automation)
 - [Configuration](#-configuration)
 - [Data Storage & Records](#-data-storage--records)
 - [Multi-Agent Architecture](#-multi-agent-architecture)
@@ -63,35 +64,57 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 
 ---
 
-## 📈 Performance Analysis
+## 📊 Historical Performance Analysis
 
-### Current Performance Metrics
+### Viewing Trading Performance
 
-**Execution Time**:
-- Sequential execution: ~60s per trading cycle
-- Optimized sequential: ~45s per trading cycle (25% improvement)
-- Potential parallel: ~20-30s per cycle (50-70% improvement)
+The system provides comprehensive performance analysis through API endpoints and the frontend dashboard.
 
-**Tool Usage**:
-- Before optimization: ~15 tool calls per cycle
-- After optimization: ~9-10 tool calls per cycle (33% reduction)
-- Cache hit rate: ~50% (with duplicate calls)
+#### Key Performance Metrics
 
-**Resource Usage**:
-- Memory: <2GB typical usage
-- CPU: <50% average
-- API calls: 30-40% reduction with caching
+- **Total Return**: Overall profit/loss in dollars and percentage
+- **Annualized Return**: Return adjusted for time period (if data spans multiple days)
+- **Win Rate**: Percentage of profitable trades
+- **Maximum Drawdown**: Largest peak-to-trough decline
+- **Sharpe Ratio**: Risk-adjusted return measure (annualized)
+- **Trading Statistics**: Total trades, winning trades, losing trades, average trade return
 
-### Optimization Features
+#### Using Performance APIs
 
-- ✅ **ToolCoordinator**: Intelligent tool selection and caching
-- ✅ **SharedContext**: Agent insight sharing and collaboration
-- ✅ **BudgetAllocator**: Adaptive budget allocation based on market conditions
-- 🔄 **Parallel Execution**: Structure ready for async implementation
+**Get Overall Statistics**:
+```bash
+curl "http://localhost:8000/api/performance/statistics?start_date=2025-01-01&end_date=2025-01-31"
+```
 
-### Benchmark Results
+**Get Trades by Date**:
+```bash
+curl "http://localhost:8000/api/performance/trades-by-date?start_date=2025-01-01&limit=30"
+```
 
-See [Optimization Results](docs/OPTIMIZATION_RESULTS.md) for detailed metrics.
+**Get Symbol Analysis**:
+```bash
+# All symbols
+curl "http://localhost:8000/api/performance/symbol-analysis"
+
+# Specific symbol
+curl "http://localhost:8000/api/performance/symbol-analysis?symbol=NVDA"
+```
+
+#### Performance Metrics Explained
+
+- **Total Return %**: `(Current Value - Initial Value) / Initial Value * 100`
+- **Win Rate**: `(Winning Trades / Total Trades) * 100`
+- **Max Drawdown**: Largest decline from a peak value
+- **Sharpe Ratio**: `(Average Return / Standard Deviation) * sqrt(252)` (annualized, higher is better)
+- **Average Holding Period**: Average days between buy and sell for each symbol
+
+#### Data Sources
+
+Performance analysis uses data from:
+- `equity_history.jsonl`: Net asset value history (recorded every 30 minutes)
+- `filled_orders.jsonl`: Completed trades with realized P&L
+
+See [Data Format Documentation](docs/DATA_FORMAT.md) for detailed file formats.
 
 ---
 
@@ -149,6 +172,12 @@ This will:
 - 🌐 **API Server**: http://localhost:8000
 - 📊 **API Docs**: http://localhost:8000/docs
 - 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
+
+**Optional: Setup Scheduled Tasks**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+```
+This will configure automated tasks for trading, equity recording, and data updates.
 
 **Or run all steps at once:**
 ```powershell
@@ -228,10 +257,47 @@ scripts\start_api_service_admin.bat
 ```
 
 **Option C: Development Mode (Requires window open)**
+
+**With Virtual Environment** (Recommended):
+
+**Method A: Using & operator** (PowerShell standard, same as monitor script):
+```powershell
+# Activate virtual environment first
+& .\.venv\Scripts\Activate.ps1
+
+# Navigate to backend directory
+cd backend
+
+# Start API server
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Method B: Using dot sourcing** (alternative):
+```powershell
+# Activate virtual environment first
+. .\.venv\Scripts\Activate.ps1
+
+# Navigate to backend directory
+cd backend
+
+# Start API server
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Direct Command** (if virtual environment is already activated):
 ```powershell
 cd backend
 python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**Command Parameters**:
+- `--host 0.0.0.0`: Listen on all network interfaces (accessible from other devices)
+- `--port 8000`: Use port 8000
+- `--reload`: Enable auto-reload on code changes (development mode)
+
+**Notes**: 
+- Keep the terminal window open. Closing it will stop the API server.
+- Both activation methods (Method A and B) work. Method A (`&`) is the PowerShell standard and matches what the monitor script uses for auto-restart.
 
 **5. Access Dashboard**
 - Open `frontend/monitor.html` in your browser
@@ -367,14 +433,19 @@ The main configuration file controls trading parameters, universe selection, and
 - `trade_cooldown_hours`: Hours to wait before trading same symbol again (24.0 default)
 
 **LLM Configuration:**
-- `llm.default_model`: LLM model to use (`deepseek-r1` default)
+- `llm.default_model`: **Unified LLM model for all agents** (`deepseek-r1` default)
   - Available models: `deepseek-r1`, `deepseek-r1:7b`, `deepseek-r1:32b`, etc.
+  - **All agents use this model by default** - no need to specify in `agents.yaml` unless you want a specific agent to use a different model
   - To use a different model, change this value and ensure it's pulled in Ollama: `ollama pull <model-name>`
 - `llm.ollama_host`: Ollama server address (default: `http://localhost:11434`)
 - `llm.auto_pull`: Automatically pull model if not found (true default)
 - `llm.timeout_seconds`: Request timeout (8.0 seconds default)
 
 #### Changing the LLM Model
+
+**✅ Unified Model Configuration (Recommended):**
+
+All agents automatically use `config.json` → `llm.default_model`. Simply update one place:
 
 **Step 1: Pull the model in Ollama**
 ```bash
@@ -409,34 +480,44 @@ ollama pull llama3.2
 
 ### Agent Config: `backend/config/agents.yaml`
 
-Individual agent configurations including model, temperature, and prompt files.
+Individual agent configurations for temperature and prompt files. **Model is unified from `config.json`**.
 
 ```yaml
 market_analyst:
   name: Market Analyst
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.3
   prompt_file: ../prompts/market_analyst.yml
 
 technical_analyst:
   name: Technical Analyst
-  model: deepseek-r1
+  # model: deepseek-r1  # Uses config.json llm.default_model if not specified
   temperature: 0.2
   prompt_file: ../prompts/technical_analyst.yml
 
-# ... (6 agents total)
+# ... (8 agents total)
 ```
 
-**To use different models per agent:**
+**Model Priority:**
+1. `agents.yaml` → `model` field (if specified) - **highest priority**
+2. `config.json` → `llm.default_model` - **default for all agents**
+3. `"llama3.1"` - fallback
+
+**To use different models per agent (optional):**
 ```yaml
 market_analyst:
-  model: deepseek-r1:32b  # Use larger model for market analysis
+  model: deepseek-r1:32b  # Override: Use larger model for market analysis
   temperature: 0.3
 
 technical_analyst:
-  model: deepseek-r1:7b   # Use smaller model for technical analysis
+  # No model specified - uses config.json llm.default_model
   temperature: 0.2
 ```
+
+**Summary:**
+- ✅ **Default behavior**: All agents use `config.json` → `llm.default_model`
+- ✅ **No need to specify model in `agents.yaml`** unless you want a specific agent to use a different model
+- ✅ **Change model in one place** (`config.json`) to update all agents
 
 ---
 
@@ -1934,6 +2015,287 @@ Daily Summary:
 - `GET /api/trades/history`: Trade log
 - `GET /api/trades/realized-pnl`: Historical realized P&L records (query by date, start_date, end_date, limit)
 
+### Performance Analysis
+- `GET /api/performance/statistics`: Get overall performance statistics
+  - **Query Parameters**:
+    - `start_date` (optional): Start date in `YYYY-MM-DD` format
+    - `end_date` (optional): End date in `YYYY-MM-DD` format
+  - **Returns**: Total return, annualized return, win rate, max drawdown, Sharpe ratio, etc.
+  - **Example**: `GET /api/performance/statistics?start_date=2025-01-01&end_date=2025-01-31`
+- `GET /api/performance/trades-by-date`: Get trades grouped by date
+  - **Query Parameters**:
+    - `start_date` (optional): Start date in `YYYY-MM-DD` format
+    - `end_date` (optional): End date in `YYYY-MM-DD` format
+    - `limit` (optional): Limit number of dates to return
+  - **Returns**: Daily trade summaries with buy/sell orders and realized P&L
+- `GET /api/performance/symbol-analysis`: Get performance analysis by symbol
+  - **Query Parameters**:
+    - `symbol` (optional): Stock symbol (returns all symbols if not specified)
+    - `start_date` (optional): Start date in `YYYY-MM-DD` format
+    - `end_date` (optional): End date in `YYYY-MM-DD` format
+  - **Returns**: Per-symbol statistics including total P&L, win rate, average holding period
+
+---
+
+## ⏰ Scheduled Tasks & Automation
+
+### Overview
+
+The system supports automated scheduled tasks for:
+- **Auto Trading**: Run trading cycles automatically at specified times
+- **Equity Recording**: Record portfolio equity every 30 minutes
+- **Data Updates**: Update market data and P&L calculations hourly
+- **Daily Reports**: Generate performance reports automatically
+
+### Quick Setup
+
+**One-Command Setup (All Tasks)**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+```
+
+Select option `5` to set up all tasks at once, or choose individual tasks (1-4).
+
+### Available Tasks
+
+#### 1. Auto Trading Cycle
+- **Task Name**: `AITrader-AutoTrading`
+- **Schedule**: Daily at 9:30 AM (weekdays only)
+- **Script**: `backend/scripts/run_daily_trading.py`
+- **Purpose**: Automatically execute trading cycles during market hours
+
+**Custom Setup**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# Select option 1, then specify:
+# - Trading time (default: 09:30)
+# - Weekdays only (default: Yes)
+```
+
+#### 2. Equity Recording (Every 30 Minutes)
+- **Task Name**: `AITrader-EquityRecording`
+- **Schedule**: Every 30 minutes
+- **Purpose**: Record portfolio equity for historical tracking and charts
+- **API**: Calls `POST /api/portfolio/record-equity`
+
+**Setup**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# Select option 2
+```
+
+**Note**: This task requires the API server to be running (`http://localhost:8000`).
+
+#### 3. Data Update (Every Hour)
+- **Task Name**: `AITrader-DataUpdate`
+- **Schedule**: Every hour
+- **Script**: `scripts/update_real_time_pnl.py`
+- **Purpose**: Update real-time P&L calculations and market data
+
+**Setup**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# Select option 3
+```
+
+#### 4. Daily Report Generation
+- **Task Name**: `AITrader-DailyReport`
+- **Schedule**: Daily at 6:00 PM (weekdays only)
+- **Script**: `backend/scripts/generate_daily_report.py`
+- **Purpose**: Generate daily performance reports
+
+**Custom Setup**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# Select option 4, then specify:
+# - Report time (default: 18:00)
+```
+
+### Managing Scheduled Tasks
+
+**View All Tasks**:
+```powershell
+Get-ScheduledTask | Where-Object { $_.TaskName -like 'AITrader-*' }
+```
+
+**Test a Task**:
+```powershell
+Start-ScheduledTask -TaskName 'AITrader-AutoTrading'
+```
+
+**Remove a Task**:
+```powershell
+Unregister-ScheduledTask -TaskName 'AITrader-AutoTrading' -Confirm:$false
+```
+
+**View Task Details**:
+```powershell
+Get-ScheduledTask -TaskName 'AITrader-AutoTrading' | Format-List
+```
+
+### Task Requirements
+
+**Prerequisites**:
+- ✅ API server must be running (for equity recording and data updates)
+- ✅ Python environment activated (tasks use system Python)
+- ✅ Administrator privileges (for creating scheduled tasks)
+
+**Task Behavior**:
+- Tasks run in background (no console window)
+- Tasks survive system reboots
+- Tasks can run even when user is logged off (if configured)
+- Failed tasks are logged in Windows Event Viewer
+
+### Troubleshooting
+
+**Task Not Running**:
+1. Check if task exists: `Get-ScheduledTask -TaskName 'AITrader-*'`
+2. Check task status: `Get-ScheduledTaskInfo -TaskName 'AITrader-AutoTrading'`
+3. Check Windows Event Viewer for errors
+4. Verify API server is running (for API-dependent tasks)
+
+**Task Running But No Data**:
+1. Check API server logs
+2. Verify Python scripts exist and are executable
+3. Check file permissions for data/logs directory
+
+**Modify Task Schedule**:
+1. Open Task Scheduler (`taskschd.msc`)
+2. Find task under "Task Scheduler Library"
+3. Right-click → Properties → Triggers tab
+4. Edit trigger settings
+
+---
+
+## 🔔 API Connection Monitor
+
+### Overview
+
+The system includes an automatic connection monitor that detects API server disconnections and notifies you with Windows Toast notifications.
+
+### Features
+
+- **Automatic Monitoring**: Checks API server status every 30 seconds
+- **Disconnection Detection**: Alerts after 3 consecutive failures
+- **Windows Toast Notifications**: Sends system notifications when API goes offline
+- **Auto-Restart Option**: Prompts to restart API server automatically
+- **Recovery Detection**: Notifies when API server comes back online
+
+### Quick Setup (Recommended)
+
+**One-Command Setup**:
+```powershell
+.\scripts\setup_api_monitor.ps1
+```
+
+This interactive script provides options to:
+1. Start monitoring now (in current window)
+2. Start monitoring in background window
+3. Setup as scheduled task (auto-start on login)
+4. Setup as scheduled task + start now
+5. Test monitor first
+
+### Manual Start
+
+**Start Monitoring**:
+```powershell
+.\scripts\monitor_api_connection.ps1
+```
+
+**Run in Background**:
+```powershell
+Start-Process powershell -ArgumentList '-ExecutionPolicy Bypass -File scripts\monitor_api_connection.ps1'
+```
+
+### Configuration
+
+The monitor script accepts optional parameters:
+
+```powershell
+# Custom check interval (default: 30 seconds)
+.\scripts\monitor_api_connection.ps1 -CheckInterval 60
+
+# Custom retry count (default: 3 failures)
+.\scripts\monitor_api_connection.ps1 -RetryCount 5
+
+# Custom API URL
+.\scripts\monitor_api_connection.ps1 -ApiUrl "http://localhost:8000/api/health"
+```
+
+### Notification Methods
+
+**Option 1: BurntToast Module (Recommended)**
+```powershell
+# Install BurntToast module for better notifications
+Install-Module -Name BurntToast -Scope CurrentUser
+```
+
+**Option 2: System Sound (Fallback)**
+- Uses Windows system sounds if BurntToast is not available
+- Shows console messages as alternative notification
+
+### Testing
+
+**Test the Monitor**:
+```powershell
+.\scripts\test_monitor_api.ps1
+```
+
+This will test:
+- ✅ API connection check
+- ✅ Notification system
+- ✅ Restart function
+- ✅ Port detection
+
+### Behavior
+
+1. **Normal Operation**: Shows status every 30 seconds (can be suppressed)
+2. **Disconnection Detected**: After 3 consecutive failures:
+   - Sends Windows Toast notification
+   - Shows console alert
+   - Prompts user to restart API server
+3. **User Choice**:
+   - **Yes**: Automatically restarts API server in new window
+   - **No**: Continues monitoring, user can restart manually
+4. **Recovery**: When API comes back online, sends recovery notification
+
+### Manual Restart
+
+If auto-restart fails, you can manually restart:
+
+```powershell
+# Option 1: Use setup script
+.\scripts\setup_step3_start_services.ps1
+
+# Option 2: Direct start (with virtual environment)
+# Method A: Using & operator (PowerShell standard)
+& .\.venv\Scripts\Activate.ps1
+cd backend
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+
+# Method B: Using dot sourcing (alternative)
+. .\.venv\Scripts\Activate.ps1
+cd backend
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+
+# Option 3: Direct start (if venv already activated)
+cd backend
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Note**: The monitor script uses `& "$activateScript"` (Method A) when auto-restarting. Both methods work, but `&` is the PowerShell standard for executing scripts.
+
+### Scheduled Task Integration
+
+You can set up the monitor as a scheduled task for continuous monitoring:
+
+```powershell
+# Create scheduled task (runs on system startup)
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$ProjectRoot\scripts\monitor_api_connection.ps1`""
+$Trigger = New-ScheduledTaskTrigger -AtStartup
+Register-ScheduledTask -TaskName "AITrader-ConnectionMonitor" -Action $Action -Trigger $Trigger -Description "Monitor AI Trader API connection"
+```
+
 ---
 
 ## 🚀 Running the System
@@ -1960,10 +2322,47 @@ scripts\start_api_service_admin.bat
 ```
 
 **Option C: Development Mode (Requires window open)**
+
+**With Virtual Environment** (Recommended):
+
+**Method A: Using & operator** (PowerShell standard, same as monitor script):
+```powershell
+# Activate virtual environment first
+& .\.venv\Scripts\Activate.ps1
+
+# Navigate to backend directory
+cd backend
+
+# Start API server
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Method B: Using dot sourcing** (alternative):
+```powershell
+# Activate virtual environment first
+. .\.venv\Scripts\Activate.ps1
+
+# Navigate to backend directory
+cd backend
+
+# Start API server
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Direct Command** (if virtual environment is already activated):
 ```powershell
 cd backend
 python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**Command Parameters**:
+- `--host 0.0.0.0`: Listen on all network interfaces (accessible from other devices)
+- `--port 8000`: Use port 8000
+- `--reload`: Enable auto-reload on code changes (development mode)
+
+**Notes**: 
+- Keep the terminal window open. Closing it will stop the API server.
+- Both activation methods (Method A and B) work. Method A (`&`) is the PowerShell standard and matches what the monitor script uses for auto-restart.
 
 ### Stopping the API Server
 
@@ -2296,45 +2695,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 **Related Documentation**:
 - 📖 [Long-Term Running Checklist](docs/LONG_TERM_RUNNING_CHECKLIST.md) - Complete checklist for long-term running
 - 📖 [Long-Term Optimization Guide](docs/LONG_TERM_OPTIMIZATION.md) - Optimization recommendations
-
----
-
-## 📈 Performance Analysis
-
-### Current Performance Metrics
-
-**Execution Time**:
-- Sequential execution: ~60s per trading cycle
-- Optimized sequential: ~45s per trading cycle (25% improvement)
-- Potential parallel: ~20-30s per cycle (50-70% improvement)
-
-**Tool Usage**:
-- Before optimization: ~15 tool calls per cycle
-- After optimization: ~9-10 tool calls per cycle (33% reduction)
-- Cache hit rate: ~50% (with duplicate calls)
-
-**Resource Usage**:
-- Memory: <2GB typical usage
-- CPU: <50% average
-- API calls: 30-40% reduction with caching
-
-### Optimization Features
-
-The system includes integrated optimization components that improve performance:
-
-- **ToolCoordinator**: Intelligent tool selection and result caching (33% reduction in tool calls)
-- **SharedContext**: Agent communication and insight sharing
-- **BudgetAllocator**: Adaptive tool budget allocation based on market conditions
-- **Parallel Execution Structure**: Optimized sequential execution with framework ready for async parallel execution
-
-**Status**: ✅ **Optimization components are now integrated and enabled by default**. The system automatically uses the optimized version for improved performance.
-
-**Note**: The `enable_optimizations` setting in `config.json` is kept for backward compatibility but no longer affects behavior - optimizations are always enabled.
-
-**Related Documentation**:
-- [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) - Detailed optimization changes
-- [`docs/AGENT_LOOP_EXECUTION_REPORT.md`](docs/AGENT_LOOP_EXECUTION_REPORT.md) - Agent loop execution results
-- [`docs/OPTIMIZATION_RESULTS.md`](docs/OPTIMIZATION_RESULTS.md) - Performance improvement metrics
 
 ---
 

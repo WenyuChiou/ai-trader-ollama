@@ -274,12 +274,17 @@ def run_analyst_discussion(
                     break
                 name = call.get("name")
                 kwargs = call.get("args", {}) or {}
-                # 強制給 news_scan 合理預設（避免模型遺漏鍵）
-                # CRITICAL FIX: 确保只获取最新新闻（最多2天，48小时）
-                if name == "news_scan":
-                    kwargs.setdefault("recency_days", 2)  # 改为2天（48小时），确保只获取最新新闻
+                # CRITICAL FIX: 如果使用 news_scan，建议改用 plan_and_scan_news 以获取文章内容
+                # 如果使用 plan_and_scan_news，设置 fetch_body_top 以获取文章内容
+                if name == "plan_and_scan_news":
+                    kwargs.setdefault("recency_days", 2)  # 2天（48小时），确保只获取最新新闻
                     kwargs.setdefault("max_articles", 10)
-                    kwargs.setdefault("fetch_body_top", 0)
+                    kwargs.setdefault("fetch_body_top", 5)  # 获取前5篇文章的内容（前800字符）
+                elif name == "news_scan":
+                    # 建议改用 plan_and_scan_news，但如果仍使用 news_scan，设置默认值
+                    kwargs.setdefault("recency_days", 2)
+                    kwargs.setdefault("max_articles", 10)
+                    print(f"   [WARN] news_scan only returns titles. Consider using plan_and_scan_news with fetch_body_top for article content.")
                     # keywords 至少要有東西；若模型沒給，退而求其次：從 market_view 裡取 symbols 或給常見詞彙
                     # 检查是否有任何形式的关键词（keywords, tickers, queries, symbols）
                     has_keywords = bool(

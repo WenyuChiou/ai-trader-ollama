@@ -818,19 +818,15 @@ async def get_portfolio_real_time():
                         
                         print(f"[API] Price check: all_prices_equal_avg_cost={all_prices_equal_avg_cost}, positions_detail count={len(positions_detail)}")
                         
-                        # 如果价格获取失败（所有价格都等于avg_cost），且snapshot的值与当前计算值差异较大，使用snapshot的值
+                        # 如果价格获取失败（所有价格都等于avg_cost），直接使用snapshot的值（不检查差异阈值）
                         if all_prices_equal_avg_cost:
-                            diff_pct = abs(snapshot_total_value - total_value) / total_value * 100 if total_value > 0 else 100
-                            print(f"[API] Difference check: diff_pct={diff_pct:.2f}%, threshold=1.0%")
-                            if diff_pct > 1.0:  # 差异超过1%
-                                print(f"[API] Price fetch failed (all prices = avg_cost), using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
-                                total_value = snapshot_total_value
-                                equity_value = snapshot_equity_value
-                                # 重新计算P&L
-                                total_pnl = total_value - portfolio.initial_value
-                                total_pnl_pct = (total_pnl / portfolio.initial_value * 100.0) if portfolio.initial_value > 0 else 0.0
-                            else:
-                                print(f"[API] Difference too small ({diff_pct:.2f}%), not using snapshot values")
+                            # CRITICAL FIX: 如果价格获取失败，直接使用snapshot的值，因为snapshot中的值是之前成功获取价格时计算的
+                            print(f"[API] Price fetch failed (all prices = avg_cost), using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
+                            total_value = snapshot_total_value
+                            equity_value = snapshot_equity_value
+                            # 重新计算P&L
+                            total_pnl = total_value - portfolio.initial_value
+                            total_pnl_pct = (total_pnl / portfolio.initial_value * 100.0) if portfolio.initial_value > 0 else 0.0
                         else:
                             print(f"[API] Not all prices equal avg_cost, prices may be valid")
             except Exception as e:

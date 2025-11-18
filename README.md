@@ -954,10 +954,11 @@ These tools allow agents to retrieve and learn from historical trading memories:
 
 ### News & Information (5 tools)
 - `news_scan`: Scan news by keywords
-- `plan_and_scan_news`: LLM-powered news query
+- `plan_and_scan_news`: LLM-powered news query (recommended, includes article content with summaries and keywords)
 - `web_search`: DuckDuckGo search
 - `fetch_url`: Extract content from URL
 - `fetch_jin10_news`: Jin10 financial news
+- **News Display**: Frontend displays news with summaries, sources, timestamps, and keywords (sorted by recency)
 
 ### Economic Data (3 tools)
 - `get_economic_summary`: Key US economic indicators

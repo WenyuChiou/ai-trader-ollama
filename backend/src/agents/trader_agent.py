@@ -404,7 +404,7 @@ def run_trader(
                 "positions_summary": positions_summary,
                 "final_stance": final_stance,
                 "vix_risk": vix_risk,
-                "coordinator_summary": coordinator_summary[:2000] if coordinator_summary else "No coordinator summary available",
+                "coordinator_summary": coordinator_summary if coordinator_summary else "No coordinator summary available",
                 "portfolio_value": portfolio_value or 10000.0,
                 "available_cash": available_cash or 0.0,
             }
@@ -424,7 +424,7 @@ Current Positions:
 {positions_summary}
 
 Coordinator Analysis Summary:
-{coordinator_summary[:2000] if coordinator_summary else "No coordinator summary available"}
+{coordinator_summary if coordinator_summary else "No coordinator summary available"}
 
 Please provide a clear, professional summary that:
 1. States that the market is currently CLOSED

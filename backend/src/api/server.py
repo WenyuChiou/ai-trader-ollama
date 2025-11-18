@@ -795,6 +795,37 @@ async def get_portfolio_real_time():
         total_pnl = portfolio.total_pnl(last_prices)
         total_pnl_pct = portfolio.total_pnl_pct(last_prices)
         
+        # CRITICAL FIX: 如果从portfolio_state.json加载了数据，且snapshot中有更准确的total_value和equity_value，
+        # 且当前计算的值与snapshot差异较大（说明价格获取失败），则使用snapshot的值
+        if portfolio_file.exists():
+            try:
+                with portfolio_file.open("r", encoding="utf-8") as f:
+                    state = json.load(f)
+                    snapshot = state.get("snapshot", {})
+                    snapshot_total_value = snapshot.get("total_value")
+                    snapshot_equity_value = snapshot.get("equity_value")
+                    
+                    # 如果snapshot中有值，且当前计算的值与snapshot差异超过1%（说明价格获取可能失败），使用snapshot的值
+                    if snapshot_total_value and snapshot_equity_value:
+                        # 检查是否所有持仓的价格都等于avg_cost（说明价格获取失败）
+                        all_prices_equal_avg_cost = all(
+                            pos_detail.get("current_price", 0) == pos_detail.get("avg_cost", 0)
+                            for pos_detail in positions_detail.values()
+                        )
+                        
+                        # 如果价格获取失败（所有价格都等于avg_cost），且snapshot的值与当前计算值差异较大，使用snapshot的值
+                        if all_prices_equal_avg_cost:
+                            diff_pct = abs(snapshot_total_value - total_value) / total_value * 100 if total_value > 0 else 100
+                            if diff_pct > 1.0:  # 差异超过1%
+                                print(f"[API] Price fetch failed (all prices = avg_cost), using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
+                                total_value = snapshot_total_value
+                                equity_value = snapshot_equity_value
+                                # 重新计算P&L
+                                total_pnl = total_value - portfolio.initial_value
+                                total_pnl_pct = (total_pnl / portfolio.initial_value * 100.0) if portfolio.initial_value > 0 else 0.0
+            except Exception as e:
+                print(f"[API] Failed to check snapshot values: {e}")
+        
         # CRITICAL FIX: 自动记录净值历史（每小时最多记录一次）
         # 即使没有运行trading cycle，也要记录净值变化
         try:

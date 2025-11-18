@@ -1900,6 +1900,15 @@ Daily Summary:
 - `GET /api/portfolio/state`: Current portfolio state
 - `GET /api/portfolio/real-time`: Real-time portfolio with live prices
 - `GET /api/portfolio/equity-history`: Historical net value curve (with timestamps)
+  - **Query Parameters**:
+    - `limit` (default: 60): Maximum number of records to return
+    - `period` (optional): `"day"`, `"week"`, or `"month"` - returns records from last N days
+    - `start_date` (optional): Start date in `YYYY-MM-DD` format
+    - `end_date` (optional): End date in `YYYY-MM-DD` format
+    - `start_timestamp` (optional): Start timestamp in ISO 8601 format
+    - `end_timestamp` (optional): End timestamp in ISO 8601 format
+  - **Example**: `GET /api/portfolio/equity-history?period=week&limit=100`
+- `POST /api/portfolio/record-equity`: Record equity snapshot (called by frontend every 30 minutes)
 - `POST /api/trading/execute-trade`: Execute full trading cycle
 - `POST /api/system/init?force=true`: Reset portfolio to initial state (deletes all trading data, preserves memory)
 

@@ -12076,6 +12076,7 @@
                             // plan_and_scan_news 返回 {hits: [...], articles: [...], queries: [...]}
                             // fetch_jin10_news 返回 {items: [...], count, source, fetched_at}
                             let newsItems = null;
+                            let arrayLikeProcessed = false; // CRITICAL FIX: 标记数组对象是否已处理
                             
                             // CRITICAL FIX: 检查 result 是否是数组（可能是解析错误）
                             if (Array.isArray(result)) {
@@ -12117,12 +12118,12 @@
                                 
                                 if (isArrayLike) {
                                     // 这是一个数组对象，转换为数组
-                                    newsItems = Object.values(result);
-                                    console.log('[News] Found', newsItems.length, 'news items (array-like object) from', toolName);
+                                    const arrayValues = Object.values(result);
+                                    console.log('[News] Found', arrayValues.length, 'news items (array-like object) from', toolName);
                                     // CRITICAL FIX: 立即处理数组对象
-                                    if (newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
+                                    if (arrayValues && Array.isArray(arrayValues) && arrayValues.length > 0) {
                                         let processedCount = 0;
-                                        for (const item of newsItems) {
+                                        for (const item of arrayValues) {
                                             if (item && typeof item === 'object') {
                                                 // 尝试多种字段名匹配
                                                 const title = item.title || item.headline || item.name || '';
@@ -12152,6 +12153,8 @@
                                             }
                                         }
                                         console.log('[News] Processed', processedCount, 'items from array-like object');
+                                        // CRITICAL FIX: 数组对象已处理，标记为已处理，跳过后续检查
+                                        arrayLikeProcessed = true;
                                     }
                                     // CRITICAL FIX: 数组对象已处理，跳过后续检查（使用else if链）
                                 } else if (result.hits && Array.isArray(result.hits)) {
@@ -12194,9 +12197,12 @@
                                 }
                             }
                             
-                            if (newsItems && Array.isArray(newsItems)) {
+                            // CRITICAL FIX: 只有在newsItems存在且尚未处理时才处理
+                            // 如果arrayLikeProcessed为true，说明数组对象已经处理过，跳过
+                            if (!arrayLikeProcessed && newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
+                                // 尚未处理，现在处理
                                 for (const item of newsItems) {
-                                    if (item && typeof item === 'object' && (item.title || item.link || item.href || item.url)) {
+                                        if (item && typeof item === 'object' && (item.title || item.link || item.href || item.url)) {
                                         // 处理不同的字段名
                                         const title = item.title || item.headline || 'No title';
                                         const link = item.link || item.href || item.url || '';

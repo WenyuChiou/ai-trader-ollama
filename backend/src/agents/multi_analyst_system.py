@@ -1735,10 +1735,10 @@ def _extract_summary_from_text(
     
     # 清理summary（移除多余的空白和换行）
     summary = re.sub(r'\s+', ' ', summary).strip()
-    # 移除长度限制，允许完整summary（前端有滚动条处理长文本）
-    # 只限制极端长度（超过3000字符）以避免内存问题
-    if len(summary) > 3000:
-        summary = summary[:3000] + "... (truncated due to extreme length)"
+    # CRITICAL FIX: 移除3000字符限制，允许完整summary（前端有滚动条处理长文本）
+    # 只限制极端长度（超过10000字符）以避免内存问题
+    if len(summary) > 10000:
+        summary = summary[:10000] + "... (truncated due to extreme length)"
     
     # 如果summary仍然为空或太短，使用fallback
     if len(summary) < 200:  # 最小长度要求200字符（约50字）
@@ -1752,9 +1752,11 @@ def _extract_summary_from_text(
                     clean_analysis = re.sub(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', '', analysis)
                     clean_analysis = re.sub(r'\s+', ' ', clean_analysis).strip()
                     if clean_analysis:
-                        summary_parts.append(f"{analyst_type.capitalize()} Analyst: {clean_analysis[:100]}")
+                        # CRITICAL FIX: 移除100字符限制，允许完整显示每个analyst的分析
+                        summary_parts.append(f"{analyst_type.capitalize()} Analyst: {clean_analysis}")
         if summary_parts:
-            summary = " | ".join(summary_parts[:3])[:300]
+            # CRITICAL FIX: 移除300字符限制，允许完整显示所有analyst的分析
+            summary = " | ".join(summary_parts)
         else:
             summary = "Coordinator synthesized all analyst perspectives. The analysis integrates technical indicators, fundamental data, sentiment metrics, and news content to provide a comprehensive market outlook."
     

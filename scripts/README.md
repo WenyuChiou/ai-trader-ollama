@@ -6,11 +6,6 @@ This directory contains all utility scripts for the AI-Trader system.
 
 ```
 scripts/
-├── archive/              # Archived scripts (moved from main directory)
-│   ├── test/            # Test and demo scripts
-│   ├── fixes/           # One-time fix scripts
-│   ├── simulations/     # Historical simulation scripts
-│   └── deprecated/      # Deprecated/replaced scripts
 └── [active scripts]     # Currently used scripts
 ```
 
@@ -87,46 +82,9 @@ scripts/
 - `schedule_hourly_update.ps1` - Schedule hourly update
 - `schedule_monitoring_task.ps1` - Schedule monitoring task
 
-## Archived Scripts
+## Script Cleanup
 
-### Test Scripts (`archive/test/`)
-These scripts were used for testing and debugging but are no longer needed:
-- `test_trader_agent_fix.py`
-- `test_trading_cycle_trader.py`
-- `test_trading_cycle.py`
-- `test_api_server.py`
-- `test_frontend_features.py`
-- `test_market_status.py`
-- `test_railway_data.py`
-- `test_report_generation.py`
-- `run_demo_test.py`
-- `run_demo_loop.ps1`
-- `demo_sync_frontend.ps1`
-- `start_demo_sync.ps1`
-
-### Fix Scripts (`archive/fixes/`)
-One-time fix scripts that addressed specific issues:
-- `fix_pending_orders_13_47.py`
-- `fix_pending_sell_orders.py`
-- `fix_portfolio_total_cost.py`
-- `cleanup_pending_orders_now.py`
-- `cleanup_all_pending_simple.py`
-- `cleanup_old_pending_orders.py`
-
-### Simulation Scripts (`archive/simulations/`)
-Historical simulation scripts:
-- `simulate_october_history.py`
-- `run_october_sim.ps1`
-
-### Deprecated Scripts (`archive/deprecated/`)
-Scripts that have been replaced by newer versions:
-- `restart_api_fast.ps1` - Replaced by `restart_api.ps1` in root
-- `setup_all.ps1` - Replaced by `setup_all_steps.ps1`
-- `setup_all_in_one.ps1` - Replaced by `setup_all_steps.ps1`
-- `start_api_stable_bypass.ps1` - Replaced by `start_api_task_scheduler.ps1`
-- `start_api_stable.ps1` - Replaced by `start_api_task_scheduler.ps1`
-- `start_api_background.ps1` - Replaced by `start_api_task_scheduler.ps1`
-- `start_api_service.ps1` - Replaced by `start_api_task_scheduler.ps1`
+All deprecated, archived, and test scripts have been removed from the repository to keep it clean and maintainable. Only actively used scripts are retained.
 
 ## Usage
 
@@ -148,7 +106,7 @@ Most scripts can be run directly from the project root:
 
 ## Notes
 
-- All archived scripts are preserved for reference
-- Active scripts are regularly maintained and updated
+- All scripts are regularly maintained and updated
 - See individual script headers for specific usage instructions
+- Old/deprecated scripts have been removed to keep the repository clean
 

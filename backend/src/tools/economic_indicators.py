@@ -8,7 +8,18 @@ from typing import Optional, Dict, Any
 
 
 def _get_fred_api_key() -> Optional[str]:
-    """Get FRED API key from environment variable."""
+    """Get FRED API key from config.json or environment variable."""
+    # First try config.json
+    try:
+        from src.utils.config_loader import load_config
+        config = load_config()
+        api_key = config.get("fred_api_key")
+        if api_key and isinstance(api_key, str) and api_key.strip():
+            return api_key.strip()
+    except Exception:
+        pass
+    
+    # Fallback to environment variable
     return os.getenv("FRED_API_KEY")
 
 

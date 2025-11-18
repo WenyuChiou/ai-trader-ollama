@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json
+import os
 
 from src.agents.factory import AgentFactory
 from src.agents.base import BaseAgent
@@ -218,15 +219,50 @@ def run_multi_analyst_discussion(
                     "why": "REQUIRED: Load recent trading memories to learn from past decisions"
                 })
             
+            # CRITICAL: 强制添加FRED经济数据工具调用（如果配置了FRED API key）
+            fred_tool_called = False
+            for tc in tool_calls_list:
+                if tc.get("name") in ["get_economic_summary", "get_labor_market_data", "fetch_fred_indicator"]:
+                    fred_tool_called = True
+                    break
+            
+            # 检查是否有FRED API key
+            has_fred_api = False
+            try:
+                from src.utils.config_loader import load_config
+                config = load_config()
+                fred_api_key = config.get("fred_api_key")
+                if fred_api_key and isinstance(fred_api_key, str) and fred_api_key.strip():
+                    has_fred_api = True
+                elif os.getenv("FRED_API_KEY"):
+                    has_fred_api = True
+            except Exception:
+                pass
+            
+            if not fred_tool_called and has_fred_api and use_tools and tool_calls_count < tool_budget:
+                print(f"   [FRED] 🔧 FORCING FRED tool call: get_economic_summary (required for market analysis)")
+                # 在记忆工具后插入FRED工具调用
+                tool_calls_list.insert(1, {
+                    "name": "get_economic_summary",
+                    "args": {},
+                    "why": "REQUIRED: Get latest US economic indicators (GDP, unemployment, CPI, Fed funds rate) for market context"
+                })
+            elif not has_fred_api:
+                print(f"   [FRED] ⚠️ FRED API key not configured - skipping FRED data calls")
+            
             # Fallback: Market Analyst必须使用工具（市场数据变化快，需要实时获取）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Market analysis requires real-time data)")
-                tool_calls_list = [
+                fallback_tools = [
                     {"name": "get_recent_memories", "args": {"days": 5, "summary_only": True}, "why": "REQUIRED: Load recent trading memories"},
                     {"name": "get_market_indices", "args": {}, "why": "Fallback: Get market indices"},
                     {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"},
                     {"name": "get_market_breadth", "args": {}, "why": "Fallback: Get market breadth"}
                 ]
+                # 如果有FRED API key，添加FRED工具
+                if has_fred_api:
+                    fallback_tools.insert(1, {"name": "get_economic_summary", "args": {}, "why": "REQUIRED: Get latest US economic indicators"})
+                tool_calls_list = fallback_tools
             
             # 收集工具调用结果
             tool_results_summary = []
@@ -773,10 +809,15 @@ def run_multi_analyst_discussion(
                             recs = [s.strip() for s in recs.split(",") if s.strip()]
                         elif not isinstance(recs, list):
                             recs = []
-                        recommended_stocks = [s.upper() for s in recs if s.upper() not in existing_symbols and s.upper() not in priority_symbols]
+                        # 确保推荐股票不在已有列表中
+                        for s in recs:
+                            sym_upper = s.upper().strip()
+                            if sym_upper and sym_upper not in existing_symbols and sym_upper not in priority_symbols:
+                                recommended_stocks.append(sym_upper)
                 
+                # 添加推荐股票到优先级列表
                 for sym in recommended_stocks:
-                    priority_symbols.append(sym.upper())
+                    priority_symbols.append(sym)
                     print(f"   [PRIORITY] Adding recommended stock: {sym}")
                 
                 # 补充优先级股票到tool_calls_list（如果还有预算）

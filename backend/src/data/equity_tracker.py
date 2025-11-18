@@ -64,30 +64,8 @@ class EquityTracker:
         current_equity = float(portfolio_snapshot.get("equity_value", 0.0))
         positions = portfolio_snapshot.get("positions_detail", {})
         
-        # CRITICAL FIX: 检查是否已有当天的记录，如果有则先删除（去重）
-        # 确保同一天只有一条记录（保留最新的）
-        if self.equity_file.exists():
-            try:
-                with self.equity_file.open("r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                # 过滤掉同一天的记录
-                filtered_lines = []
-                for line in lines:
-                    try:
-                        record = json.loads(line.strip())
-                        if record.get("date") != date_str:
-                            filtered_lines.append(line)
-                    except:
-                        # 如果解析失败，保留原行（可能是格式问题）
-                        filtered_lines.append(line)
-                
-                # 如果有过滤，重新写入文件
-                if len(filtered_lines) < len(lines):
-                    with self.equity_file.open("w", encoding="utf-8") as f:
-                        f.writelines(filtered_lines)
-                    print(f"[EQUITY] Removed {len(lines) - len(filtered_lines)} duplicate record(s) for date {date_str}")
-            except Exception as e:
-                print(f"[EQUITY WARNING] Failed to check/remove duplicates: {e}")
+        # CRITICAL FIX: 保留所有时间戳记录，不再按日期去重
+        # 每30分钟的记录都会被保留，确保历史数据完整性
         
         # CRITICAL: 检查净值是否异常下降（防止记录错误数据）
         # 同时验证portfolio_state.json中的实际状态，确保数据一致性
@@ -206,18 +184,22 @@ class EquityTracker:
         self,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        start_timestamp: Optional[str] = None,
+        end_timestamp: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         加载净值历史
         
         参数:
-        - start_date: 开始日期 (YYYY-MM-DD)
-        - end_date: 结束日期 (YYYY-MM-DD)
+        - start_date: 开始日期 (YYYY-MM-DD)，用于日期过滤
+        - end_date: 结束日期 (YYYY-MM-DD)，用于日期过滤
+        - start_timestamp: 开始时间戳 (ISO 8601格式)，用于精确时间过滤
+        - end_timestamp: 结束时间戳 (ISO 8601格式)，用于精确时间过滤
         - limit: 返回记录数限制
         
         返回:
-        - 净值记录列表（按日期从旧到新）
+        - 净值记录列表（按时间戳从旧到新）
         """
         if not self.equity_file.exists():
             return []
@@ -247,17 +229,40 @@ class EquityTracker:
                             if '+' not in ts and ('-' not in ts[10:] if len(ts) > 10 else True):
                                 record["timestamp"] = record["timestamp"] + 'Z'
                         
-                        # 日期过滤
+                        # 日期过滤（如果提供了日期参数）
                         record_date = record.get("date", "")
                         if start_date and record_date < start_date:
                             continue
                         if end_date and record_date > end_date:
                             continue
                         
+                        # 时间戳过滤（如果提供了时间戳参数，优先使用时间戳）
+                        record_timestamp = record.get("timestamp", "")
+                        if start_timestamp:
+                            try:
+                                record_ts = datetime.fromisoformat(record_timestamp.replace("Z", "+00:00"))
+                                start_ts = datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
+                                if record_ts < start_ts:
+                                    continue
+                            except:
+                                pass
+                        if end_timestamp:
+                            try:
+                                record_ts = datetime.fromisoformat(record_timestamp.replace("Z", "+00:00"))
+                                end_ts = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
+                                if record_ts > end_ts:
+                                    continue
+                            except:
+                                pass
+                        
                         records.append(record)
             
-            # 按日期排序
-            records.sort(key=lambda x: x.get("date", ""))
+            # 按时间戳排序（优先使用timestamp，如果没有则使用date）
+            records.sort(key=lambda x: (
+                datetime.fromisoformat(x.get("timestamp", "").replace("Z", "+00:00")) 
+                if x.get("timestamp") 
+                else datetime.fromisoformat(x.get("date", "1970-01-01") + "T12:00:00+00:00")
+            ))
             
             # 限制数量
             if limit:

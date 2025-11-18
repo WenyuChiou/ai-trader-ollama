@@ -22,6 +22,10 @@ from src.tools.fundamental_data import (
 from src.tools.market_indicators import (
     get_market_breadth, get_sector_rotation, get_correlation_matrix, get_market_indices
 )
+from src.tools.memory_tools import (
+    get_recent_memories, search_memories_by_symbol, search_memories_by_date_range,
+    get_weekly_memory_summary, get_monthly_memory_summary, search_similar_decisions
+)
 
 
 @dataclass
@@ -81,6 +85,14 @@ class ToolBox:
         self.register(Tool("get_sector_rotation", self._sector_rotation_adapter, "Analyze sector rotation and performance across different sectors"))
         self.register(Tool("get_correlation_matrix", self._correlation_matrix_adapter, "Calculate correlation matrix between stocks to identify diversification opportunities"))
         self.register(Tool("get_market_indices", self._market_indices_adapter, "Get current performance of major market indices (S&P 500, Dow Jones, NASDAQ, Russell 2000, VIX)"))
+        
+        # memory/RAG tools - for agents to access historical memories
+        self.register(Tool("get_recent_memories", get_recent_memories, "Get recent trading memories (last N days) for context and learning from past decisions. Use this to understand what happened in previous trading cycles."))
+        self.register(Tool("search_memories_by_symbol", search_memories_by_symbol, "Search historical memories for a specific stock symbol to see past analysis and decisions. Useful for understanding how we've traded a stock before."))
+        self.register(Tool("search_memories_by_date_range", search_memories_by_date_range, "Search memories within a date range (start_date, end_date in YYYY-MM-DD format). Use this to review what happened during specific periods."))
+        self.register(Tool("get_weekly_memory_summary", get_weekly_memory_summary, "Get weekly compressed memory summary (only Monday and weekend records preserved). Use this for longer-term context."))
+        self.register(Tool("get_monthly_memory_summary", get_monthly_memory_summary, "Get monthly compressed memory summary. Use this for very long-term trends and patterns."))
+        self.register(Tool("search_similar_decisions", search_similar_decisions, "Search for similar trading decisions for a stock (past BUY/SELL actions). Use this to learn from past decisions when considering similar situations."))
 
     # ---------- public API ----------
     def register(self, tool: Tool) -> None:

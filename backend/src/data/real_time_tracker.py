@@ -274,11 +274,11 @@ class RealTimeTracker:
                             latest_timestamp_utc = latest_timestamp.replace(tzinfo=timezone.utc)
                             time_diff = now_utc - latest_timestamp_utc
                         
-                        # CRITICAL FIX: 净值更新频率改为30分钟
-                        # 如果距离上次记录超过30分钟，记录
-                        if time_diff.total_seconds() >= 1800:  # 30分钟 = 1800秒
+                        # 净值更新频率：每小时记录一次
+                        # 如果距离上次记录超过1小时，记录
+                        if time_diff.total_seconds() >= 3600:  # 1小时 = 3600秒
                             should_record = True
-                            print(f"[REALTIME] Time-based recording (30min interval)")
+                            print(f"[REALTIME] Time-based recording (1 hour interval)")
                         else:
                             # 检查净值变化是否超过0.5%（从1%降低到0.5%，更敏感）
                             latest_value = latest_equity.get("total_value", portfolio.initial_value)

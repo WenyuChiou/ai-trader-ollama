@@ -12,6 +12,7 @@ import feedparser
 from bs4 import BeautifulSoup
 
 from src.utils.common import extract_domain
+from src.utils.config_loader import load_config
 
 # 可選：DuckDuckGo 搜尋（若沒裝 ddgs，就自動停用 web 搜尋）
 try:
@@ -31,30 +32,43 @@ except Exception:
 # RSS 基礎
 # ---------------------------
 
-BUSINESS_FEEDS = [
-    # 核心金融新闻源（已验证最新，<6小时）
-    "https://www.cnbc.com/id/100003114/device/rss/rss.html",  # CNBC Markets ✅ 最新
-    "https://www.marketwatch.com/rss/topstories",  # MarketWatch Top Stories ✅ 最新
-    "https://seekingalpha.com/feed.xml",  # Seeking Alpha ✅ 最新
-    "https://www.investing.com/rss/news.rss",  # Investing.com News ✅ 最新
-    "https://www.benzinga.com/feed",  # Benzinga News ✅ 最新
-    "https://feeds.bloomberg.com/markets/news.rss",  # Bloomberg Markets ✅ 最新
+def _get_business_feeds() -> List[str]:
+    """
+    获取RSS源列表，优先从配置文件读取，如果配置文件中没有则使用代码默认值
+    """
+    try:
+        config = load_config()
+        business_feeds = config.get("business_feeds")
+        if business_feeds and isinstance(business_feeds, list):
+            # 过滤掉无效的URL
+            business_feeds = [
+                feed.strip() for feed in business_feeds 
+                if feed and isinstance(feed, str) and feed.startswith("http")
+            ]
+            if business_feeds:
+                return business_feeds
+    except Exception as e:
+        print(f"[NEWS] Failed to load business_feeds from config: {e}, using defaults")
     
-    # 多元化新闻源（社区讨论、观点，已验证最新）
-    "https://www.reddit.com/r/wallstreetbets/.rss",  # Reddit WSB ✅ 最新
-    "https://www.reddit.com/r/investing/.rss",  # Reddit Investing ✅ 最新
-    "https://www.reddit.com/r/stocks/.rss",  # Reddit Stocks ✅ 最新
-    "https://hnrss.org/frontpage",  # Hacker News（科技新闻）✅ 最新
-    
-    # 注意：以下源已移除（原因）
-    # "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",  # ❌ 移除：新闻过旧（287天前）
-    # "https://feeds.reuters.com/reuters/topNews",  # ❌ URLError
-    # "https://www.ft.com/?format=rss",  # ❌ URLError
-    # "https://feeds.reuters.com/reuters/businessNews",  # ❌ URLError
-    # "https://feeds.reuters.com/reuters/marketsNews",  # ❌ URLError
-    # "https://www.marketwatch.com/rss/markets",  # ❌ SAXParseException
-    # "https://www.zerohedge.com/fullrss2.xml",  # ❌ NonXMLContentType
-]
+    # 默认RSS源列表（如果配置文件读取失败或为空）
+    return [
+        # 核心金融新闻源（已验证最新，<6小时）
+        "https://www.cnbc.com/id/100003114/device/rss/rss.html",  # CNBC Markets ✅ 最新
+        "https://www.marketwatch.com/rss/topstories",  # MarketWatch Top Stories ✅ 最新
+        "https://seekingalpha.com/feed.xml",  # Seeking Alpha ✅ 最新
+        "https://www.investing.com/rss/news.rss",  # Investing.com News ✅ 最新
+        "https://www.benzinga.com/feed",  # Benzinga News ✅ 最新
+        "https://feeds.bloomberg.com/markets/news.rss",  # Bloomberg Markets ✅ 最新
+        
+        # 多元化新闻源（社区讨论、观点，已验证最新）
+        "https://www.reddit.com/r/wallstreetbets/.rss",  # Reddit WSB ✅ 最新
+        "https://www.reddit.com/r/investing/.rss",  # Reddit Investing ✅ 最新
+        "https://www.reddit.com/r/stocks/.rss",  # Reddit Stocks ✅ 最新
+        "https://hnrss.org/frontpage",  # Hacker News（科技新闻）✅ 最新
+    ]
+
+# 保持向后兼容：BUSINESS_FEEDS 作为函数调用结果
+BUSINESS_FEEDS = _get_business_feeds()
 
 def _parse_entry_date(entry: Any) -> Optional[datetime]:
     """解析新闻条目的发布日期"""
@@ -441,18 +455,30 @@ def plan_and_scan_news(
     只返回最新的新闻（基于 recency_days 参数，默认最多48小时）。
     """
     if preferred_domains is None:
-        preferred_domains = [
-            # 核心金融新闻域名（已验证最新）
-            "www.cnbc.com", "www.marketwatch.com", "seekingalpha.com",
-            "www.investing.com", "www.benzinga.com", "www.bloomberg.com",
-            "finance.yahoo.com", "www.reddit.com",  # Reddit 用于多元化观点
-            # 其他可靠域名
-            "www.cboe.com", "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov",
-            # 注意：以下域名已移除（原因）
-            # "www.wsj.com",  # ❌ 移除：RSS源新闻过旧（287天前）
-            # "www.reuters.com", "www.ft.com",  # ❌ RSS源不可用
-            # "www.zerohedge.com",  # ❌ RSS源不可用
-        ]
+        # 从配置文件读取预设域名，如果配置文件中没有则使用代码默认值
+        try:
+            config = load_config()
+            preferred_domains = config.get("preferred_domains")
+            if preferred_domains and isinstance(preferred_domains, list):
+                # 过滤掉无效的域名格式（如包含http://的完整URL）
+                preferred_domains = [
+                    domain.strip() for domain in preferred_domains 
+                    if domain and isinstance(domain, str) and not domain.startswith("http")
+                ]
+        except Exception as e:
+            print(f"[NEWS] Failed to load preferred_domains from config: {e}, using defaults")
+            preferred_domains = None
+        
+        # 如果配置文件读取失败或为空，使用代码默认值
+        if not preferred_domains:
+            preferred_domains = [
+                # 核心金融新闻域名（已验证最新）
+                "www.cnbc.com", "www.marketwatch.com", "seekingalpha.com",
+                "www.investing.com", "www.benzinga.com", "www.bloomberg.com",
+                "finance.yahoo.com", "www.reddit.com",  # Reddit 用于多元化观点
+                # 其他可靠域名
+                "www.cboe.com", "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov",
+            ]
 
     queries = _choose_queries_llm(tickers, mview)
 

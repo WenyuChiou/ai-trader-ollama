@@ -202,10 +202,27 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = market_result.get("tool_calls", [])
             
+            # CRITICAL: 强制添加记忆工具调用（必须在开始时调用）
+            memory_tool_called = False
+            for tc in tool_calls_list:
+                if tc.get("name") == "get_recent_memories":
+                    memory_tool_called = True
+                    break
+            
+            if not memory_tool_called and use_tools and tool_calls_count < tool_budget:
+                print(f"   [MEMORY] 🔧 FORCING memory tool call: get_recent_memories (required for all trading cycles)")
+                # 在列表开头插入记忆工具调用
+                tool_calls_list.insert(0, {
+                    "name": "get_recent_memories",
+                    "args": {"days": 5, "summary_only": True},
+                    "why": "REQUIRED: Load recent trading memories to learn from past decisions"
+                })
+            
             # Fallback: Market Analyst必须使用工具（市场数据变化快，需要实时获取）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Market analysis requires real-time data)")
                 tool_calls_list = [
+                    {"name": "get_recent_memories", "args": {"days": 5, "summary_only": True}, "why": "REQUIRED: Load recent trading memories"},
                     {"name": "get_market_indices", "args": {}, "why": "Fallback: Get market indices"},
                     {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"},
                     {"name": "get_market_breadth", "args": {}, "why": "Fallback: Get market breadth"}
@@ -221,7 +238,16 @@ def run_multi_analyst_discussion(
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   [TOOL] Executing: {tool_name}")
+                    # 检查是否是记忆工具
+                    memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
+                                   "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
+                    is_memory_tool = tool_name in memory_tools
+                    
+                    if is_memory_tool:
+                        print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
+                    else:
+                        print(f"   [TOOL] Executing: {tool_name}")
+                    
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -230,7 +256,22 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   [OK] Tool {tool_name} executed successfully")
+                        
+                        if is_memory_tool:
+                            # 显示记忆工具调用结果摘要
+                            if isinstance(tool_result, dict):
+                                if tool_result.get("ok"):
+                                    count = tool_result.get("count", 0)
+                                    print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
+                                    if tool_name == "get_recent_memories" and count > 0:
+                                        memories = tool_result.get("memories", [])
+                                        if memories:
+                                            dates = [m.get("date", "N/A") for m in memories[:3]]
+                                            print(f"   [MEMORY] 📅 Recent memory dates: {', '.join(dates)}")
+                                else:
+                                    print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error')}")
+                        else:
+                            print(f"   [OK] Tool {tool_name} executed successfully")
                         # 格式化工具结果用于反馈
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
@@ -550,7 +591,15 @@ def run_multi_analyst_discussion(
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   [TOOL] Executing: {tool_name}")
+                    # 检查是否是记忆工具
+                    memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
+                                   "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
+                    is_memory_tool = tool_name in memory_tools
+                    
+                    if is_memory_tool:
+                        print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
+                    else:
+                        print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -559,7 +608,15 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   [OK] Tool {tool_name} executed successfully")
+                        
+                        if is_memory_tool:
+                            if isinstance(tool_result, dict) and tool_result.get("ok"):
+                                count = tool_result.get("count", 0)
+                                print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
+                            else:
+                                print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
+                        else:
+                            print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
@@ -772,7 +829,15 @@ def run_multi_analyst_discussion(
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   [TOOL] Executing: {tool_name}")
+                    # 检查是否是记忆工具
+                    memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
+                                   "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
+                    is_memory_tool = tool_name in memory_tools
+                    
+                    if is_memory_tool:
+                        print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
+                    else:
+                        print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -781,7 +846,15 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   [OK] Tool {tool_name} executed successfully")
+                        
+                        if is_memory_tool:
+                            if isinstance(tool_result, dict) and tool_result.get("ok"):
+                                count = tool_result.get("count", 0)
+                                print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
+                            else:
+                                print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
+                        else:
+                            print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
@@ -868,7 +941,15 @@ def run_multi_analyst_discussion(
                     if tool_calls_count >= tool_budget:
                         break
                     tool_name = tool_call.get("name", "unknown")
-                    print(f"   [TOOL] Executing: {tool_name}")
+                    # 检查是否是记忆工具
+                    memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
+                                   "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
+                    is_memory_tool = tool_name in memory_tools
+                    
+                    if is_memory_tool:
+                        print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
+                    else:
+                        print(f"   [TOOL] Executing: {tool_name}")
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
                     if tool_result:
                         all_tool_calls.append({
@@ -877,7 +958,15 @@ def run_multi_analyst_discussion(
                             "result": tool_result
                         })
                         tool_calls_count += 1
-                        print(f"   [OK] Tool {tool_name} executed successfully")
+                        
+                        if is_memory_tool:
+                            if isinstance(tool_result, dict) and tool_result.get("ok"):
+                                count = tool_result.get("count", 0)
+                                print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
+                            else:
+                                print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
+                        else:
+                            print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:

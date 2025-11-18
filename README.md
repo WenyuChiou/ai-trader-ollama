@@ -1,9 +1,10 @@
 # 💹 AI-Trader Ollama
 
-> **A Multi-Agent Trading System with 23 Advanced Tools + 6 Specialized LLM Agents**  
+> **A Multi-Agent Trading System with 29 Advanced Tools + 6 Specialized LLM Agents**  
 > 📈 Analyzing **NASDAQ-100** (118+ symbols) with comprehensive fundamental, technical, and sentiment analysis  
 > 🧠 Fully autonomous agent collaboration with real-time market data integration  
-> 🎨 Dark tech-themed UI with live visualization and real-time updates
+> 🎨 Dark tech-themed UI with live visualization and real-time updates  
+> 🧠 **RAG Memory System**: Agents learn from historical trading decisions
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-Enabled-green.svg)](https://www.langchain.com/)
@@ -26,7 +27,7 @@
 - [Configuration](#-configuration)
 - [Data Storage & Records](#-data-storage--records)
 - [Multi-Agent Architecture](#-multi-agent-architecture)
-- [Tool Suite (23 Tools)](#-tool-suite-23-tools)
+- [Tool Suite (29 Tools)](#-tool-suite-29-tools)
 - [Trading Workflow](#-trading-workflow)
 - [API Endpoints](#-api-endpoints)
 - [Deployment](#-deployment)
@@ -43,18 +44,22 @@
 
 AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combines:
 - **6 specialized LLM agents** working in collaboration
-- **23 advanced tools** for market analysis
+- **29 advanced tools** for market analysis (23 market tools + 6 memory/RAG tools)
 - **Real-time data integration** from multiple sources
 - **Intelligent risk management** with position controls
-- **Historical memory system** for learning from past trades
+- **RAG Memory System**: Agents automatically retrieve and learn from historical trading decisions
+- **Time-range equity tracking**: View portfolio performance over day/week/month/custom periods
+- **Weekly memory compression**: Automatic summarization of weekly memories (Monday + weekend only)
 
 ### Core Philosophy
 
 1. **Multi-perspective Analysis**: Different agents analyze the market from their specialized viewpoints
-2. **Tool Diversity**: 23 tools provide comprehensive market coverage
-3. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
-4. **Risk-First Approach**: Every decision passes through risk analysis
-5. **Transparency**: All reasoning is logged and visible
+2. **Tool Diversity**: 29 tools provide comprehensive market coverage (23 market tools + 6 memory tools)
+3. **RAG Memory System**: Agents automatically retrieve historical memories before making decisions
+4. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
+5. **Risk-First Approach**: Every decision passes through risk analysis
+6. **Transparency**: All reasoning is logged and visible
+7. **Historical Learning**: Agents learn from past successes and failures
 
 ---
 
@@ -174,7 +179,8 @@ After completing the setup:
    - **Portfolio**: Current positions and P&L
    - **Conversations**: Agent discussions and analysis
    - **Trades**: Trading history
-   - **Charts**: Equity curve and distribution
+   - **Charts**: Equity curve with time range selector (Day/Week/Month/Custom)
+   - **Memory**: Historical trading decisions and learning
 
 ---
 
@@ -464,7 +470,7 @@ Get-Content data\logs\filled_orders.jsonl
 ```
 data/logs/
 ├── portfolio_state.json          # 持仓记录 (Current portfolio state: cash, positions, costs)
-├── equity_history.jsonl          # 净值历史 (Net value history, recorded every 30 minutes)
+├── equity_history.jsonl          # 净值历史 (Net value history, recorded every 30 minutes, all timestamps preserved)
 ├── discussion_actions.jsonl      # 聊天记录 (All agent conversations, analyses, tool calls)
 ├── trades.jsonl                  # 交易记录 (All executed trades)
 ├── filled_orders.jsonl            # 已成交订单 (Completed orders with realized P&L)
@@ -579,6 +585,12 @@ curl -X POST "http://localhost:8000/api/system/init?force=true"
 **Contains**: Net value (equity) history with P&L records
 
 **Recording Frequency**: Records are automatically saved every **30 minutes** during market hours.
+
+**Important Features**:
+- ✅ **All Timestamps Preserved**: Every 30-minute record is kept (no deduplication by date)
+- ✅ **Time-Range Queries**: Frontend supports day/week/month/custom date range selection
+- ✅ **API Support**: Backend API supports `period` (day/week/month), `start_date`, `end_date`, `start_timestamp`, `end_timestamp` parameters
+- ✅ **Default View**: Frontend displays recent week's data by default
 
 **Format** (JSONL - one record per line):
 ```json
@@ -790,7 +802,60 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 
 ---
 
-## 🛠️ Tool Suite (23 Tools)
+## 🛠️ Tool Suite (29 Tools)
+
+The system includes **29 advanced tools** organized into two categories:
+- **23 Market Analysis Tools**: Real-time data, technical indicators, fundamental data, news, and economic indicators
+- **6 Memory/RAG Tools**: Historical memory retrieval for learning from past trading decisions
+
+### 🧠 Memory/RAG Tools (6 Tools)
+
+These tools allow agents to retrieve and learn from historical trading memories:
+
+1. **`get_recent_memories`**
+   - **Purpose**: Get recent trading memories (last N days) for context
+   - **Usage**: Automatically called at the start of each trading cycle
+   - **Parameters**: `days` (default: 5), `summary_only` (default: true)
+   - **Returns**: List of recent trading decisions, stances, and outcomes
+
+2. **`search_memories_by_symbol`**
+   - **Purpose**: Search historical memories for a specific stock
+   - **Usage**: Called when analyzing specific stocks
+   - **Parameters**: `symbol` (required), `days` (default: 30)
+   - **Returns**: Historical analysis and decisions for the stock
+
+3. **`search_memories_by_date_range`**
+   - **Purpose**: Search memories within a date range
+   - **Usage**: Review what happened during specific periods
+   - **Parameters**: `start_date`, `end_date` (YYYY-MM-DD format)
+   - **Returns**: Memories within the specified date range
+
+4. **`get_weekly_memory_summary`**
+   - **Purpose**: Get weekly compressed memory summary
+   - **Usage**: Longer-term context (only Monday and weekend records preserved)
+   - **Parameters**: `week_str` (optional, format: "2025-W01")
+   - **Returns**: Weekly summary with Monday and weekend records
+
+5. **`get_monthly_memory_summary`**
+   - **Purpose**: Get monthly compressed memory summary
+   - **Usage**: Very long-term trends and patterns
+   - **Parameters**: `month_str` (optional, format: "2025-01")
+   - **Returns**: Monthly aggregated summary
+
+6. **`search_similar_decisions`**
+   - **Purpose**: Search for similar trading decisions for a stock
+   - **Usage**: Learn from past BUY/SELL actions
+   - **Parameters**: `symbol` (required), `action_type` (optional: "BUY", "SELL", "HOLD")
+   - **Returns**: Similar historical decisions with outcomes
+
+**Memory System Features**:
+- ✅ **Automatic Memory Loading**: Recent memories (last 5 days) are automatically loaded at the start of each trading cycle
+- ✅ **Forced Memory Retrieval**: Market Analyst always calls `get_recent_memories` at the start (enforced by system)
+- ✅ **Weekly Compression**: Old memories (>30 days) are compressed to weekly summaries (Monday + weekend only)
+- ✅ **Daily Preservation**: Recent memories (<30 days) are fully preserved for detailed analysis
+- ✅ **RAG Integration**: Agents use memories to avoid repeating mistakes and learn from successes
+
+### 📊 Market Analysis Tools (23 Tools)
 
 ### Sentiment & Risk (3 tools)
 - `vix_term`: VIX term structure
@@ -2280,7 +2345,7 @@ The system includes integrated optimization components that improve performance:
 | File | Description |
 |------|-------------|
 | `docs/AGENT_SYSTEM.md` | Complete agent architecture |
-| `docs/TOOLS.md` | Detailed documentation for all 23 tools |
+| `docs/TOOLS.md` | Detailed documentation for all 29 tools (23 market + 6 memory) |
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
 

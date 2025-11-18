@@ -319,7 +319,13 @@ def execute_daily_trade(
             summary_only=True,  # 只加載摘要，減少 prompt 長度
         )
         if historical_memories:
-            print(f"[MEMORY] Loaded {len(historical_memories)} historical memories for context")
+            print(f"[MEMORY] ✅ Loaded {len(historical_memories)} historical memories for context")
+            # 显示记忆日期范围
+            if len(historical_memories) > 0:
+                dates = [m.get("date", "N/A") for m in historical_memories]
+                print(f"[MEMORY] 📅 Memory dates: {', '.join(dates)}")
+        else:
+            print(f"[MEMORY] ⚠️ No historical memories found (agents should use memory tools to retrieve past decisions)")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to load historical memories: {e}")
         # 不影響主流程，繼續執行

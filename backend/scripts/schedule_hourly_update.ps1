@@ -37,49 +37,63 @@ $Action = New-ScheduledTaskAction `
     -Argument "`"$FullScriptPath`"" `
     -WorkingDirectory $WorkingDirectory
 
-# 每小时触发（从整点开始，重复每小时）
-$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddHours((Get-Date).Hour + 1)
-$Trigger.Repetition = @{
-    Interval = [TimeSpan]::FromHours(1)
-    Duration = [TimeSpan]::MaxValue
+# 使用schtasks命令创建每小时重复任务（更可靠的方法）
+$NextHour = (Get-Date).Date.AddHours((Get-Date).Hour + 1)
+$StartTime = $NextHour.ToString("HH:mm")
+
+# 删除旧任务（如果存在）
+$ExistingTask = schtasks /Query /TN $TaskName 2>$null
+if ($ExistingTask) {
+    Write-Host "Removing existing task..." -ForegroundColor Yellow
+    schtasks /Delete /TN $TaskName /F | Out-Null
 }
 
-# 任务设置
-$Settings = New-ScheduledTaskSettingsSet `
-    -AllowStartIfOnBatteries `
-    -DontStopIfGoingOnBatteries `
-    -StartWhenAvailable `
-    -RunOnlyIfNetworkAvailable
+# 使用schtasks创建每小时重复任务
+# 注意：schtasks需要正确的参数格式
+$EscapedScriptPath = $FullScriptPath -replace '"', '""'
+$Command = "schtasks /Create /TN `"$TaskName`" /TR `"`"$PythonPath`" `"`"$EscapedScriptPath`"`"`" /SC HOURLY /MO 1 /ST $StartTime /F /RL HIGHEST"
+Write-Host "Creating task..." -ForegroundColor Gray
 
-# 运行权限
-$Principal = New-ScheduledTaskPrincipal `
-    -UserId "$env:USERDOMAIN\$env:USERNAME" `
-    -LogonType S4U `
-    -RunLevel Highest
-
-# 注册任务
 try {
+    $Result = cmd /c $Command 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "SUCCESS: Task registered successfully!" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Task Details:"
+        Write-Host "  - Name: $TaskName"
+        Write-Host "  - Schedule: Every hour starting at $StartTime"
+        Write-Host "  - Script: $FullScriptPath"
+        Write-Host ""
+        Write-Host "To test the task manually:" -ForegroundColor Cyan
+        Write-Host "  schtasks /Run /TN `"$TaskName`"" -ForegroundColor Yellow
+        Write-Host ""
+    } else {
+        throw "schtasks command failed with exit code $LASTEXITCODE"
+    }
+} catch {
+    Write-Host "ERROR: Failed to register task: $_" -ForegroundColor Red
+    Write-Host "Trying alternative method..." -ForegroundColor Yellow
+    
+    # 备用方法：使用PowerShell cmdlets（不带重复）
+    $Trigger = New-ScheduledTaskTrigger -Once -At $NextHour
+    $Settings = New-ScheduledTaskSettingsSet `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries `
+        -StartWhenAvailable
+    $Principal = New-ScheduledTaskPrincipal `
+        -UserId "$env:USERDOMAIN\$env:USERNAME" `
+        -LogonType S4U `
+        -RunLevel Highest
+    
     Register-ScheduledTask `
         -TaskName $TaskName `
         -Action $Action `
         -Trigger $Trigger `
         -Settings $Settings `
         -Principal $Principal `
-        -Description "AI Trader - Hourly Real-Time P&L and NAV Update" `
-        -ErrorAction Stop
+        -Description "AI Trader - Hourly Real-Time P&L and NAV Update" | Out-Null
     
-    Write-Host "SUCCESS: Task registered successfully!" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Task Details:"
-    Write-Host "  - Name: $TaskName"
-    Write-Host "  - Schedule: Every hour"
-    Write-Host "  - Script: $FullScriptPath"
-    Write-Host ""
-    Write-Host "To test the task manually:" -ForegroundColor Cyan
-    Write-Host "  Start-ScheduledTask -TaskName `"$TaskName`"" -ForegroundColor Yellow
-    Write-Host ""
-} catch {
-    Write-Host "ERROR: Failed to register task: $_" -ForegroundColor Red
-    exit 1
+    Write-Host "Task created (without repetition - will need manual setup in Task Scheduler)" -ForegroundColor Yellow
+    Write-Host "Please manually configure repetition in Task Scheduler GUI" -ForegroundColor Yellow
 }
 

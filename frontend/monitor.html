@@ -1297,7 +1297,20 @@
             <div class="chart-section" id="chartSection" style="display: block;">
                 <div class="chart-header">
                     <h2>📈 Total Asset Value Over Time</h2>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <!-- Time Range Selector -->
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <button id="timeRangeDay" onclick="setTimeRange('day')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Day</button>
+                            <button id="timeRangeWeek" onclick="setTimeRange('week')" class="time-range-btn active" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.4); border: 1px solid rgba(34, 211, 238, 0.7); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px; font-weight: 600;">Week</button>
+                            <button id="timeRangeMonth" onclick="setTimeRange('month')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Month</button>
+                            <button id="timeRangeCustom" onclick="setTimeRange('custom')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Custom</button>
+                        </div>
+                        <!-- Custom Date Range (shown when custom is selected) -->
+                        <div id="customDateRange" style="display: none; gap: 5px; align-items: center;">
+                            <input type="date" id="startDateInput" onchange="updateCustomDateRange()" style="padding: 6px; border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 12px;">
+                            <span style="color: #6b7280;">to</span>
+                            <input type="date" id="endDateInput" onchange="updateCustomDateRange()" style="padding: 6px; border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 12px;">
+                        </div>
                         <button onclick="toggleChartScale()" style="padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; font-size: 12px;">
                             <span id="chartScaleBtn">Linear Scale</span>
                         </button>
@@ -1704,7 +1717,7 @@
         const ORDER_CHECK_INTERVAL = 10000; // 10 seconds for pending order check (trading hours)
         const SIMULATION_INTERVAL = 300000; // 5 minutes for simulation loop
         const AGENT_STATUS_INTERVAL = 5000; // 5 seconds for agent status check
-        const EQUITY_CHART_UPDATE_INTERVAL = 3600000; // 1 hour (3600000 ms) for equity chart update
+        const EQUITY_CHART_UPDATE_INTERVAL = 1800000; // 30 minutes (1800000 ms) for equity chart update
         const CONVERSATIONS_LIMIT = 30; // Limit conversation count (optimization: reduce DOM operations)
         const TRADES_LIMIT = 100; // Limit trade count (increased to 100 to ensure complete order data display)
         let refreshTimer = null;
@@ -2472,10 +2485,57 @@
             }
         }
 
-        // Fetch equity history
+        // Record equity to backend
+        async function recordEquityToBackend(equityData) {
+            try {
+                const response = await fetch(`${getApiBase()}/api/portfolio/record-equity`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(equityData),
+                    signal: AbortSignal.timeout(5000),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                if (result.ok) {
+                    console.log('[Equity Record] Successfully recorded to backend');
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.warn('[Equity Record] Failed to record:', err.message);
+                }
+                throw err;
+            }
+        }
+
+        // Time range state
+        let equityTimeRange = 'week'; // 'day', 'week', 'month', 'custom'
+        let equityStartDate = null;
+        let equityEndDate = null;
+
+        // Fetch equity history with time range support
         async function fetchEquityHistory(options = {}) {
             try {
-                const response = await fetch(`${getApiBase()}/api/portfolio/equity-history?limit=60`, {
+                // Build query parameters
+                const params = new URLSearchParams();
+                params.append('limit', '1000'); // Increase limit to get more data
+                
+                // Add time range parameters
+                if (equityTimeRange === 'custom' && equityStartDate && equityEndDate) {
+                    params.append('start_date', equityStartDate);
+                    params.append('end_date', equityEndDate);
+                } else if (equityTimeRange !== 'custom') {
+                    params.append('period', equityTimeRange);
+                }
+                
+                const response = await fetch(`${getApiBase()}/api/portfolio/equity-history?${params.toString()}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -7135,6 +7195,59 @@
         let distributionChart = null;
         let chartScaleType = 'linear'; // 'linear' or 'logarithmic'
 
+        // Set time range for equity chart
+        function setTimeRange(range) {
+            equityTimeRange = range;
+            
+            // Update button styles
+            document.querySelectorAll('.time-range-btn').forEach(btn => {
+                btn.style.background = 'rgba(34, 211, 238, 0.2)';
+                btn.style.border = '1px solid rgba(34, 211, 238, 0.5)';
+                btn.style.fontWeight = 'normal';
+            });
+            
+            const activeBtn = document.getElementById(`timeRange${range.charAt(0).toUpperCase() + range.slice(1)}`);
+            if (activeBtn) {
+                activeBtn.style.background = 'rgba(34, 211, 238, 0.4)';
+                activeBtn.style.border = '1px solid rgba(34, 211, 238, 0.7)';
+                activeBtn.style.fontWeight = '600';
+            }
+            
+            // Show/hide custom date range inputs
+            const customRangeDiv = document.getElementById('customDateRange');
+            if (range === 'custom') {
+                customRangeDiv.style.display = 'flex';
+                // Set default dates (last 7 days)
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 7);
+                document.getElementById('endDateInput').value = endDate.toISOString().split('T')[0];
+                document.getElementById('startDateInput').value = startDate.toISOString().split('T')[0];
+                updateCustomDateRange();
+            } else {
+                customRangeDiv.style.display = 'none';
+                equityStartDate = null;
+                equityEndDate = null;
+            }
+            
+            // Refresh chart with new time range
+            equityHistory = []; // Clear cache
+            renderEquityChart();
+        }
+        
+        // Update custom date range
+        function updateCustomDateRange() {
+            const startInput = document.getElementById('startDateInput');
+            const endInput = document.getElementById('endDateInput');
+            equityStartDate = startInput.value;
+            equityEndDate = endInput.value;
+            
+            if (equityStartDate && equityEndDate) {
+                equityHistory = []; // Clear cache
+                renderEquityChart();
+            }
+        }
+        
         // Toggle chart scale
         function toggleChartScale() {
             chartScaleType = chartScaleType === 'linear' ? 'logarithmic' : 'linear';
@@ -7175,6 +7288,9 @@
                     }
                     return;
                 }
+                
+                // Update data points count
+                document.getElementById('chartDataPoints').textContent = `${equityData.length} data points`;
                 
                 // Sort by date
                 equityData.sort((a, b) => {
@@ -8851,13 +8967,13 @@
                     });
                 }
                 
-                // CRITICAL FIX: 净值图表每小时更新一次，但价格系统每30秒更新
-                // 检查是否需要更新净值图表（每小时一次）
+                // CRITICAL FIX: 净值图表每30分钟更新一次，但价格系统每30秒更新
+                // 检查是否需要更新净值图表（每30分钟一次）
                 const nowTimestamp = Date.now();
                 const shouldUpdateEquityChart = (nowTimestamp - lastEquityChartUpdate) >= EQUITY_CHART_UPDATE_INTERVAL;
                 
                 // 如果portfolio数据存在，将最新值添加到equity history用于图表显示
-                // 但只在需要更新图表时才添加新点（每小时一次）
+                // 但只在需要更新图表时才添加新点（每30分钟一次）
                 if (portfolio && portfolio.total_value !== undefined && shouldUpdateEquityChart) {
                     // 获取当前时间戳
                     const timestamp = new Date().toISOString();
@@ -8870,17 +8986,17 @@
                         const lastValue = lastRecord.total_value || lastRecord.value || 0;
                         const lastTimestamp = lastRecord.timestamp;
                         
-                        // 如果最后一条记录的时间戳很新（1小时内），且值相同，不需要更新
+                        // 如果最后一条记录的时间戳很新（30分钟内），且值相同，不需要更新
                         if (lastTimestamp) {
                             const lastTime = new Date(lastTimestamp);
                             const timeDiff = (nowTimestamp - new Date(lastTimestamp).getTime()) / 1000 / 60; // 分钟
-                            if (timeDiff < 60 && Math.abs(lastValue - portfolio.total_value) < 1) {
+                            if (timeDiff < 30 && Math.abs(lastValue - portfolio.total_value) < 1) {
                                 needsUpdate = false;
                             }
                         }
                     }
                     
-                    // 如果需要更新，添加最新点到history（每小时一次）
+                    // 如果需要更新，添加最新点到history（每30分钟一次）并记录到后端
                     if (needsUpdate) {
                         const latestPoint = {
                             date: today,
@@ -8891,6 +9007,7 @@
                             equity_value: portfolio.equity_value || 0,
                             total_pnl: portfolio.total_pnl || 0,
                             total_pnl_pct: portfolio.total_pnl_pct || 0,
+                            positions: portfolio.positions || {},
                         };
                         
                         // 如果最后一条记录的时间戳相同或更早，替换它；否则添加新点
@@ -8912,7 +9029,12 @@
                         // 更新全局变量
                         equityHistory = history;
                         lastEquityChartUpdate = nowTimestamp; // 更新最后图表更新时间
-                        console.log('[Refresh] Added/updated latest portfolio point to equity history (hourly update):', latestPoint);
+                        console.log('[Refresh] Added/updated latest portfolio point to equity history (30min update):', latestPoint);
+                        
+                        // 记录到后端
+                        recordEquityToBackend(latestPoint).catch(err => {
+                            console.warn('[Refresh] Failed to record equity to backend:', err);
+                        });
                     }
                 }
                 
@@ -8923,10 +9045,10 @@
                     renderSummaryCards(portfolio);  // 更新总资产、P&L、现金、持仓价值（每30秒）
                     renderPositions(portfolio);     // 更新持仓表格（每30秒）
                     
-                    // 净值图表每小时更新一次
+                    // 净值图表每30分钟更新一次
                     if (shouldUpdateEquityChart) {
-                        await renderEquityChart();      // 更新净值曲线图（每小时一次）
-                        console.log('[Refresh] Equity chart updated (hourly)');
+                        await renderEquityChart();      // 更新净值曲线图（每30分钟一次）
+                        console.log('[Refresh] Equity chart updated (30min)');
                     } else {
                         // 不更新图表，但确保图表存在
                         if (!equityChart) {
@@ -8951,10 +9073,10 @@
                             console.log('[Refresh] Last equity record:', lastRecord);
                         }
                     }
-                    // 非交易时段，净值图表每小时更新一次
+                    // 非交易时段，净值图表每30分钟更新一次
                     if (shouldUpdateEquityChart) {
-                        await renderEquityChart();  // 显示净值曲线图（每小时一次）
-                        console.log('[Refresh] Equity chart updated (hourly)');
+                        await renderEquityChart();  // 显示净值曲线图（每30分钟一次）
+                        console.log('[Refresh] Equity chart updated (30min)');
                     } else {
                         // 不更新图表，但确保图表存在
                         if (!equityChart) {

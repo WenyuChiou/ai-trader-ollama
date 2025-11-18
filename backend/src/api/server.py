@@ -928,52 +928,131 @@ async def get_portfolio_real_time():
             }
         )
 
-@app.get("/api/portfolio/equity-history")
-async def get_equity_history(limit: int = Query(60, ge=1, le=1000)):
-    """获取权益历史"""
+@app.options("/api/portfolio/record-equity")
+async def options_record_equity():
+    """CORS preflight for record-equity endpoint"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.post("/api/portfolio/record-equity")
+async def record_equity(equity_data: dict):
+    """记录净值到历史记录"""
     try:
+        from src.data.equity_tracker import EquityTracker
+        from datetime import date
+        
         logs_dir = _get_project_logs_dir()
-        equity_file = logs_dir / "equity_history.jsonl"
+        equity_tracker = EquityTracker(root=str(logs_dir))
         
-        if not equity_file.exists():
-            return JSONResponse(
-                status_code=200,
-                content={
-                "ok": True,
-                    "records": []
-                },
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
+        # 提取日期（优先使用date字段，否则从timestamp提取）
+        date_str = equity_data.get("date")
+        if not date_str and equity_data.get("timestamp"):
+            date_str = equity_data["timestamp"].split("T")[0]
+        if not date_str:
+            date_str = date.today().isoformat()
         
-        # 读取最后 N 条记录（优化：从文件末尾读取，避免加载整个文件）
-        records = []
-        with equity_file.open("r", encoding="utf-8") as f:
-            # 优化：从文件末尾读取（避免加载整个文件）
-            f.seek(0, 2)  # Seek to end
-            file_size = f.tell()
-            # 读取最后 ~100KB（足够容纳 limit 条记录）
-            position = max(0, file_size - 1024 * 100)
-            f.seek(position)
-            lines = f.readlines()
-            
-            # 处理行（从新到旧）
-            for line in reversed(lines[-limit:]):
-                if line.strip():
-                    try:
-                        record = json.loads(line.strip())
-                        records.append(record)
-                    except json.JSONDecodeError:
-                        continue
+        # 记录净值
+        equity_tracker.record_daily_equity(
+            date_str=date_str,
+            portfolio_snapshot=equity_data,
+        )
         
         return JSONResponse(
             status_code=200,
             content={
                 "ok": True,
-                "records": records
+                "message": "Equity recorded successfully",
+                "date": date_str,
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "ok": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            },
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+            }
+        )
+
+@app.get("/api/portfolio/equity-history")
+async def get_equity_history(
+    limit: int = Query(60, ge=1, le=1000),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    start_timestamp: Optional[str] = Query(None, description="Start timestamp (ISO 8601)"),
+    end_timestamp: Optional[str] = Query(None, description="End timestamp (ISO 8601)"),
+    period: Optional[str] = Query(None, description="Period: 'day', 'week', or 'month'"),
+):
+    """获取权益历史，支持时间范围查询"""
+    try:
+        from src.data.equity_tracker import EquityTracker
+        from datetime import datetime, timedelta, timezone
+        
+        logs_dir = _get_project_logs_dir()
+        equity_tracker = EquityTracker(root=str(logs_dir))
+        
+        # 处理period参数（如果提供）
+        if period:
+            now = datetime.now(timezone.utc)
+            if period == "day":
+                start_ts = (now - timedelta(days=1)).isoformat().replace('+00:00', 'Z')
+            elif period == "week":
+                start_ts = (now - timedelta(days=7)).isoformat().replace('+00:00', 'Z')
+            elif period == "month":
+                start_ts = (now - timedelta(days=30)).isoformat().replace('+00:00', 'Z')
+            else:
+                start_ts = None
+            
+            if start_ts:
+                end_ts = now.isoformat().replace('+00:00', 'Z')
+                records = equity_tracker.load_equity_history(
+                    start_timestamp=start_ts,
+                    end_timestamp=end_ts,
+                    limit=limit
+                )
+            else:
+                records = equity_tracker.load_equity_history(
+                    start_date=start_date,
+                    end_date=end_date,
+                    start_timestamp=start_timestamp,
+                    end_timestamp=end_timestamp,
+                    limit=limit
+                )
+        else:
+            # 使用EquityTracker的方法加载记录
+            records = equity_tracker.load_equity_history(
+                start_date=start_date,
+                end_date=end_date,
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp,
+                limit=limit
+            )
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "ok": True,
+                "records": records,
+                "count": len(records)
             },
             headers={
                 "Access-Control-Allow-Origin": "*",

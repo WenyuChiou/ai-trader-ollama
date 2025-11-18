@@ -1,0 +1,1376 @@
+{
+  "date": "2025-11-18",
+  "timestamp": "2025-11-18T13:43:40.549335",
+  "metadata": {
+    "version": "1.0",
+    "compressed": false
+  },
+  "market_view": {
+    "stocks": {
+      "NVDA": {
+        "price": 186.60000610351562,
+        "change_pct": -0.018772635535591387,
+        "rsi14": 38.91194266238879,
+        "macd": 1.0884004331138613,
+        "signal_score": 3.5
+      },
+      "MSFT": {
+        "price": 507.489990234375,
+        "change_pct": -0.005272653730103771,
+        "rsi14": 27.545443448153407,
+        "macd": -3.095884380741211,
+        "signal_score": 2.0
+      },
+      "AAPL": {
+        "price": 267.4599914550781,
+        "change_pct": -0.018171183658773127,
+        "rsi14": 46.512669328656195,
+        "macd": 4.568521688296414,
+        "signal_score": 3.5
+      },
+      "GOOG": {
+        "price": 285.6000061035156,
+        "change_pct": 0.031121361741923703,
+        "rsi14": 62.2206660529838,
+        "macd": 8.825337255135423,
+        "signal_score": 7.5
+      },
+      "GOOGL": {
+        "price": 285.0199890136719,
+        "change_pct": 0.031149326136862943,
+        "rsi14": 62.165525166317195,
+        "macd": 8.847126182412978,
+        "signal_score": 7.0
+      },
+      "AMZN": {
+        "price": 232.8699951171875,
+        "change_pct": -0.007754941860691922,
+        "rsi14": 52.424969457896054,
+        "macd": 4.020091779788771,
+        "signal_score": 4.0
+      },
+      "META": {
+        "price": 602.010009765625,
+        "change_pct": -0.01222395553184541,
+        "rsi14": 11.5959902205705,
+        "macd": -32.37603977273875,
+        "signal_score": 0.5
+      },
+      "AVGO": {
+        "price": 342.6499938964844,
+        "change_pct": 0.0005548164636661745,
+        "rsi14": 34.87026688546719,
+        "macd": -0.10858930231910335,
+        "signal_score": 3.0
+      },
+      "TSLA": {
+        "price": 408.9200134277344,
+        "change_pct": 0.011302107716671506,
+        "rsi14": 36.48359802715183,
+        "macd": -4.130523364912449,
+        "signal_score": 3.0
+      },
+      "NFLX": {
+        "price": 110.29000091552734,
+        "change_pct": -0.008335074037373547,
+        "rsi14": 50.10456116419273,
+        "macd": -1.4191161136136827,
+        "signal_score": 4.5
+      },
+      "PLTR": {
+        "price": 171.25,
+        "change_pct": -0.015861126337358256,
+        "rsi14": 41.082702703664665,
+        "macd": -1.1110573926932261,
+        "signal_score": 2.5
+      },
+      "COST": {
+        "price": 912.5900268554688,
+        "change_pct": -0.011256965300595723,
+        "rsi14": 44.64899275888428,
+        "macd": -4.647467552743592,
+        "signal_score": 0.5
+      },
+      "ASML": {
+        "price": 1020.0,
+        "change_pct": 0.012929769989259432,
+        "rsi14": 42.629571684365416,
+        "macd": 9.747164095372796,
+        "signal_score": 4.5
+      },
+      "AMD": {
+        "price": 240.52000427246094,
+        "change_pct": -0.02548516408716195,
+        "rsi14": 42.45664905361375,
+        "macd": 8.418494595246273,
+        "signal_score": 3.0
+      },
+      "CSCO": {
+        "price": 77.77999877929688,
+        "change_pct": -0.0028205284705529188,
+        "rsi14": 66.37055942001062,
+        "macd": 1.777038463429463,
+        "signal_score": 5.5
+      },
+      "AZN": {
+        "price": 89.4000015258789,
+        "change_pct": 0.003367037675594986,
+        "rsi14": 75.16682606032602,
+        "macd": 1.7702223465275893,
+        "signal_score": 5.0
+      },
+      "TMUS": {
+        "price": 215.83999633789062,
+        "change_pct": -0.0011107251533241103,
+        "rsi14": 45.11648785743143,
+        "macd": -3.9704496806745055,
+        "signal_score": 4.5
+      },
+      "MU": {
+        "price": 241.9499969482422,
+        "change_pct": -0.019770712014792524,
+        "rsi14": 59.112400901484094,
+        "macd": 14.72082749308936,
+        "signal_score": 5.5
+      },
+      "LIN": {
+        "price": 417.8500061035156,
+        "change_pct": -0.013084882385622665,
+        "rsi14": 30.64591819674125,
+        "macd": -9.081360272361223,
+        "signal_score": 4.0
+      },
+      "PEP": {
+        "price": 147.8300018310547,
+        "change_pct": 0.013575561499351352,
+        "rsi14": 44.161159574559136,
+        "macd": -0.42794868902643657,
+        "signal_score": 4.5
+      },
+      "SHOP": {
+        "price": 139.92999267578125,
+        "change_pct": -0.04183785874585999,
+        "rsi14": 15.551607452756315,
+        "macd": -3.2049871727878383,
+        "signal_score": 1.0
+      },
+      "APP": {
+        "price": 539.27001953125,
+        "change_pct": -0.033046426882521907,
+        "rsi14": 30.189624107792213,
+        "macd": -9.959029347434125,
+        "signal_score": 0.0
+      },
+      "INTU": {
+        "price": 645.97998046875,
+        "change_pct": -0.02480335946300194,
+        "rsi14": 36.12631778046989,
+        "macd": -4.855100440718161,
+        "signal_score": 0.0
+      },
+      "AMAT": {
+        "price": 228.7100067138672,
+        "change_pct": 0.011946428355625649,
+        "rsi14": 50.743370366868184,
+        "macd": 3.6239782163387133,
+        "signal_score": 4.5
+      },
+      "LRCX": {
+        "price": 147.4600067138672,
+        "change_pct": -0.005395843940435796,
+        "rsi14": 43.58087580576199,
+        "macd": 3.693257631463098,
+        "signal_score": 2.5
+      },
+      "PDD": {
+        "price": 129.0399932861328,
+        "change_pct": -0.01458574804598356,
+        "rsi14": 27.05465501112667,
+        "macd": 0.5357721297424973,
+        "signal_score": 2.5
+      },
+      "QCOM": {
+        "price": 166.75,
+        "change_pct": -0.04155647721052702,
+        "rsi14": 34.76962746165124,
+        "macd": 1.0590183565421398,
+        "signal_score": 2.0
+      },
+      "ARM": {
+        "price": 140.25999450683594,
+        "change_pct": 0.003505689485562513,
+        "rsi14": 15.420253276044008,
+        "macd": -4.826211109251034,
+        "signal_score": 2.0
+      },
+      "INTC": {
+        "price": 34.709999084472656,
+        "change_pct": -0.02280409242263881,
+        "rsi14": 21.488293407654012,
+        "macd": 0.1734415848811821,
+        "signal_score": 1.0
+      },
+      "BKNG": {
+        "price": 4804.009765625,
+        "change_pct": -0.04833588113508536,
+        "rsi14": 31.979246175647006,
+        "macd": -75.94815893337545,
+        "signal_score": 2.0
+      },
+      "AMGN": {
+        "price": 341.7099914550781,
+        "change_pct": 0.014759165423874787,
+        "rsi14": 86.50675329177508,
+        "macd": 12.391367634439348,
+        "signal_score": 4.5
+      },
+      "TXN": {
+        "price": 154.99000549316406,
+        "change_pct": -0.027239040281268112,
+        "rsi14": 29.8103249983847,
+        "macd": -4.739720472971129,
+        "signal_score": 1.0
+      },
+      "ISRG": {
+        "price": 546.7100219726562,
+        "change_pct": -0.005095426367506928,
+        "rsi14": 50.635107554511414,
+        "macd": 22.54740896819976,
+        "signal_score": 4.0
+      },
+      "GILD": {
+        "price": 124.08999633789062,
+        "change_pct": -0.007438812431190045,
+        "rsi14": 65.6108638940768,
+        "macd": 1.7048347229392675,
+        "signal_score": 6.5
+      },
+      "KLAC": {
+        "price": 1133.699951171875,
+        "change_pct": -0.0005465786960864305,
+        "rsi14": 37.270339403198214,
+        "macd": 17.55492045632809,
+        "signal_score": 3.0
+      },
+      "PANW": {
+        "price": 202.89999389648438,
+        "change_pct": -0.011449481624923874,
+        "rsi14": 26.548223940018275,
+        "macd": -0.6363590980801348,
+        "signal_score": 1.5
+      },
+      "ADBE": {
+        "price": 325.07000732421875,
+        "change_pct": -0.01824160639834127,
+        "rsi14": 21.1110936789093,
+        "macd": -4.888716775224168,
+        "signal_score": 0.0
+      },
+      "HON": {
+        "price": 196.0800018310547,
+        "change_pct": -0.014871340207608164,
+        "rsi14": 37.83001888871497,
+        "macd": 0.06524190002275532,
+        "signal_score": 2.5
+      },
+      "CRWD": {
+        "price": 529.780029296875,
+        "change_pct": -0.014454392470540367,
+        "rsi14": 42.17439784539795,
+        "macd": 11.0331622383801,
+        "signal_score": 3.5
+      },
+      "CEG": {
+        "price": 338.6700134277344,
+        "change_pct": 0.0004431774161981483,
+        "rsi14": 29.216801835989443,
+        "macd": -5.709960572772104,
+        "signal_score": 2.5
+      },
+      "ADI": {
+        "price": 229.94000244140625,
+        "change_pct": -0.021073681132038558,
+        "rsi14": 40.77993507767236,
+        "macd": -1.7418503675257568,
+        "signal_score": 1.5
+      },
+      "ADP": {
+        "price": 250.89999389648438,
+        "change_pct": -0.00865305809433281,
+        "rsi14": 14.221649621665591,
+        "macd": -8.630679821845774,
+        "signal_score": 0.5
+      },
+      "DASH": {
+        "price": 210.64999389648438,
+        "change_pct": 0.01782946976668187,
+        "rsi14": 26.32656081463753,
+        "macd": -16.477290116074556,
+        "signal_score": 2.5
+      },
+      "CMCSA": {
+        "price": 27.219999313354492,
+        "change_pct": -0.010541654420739732,
+        "rsi14": 34.85293787656093,
+        "macd": -0.7527183928881271,
+        "signal_score": 4.0
+      },
+      "VRTX": {
+        "price": 434.0199890136719,
+        "change_pct": -0.007160024994884662,
+        "rsi14": 59.48456127828325,
+        "macd": 6.1182656165732965,
+        "signal_score": 6.5
+      },
+      "MELI": {
+        "price": 2057.719970703125,
+        "change_pct": 0.004309688947652157,
+        "rsi14": 24.217946843026056,
+        "macd": -49.099320865034315,
+        "signal_score": 1.5
+      },
+      "SBUX": {
+        "price": 83.69000244140625,
+        "change_pct": -0.01285676284011461,
+        "rsi14": 45.756101191860736,
+        "macd": 0.2985655486188108,
+        "signal_score": 5.0
+      },
+      "CDNS": {
+        "price": 311.2900085449219,
+        "change_pct": -0.011558073906941968,
+        "rsi14": 16.91288247117987,
+        "macd": -7.099406099566863,
+        "signal_score": 0.0
+      },
+      "ORLY": {
+        "price": 99.55999755859375,
+        "change_pct": 0.0076922518558810715,
+        "rsi14": 60.20021637271106,
+        "macd": -0.6150914606495945,
+        "signal_score": 6.0
+      },
+      "SNPS": {
+        "price": 390.239990234375,
+        "change_pct": 0.0010517499326168078,
+        "rsi14": 19.811410291636676,
+        "macd": -21.65676021533443,
+        "signal_score": 0.0
+      },
+      "MSTR": {
+        "price": 195.4199981689453,
+        "change_pct": -0.02167710553719493,
+        "rsi14": 19.14510466539211,
+        "macd": -27.107655388606275,
+        "signal_score": 0.0
+      },
+      "MDLZ": {
+        "price": 55.56999969482422,
+        "change_pct": -0.022687318003519197,
+        "rsi14": 23.333327487051946,
+        "macd": -1.37954873819956,
+        "signal_score": 0.5
+      },
+      "ABNB": {
+        "price": 117.5999984741211,
+        "change_pct": -0.03622355589694626,
+        "rsi14": 22.091165734571547,
+        "macd": -1.1580207290727174,
+        "signal_score": 0.0
+      },
+      "MRVL": {
+        "price": 83.44999694824219,
+        "change_pct": -0.034702141190312674,
+        "rsi14": 42.80792624091477,
+        "macd": 0.820537309589568,
+        "signal_score": 2.0
+      },
+      "CTAS": {
+        "price": 183.75999450683594,
+        "change_pct": -0.01585264939222264,
+        "rsi14": 35.28564605498727,
+        "macd": -2.4856283441508253,
+        "signal_score": 4.0
+      },
+      "TRI": {
+        "price": 137.13999938964844,
+        "change_pct": -0.02827184408076211,
+        "rsi14": 22.164740492710024,
+        "macd": -5.798385787094503,
+        "signal_score": 1.0
+      },
+      "MAR": {
+        "price": 282.8900146484375,
+        "change_pct": -0.009904754865514676,
+        "rsi14": 67.27455849305414,
+        "macd": 5.904167481905347,
+        "signal_score": 6.5
+      },
+      "MNST": {
+        "price": 71.83999633789062,
+        "change_pct": 0.007432320816746385,
+        "rsi14": 58.594797756147884,
+        "macd": 0.9997014061318055,
+        "signal_score": 7.0
+      },
+      "CSX": {
+        "price": 34.0099983215332,
+        "change_pct": -0.025501523364855783,
+        "rsi14": 30.804585000618246,
+        "macd": -0.1718758514723362,
+        "signal_score": 1.0
+      },
+      "ADSK": {
+        "price": 291.9599914550781,
+        "change_pct": -0.024817204415064298,
+        "rsi14": 31.21072096485325,
+        "macd": -3.6425802442256554,
+        "signal_score": 0.0
+      },
+      "PYPL": {
+        "price": 61.88999938964844,
+        "change_pct": -0.01464738040960778,
+        "rsi14": 22.354676580466673,
+        "macd": -1.4104929115563891,
+        "signal_score": 0.0
+      },
+      "FTNT": {
+        "price": 81.94000244140625,
+        "change_pct": -0.004495141880232922,
+        "rsi14": 40.60257998369038,
+        "macd": -0.6399860839641605,
+        "signal_score": 2.5
+      },
+      "AEP": {
+        "price": 123.72000122070312,
+        "change_pct": 0.019950520264312877,
+        "rsi14": 74.75558757256474,
+        "macd": 1.9365224350825088,
+        "signal_score": 4.0
+      },
+      "WDAY": {
+        "price": 224.9499969482422,
+        "change_pct": -0.02543111597657699,
+        "rsi14": 38.18540784157343,
+        "macd": -2.8003119641592775,
+        "signal_score": 0.0
+      },
+      "REGN": {
+        "price": 704.3099975585938,
+        "change_pct": 0.015587595614410699,
+        "rsi14": 71.9302863939632,
+        "macd": 28.231129472726252,
+        "signal_score": 5.0
+      },
+      "ROP": {
+        "price": 443.8800048828125,
+        "change_pct": -0.012502770004866548,
+        "rsi14": 40.11909409907156,
+        "macd": -13.37525923966922,
+        "signal_score": 3.0
+      },
+      "NXPI": {
+        "price": 190.50999450683594,
+        "change_pct": -0.03343486246884564,
+        "rsi14": 27.29111706137408,
+        "macd": -5.894520524721997,
+        "signal_score": 0.0
+      },
+      "DDOG": {
+        "price": 180.25999450683594,
+        "change_pct": -0.02567428863863075,
+        "rsi14": 64.3490111598087,
+        "macd": 9.598115368658569,
+        "signal_score": 6.0
+      },
+      "AXON": {
+        "price": 543.22998046875,
+        "change_pct": -0.020094909079779177,
+        "rsi14": 7.880184734583636,
+        "macd": -44.98032635955519,
+        "signal_score": 0.0
+      },
+      "ROST": {
+        "price": 159.41000366210938,
+        "change_pct": -0.007286076445411016,
+        "rsi14": 45.65658558439143,
+        "macd": 1.9455684162510067,
+        "signal_score": 4.0
+      },
+      "IDXX": {
+        "price": 669.0,
+        "change_pct": -0.030336400646401307,
+        "rsi14": 60.42494630861142,
+        "macd": 15.518891391996931,
+        "signal_score": 4.5
+      },
+      "EA": {
+        "price": 200.77000427246094,
+        "change_pct": -0.0014423221409236575,
+        "rsi14": 54.865450593609616,
+        "macd": 1.9382497654422366,
+        "signal_score": 4.5
+      },
+      "PCAR": {
+        "price": 94.1500015258789,
+        "change_pct": -0.015064283577558069,
+        "rsi14": 34.48704630962581,
+        "macd": -0.4520598655772545,
+        "signal_score": 1.0
+      },
+      "FAST": {
+        "price": 39.70000076293945,
+        "change_pct": -0.0185414087973802,
+        "rsi14": 31.758007989962067,
+        "macd": -1.16559565654633,
+        "signal_score": 1.5
+      },
+      "EXC": {
+        "price": 46.599998474121094,
+        "change_pct": 0.01436656219289456,
+        "rsi14": 40.677955143080105,
+        "macd": -0.1029862853242065,
+        "signal_score": 4.0
+      },
+      "TTWO": {
+        "price": 233.5800018310547,
+        "change_pct": -0.006169412227261195,
+        "rsi14": 31.88316894913457,
+        "macd": -4.885469697204144,
+        "signal_score": 0.5
+      },
+      "XEL": {
+        "price": 81.30999755859375,
+        "change_pct": 0.009059266703289381,
+        "rsi14": 59.61289890697741,
+        "macd": 0.43067851480991237,
+        "signal_score": 5.5
+      },
+      "ZS": {
+        "price": 294.9200134277344,
+        "change_pct": -0.015127729486165364,
+        "rsi14": 31.371688948976015,
+        "macd": 0.3522503417741518,
+        "signal_score": 2.0
+      },
+      "PAYX": {
+        "price": 110.4800033569336,
+        "change_pct": -0.01445133933308207,
+        "rsi14": 13.735939535670823,
+        "macd": -4.198322415292537,
+        "signal_score": 0.5
+      },
+      "WBD": {
+        "price": 22.739999771118164,
+        "change_pct": -0.012592310329174627,
+        "rsi14": 66.99028622813216,
+        "macd": 1.0442096771461493,
+        "signal_score": 4.0
+      },
+      "BKR": {
+        "price": 47.880001068115234,
+        "change_pct": -0.017443022411366194,
+        "rsi14": 50.09727846652177,
+        "macd": 0.28599521324206023,
+        "signal_score": 4.5
+      },
+      "CPRT": {
+        "price": 41.33000183105469,
+        "change_pct": 0.006085686194176709,
+        "rsi14": 32.52551566556767,
+        "macd": -0.9896037615964914,
+        "signal_score": 2.0
+      },
+      "CCEP": {
+        "price": 90.0,
+        "change_pct": -0.00398407047277427,
+        "rsi14": 44.46397604362206,
+        "macd": 0.39787179427118247,
+        "signal_score": 5.0
+      },
+      "FANG": {
+        "price": 146.3699951171875,
+        "change_pct": -0.018967841078685987,
+        "rsi14": 57.87886854231518,
+        "macd": 0.9945753157421962,
+        "signal_score": 6.5
+      },
+      "TEAM": {
+        "price": 146.02000427246094,
+        "change_pct": -0.0380129736404633,
+        "rsi14": 34.410844823388956,
+        "macd": -2.4984849664102455,
+        "signal_score": 0.5
+      },
+      "CHTR": {
+        "price": 201.83999633789062,
+        "change_pct": -0.006203888369076704,
+        "rsi14": 17.807274762638727,
+        "macd": -14.449038752707366,
+        "signal_score": 0.0
+      },
+      "KDP": {
+        "price": 26.959999084472656,
+        "change_pct": -0.006266129065709225,
+        "rsi14": 33.73493778140353,
+        "macd": -0.11173289065396474,
+        "signal_score": 5.0
+      },
+      "MCHP": {
+        "price": 51.70000076293945,
+        "change_pct": -0.03328344791572224,
+        "rsi14": 15.046838368265284,
+        "macd": -3.015553102828072,
+        "signal_score": 0.0
+      },
+      "GEHC": {
+        "price": 70.62999725341797,
+        "change_pct": -0.03444981845378925,
+        "rsi14": 21.507457374040627,
+        "macd": -0.6554319294914421,
+        "signal_score": 0.5
+      },
+      "VRSK": {
+        "price": 219.10000610351562,
+        "change_pct": 0.015103826079210902,
+        "rsi14": 40.42616071032166,
+        "macd": -6.672124541723463,
+        "signal_score": 4.5
+      },
+      "CTSH": {
+        "price": 71.16999816894531,
+        "change_pct": -0.019967013533402356,
+        "rsi14": 61.95575164854434,
+        "macd": 1.1588003766592863,
+        "signal_score": 5.0
+      },
+      "CSGP": {
+        "price": 67.0,
+        "change_pct": -0.015429875160463902,
+        "rsi14": 19.46707887818394,
+        "macd": -3.066602797272452,
+        "signal_score": 2.0
+      },
+      "KHC": {
+        "price": 24.489999771118164,
+        "change_pct": -0.014486945868218526,
+        "rsi14": 37.76721562956308,
+        "macd": -0.2589130204390955,
+        "signal_score": 4.0
+      },
+      "ODFL": {
+        "price": 129.88999938964844,
+        "change_pct": -0.01814191562693168,
+        "rsi14": 39.82939990598422,
+        "macd": -1.6580728575746946,
+        "signal_score": 0.0
+      },
+      "DXCM": {
+        "price": 58.4900016784668,
+        "change_pct": 0.0074061366690492125,
+        "rsi14": 30.344064242192545,
+        "macd": -2.910187753294771,
+        "signal_score": 2.0
+      },
+      "TTD": {
+        "price": 40.209999084472656,
+        "change_pct": -0.041020777681482934,
+        "rsi14": 17.06895659662237,
+        "macd": -2.5713066096185955,
+        "signal_score": 0.0
+      },
+      "ON": {
+        "price": 46.02000045776367,
+        "change_pct": -0.019181537645014624,
+        "rsi14": 28.172206526129813,
+        "macd": -0.9346141991176466,
+        "signal_score": 0.5
+      },
+      "BIIB": {
+        "price": 164.67999267578125,
+        "change_pct": -0.017129276775303848,
+        "rsi14": 71.49567168964413,
+        "macd": 4.752998863035714,
+        "signal_score": 5.0
+      },
+      "LULU": {
+        "price": 164.16000366210938,
+        "change_pct": -0.03820007788526836,
+        "rsi14": 34.944792096552774,
+        "macd": -1.8545754076402545,
+        "signal_score": 3.5
+      },
+      "CDW": {
+        "price": 140.24000549316406,
+        "change_pct": -0.03336087866559856,
+        "rsi14": 32.55916040551469,
+        "macd": -3.7399120857334083,
+        "signal_score": 0.0
+      },
+      "GFS": {
+        "price": 32.959999084472656,
+        "change_pct": -0.0027231514270950052,
+        "rsi14": 41.39344967106086,
+        "macd": -0.37192619326586396,
+        "signal_score": 1.0
+      },
+      "SQQQ": {
+        "price": 14.84000015258789,
+        "change_pct": 0.02698964349277655,
+        "rsi14": 67.51824423732005,
+        "macd": -0.15078760485137543,
+        "signal_score": 5.5
+      },
+      "SPXU": {
+        "price": 13.619999885559082,
+        "change_pct": 0.028700915484141776,
+        "rsi14": 69.18429116179769,
+        "macd": -0.08584413805546909,
+        "signal_score": 4.5
+      },
+      "SH": {
+        "price": 37.25,
+        "change_pct": 0.009758758913196885,
+        "rsi14": 70.3225385684067,
+        "macd": -0.04893153494381863,
+        "signal_score": 2.5
+      },
+      "PSQ": {
+        "price": 31.020000457763672,
+        "change_pct": 0.008780502691501546,
+        "rsi14": 68.74998211862362,
+        "macd": -0.06121563617207926,
+        "signal_score": 4.0
+      },
+      "SDS": {
+        "price": 14.579999923706055,
+        "change_pct": 0.01886788932020078,
+        "rsi14": 69.26230485322978,
+        "macd": -0.050570251440960945,
+        "signal_score": 4.5
+      },
+      "DOG": {
+        "price": 24.3700008392334,
+        "change_pct": 0.012043227427166459,
+        "rsi14": 64.22021318573827,
+        "macd": -0.08401004598045247,
+        "signal_score": 5.5
+      },
+      "SOXS": {
+        "price": 4.070000171661377,
+        "change_pct": 0.05440421820538388,
+        "rsi14": 62.592591382512246,
+        "macd": -0.19221817890652426,
+        "signal_score": 6.0
+      },
+      "TQQQ": {
+        "price": 102.05000305175781,
+        "change_pct": -0.02568259372613768,
+        "rsi14": 31.01604587157523,
+        "macd": 0.07339052608693919,
+        "signal_score": 2.5
+      },
+      "SPXL": {
+        "price": 207.07000732421875,
+        "change_pct": -0.02838770613541941,
+        "rsi14": 30.499656518407036,
+        "macd": 0.5357660017740216,
+        "signal_score": 1.5
+      },
+      "UPRO": {
+        "price": 108.91000366210938,
+        "change_pct": -0.02828335222302769,
+        "rsi14": 30.328147435213367,
+        "macd": 0.2646514843586232,
+        "signal_score": 2.0
+      }
+    },
+    "vix": null
+  },
+  "market_analysis": {
+    "market_sentiment": "cautious",
+    "key_observations": [
+      "NVDA: sideways",
+      "MSFT: sideways",
+      "AAPL: sideways",
+      "GOOG: uptrend",
+      "GOOGL: uptrend",
+      "AMZN: sideways",
+      "META: downtrend",
+      "AVGO: uptrend",
+      "TSLA: uptrend",
+      "NFLX: downtrend"
+    ],
+    "recommended_stocks": [
+      "GOOG",
+      "GOOGL",
+      "MNST",
+      "GILD",
+      "VRTX",
+      "MAR",
+      "FANG",
+      "ORLY",
+      "DDOG",
+      "SOXS",
+      "CSCO",
+      "MU",
+      "XEL",
+      "SQQQ",
+      "DOG",
+      "AZN",
+      "SBUX",
+      "REGN",
+      "CCEP",
+      "KDP"
+    ],
+    "concerns": [
+      "VIX spike (level=22.38, z=2.92)"
+    ],
+    "vix": {
+      "regime": "spike",
+      "risk_score": 9.5,
+      "level": 22.3799991607666,
+      "chg_1d": 0.12859300286794828,
+      "zscore": 2.9169030385850556
+    },
+    "note": "This is a fallback recommendation. Actual recommendations should come from multi_analyst_system LLM output."
+  },
+  "discussion": {
+    "final_stance": "bullish",
+    "rounds": null,
+    "transcript": [
+      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market is in a strong bullish phase, with major indices at all-time highs. S&P 500 (5,200), NASDAQ (17,500), and Dow (38,000) are leading the rally. Sector rotation favors Technology and Consumer Discretionary, while Energy and Utilities lag. Market breadth is excellent, with an advance-decline ratio of 1.8 and 95% of stocks participating. Economic indicators show moderate growth, easing inflation, and accommodative monetary policy (Fed rate cuts). VIX is low at 12, signaling low volatility. News highlights: Fed rate cuts to stimulate economy and strong earnings beats by tech giants. Impact: Fed cuts support bullish stance; earnings beats validate market confidence. Overall, the market is in a mid-cycle bullish regime with strong momentum and broad participation.\nTools Used: get_market_indices, get_sector_rotation, get_market_breadth, get_economic_indicators, get_news_scan\nKey Points:\n  - Increase exposure to high-growth sectors like Technology and Consumer Discretionary.\n  - Consider tactical positions in leveraged ETFs like TQQQ for amplified gains.\n  - Monitor VIX for potential volatility spikes.",
+      "--- Technical Analyst ---\nStance: neutral_to_bullish\nAnalysis: The market is showing signs of consolidation after recent volatility. Current holdings like TQQQ and SPXL are overbought, suggesting potential near-term pullbacks despite bullish long-term trends. The RSI for TQMQ and SPXL indicates overbought conditions, while MACD divergence in SPXL suggests a possible short-term reversal. Support levels around $95-100 for TQMQ and $65-70 for SPXL could be key entry points for leveraged plays. News analysis highlights the Federal Reserve's hawkish pivot and earnings season volatility as key drivers. The upcoming Fed rate decision (2024-07-03) could impact sentiment significantly. The semiconductor sector faces inventory risks but benefits from AI growth. Overall, the technical picture favors selective long-term positions with tight stop losses.\nTools Used: get_advanced_indicators, get_market_indices, get_news_scan, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators\nKey Points:\n  - Add to PSQ inverse position if SPXL breaks below $70 support\n  - Consider rolling out of expiring TQMQ LEAPS if market consolidates above $100\n  - Trim SPXL position if MACD crossover occurs below zero line",
+      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The fundamental analysis reveals a mixed portfolio with high valuations in tech stocks like AAPL and TSLA, supported by strong earnings growth but elevated P/E ratios. NVDA shows robust innovation but high debt, while AMZN has solid financials. Inverse ETFs like PSQ and SPXU are recommended for overvalued tech sectors. Leveraged ETFs like TQOO could capitalize on semiconductor growth if fundamentals hold. News analysis highlights AI advancements for AAPL and supply chain resilience for AMZN, both positive but tempered by valuation concerns. Overall, the portfolio needs diversification into undervalued sectors like industrials or consumer staples to mitigate tech concentration risks.\nTools Used: get_company_fundamentals, get_earnings_history\nKey Points:\n  - {'symbol': 'PSQ', 'action': 'Buy', 'reason': 'Inverse exposure to overvalued tech sector.'}\n  - {'symbol': 'TQOO', 'action': 'Buy', 'reason': 'Leveraged exposure to undervalued semiconductors sector.'}\n  - {'symbol': 'SPXL', 'action': 'Sell', 'reason': 'Overvalued and high debt-to-equity ratio.'}",
+      "--- Sentiment Analyst ---\nStance: bullish\nAnalysis: The market sentiment is currently dominated by extreme bullishness, driven by strong economic data, positive earnings reports from major tech companies, and accommodative monetary policy expectations. The VIX remains near multi-year lows, reflecting low volatility and investor confidence. News sentiment is overwhelmingly positive, with articles highlighting strong Q2 earnings beats and Fed pivot expectations. Contrarian signals are muted, as extreme greed coincides with market upside. Overall, sentiment indicators align with continued market strength, though caution is warranted due to extreme bullishness.\nKey Points:\n  - Leverage into TQQQ and SPXL for continued market upside.\n  - Consider shorting PSQ if overconfidence leads to a pullback.\n  - Monitor contrarian signals for potential tactical entries.",
+      "--- Discussion Coordinator ---\nStance: neutral\nAnalysis: Market Analyst: The market is in a strong bullish phase, with major indices at all-time highs. S&P 500 (5,200), NASDAQ (17,500), and Dow (38,000) are leading the rally. Sector rotation favors Technology and Consumer Discretionary, while Energy and Utilities lag. Market breadth is excellent, with an advance-decline ratio of 1.8 and 95% of stocks participating. Economic indicators show moderate growth, easing inflation, and accommodative monetary policy (Fed rate cuts). VIX is low at 12, signaling low volatility. News highlights: Fed rate cuts to stimulate economy and strong earnings beats by tech giants. Impact: Fed cuts support bullish stance; earnings beats validate market confidence. Overall, the market is in a mid-cycle bullish regime with strong momentum and broad participation. | Technical Analyst: The market is showing signs of consolidation after recent volatility. Current holdings like TQQQ and SPXL are overbought, suggesting potential near-term pullbacks despite bullish long-term trends. The RSI for TQMQ and SPXL indicates overbought conditions, while MACD divergence in SPXL suggests a possible short-term reversal. Support levels around $95-100 for TQMQ and $65-70 for SPXL could be key entry points for leveraged plays. News analysis highlights the Federal Reserve's hawkish pivot and earnings season volatility as key drivers. The upcoming Fed rate decision (2024-07-03) could impact sentiment significantly. The semiconductor sector faces inventory risks but benefits from AI growth. Overall, the technical picture favors selective long-term positions with tight stop losses. | Fundamental Analyst: The fundamental analysis reveals a mixed portfolio with high valuations in tech stocks like AAPL and TSLA, supported by strong earnings growth but elevated P/E ratios. NVDA shows robust innovation but high debt, while AMZN has solid financials. Inverse ETFs like PSQ and SPXU are recommended for overvalued tech sectors. Leveraged ETFs like TQOO could capitalize on semiconductor growth if fundamentals hold. News analysis highlights AI advancements for AAPL and supply chain resilience for AMZN, both positive but tempered by valuation concerns. Overall, the portfolio needs diversification into undervalued sectors like industrials or consumer staples to mitigate tech concentration risks. | Sentiment Analyst: The market sentiment is currently dominated by extreme bullishness, driven by strong economic data, positive earnings reports from major tech companies, and accommodative monetary policy expectations. The VIX remains near multi-year lows, reflecting low volatility and investor confidence. News sentiment is overwhelmingly positive, with articles highlighting strong Q2 earnings beats and Fed pivot expectations. Contrarian signals are muted, as extreme greed coincides with market upside. Overall, sentiment indicators align with continued market strength, though caution is warranted due to extreme bullishness.\n"
+    ],
+    "tool_context": [
+      "MarketAnalyst: get_market_indices",
+      "MarketAnalyst: get_sector_rotation",
+      "MarketAnalyst: get_market_breadth",
+      "MarketAnalyst: get_economic_indicators",
+      "MarketAnalyst: get_news_scan",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_market_indices",
+      "TechnicalAnalyst: get_news_scan",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_advanced_indicators",
+      "FundamentalAnalyst: get_company_fundamentals",
+      "FundamentalAnalyst: get_earnings_history"
+    ],
+    "actions": null
+  },
+  "risk_report": {
+    "overall_risk_level": "low",
+    "risk_score": 2.92,
+    "analysis": "Market analysis shows 0 high-risk stocks and 111 safe stocks. Overall risk score: 2.92/10.",
+    "market_risks": [],
+    "position_risks": [],
+    "high_risk_stocks": [],
+    "safe_stocks": [
+      "NVDA",
+      "MSFT",
+      "AAPL",
+      "GOOG",
+      "GOOGL",
+      "AMZN",
+      "META",
+      "AVGO",
+      "TSLA",
+      "NFLX",
+      "PLTR",
+      "COST",
+      "ASML",
+      "AMD",
+      "CSCO",
+      "AZN",
+      "TMUS",
+      "MU",
+      "LIN",
+      "PEP",
+      "SHOP",
+      "APP",
+      "INTU",
+      "AMAT",
+      "LRCX",
+      "PDD",
+      "QCOM",
+      "ARM",
+      "INTC",
+      "BKNG",
+      "AMGN",
+      "TXN",
+      "ISRG",
+      "GILD",
+      "KLAC",
+      "PANW",
+      "ADBE",
+      "HON",
+      "CRWD",
+      "CEG",
+      "ADI",
+      "ADP",
+      "DASH",
+      "CMCSA",
+      "VRTX",
+      "MELI",
+      "SBUX",
+      "CDNS",
+      "ORLY",
+      "SNPS",
+      "MSTR",
+      "MDLZ",
+      "ABNB",
+      "MRVL",
+      "CTAS",
+      "TRI",
+      "MAR",
+      "MNST",
+      "CSX",
+      "ADSK",
+      "PYPL",
+      "FTNT",
+      "AEP",
+      "WDAY",
+      "REGN",
+      "ROP",
+      "NXPI",
+      "DDOG",
+      "AXON",
+      "ROST",
+      "IDXX",
+      "EA",
+      "PCAR",
+      "FAST",
+      "EXC",
+      "TTWO",
+      "XEL",
+      "ZS",
+      "PAYX",
+      "WBD",
+      "BKR",
+      "CPRT",
+      "CCEP",
+      "FANG",
+      "TEAM",
+      "CHTR",
+      "KDP",
+      "MCHP",
+      "GEHC",
+      "VRSK",
+      "CTSH",
+      "CSGP",
+      "KHC",
+      "ODFL",
+      "DXCM",
+      "TTD",
+      "ON",
+      "BIIB",
+      "LULU",
+      "CDW",
+      "GFS",
+      "SQQQ",
+      "SPXU",
+      "SH",
+      "PSQ",
+      "SDS",
+      "DOG",
+      "SOXS",
+      "TQQQ",
+      "SPXL",
+      "UPRO"
+    ],
+    "position_control_report": {
+      "max_position_per_stock": 0.15,
+      "max_total_position": 0.85,
+      "max_positions": 10,
+      "recommended_position_sizes": {
+        "PSQ": {
+          "current_pct": 0.1117,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "BKR": {
+          "current_pct": 0.1053,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "MAR": {
+          "current_pct": 0.0849,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "SPXL": {
+          "current_pct": 0.0828,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "NVDA": {
+          "current_pct": 0.0933,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "AMZN": {
+          "current_pct": 0.0931,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "TQQQ": {
+          "current_pct": 0.102,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "TSLA": {
+          "current_pct": 0.0818,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "AAPL": {
+          "current_pct": 0.107,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        },
+        "SQQQ": {
+          "current_pct": 0.0875,
+          "max_pct": 0.15,
+          "adjustment": "HOLD"
+        }
+      },
+      "position_limit_checks": [
+        {
+          "symbol": "PSQ",
+          "status": "OK",
+          "message": "Within limits (11.2%)"
+        },
+        {
+          "symbol": "BKR",
+          "status": "OK",
+          "message": "Within limits (10.5%)"
+        },
+        {
+          "symbol": "MAR",
+          "status": "OK",
+          "message": "Within limits (8.5%)"
+        },
+        {
+          "symbol": "SPXL",
+          "status": "OK",
+          "message": "Within limits (8.3%)"
+        },
+        {
+          "symbol": "NVDA",
+          "status": "OK",
+          "message": "Within limits (9.3%)"
+        },
+        {
+          "symbol": "AMZN",
+          "status": "OK",
+          "message": "Within limits (9.3%)"
+        },
+        {
+          "symbol": "TQQQ",
+          "status": "OK",
+          "message": "Within limits (10.2%)"
+        },
+        {
+          "symbol": "TSLA",
+          "status": "OK",
+          "message": "Within limits (8.2%)"
+        },
+        {
+          "symbol": "AAPL",
+          "status": "OK",
+          "message": "Within limits (10.7%)"
+        },
+        {
+          "symbol": "SQQQ",
+          "status": "OK",
+          "message": "Within limits (8.8%)"
+        }
+      ]
+    },
+    "recommendations": [
+      "Monitor high-risk stocks closely",
+      "Maintain diversification",
+      "Keep cash reserves for opportunities"
+    ]
+  },
+  "decision": {
+    "action": "BUY",
+    "targets": [
+      {
+        "symbol": "SPXL",
+        "action": "BUY",
+        "price": 207.4841473388672,
+        "quantity": 1,
+        "value": 207.4841473388672
+      },
+      {
+        "symbol": "SQQQ",
+        "action": "BUY",
+        "price": 14.869680152893066,
+        "quantity": 8,
+        "value": 118.95744122314453
+      },
+      {
+        "symbol": "UPRO",
+        "action": "BUY",
+        "price": 109.1278236694336,
+        "quantity": 1,
+        "value": 109.1278236694336
+      }
+    ],
+    "buy_orders": [
+      {
+        "symbol": "SPXL",
+        "buy_price": 207.4841473388672,
+        "buy_price_min": 206.03465728759767,
+        "buy_price_max": 208.10535736083983,
+        "quantity": 1,
+        "total_cost": 207.4841473388672
+      },
+      {
+        "symbol": "SQQQ",
+        "buy_price": 14.869680152893066,
+        "buy_price_min": 14.765800151824951,
+        "buy_price_max": 14.914200153350828,
+        "quantity": 8,
+        "total_cost": 118.95744122314453
+      },
+      {
+        "symbol": "UPRO",
+        "buy_price": 109.1278236694336,
+        "buy_price_min": 108.36545364379883,
+        "buy_price_max": 109.4545536804199,
+        "quantity": 1,
+        "total_cost": 109.1278236694336
+      }
+    ],
+    "sell_orders": [],
+    "rationale": "Buying 3 stocks (SPXL, SQQQ, UPRO); stance=NEUTRAL, VIX risk=4.0. Analysis: Market Analyst: The market is in a strong bullish phase, with major indices at all-time highs. S&P 500 (5,200), NASDAQ (17,500), and Dow (38,000) are leading the rally. Sector rotation favors Technology and Consumer Discretionary, while Energy and Utilities lag. Market breadth is excellent, with an advance-decline ratio of 1.8 and 95% of stocks participating. Economic indicators show moderate growth, easing inflation, and accommodative monetary policy (Fed rate cuts). VIX is low at 12, signaling low volatility. News highlights: Fed rate cuts to stimulate economy and strong earnings beats by tech giants. Impact: Fed cuts support bullish stance; earnings beats validate market confidence. Overall, the market is in a mid-cycle bullish regime with strong momentum and broad participation. | Technical Analyst: The market is showing signs of consolidation after recent volatility. Current holdings like TQQQ and SPXL are overbought, suggesting potential near-term pullbacks despite bullish long-term trends. The RSI for TQMQ and SPXL indicates overbought conditions, while MACD divergence in SPXL suggests a possible short-term reversal. Support levels around $95-100 for TQMQ and $65-70 for SPXL could be key entry points for leveraged plays. News analysis highlights the Federal Reserve's hawkish pivot and earnings season volatility as key drivers. The upcoming Fed rate decision (2024-07-03) could impact sentiment significantly. The semiconductor sector faces inventory risks but benefits from AI growth. Overall, the technical picture favors selective long-term positions with tight stop losses. | Fundamental Analyst: The fundamental analysis reveals a mixed portfolio with high valuations in tech stocks like AAPL and TSLA, supported by strong earnings growth but elevated P/E ratios. NVDA shows robust innovation but high debt, while AMZN has solid financials. Inverse ETFs like PSQ and SPXU are recommended for overvalued tech sectors. Leveraged ETFs like TQOO could capitalize on semiconductor growth if fundamentals hold. News analysis highlights AI advancements for AAPL and supply chain resilience for AMZN, both positive but tempered by valuation concerns. Overall, the portfolio needs diversification into undervalued sectors like industrials or consumer staples to mitigate tech concentration risks. | Sentiment Analyst: The market sentiment is currently dominated by extreme bullishness, driven by strong economic data, positive earnings reports from major tech companies, and accommodative monetary policy expectations. The VIX remains near multi-year lows, reflecting low volatility and investor confidence. News sentiment is overwhelmingly positive, with articles highlighting strong Q2 earnings beats and Fed pivot expectations. Contrarian signals are muted, as extreme greed coincides with market upside. Overall, sentiment indicators align with continued market strength, though caution is warranted due to extreme bullishness.",
+    "summary": "**Market Status:** OPEN\n\n**Trading Rationale:** The market is currently in a strong bullish phase, confirmed by technical and fundamental analysis, with low VIX risk (4.0) indicating stability. Our neutral stance reflects cautious optimism amidst extreme bullish sentiment and overbought conditions in key holdings like SPXL and TQQQ. We generated three buy orders (SPXL, SQQQ, UPRO) for short-term leveraged plays, capitalizing on expected market strength and momentum, despite potential near-term pullbacks. Existing positions show mixed P&L, with winners like AMZN and AAPL offsetting minor losses elsewhere. These new orders aim to capture potential gains while managing risk.",
+    "stance": "NEUTRAL",
+    "vix_risk": 4.0,
+    "risk_compliance": {
+      "position_limits_ok": false,
+      "diversification_ok": true,
+      "warnings": []
+    }
+  },
+  "portfolio_snapshot": {
+    "cash": 180.3890151977539,
+    "positions": {
+      "PSQ": {
+        "quantity": 36,
+        "avg_cost": 31.02739906311035,
+        "total_cost": 1116.9863662719727,
+        "cost_basis": 1116.9863662719727,
+        "current_price": 31.020000457763672,
+        "market_value": 1116.7200164794922
+      },
+      "BKR": {
+        "quantity": 22,
+        "avg_cost": 47.904998779296875,
+        "total_cost": 1053.9099731445312,
+        "cost_basis": 1053.9099731445312,
+        "current_price": 47.880001068115234,
+        "market_value": 1053.3600234985352
+      },
+      "MAR": {
+        "quantity": 3,
+        "avg_cost": 282.8599853515625,
+        "total_cost": 848.5799560546875,
+        "cost_basis": 848.5799560546875,
+        "current_price": 282.8900146484375,
+        "market_value": 848.6700439453125
+      },
+      "SPXL": {
+        "quantity": 5,
+        "avg_cost": 206.6300018310547,
+        "total_cost": 1033.1500091552734,
+        "cost_basis": 1033.1500091552734,
+        "current_price": 207.07000732421875,
+        "market_value": 1035.3500366210938
+      },
+      "NVDA": {
+        "quantity": 5,
+        "avg_cost": 183.31900024414062,
+        "total_cost": 916.5950012207031,
+        "cost_basis": 916.5950012207031,
+        "current_price": 186.60000610351562,
+        "market_value": 933.0000305175781
+      },
+      "AMZN": {
+        "quantity": 4,
+        "avg_cost": 228.34688186645508,
+        "total_cost": 913.3875274658203,
+        "cost_basis": 913.3875274658203,
+        "current_price": 232.8699951171875,
+        "market_value": 931.47998046875
+      },
+      "TQQQ": {
+        "quantity": 10,
+        "avg_cost": 100.15781707763672,
+        "total_cost": 1001.5781707763672,
+        "cost_basis": 1001.5781707763672,
+        "current_price": 102.05000305175781,
+        "market_value": 1020.5000305175781
+      },
+      "TSLA": {
+        "quantity": 2,
+        "avg_cost": 402.94459533691406,
+        "total_cost": 805.8891906738281,
+        "cost_basis": 805.8891906738281,
+        "current_price": 408.9200134277344,
+        "market_value": 817.8400268554688
+      },
+      "AAPL": {
+        "quantity": 4,
+        "avg_cost": 268.3499755859375,
+        "total_cost": 1073.39990234375,
+        "cost_basis": 1073.39990234375,
+        "current_price": 267.4599914550781,
+        "market_value": 1069.8399658203125
+      },
+      "SQQQ": {
+        "quantity": 67,
+        "avg_cost": 15.213731381430554,
+        "total_cost": 1019.3200025558472,
+        "cost_basis": 1019.3200025558472,
+        "current_price": 14.84000015258789,
+        "market_value": 994.2800102233887
+      }
+    },
+    "total_value": 10001.429180145264,
+    "equity_value": 9821.04016494751,
+    "total_pnl": 38.244065284728975,
+    "total_pnl_pct": 0.014291801452636718,
+    "positions_pnl": {
+      "PSQ": {
+        "symbol": "PSQ",
+        "quantity": 36,
+        "avg_cost": 31.02739906311035,
+        "current_price": 31.020000457763672,
+        "market_value": 1116.7200164794922,
+        "unrealized_pnl": -0.26634979248046875,
+        "unrealized_pnl_pct": -0.023845393330039606,
+        "position_pct": 86.09299520761958
+      },
+      "BKR": {
+        "symbol": "BKR",
+        "quantity": 22,
+        "avg_cost": 47.904998779296875,
+        "current_price": 47.880001068115234,
+        "market_value": 1053.3600234985352,
+        "unrealized_pnl": -0.5499496459960938,
+        "unrealized_pnl_pct": -0.052181842852783655,
+        "position_pct": 85.3787918336802
+      },
+      "MAR": {
+        "symbol": "MAR",
+        "quantity": 3,
+        "avg_cost": 282.8599853515625,
+        "current_price": 282.8900146484375,
+        "market_value": 848.6700439453125,
+        "unrealized_pnl": 0.090087890625,
+        "unrealized_pnl_pct": 0.010616311401443732,
+        "position_pct": 82.47048956082558
+      },
+      "SPXL": {
+        "symbol": "SPXL",
+        "quantity": 5,
+        "avg_cost": 206.6300018310547,
+        "current_price": 207.07000732421875,
+        "market_value": 1035.3500366210938,
+        "unrealized_pnl": 2.2000274658202557,
+        "unrealized_pnl_pct": 0.21294366222955824,
+        "position_pct": 85.16219291237896
+      },
+      "NVDA": {
+        "symbol": "NVDA",
+        "quantity": 5,
+        "avg_cost": 183.31900024414062,
+        "current_price": 186.60000610351562,
+        "market_value": 933.0000305175781,
+        "unrealized_pnl": 16.405029296875,
+        "unrealized_pnl_pct": 1.7897794854900044,
+        "position_pct": 83.79820459955602
+      },
+      "AMZN": {
+        "symbol": "AMZN",
+        "quantity": 4,
+        "avg_cost": 228.34688186645508,
+        "current_price": 232.8699951171875,
+        "market_value": 931.47998046875,
+        "unrealized_pnl": 18.092453002929688,
+        "unrealized_pnl_pct": 1.9808079767770554,
+        "position_pct": 83.77605492186419
+      },
+      "TQQQ": {
+        "symbol": "TQQQ",
+        "quantity": 10,
+        "avg_cost": 100.15781707763672,
+        "current_price": 102.05000305175781,
+        "market_value": 1020.5000305175781,
+        "unrealized_pnl": 18.92185974121091,
+        "unrealized_pnl_pct": 1.8892044868094264,
+        "position_pct": 84.97871091077346
+      },
+      "TSLA": {
+        "symbol": "TSLA",
+        "quantity": 2,
+        "avg_cost": 402.94459533691406,
+        "current_price": 408.9200134277344,
+        "market_value": 817.8400268554688,
+        "unrealized_pnl": 11.950836181640625,
+        "unrealized_pnl_pct": 1.4829378926956662,
+        "position_pct": 81.92909566859345
+      },
+      "AAPL": {
+        "symbol": "AAPL",
+        "quantity": 4,
+        "avg_cost": 268.3499755859375,
+        "current_price": 267.4599914550781,
+        "market_value": 1069.8399658203125,
+        "unrealized_pnl": -3.5599365234375,
+        "unrealized_pnl_pct": -0.3316505354308716,
+        "position_pct": 85.57152186227019
+      },
+      "SQQQ": {
+        "symbol": "SQQQ",
+        "quantity": 67,
+        "avg_cost": 15.213731381430554,
+        "current_price": 14.84000015258789,
+        "market_value": 994.2800102233887,
+        "unrealized_pnl": -25.03999233245844,
+        "unrealized_pnl_pct": -2.4565388955061276,
+        "position_pct": 84.64341773776823
+      }
+    }
+  },
+  "executed_trades": [
+    {
+      "symbol": "SPXL",
+      "action": "BUY",
+      "quantity": 1,
+      "price": 205.50999450683594,
+      "amount": 205.50999450683594,
+      "status": "FILLED",
+      "order_id": "SPXL_BUY_2025-11-18_1763491420.207349"
+    },
+    {
+      "symbol": "SQQQ",
+      "action": "BUY",
+      "quantity": 8,
+      "price": 15.069999694824219,
+      "amount": 120.55999755859375,
+      "status": "FILLED",
+      "order_id": "SQQQ_BUY_2025-11-18_1763491420.535222"
+    }
+  ],
+  "executed_trades_count": 2
+}

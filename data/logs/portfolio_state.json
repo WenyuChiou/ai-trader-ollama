@@ -1,34 +1,64 @@
 {
-  "cash": 5474.221506118774,
+  "cash": 180.3890151977539,
   "initial_value": 10000.0,
-  "total_value": 10051.471475601196,
+  "total_value": 10001.429180145264,
   "positions": {
     "PSQ": {
-      "quantity": 39,
+      "quantity": 36,
       "avg_cost": 31.02739906311035,
-      "total_cost": 1210.0685634613037
+      "total_cost": 1116.9863662719727
     },
     "BKR": {
-      "quantity": 24,
+      "quantity": 22,
       "avg_cost": 47.904998779296875,
-      "total_cost": 1149.719970703125
+      "total_cost": 1053.9099731445312
     },
     "MAR": {
-      "quantity": 4,
+      "quantity": 3,
       "avg_cost": 282.8599853515625,
-      "total_cost": 1131.43994140625
+      "total_cost": 848.5799560546875
     },
     "SPXL": {
       "quantity": 5,
-      "avg_cost": 206.91000366210938,
-      "total_cost": 1034.5500183105469
+      "avg_cost": 206.6300018310547,
+      "total_cost": 1033.1500091552734
+    },
+    "NVDA": {
+      "quantity": 5,
+      "avg_cost": 183.31900024414062,
+      "total_cost": 916.5950012207031
+    },
+    "AMZN": {
+      "quantity": 4,
+      "avg_cost": 228.34688186645508,
+      "total_cost": 913.3875274658203
+    },
+    "TQQQ": {
+      "quantity": 10,
+      "avg_cost": 100.15781707763672,
+      "total_cost": 1001.5781707763672
+    },
+    "TSLA": {
+      "quantity": 2,
+      "avg_cost": 402.94459533691406,
+      "total_cost": 805.8891906738281
+    },
+    "AAPL": {
+      "quantity": 4,
+      "avg_cost": 268.3499755859375,
+      "total_cost": 1073.39990234375
+    },
+    "SQQQ": {
+      "quantity": 67,
+      "avg_cost": 15.213731381430554,
+      "total_cost": 1019.3200025558472
     }
   },
-  "timestamp": "2025-11-18T04:37:43.259987Z",
+  "timestamp": "2025-11-18T18:43:40.543463Z",
   "snapshot": {
-    "cash": 5474.221506118774,
-    "total_value": 10051.471475601196,
-    "equity_value": 4577.249969482422,
-    "positions_count": 4
+    "cash": 180.3890151977539,
+    "total_value": 10001.429180145264,
+    "equity_value": 9821.04016494751,
+    "positions_count": 10
   }
 }

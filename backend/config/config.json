@@ -63,14 +63,13 @@
     "auto_pull": true,
     "timeout_seconds": 8.0
   },
-  "preferred_domains": [
-    "www.cboe.com",
-    "https://www.wsj.com/finance?mod=nav_top_section",
-    "www.reuters.com",
-    "www.ft.com",
-    "www.cmegroup.com",
-    "fred.stlouisfed.org",
-    "home.treasury.gov"
+  "_comment_news_html_sources": "HTML news sources. Add any news website URLs here to scrape news content directly. Examples are provided below - you can add more URLs as needed.",
+  "news_html_sources": [
+    "https://www.cnbc.com/markets/",
+    "https://www.marketwatch.com/latest-news",
+    "https://seekingalpha.com/market-news",
+    "https://www.investing.com/news/",
+    "https://www.benzinga.com/news"
   ]
 
   

@@ -2015,6 +2015,7 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         "get_news_scan": "plan_and_scan_news",  # LLM可能使用get_news_scan，映射到plan_and_scan_news（推荐，有内容）
         "get_news": "plan_and_scan_news",  # CRITICAL FIX: get_news不存在，映射到plan_and_scan_news
         "get_market_sentiment": "fear_greed",  # get_market_sentiment不存在，使用fear_greed代替
+        "get_volume_analysis": "get_advanced_indicators",  # CRITICAL FIX: get_volume_analysis不存在，映射到get_advanced_indicators（包含volume分析）
         # 注意：news_scan已经在前面处理，会自动转换为plan_and_scan_news（带fetch_body_top）
     }
     

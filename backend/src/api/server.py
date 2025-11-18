@@ -806,6 +806,8 @@ async def get_portfolio_real_time():
                     snapshot_total_value = snapshot.get("total_value")
                     snapshot_equity_value = snapshot.get("equity_value")
                     
+                    print(f"[API] Checking snapshot values: snapshot_total_value={snapshot_total_value}, snapshot_equity_value={snapshot_equity_value}, current_total_value={total_value}, current_equity_value={equity_value}")
+                    
                     # 如果snapshot中有值，且当前计算的值与snapshot差异超过1%（说明价格获取可能失败），使用snapshot的值
                     if snapshot_total_value and snapshot_equity_value:
                         # 检查是否所有持仓的价格都等于avg_cost（说明价格获取失败）
@@ -814,9 +816,12 @@ async def get_portfolio_real_time():
                             for pos_detail in positions_detail.values()
                         )
                         
+                        print(f"[API] Price check: all_prices_equal_avg_cost={all_prices_equal_avg_cost}, positions_detail count={len(positions_detail)}")
+                        
                         # 如果价格获取失败（所有价格都等于avg_cost），且snapshot的值与当前计算值差异较大，使用snapshot的值
                         if all_prices_equal_avg_cost:
                             diff_pct = abs(snapshot_total_value - total_value) / total_value * 100 if total_value > 0 else 100
+                            print(f"[API] Difference check: diff_pct={diff_pct:.2f}%, threshold=1.0%")
                             if diff_pct > 1.0:  # 差异超过1%
                                 print(f"[API] Price fetch failed (all prices = avg_cost), using snapshot values: total_value=${snapshot_total_value:.2f} (was ${total_value:.2f}), equity_value=${snapshot_equity_value:.2f} (was ${equity_value:.2f})")
                                 total_value = snapshot_total_value
@@ -824,8 +829,14 @@ async def get_portfolio_real_time():
                                 # 重新计算P&L
                                 total_pnl = total_value - portfolio.initial_value
                                 total_pnl_pct = (total_pnl / portfolio.initial_value * 100.0) if portfolio.initial_value > 0 else 0.0
+                            else:
+                                print(f"[API] Difference too small ({diff_pct:.2f}%), not using snapshot values")
+                        else:
+                            print(f"[API] Not all prices equal avg_cost, prices may be valid")
             except Exception as e:
+                import traceback
                 print(f"[API] Failed to check snapshot values: {e}")
+                print(f"[API] Traceback: {traceback.format_exc()}")
         
         # CRITICAL FIX: 自动记录净值历史（每小时最多记录一次）
         # 即使没有运行trading cycle，也要记录净值变化

@@ -4813,6 +4813,26 @@
                         return true;
                     });
                 }
+                
+                // CRITICAL FIX: Filter by stock symbol for FundamentalAnalyst
+                if (currentAgentFilter === 'FundamentalAnalyst' && currentStockFilter !== 'all') {
+                    filteredConversations = filteredConversations.filter(c => {
+                        const toolInfo = parseToolInfo(c.content || '');
+                        if (toolInfo && toolInfo.name === 'get_company_fundamentals' && toolInfo.result) {
+                            const symbol = toolInfo.result.symbol || toolInfo.result.Symbol ||
+                                         (toolInfo.result.fundamentals && toolInfo.result.fundamentals.symbol);
+                            return symbol && symbol.toUpperCase() === currentStockFilter;
+                        }
+                        // Also check tool_result field
+                        if (c.tool_result && typeof c.tool_result === 'object') {
+                            const symbol = c.tool_result.symbol || c.tool_result.Symbol ||
+                                         (c.tool_result.fundamentals && c.tool_result.fundamentals.symbol);
+                            return symbol && symbol.toUpperCase() === currentStockFilter;
+                        }
+                        // If it's not get_company_fundamentals, show it
+                        return true;
+                    });
+                }
             } else {
                 // Show all: discussion entries + tool entries
                 // Keep all entries

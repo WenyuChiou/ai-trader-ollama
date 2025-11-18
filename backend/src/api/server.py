@@ -19,6 +19,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import json
+import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, date
 
@@ -828,57 +829,61 @@ async def get_portfolio_real_time():
         
         # CRITICAL FIX: 自动记录净值历史（每小时最多记录一次）
         # 即使没有运行trading cycle，也要记录净值变化
-        try:
-            from src.data.equity_tracker import EquityTracker
-            from datetime import datetime, timezone
-            equity_tracker = EquityTracker(root=str(logs_dir))
-            
-            # 检查最后一条记录的时间，如果超过1小时，才记录新点
-            equity_file = logs_dir / "equity_history.jsonl"
-            should_record = True
-            if equity_file.exists():
-                try:
-                    with equity_file.open("r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                        if lines:
-                            last_record = json.loads(lines[-1].strip())
-                            last_timestamp = last_record.get("timestamp")
-                            if last_timestamp:
-                                # 解析最后记录的时间戳
-                                last_time = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
-                                current_time = datetime.now(timezone.utc)
-                                time_diff = (current_time - last_time).total_seconds() / 3600  # 小时
-                                # CRITICAL FIX: 只要超过1小时就记录，不管净值变化多少
-                                # 这样可以确保每小时都有记录，即使净值没有变化
-                                if time_diff < 1.0:
-                                    should_record = False
-                except Exception as e:
-                    print(f"[API] Failed to check last equity record: {e}")
-            
-            if should_record:
-                # 构建portfolio snapshot
-                portfolio_snapshot = {
-                    "cash": portfolio.cash,
-                    "equity_value": equity_value,
-                    "total_value": total_value,
-                    "total_pnl": total_pnl,
-                    "total_pnl_pct": total_pnl_pct,
-                    "positions_detail": positions_detail,
-                }
+        # NOTE: 这个功能可以通过设置环境变量 DISABLE_AUTO_EQUITY_RECORDING=1 来禁用
+        auto_record_equity = os.environ.get("DISABLE_AUTO_EQUITY_RECORDING", "0") != "1"
+        
+        if auto_record_equity:
+            try:
+                from src.data.equity_tracker import EquityTracker
+                from datetime import datetime, timezone
+                equity_tracker = EquityTracker(root=str(logs_dir))
                 
-                # 记录净值（使用今天的日期）
-                from datetime import date
-                equity_date = date.today().isoformat()
-                equity_tracker.record_daily_equity(
-                    date_str=equity_date,
-                    portfolio_snapshot=portfolio_snapshot,
-                )
-                print(f"[API] Auto-recorded equity snapshot: ${total_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
-        except Exception as e:
-            import traceback
-            print(f"[API] Failed to auto-record equity: {e}")
-            print(f"[API] Traceback: {traceback.format_exc()}")
-            # 不影响API响应，继续返回数据
+                # 检查最后一条记录的时间，如果超过1小时，才记录新点
+                equity_file = logs_dir / "equity_history.jsonl"
+                should_record = True
+                if equity_file.exists():
+                    try:
+                        with equity_file.open("r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                            if lines:
+                                last_record = json.loads(lines[-1].strip())
+                                last_timestamp = last_record.get("timestamp")
+                                if last_timestamp:
+                                    # 解析最后记录的时间戳
+                                    last_time = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
+                                    current_time = datetime.now(timezone.utc)
+                                    time_diff = (current_time - last_time).total_seconds() / 3600  # 小时
+                                    # CRITICAL FIX: 只要超过1小时就记录，不管净值变化多少
+                                    # 这样可以确保每小时都有记录，即使净值没有变化
+                                    if time_diff < 1.0:
+                                        should_record = False
+                    except Exception as e:
+                        print(f"[API] Failed to check last equity record: {e}")
+                
+                if should_record:
+                    # 构建portfolio snapshot
+                    portfolio_snapshot = {
+                        "cash": portfolio.cash,
+                        "equity_value": equity_value,
+                        "total_value": total_value,
+                        "total_pnl": total_pnl,
+                        "total_pnl_pct": total_pnl_pct,
+                        "positions_detail": positions_detail,
+                    }
+                    
+                    # 记录净值（使用今天的日期）
+                    from datetime import date
+                    equity_date = date.today().isoformat()
+                    equity_tracker.record_daily_equity(
+                        date_str=equity_date,
+                        portfolio_snapshot=portfolio_snapshot,
+                    )
+                    print(f"[API] Auto-recorded equity snapshot: ${total_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
+            except Exception as e:
+                import traceback
+                print(f"[API] Failed to auto-record equity: {e}")
+                print(f"[API] Traceback: {traceback.format_exc()}")
+                # 不影响API响应，继续返回数据
         
         return JSONResponse(
             status_code=200,

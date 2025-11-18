@@ -3261,17 +3261,25 @@
                             clearInterval(tradeCheckTimer);
                             tradeCheckTimer = null;
                         }
-                        tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
-                        console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
-                        console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
-                        // CRITICAL FIX: Only execute immediately if first manual trade has been executed
-                        // This ensures the first trade after initialization/refresh must be manual
-                        if (hasManualTradeExecuted()) {
-                            console.log('[Auto Trade] First manual trade already executed, executing immediately...');
-                            smartAutoTrade();
+                        // CRITICAL FIX: Double-check timer is cleared before starting new one
+                        if (!tradeCheckTimer && !isTradingExecuting) {
+                            tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
+                            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
+                            console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
+                            // CRITICAL FIX: Only execute immediately if first manual trade has been executed
+                            // This ensures the first trade after initialization/refresh must be manual
+                            // CRITICAL FIX: Add delay to prevent immediate execution on startup
+                            setTimeout(() => {
+                                if (hasManualTradeExecuted() && !isTradingExecuting) {
+                                    console.log('[Auto Trade] First manual trade already executed, executing after delay...');
+                                    smartAutoTrade();
+                                } else {
+                                    console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
+                                    updateAutoTradeStatus('Waiting for First Manual Trade');
+                                }
+                            }, 5000); // 5 second delay to prevent immediate execution
                         } else {
-                            console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
-                            updateAutoTradeStatus('Waiting for First Manual Trade');
+                            console.log('[Auto Trade] Timer already exists or trade executing, skipping start');
                         }
                     } else {
                         // Market is closed: do not start auto-trade
@@ -9256,9 +9264,12 @@
                     
                     if (isOpen) {
                         // Trading hours: if Auto Trade is not running, start it
-                        if (!tradeCheckTimer) {
+                        // CRITICAL FIX: Add additional check to prevent duplicate starts
+                        if (!tradeCheckTimer && !isTradingExecuting) {
                             console.log('[Auto Refresh] Market is open, starting Auto Trade...');
                             startAutoTrade();
+                        } else if (tradeCheckTimer) {
+                            console.log('[Auto Refresh] Auto Trade already running, skipping start');
                         }
                     } else {
                         // Non-trading hours: stop auto-trade (manual only)
@@ -9288,9 +9299,12 @@
                     const isOpen = await isMarketOpen(true, true);
                     
                     // If market transitions from closed to open, and Auto Trade is not running, start it
-                    if (isOpen && lastMarketStatus === false && !tradeCheckTimer) {
+                    // CRITICAL FIX: Add additional check to prevent duplicate starts
+                    if (isOpen && lastMarketStatus === false && !tradeCheckTimer && !isTradingExecuting) {
                         console.log('[Auto Refresh] Market transitioned from closed to open, starting Auto Trade...');
                         startAutoTrade();
+                    } else if (isOpen && lastMarketStatus === false && tradeCheckTimer) {
+                        console.log('[Auto Refresh] Market opened but Auto Trade already running, skipping start');
                     }
                     // If market transitions from open to closed, stop auto-trade
                     if (!isOpen && lastMarketStatus === true && tradeCheckTimer) {

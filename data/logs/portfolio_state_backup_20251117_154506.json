@@ -1,0 +1,94 @@
+{
+  "cash": 2057.8435258865356,
+  "initial_value": 10000.0,
+  "total_value": 10041.273442745209,
+  "positions": {
+    "PLTR": {
+      "quantity": 4,
+      "avg_cost": 169.88999938964844,
+      "total_cost": 679.5599975585938
+    },
+    "AVGO": {
+      "quantity": 2,
+      "avg_cost": 340.54998779296875,
+      "total_cost": 681.0999755859375
+    },
+    "AMAT": {
+      "quantity": 3,
+      "avg_cost": 227.27999877929688,
+      "total_cost": 681.8399963378906
+    },
+    "AMGN": {
+      "quantity": 2,
+      "avg_cost": 340.7749938964844,
+      "total_cost": 681.5499877929688
+    },
+    "GILD": {
+      "quantity": 5,
+      "avg_cost": 124.54000091552734,
+      "total_cost": 622.7000045776367
+    },
+    "CSCO": {
+      "quantity": 8,
+      "avg_cost": 77.61000061035156,
+      "total_cost": 620.8800048828125
+    },
+    "AZN": {
+      "quantity": 7,
+      "avg_cost": 89.43000030517578,
+      "total_cost": 626.0100021362305
+    },
+    "PANW": {
+      "quantity": 3,
+      "avg_cost": 202.78250122070312,
+      "total_cost": 608.3475036621094
+    },
+    "PEP": {
+      "quantity": 4,
+      "avg_cost": 147.80999755859375,
+      "total_cost": 591.239990234375
+    },
+    "NVDA": {
+      "quantity": 3,
+      "avg_cost": 185.22000122070312,
+      "total_cost": 555.6600036621094
+    },
+    "MSFT": {
+      "quantity": 1,
+      "avg_cost": 506.82000732421875,
+      "total_cost": 506.82000732421875
+    },
+    "MU": {
+      "quantity": 2,
+      "avg_cost": 240.4250030517578,
+      "total_cost": 480.8500061035156
+    },
+    "TSLA": {
+      "quantity": 1,
+      "avg_cost": 407.5199890136719,
+      "total_cost": 407.5199890136719
+    },
+    "SBUX": {
+      "quantity": 2,
+      "avg_cost": 83.62000274658203,
+      "total_cost": 167.24000549316406
+    },
+    "WBD": {
+      "quantity": 1,
+      "avg_cost": 22.514999389648438,
+      "total_cost": 22.514999389648438
+    },
+    "SOXS": {
+      "quantity": 2,
+      "avg_cost": 4.1620001792907715,
+      "total_cost": 8.324000358581543
+    }
+  },
+  "timestamp": "2025-11-17T20:31:09.900343Z",
+  "snapshot": {
+    "cash": 2057.8435258865356,
+    "total_value": 10041.273442745209,
+    "equity_value": 7983.429916858673,
+    "positions_count": 16
+  }
+}

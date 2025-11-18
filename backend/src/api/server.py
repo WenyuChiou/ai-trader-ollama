@@ -949,10 +949,18 @@ async def get_equity_history(limit: int = Query(60, ge=1, le=1000)):
                 }
             )
         
-        # 读取最后 N 条记录
+        # 读取最后 N 条记录（优化：从文件末尾读取，避免加载整个文件）
         records = []
         with equity_file.open("r", encoding="utf-8") as f:
+            # 优化：从文件末尾读取（避免加载整个文件）
+            f.seek(0, 2)  # Seek to end
+            file_size = f.tell()
+            # 读取最后 ~100KB（足够容纳 limit 条记录）
+            position = max(0, file_size - 1024 * 100)
+            f.seek(position)
             lines = f.readlines()
+            
+            # 处理行（从新到旧）
             for line in reversed(lines[-limit:]):
                 if line.strip():
                     try:
@@ -1014,10 +1022,18 @@ async def get_recent_trades(limit: int = Query(10, ge=1, le=1000)):
                 }
             )
         
-        # 读取最后 N 条记录
+        # 读取最后 N 条记录（优化：从文件末尾读取，避免加载整个文件）
         trades = []
         with filled_file.open("r", encoding="utf-8") as f:
+            # 优化：从文件末尾读取（避免加载整个文件）
+            f.seek(0, 2)  # Seek to end
+            file_size = f.tell()
+            # 读取最后 ~100KB（足够容纳 limit 条记录）
+            position = max(0, file_size - 1024 * 100)
+            f.seek(position)
             lines = f.readlines()
+            
+            # 处理行（从新到旧）
             for line in reversed(lines[-limit:]):
                 if line.strip():
                     try:

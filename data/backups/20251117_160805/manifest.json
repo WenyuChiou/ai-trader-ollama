@@ -1,0 +1,12 @@
+﻿{
+    "date":  "2025-11-17 16:08:06",
+    "backup_dir":  "data/backups/20251117_160805",
+    "timestamp":  "20251117_160805",
+    "files":  [
+                  "portfolio_state.json",
+                  "equity_history.jsonl",
+                  "discussion_actions.jsonl",
+                  "filled_orders.jsonl",
+                  "pending_orders.jsonl"
+              ]
+}

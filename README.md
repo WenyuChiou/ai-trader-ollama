@@ -2335,6 +2335,60 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
 
 **This setup will keep the API running continuously, even after system restarts, for weeks or months.**
 
+### Complete Long-Term Running Setup
+
+**For running the system for several weeks**, use the automated setup script:
+
+```powershell
+# Run as administrator:
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_long_term_running.ps1
+```
+
+**This script will:**
+- ✅ Setup API Server (Task Scheduler)
+- ✅ Setup Daily Upload (once per day, saves budget)
+- ✅ Setup Weekly Maintenance (automatic cleanup every Sunday at 2 AM)
+- ✅ Create maintenance scripts for automatic file cleanup
+
+**Maintenance Features:**
+- **Automatic Cleanup**: Old backup files (>7 days) and log files (>30 days) are automatically removed
+- **Disk Space Monitoring**: Weekly check of data directory size
+- **Memory Management**: Old memory files are cleaned up automatically
+- **Log Rotation**: Prevents log files from growing too large
+
+**Manual Maintenance**:
+```powershell
+# Clean up repository (remove old backups, logs, __pycache__)
+powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_repo.ps1
+
+# Check system health
+powershell -ExecutionPolicy Bypass -File .\scripts\check_system_features.py
+
+# Check disk space
+$dataSize = (Get-ChildItem -Path "data\logs" -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1GB
+Write-Host "Data directory size: $([math]::Round($dataSize, 2)) GB"
+```
+
+**Important Notes for Long-Term Running:**
+- ✅ **Protection Mechanisms**: System prevents overselling (selling more than holdings) and overbuying (buying more than available cash)
+- ✅ **Auto-Restart**: System automatically restarts on crash
+- ✅ **Log Rotation**: Logs are automatically cleaned up to prevent disk space issues
+- ✅ **Data Backup**: Daily upload to Railway ensures data is backed up remotely
+- ✅ **Memory Management**: Automatic garbage collection and conversation history limiting
+- ✅ **File Optimization**: API only reads last 80-100KB of large files for better performance
+- ⚠️ **Monitor Weekly**: Check logs and disk space weekly (use `check_long_term_health.ps1`)
+- ⚠️ **Monthly Restart**: Recommended to restart API server monthly for optimal performance
+
+**Health Check**:
+```powershell
+# Check system health (recommended weekly):
+powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
+```
+
+**Related Documentation**:
+- 📖 [Long-Term Running Checklist](docs/LONG_TERM_RUNNING_CHECKLIST.md) - Complete checklist for long-term running
+- 📖 [Long-Term Optimization Guide](docs/LONG_TERM_OPTIMIZATION.md) - Optimization recommendations
+
 ---
 
 ## 📈 Performance Analysis

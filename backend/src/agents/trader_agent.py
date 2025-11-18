@@ -1067,7 +1067,7 @@ Write in natural language, approximately 100-150 words."""
             "positions_summary": positions_summary,
             "final_stance": final_stance,
             "vix_risk": vix_risk,
-            "coordinator_summary": coordinator_summary[:2000] if coordinator_summary else "No coordinator summary available",
+            "coordinator_summary": coordinator_summary if coordinator_summary else "No coordinator summary available",
             "portfolio_value": portfolio_value or 10000.0,
             "available_cash": available_cash or 0.0,
             "max_position_per_stock": position_config.get("max_position_per_stock", 0.15) * 100 if position_config else 15.0,

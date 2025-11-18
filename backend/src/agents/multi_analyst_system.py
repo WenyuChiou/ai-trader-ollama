@@ -1582,7 +1582,8 @@ def _generate_fallback_coordinator_summary(
             
             stances.append(f"{analyst_type.capitalize()}: {stance}")
             if analysis:
-                analyses.append(f"{analyst_type.capitalize()} Analyst: {analysis[:200]}")
+                # CRITICAL FIX: 移除200字符限制，允许完整显示每个analyst的分析
+                analyses.append(f"{analyst_type.capitalize()} Analyst: {analysis}")
             if tools_used:
                 tools_used_all.extend(tools_used)
     

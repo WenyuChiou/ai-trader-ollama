@@ -306,7 +306,8 @@ def run_multi_analyst_discussion(
                         tool_name = "plan_and_scan_news"
                     
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                    if tool_result:
+                    # CRITICAL FIX: 检查工具执行是否成功（检查ok字段，而不是简单的truthiness）
+                    if tool_result and isinstance(tool_result, dict) and tool_result.get("ok") is not False:
                         all_tool_calls.append({
                             "analyst": "MarketAnalyst",
                             "tool": tool_name,
@@ -360,7 +361,12 @@ def run_multi_analyst_discussion(
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   [WARN] Tool {tool_name} returned no result")
+                        # CRITICAL FIX: 工具执行失败或返回错误
+                        if tool_result and isinstance(tool_result, dict):
+                            error_msg = tool_result.get("error", "Unknown error")
+                            print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
+                        else:
+                            print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
                     print(f"   [INFO] No tools requested by agent")
@@ -704,7 +710,8 @@ def run_multi_analyst_discussion(
                         tool_name = "plan_and_scan_news"
                     
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                    if tool_result:
+                    # CRITICAL FIX: 检查工具执行是否成功（检查ok字段，而不是简单的truthiness）
+                    if tool_result and isinstance(tool_result, dict) and tool_result.get("ok") is not False:
                         all_tool_calls.append({
                             "analyst": "TechnicalAnalyst",
                             "tool": tool_name,
@@ -725,7 +732,12 @@ def run_multi_analyst_discussion(
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   [WARN] Tool {tool_name} returned no result")
+                        # CRITICAL FIX: 工具执行失败或返回错误
+                        if tool_result and isinstance(tool_result, dict):
+                            error_msg = tool_result.get("error", "Unknown error")
+                            print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
+                        else:
+                            print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
                     print(f"   [INFO] No tools requested by agent")
@@ -1005,7 +1017,8 @@ def run_multi_analyst_discussion(
                         tool_name = "plan_and_scan_news"
                     
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                    if tool_result:
+                    # CRITICAL FIX: 检查工具执行是否成功（检查ok字段，而不是简单的truthiness）
+                    if tool_result and isinstance(tool_result, dict) and tool_result.get("ok") is not False:
                         all_tool_calls.append({
                             "analyst": "FundamentalAnalyst",
                             "tool": tool_name,
@@ -1026,7 +1039,12 @@ def run_multi_analyst_discussion(
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   [WARN] Tool {tool_name} returned no result")
+                        # CRITICAL FIX: 工具执行失败或返回错误
+                        if tool_result and isinstance(tool_result, dict):
+                            error_msg = tool_result.get("error", "Unknown error")
+                            print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
+                        else:
+                            print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
                     print(f"   [INFO] No tools requested by agent")
@@ -1139,7 +1157,8 @@ def run_multi_analyst_discussion(
                         tool_name = "plan_and_scan_news"
                     
                     tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                    if tool_result:
+                    # CRITICAL FIX: 检查工具执行是否成功（检查ok字段，而不是简单的truthiness）
+                    if tool_result and isinstance(tool_result, dict) and tool_result.get("ok") is not False:
                         all_tool_calls.append({
                             "analyst": "SentimentAnalyst",
                             "tool": tool_name,
@@ -1165,7 +1184,7 @@ def run_multi_analyst_discussion(
                                         articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
                                         print(f"   [OK] Tool {tool_name} executed successfully - {hits_count} hits, {articles_count} articles")
                                     else:
-                                        print(f"   [OK] Tool {tool_name} executed successfully")
+                                        print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
                                 else:
                                     print(f"   [OK] Tool {tool_name} executed successfully")
                             else:
@@ -1173,7 +1192,12 @@ def run_multi_analyst_discussion(
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:
-                        print(f"   [WARN] Tool {tool_name} returned no result")
+                        # CRITICAL FIX: 工具执行失败或返回错误
+                        if tool_result and isinstance(tool_result, dict):
+                            error_msg = tool_result.get("error", "Unknown error")
+                            print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
+                        else:
+                            print(f"   [WARN] Tool {tool_name} returned no result")
             else:
                 if not tool_calls_list:
                     print(f"   [INFO] No tools requested by agent")

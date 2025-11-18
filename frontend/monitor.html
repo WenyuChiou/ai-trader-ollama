@@ -3266,18 +3266,16 @@
                             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
                             console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
                             console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
-                            // CRITICAL FIX: Only execute immediately if first manual trade has been executed
-                            // This ensures the first trade after initialization/refresh must be manual
-                            // CRITICAL FIX: Add delay to prevent immediate execution on startup
-                            setTimeout(() => {
-                                if (hasManualTradeExecuted() && !isTradingExecuting) {
-                                    console.log('[Auto Trade] First manual trade already executed, executing after delay...');
-                                    smartAutoTrade();
-                                } else {
-                                    console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
-                                    updateAutoTradeStatus('Waiting for First Manual Trade');
-                                }
-                            }, 5000); // 5 second delay to prevent immediate execution
+                            // CRITICAL FIX: Do NOT execute immediately on startup
+                            // The first trade after initialization/refresh must be manual
+                            // Auto-trade will execute after the first 30-minute interval
+                            if (hasManualTradeExecuted()) {
+                                console.log('[Auto Trade] First manual trade already executed, auto-trade will run after 30 minutes');
+                                updateAutoTradeStatus('Active - Next run in 30 min');
+                            } else {
+                                console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
+                                updateAutoTradeStatus('Waiting for First Manual Trade');
+                            }
                         } else {
                             console.log('[Auto Trade] Timer already exists or trade executing, skipping start');
                         }

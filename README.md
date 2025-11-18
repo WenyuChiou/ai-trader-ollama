@@ -316,7 +316,6 @@ The main configuration file controls trading parameters, universe selection, and
 **Mode 1: `"auto"` (Default - LLM Autonomous):**
 - Position limits are **disabled** - agent has **complete freedom** to decide position sizes
 - Agent decides based on:
-  - VIX risk score (high VIX → smaller positions, low VIX → larger positions)
   - Number of recommended stocks (many stocks → smaller positions, few stocks → larger positions)
   - Signal strength and diversification needs
   - Market conditions and risk assessment
@@ -983,133 +982,6 @@ Market Closed (e.g., After 4:00 PM or Weekend):
         └─────────────────────────────────────┘
 ```
 
-### Detailed Trading Scenarios
-
-#### Scenario 1: Market Open - Bullish Consensus
-
-**Market Conditions**:
-- Market is open (9:30 AM - 4:00 PM ET)
-- VIX < 20 (low volatility)
-- Analyst consensus: **BULLISH**
-- Risk Analyst: Low risk, recommends 10-15% per stock
-
-**Agent Dialogue Example**:
-```
-Market Analyst: "S&P 500 up 0.5%, NASDAQ leading with tech sector rotation. 
-                 Market breadth strong with 65% advancing stocks."
-
-Technical Analyst: "NVDA showing bullish momentum, RSI 55, MACD positive. 
-                    Support at $150, resistance at $160."
-
-Fundamental Analyst: "NVDA P/E ratio 35, below sector average. Strong revenue 
-                      growth, healthy cash flow. Valuation attractive."
-
-Sentiment Analyst: "Fear & Greed Index at 65 (Greed). News sentiment positive 
-                    on AI sector. VIX term structure normal."
-
-Discussion Coordinator: "Consensus: BULLISH. All analysts agree NVDA is 
-                         attractive. Recommended allocation: 12% portfolio."
-
-Risk Analyst: "Portfolio risk: LOW. Current positions: 3 stocks (45% total). 
-               Can add NVDA with 12% allocation. Position limit: 15% per stock."
-
-Trader Agent: "Based on bullish consensus and low risk, generating BUY order 
-               for NVDA: 12% allocation, market price $155.00, quantity 7 shares."
-```
-
-**Trader Agent Decision Process**:
-1. **LLM Analysis**: Processes all analyst inputs, risk report, current positions
-2. **Risk Compliance**: Checks position limits (12% < 15% max, total 57% < 80% max)
-3. **Cash Check**: Verifies sufficient cash available
-4. **Order Generation**: Creates market order for immediate execution
-
-**Hard Rules Applied**:
-- ✓ Market open: Orders can be executed
-- ✓ Position limit: 12% < 15% max per stock
-- ✓ Total position: 57% < 80% max
-- ✓ Cash available: Sufficient for purchase
-- ✓ Position count: 4 stocks < 10 max
-
-**Result**: Order executed immediately at market price.
-
----
-
-#### Scenario 2: Market Open - Bearish Consensus with Existing Positions
-
-**Market Conditions**:
-- Market is open
-- VIX > 25 (high volatility)
-- Analyst consensus: **BEARISH**
-- Current position: NVDA (15% of portfolio, -5% P&L)
-
-**Agent Dialogue Example**:
-```
-Market Analyst: "S&P 500 down 1.2%, NASDAQ down 1.5%. Market breadth weak, 
-                 only 35% advancing. Sector rotation to defensive."
-
-Technical Analyst: "NVDA breaking support at $150. RSI oversold at 30, 
-                    but trend is down. Next support at $140."
-
-Fundamental Analyst: "NVDA earnings miss expectations. Revenue growth slowing. 
-                      P/E ratio elevated at 40. Valuation concerns."
-
-Sentiment Analyst: "Fear & Greed Index at 25 (Fear). Negative news on chip 
-                    sector. VIX term structure inverted (bearish signal)."
-
-Discussion Coordinator: "Consensus: BEARISH. Risk-off environment. Recommend 
-                         reducing tech exposure, especially NVDA."
-
-Risk Analyst: "Portfolio risk: HIGH. VIX risk score: 7.5/10. NVDA position 
-               at 15% limit. Recommend reducing to 8% or exiting entirely."
-
-Trader Agent: "Based on bearish consensus and high risk, generating SELL order 
-               for NVDA: Reduce position from 15% to 8% (sell 4 shares). 
-               Preserve capital in volatile market."
-```
-
-**Trader Agent Decision Process**:
-1. **LLM Analysis**: Identifies risk-off environment, high VIX, negative sentiment
-2. **Position Management**: Decides to reduce exposure (not exit completely)
-3. **Risk Compliance**: Follows Risk Analyst recommendation (reduce to 8%)
-4. **Order Generation**: Creates SELL order for partial position
-
-**Hard Rules Applied**:
-- ✓ Market open: Orders can be executed
-- ✓ Position reduction: 15% → 8% (within limits)
-- ✓ Risk management: Reduces exposure in high-risk environment
-
-**Result**: Partial sell order executed, position reduced to 8%.
-
----
-
-#### Scenario 3: Market Closed - Analysis Only
-
-**Market Conditions**:
-- Market is closed (after 4:00 PM ET or before 9:30 AM ET)
-- All agents still run analysis
-- No orders generated
-
-**Agent Dialogue Example**:
-```
-[All agents run analysis as normal...]
-
-Trader Agent: "Market is currently closed. Analysis completed:
-              - Market stance: NEUTRAL
-              - VIX risk: 4.0/10
-              - Recommended actions: Monitor for next session
-              - No trading orders generated (market orders only execute 
-                during trading hours: 9:30 AM - 4:00 PM ET)"
-```
-
-**Hard Rules Applied**:
-- ✓ Market closed: **NO ORDERS GENERATED** (hard rule)
-- ✓ Analysis still runs: Agents provide insights for next session
-- ✓ Portfolio state: Unchanged, but analysis saved to memory
-
-**Result**: Analysis saved, no trading activity.
-
----
-
 ### Trader Agent: LLM-Based Decision Making
 
 **Is Trader Agent an LLM?**
@@ -1185,9 +1057,8 @@ Input Layer:
    - NEUTRAL → Conservative approach, may hold or make small adjustments
 
 2. **Risk Integration**:
-   - High VIX risk (7-10) → Reduce position sizes, be more conservative
-   - Low VIX risk (0-4) → Can be more aggressive, larger positions
    - Risk Analyst recommendations → Directly influence position sizing
+   - Market conditions and risk assessment → Considered in decision making
 
 3. **Position Management**:
    - Existing positions with negative P&L + bearish consensus → Consider selling
@@ -1227,12 +1098,7 @@ ELSE:
     Execute order
 ```
 
-**4. Risk-Based Position Sizing (Guidelines, not hard rules)**
-- High VIX risk (7-10) → Smaller positions (5-8% per stock)
-- Medium VIX risk (4-6) → Normal positions (8-12% per stock)
-- Low VIX risk (0-3) → Larger positions (10-15% per stock)
-
-**5. Order Execution Rules**
+**4. Order Execution Rules**
 - All orders are **market orders** (immediate execution)
 - No limit orders (guaranteed fill at current price)
 - Orders execute immediately when market is open
@@ -1639,20 +1505,17 @@ IF market_status == OPEN:
 
 | Rule | Default Behavior | Type | How It Works |
 |------|------------------|------|--------------|
-| **Per Stock Maximum** | **No Limit** | Agent Decision | Agent decides based on VIX risk, signal strength, diversification needs |
+| **Per Stock Maximum** | **No Limit** | Agent Decision | Agent decides based on signal strength, diversification needs, and market conditions |
 | **Total Position Maximum** | **No Limit** | Agent Decision | Agent can use all available cash (limited only by cash balance) |
 | **Minimum Position Size** | **No Limit** | Agent Decision | Agent can use any position size based on market conditions |
 | **Maximum Positions** | **No Limit** | Agent Decision | Agent decides number of positions based on opportunities |
 
 **Agent Decision Logic (No Limits)**:
-- **VIX Risk-Based Sizing**:
-  - High VIX (7-10): 5-8% per stock (conservative)
-  - Medium VIX (4-6): 8-12% per stock (normal)
-  - Low VIX (0-3): 10-15% per stock (aggressive)
 - **Stock Count Adjustment**:
-  - Many stocks (>10): Smaller positions (5-8%)
-  - Few stocks (<5): Larger positions (12-15%)
+  - Many stocks (>10): Smaller positions per stock
+  - Few stocks (<5): Larger positions per stock
 - **Signal Strength**: Strong signals → larger positions, weak signals → smaller positions
+- **Diversification**: Agent considers diversification needs when deciding position sizes
 
 **Optional Limits (If Set in `config.json`)**:
 
@@ -1788,35 +1651,6 @@ Order Status:
 
 ---
 
-#### 5. Risk-Based Position Sizing (LLM Decision)
-
-**Type**: **LLM-Decided (Guidelines)**
-
-**VIX Risk Score → Position Size Guidelines**:
-
-| VIX Risk Score | Risk Level | Position Size Range | Trader Agent Behavior |
-|----------------|------------|---------------------|----------------------|
-| 0-3 | LOW | 10-15% per stock | More aggressive, larger positions |
-| 4-6 | MEDIUM | 8-12% per stock | Normal position sizing |
-| 7-10 | HIGH | 5-8% per stock | Conservative, smaller positions |
-
-**How LLM Uses This**:
-- LLM receives VIX risk score from Risk Analyst
-- LLM considers this as a guideline when deciding position sizes
-- LLM can adjust based on other factors (signal strength, diversification needs, etc.)
-- LLM generates rationale explaining position size decisions
-
-**Example**:
-```
-VIX Risk: 7.5 (HIGH)
-Guideline: 5-8% per stock
-LLM Decision: Uses 6% per stock for NVDA (conservative due to high risk)
-Rationale: "High VIX risk (7.5) suggests conservative position sizing. Using 6% allocation 
-           for NVDA to balance opportunity with risk management."
-```
-
----
-
 #### 6. Trading Frequency & Order Limits (Configurable)
 
 **Type**: **Configurable in `config.json`**
@@ -1913,10 +1747,10 @@ Rationale: "High VIX risk (7.5) suggests conservative position sizing. Using 6% 
 **Or simply don't include these fields at all.**
 
 The agent will:
-- **Decide position sizes based on VIX risk**:
-  - High VIX (7-10): Use smaller positions (5-8% per stock)
-  - Medium VIX (4-6): Use normal positions (8-12% per stock)
-  - Low VIX (0-3): Use larger positions (10-15% per stock)
+- **Decide position sizes autonomously** based on:
+  - Market conditions and risk assessment
+  - Signal strength and diversification needs
+  - Number of recommended stocks
 - **Adjust based on number of recommended stocks**:
   - Many stocks (>10): Use smaller positions (5-8%)
   - Few stocks (<5): Use larger positions (12-15%)

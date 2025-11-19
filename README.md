@@ -324,7 +324,6 @@ The main configuration file controls trading parameters, universe selection, and
   "universe_source": "custom",
   "universe_limit": 100,
   "universe": ["NVDA", "MSFT", "AAPL", ...],
-  "crypto": ["BTC-USD", "ETH-USD", ...],
   "initial_cash": 10000,
   "position_limit_mode": "auto",
   "_position_limit_per_stock": null,
@@ -358,7 +357,6 @@ The main configuration file controls trading parameters, universe selection, and
 | `universe_source` | Universe source type | `"custom"`, `"nasdaq100"` | `"custom"` |
 | `universe_limit` | Maximum symbols to analyze | Positive integer | `100` |
 | `universe` | List of stock symbols | Array of strings | NASDAQ-100 + ETFs |
-| `crypto` | Cryptocurrency symbols | Array of strings | `["BTC-USD", "ETH-USD", ...]` |
 | **Capital & Position Limits** |
 | `initial_cash` | Starting capital | Float | `10000` (USD) |
 | `position_limit_mode` | Position limit mode | `"auto"`, `"configured"` | `"auto"` (LLM autonomous) |
@@ -385,8 +383,8 @@ The main configuration file controls trading parameters, universe selection, and
 
 **Trading Universe:**
 - `universe`: List of stock symbols to trade (includes inverse/leveraged ETFs like SQQQ, TQQQ, TQQQ, SPXL, UPRO)
-- `crypto`: List of cryptocurrency symbols (optional, for crypto trading)
 - `universe_limit`: Maximum number of symbols to analyze (default: 100)
+- **Note**: Cryptocurrency symbols are automatically filtered out from stock analysis. The system focuses on traditional stocks and ETFs only.
 
 **Position Limits (Two Modes - Auto vs Configured):**
 
@@ -2947,6 +2945,19 @@ python scripts/init_data.py
    - ✅ Invalid tool calls automatically filtered out
    - ✅ Tool restrictions enforced per analyst type
    - ✅ Mandatory tools automatically added (e.g., `plan_and_scan_news` for Sentiment Analyst)
+9. **Tool Result Deduplication**:
+   - ✅ Frontend automatically deduplicates tool results by tool name (keeps only latest result)
+   - ✅ Prevents duplicate display of same tool results from different agents or rounds
+   - ✅ Economic data panel deduplicates FRED indicators (e.g., `get_economic_summary` called by multiple agents)
+   - ✅ Conversation panel deduplicates tool summaries to show unique tools only
+10. **Cryptocurrency Filtering**:
+   - ✅ Cryptocurrency symbols (DOGE, BTC, ETH, etc.) automatically filtered from stock analysis
+   - ✅ Prevents errors when crypto symbols are mistakenly included in stock recommendations
+   - ✅ System focuses on traditional stocks and ETFs only
+11. **Timestamp Format Standardization**:
+   - ✅ All timestamps use ISO 8601 format with millisecond precision: `YYYY-MM-DDTHH:MM:SS.sssZ`
+   - ✅ Consistent UTC timezone with 'Z' suffix across all data files
+   - ✅ Scripts available to fix existing timestamp formats: `backend/scripts/fix_timestamps.py` and `backend/scripts/fix_memory_timestamps.py`
 
 ### Portfolio P&L Calculation Issues
 

@@ -4982,23 +4982,27 @@
                                     
                                     if (toolEntries.length > 0) {
                                         const toolSummaries = [];
+                                        const toolNameMap = new Map(); // Map<tool_name, latest_entry> for deduplication
                                         
-                                        toolEntries.forEach(toolEntry => {
+                                        // CRITICAL FIX: Sort tool entries by timestamp (newest first) to keep latest results
+                                        const sortedToolEntries = [...toolEntries].sort((a, b) => {
+                                            const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                                            const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                                            return timeB - timeA; // Newest first
+                                        });
+                                        
+                                        sortedToolEntries.forEach(toolEntry => {
                                             const toolContent = toolEntry.content || '';
                                             const toolInfo = parseToolInfo(toolContent);
                                             const entryToolName = toolEntry.tool_name || '';
                                             
+                                            let displayToolName = '';
+                                            let summary = '';
+                                            
                                             if (toolInfo && toolInfo.result) {
                                                 // 提取简要信息
-                                                const displayToolName = toolInfo.name || entryToolName || 'Unknown';
-                                                const summary = extractToolSummary(displayToolName, toolInfo.result);
-                                                
-                                                if (summary) {
-                                                    toolSummaries.push({
-                                                        name: displayToolName,
-                                                        summary: summary
-                                                    });
-                                                }
+                                                displayToolName = toolInfo.name || entryToolName || 'Unknown';
+                                                summary = extractToolSummary(displayToolName, toolInfo.result);
                                             } else {
                                                 // 尝试从内容中提取 JSON
                                                 try {
@@ -5029,20 +5033,22 @@
                                                                 depth++;
                                                             }
                                                             
-                                                            const toolName = toolEntry.tool_name || parsed.tool || parsed.name || entryToolName || 'Unknown';
-                                                            const summary = extractToolSummary(toolName, resultData);
-                                                            
-                                                            if (summary) {
-                                                                toolSummaries.push({
-                                                                    name: toolName,
-                                                                    summary: summary
-                                                                });
-                                                            }
+                                                            displayToolName = toolEntry.tool_name || parsed.tool || parsed.name || entryToolName || 'Unknown';
+                                                            summary = extractToolSummary(displayToolName, resultData);
                                                         }
                                                     }
                                                 } catch (e) {
                                                     // Parsing failed, skip
                                                 }
+                                            }
+                                            
+                                            // CRITICAL FIX: Deduplicate by tool name - keep only the latest entry for each tool
+                                            if (displayToolName && summary && !toolNameMap.has(displayToolName)) {
+                                                toolNameMap.set(displayToolName, true);
+                                                toolSummaries.push({
+                                                    name: displayToolName,
+                                                    summary: summary
+                                                });
                                             }
                                         });
                                         

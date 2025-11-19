@@ -2946,6 +2946,17 @@ python scripts/init_data.py
    - ✅ Enhanced debugging logs for news tool execution
 5. **Fundamental Analysis Budget**:
    - ✅ Fundamental analysis tools (`get_company_fundamentals`) execute without tool budget restrictions
+
+6. **Frontend Display Enhancements**:
+   - ✅ **All 7 Agents Displayed**: MarketAnalyst, TechnicalAnalyst, FundamentalAnalyst, SentimentAnalyst, DiscussionCoordinator, RiskAnalyst, TraderAgent
+   - ✅ **Special Styling**: TraderAgent and RiskAnalyst have distinctive blue borders and backgrounds
+   - ✅ **Content Extraction**: Intelligent extraction logic for TraderAgent (extracts "Analysis:" section) and RiskAnalyst (uses summary or risk_report)
+   - ✅ **Discussion Coordinator Beautification**: Clean formatting without box styling, extracts individual analyst reports automatically
+   - ✅ **Tool Result Deduplication**: Prevents duplicate display of tool results (economic data, news) in conversation panels
+   - ✅ **Auto-Update Mechanisms**: 
+     - Data refresh every 30 seconds (portfolio, trades, conversations)
+     - Order status check every 10 seconds during trading hours
+     - Equity chart update every 30 minutes
    - ✅ Ensures all recommended stocks and holdings are analyzed regardless of budget
    - ✅ Tools prioritized: Fundamental tools execute first, then other tools (subject to budget)
 6. **FGI (Fear & Greed Index)**:

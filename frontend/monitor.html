@@ -3193,6 +3193,12 @@
                         window.lastSystemInfo = null;
                     }
                     
+                    // CRITICAL FIX: 清空净值历史数据
+                    equityHistory = [];
+                    lastEquityChartUpdate = 0;
+                    nextEquityUpdateTime = null;
+                    console.log('[Init] Cleared equity history data');
+                    
                     // CRITICAL FIX: 重置UI状态
                     console.log('[Init] Resetting UI state...');
                     // 重置订单状态
@@ -3213,6 +3219,12 @@
                     // 清空新闻数据
                     if (typeof window.newsData !== 'undefined') {
                         window.newsData = [];
+                    }
+                    
+                    // CRITICAL FIX: 清空并重新渲染净值图表
+                    if (typeof renderEquityChart !== 'undefined') {
+                        await renderEquityChart();
+                        console.log('[Init] Equity chart cleared and re-rendered');
                     }
                     
                     // 刷新数据（强制刷新，不使用缓存）
@@ -11004,10 +11016,15 @@
                 // 保存到全局变量，供订单状态卡片使用
                 window.lastTradesData = tradesData;
                 
-                // 更新全局 equityHistory 变量（用于图表显示）
+                // CRITICAL FIX: 更新全局 equityHistory 变量（用于图表显示）
+                // 如果 history 为空数组，也要清空 equityHistory（例如初始化后）
                 if (history && history.length > 0) {
                     equityHistory = history;
                     console.log(`[Refresh] Updated equity history: ${history.length} records`);
+                } else {
+                    // 如果后端返回空数组，清空前端缓存
+                    equityHistory = [];
+                    console.log('[Refresh] Equity history is empty, cleared frontend cache');
                 }
                 
                 // Non-trading hours: if portfolio data exists, use it; if not, don't error (silent handling)

@@ -11841,6 +11841,9 @@
             const nextBtn = document.getElementById('executionNextPage');
             if (!tbody) return;
             
+            // DEBUG: Log input data
+            console.log(`[renderExecutionDetails] Received ${trades?.length || 0} trades`);
+            
             // CRITICAL FIX: Show all orders (not just today's) - users need to see all buy/sell orders
             // Filter to show all orders (no date restriction)
             const todayTrades = trades || [];
@@ -12205,6 +12208,14 @@
                 const systemInfo = results[3].status === 'fulfilled' ? results[3].value : null;
                 const convData = results[4].status === 'fulfilled' ? results[4].value : { conversations: [], total: 0, has_more: false, tool_results_by_category: {}, discussion_rounds_summaries: {} };
                 const tradesData = results[5].status === 'fulfilled' ? results[5].value : [];
+                
+                // DEBUG: Log trades data for troubleshooting
+                console.log(`[Refresh] Trades fetched: ${tradesData?.length || 0} orders`);
+                if (tradesData && tradesData.length > 0) {
+                    const filled = tradesData.filter(t => (t.status || '').toUpperCase() === 'FILLED').length;
+                    const pending = tradesData.filter(t => (t.status || '').toUpperCase() === 'PENDING').length;
+                    console.log(`[Refresh] Trades breakdown: ${filled} filled, ${pending} pending`);
+                }
                 
                 // CRITICAL FIX: 更新工具结果分类缓存
                 if (convData && convData.tool_results_by_category) {

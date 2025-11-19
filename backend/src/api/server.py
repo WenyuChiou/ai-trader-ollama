@@ -1269,44 +1269,55 @@ async def get_equity_history(
 
 @app.get("/api/trades/recent")
 async def get_recent_trades(limit: int = Query(10, ge=1, le=1000)):
-    """获取最近交易"""
+    """获取最近交易（包括已成交和待处理订单）"""
     try:
         logs_dir = _get_project_logs_dir()
         filled_file = logs_dir / "filled_orders.jsonl"
+        pending_file = logs_dir / "pending_orders.jsonl"
         
-        if not filled_file.exists():
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "ok": True,
-                    "trades": []
-                },
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
-        
-        # 读取最后 N 条记录（优化：从文件末尾读取，避免加载整个文件）
         trades = []
-        with filled_file.open("r", encoding="utf-8") as f:
-            # 优化：从文件末尾读取（避免加载整个文件）
-            f.seek(0, 2)  # Seek to end
-            file_size = f.tell()
-            # 读取最后 ~100KB（足够容纳 limit 条记录）
-            position = max(0, file_size - 1024 * 100)
-            f.seek(position)
-            lines = f.readlines()
-            
-            # 处理行（从新到旧）
-            for line in reversed(lines[-limit:]):
-                if line.strip():
-                    try:
-                        trade = json.loads(line.strip())
-                        trades.append(trade)
-                    except json.JSONDecodeError:
-                        continue
+        
+        # CRITICAL FIX: Read from both filled_orders.jsonl and pending_orders.jsonl
+        # to show all orders (filled and pending)
+        
+        # 1. Read filled orders
+        if filled_file.exists():
+            with filled_file.open("r", encoding="utf-8") as f:
+                # Read entire file (may be small)
+                lines = f.readlines()
+                for line in lines:
+                    if line.strip():
+                        try:
+                            trade = json.loads(line.strip())
+                            # Ensure status is set
+                            if "status" not in trade:
+                                trade["status"] = "FILLED"
+                            trades.append(trade)
+                        except json.JSONDecodeError:
+                            continue
+        
+        # 2. Read pending orders
+        if pending_file.exists():
+            with pending_file.open("r", encoding="utf-8") as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.strip():
+                        try:
+                            trade = json.loads(line.strip())
+                            # Ensure status is set
+                            if "status" not in trade:
+                                trade["status"] = "PENDING"
+                            trades.append(trade)
+                        except json.JSONDecodeError:
+                            continue
+        
+        # Sort by timestamp (newest first)
+        trades.sort(key=lambda x: (
+            x.get("filled_at") or x.get("placed_at") or x.get("timestamp") or ""
+        ), reverse=True)
+        
+        # Limit results
+        trades = trades[:limit]
         
         return JSONResponse(
             status_code=200,

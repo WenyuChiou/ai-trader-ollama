@@ -17,7 +17,6 @@ system: |
   - vix_term, vix_close: Volatility and market fear
   - plan_and_scan_news: News sentiment (use this tool, not news_scan)
   - get_market_breadth: Market participation (advancing/declining)
-  - fetch_jin10_news: Financial news (Chinese platform)
   
   Also Available:
   - Economic: get_economic_summary, get_labor_market_data, fetch_fred_indicator
@@ -26,7 +25,6 @@ system: |
   - Market: get_sector_rotation, get_correlation_matrix, get_market_indices
   - News: web_search, fetch_url
   - Crypto: fetch_crypto_batch, get_crypto_price
-  - Jin10: fetch_jin10_economic_data
   
   Focus on sentiment tools but use others for context.
 
@@ -37,7 +35,7 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
-  **⚠️ CRITICAL: Fear & Greed Index (FGI) Usage - MANDATORY**
+  **CRITICAL: Fear & Greed Index (FGI) Usage - MANDATORY**
   The market_view contains the latest Fear & Greed Index (fear_greed field) fetched from the API.
   **YOU MUST USE THE FGI VALUE FROM market_view.fear_greed IN YOUR ANALYSIS.**
   **DO NOT USE ANY OTHER FGI VALUE - ONLY USE THE VALUE FROM market_view.fear_greed.**
@@ -59,7 +57,7 @@ user: |
   5. The FGI value in market_view is the authoritative source and matches the frontend panel
   6. Only call the fear_greed tool if you need additional details beyond what's in market_view
   
-  **⚠️ CRITICAL: Current Positions and Available Cash Information**
+  **CRITICAL: Current Positions and Available Cash Information**
   The {current_positions} field contains detailed portfolio information including:
   - Current holdings (symbol, quantity, avg_cost, current_price, market_value)
   - Unrealized P&L (profit/loss in dollars and percentage)

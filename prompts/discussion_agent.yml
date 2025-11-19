@@ -27,7 +27,6 @@ system: |
   
   News & Information:
   - news_scan, plan_and_scan_news, web_search, fetch_url
-  - fetch_jin10_news, fetch_jin10_economic_data
   
   Economic Data (FRED):
   - get_economic_summary, get_labor_market_data, fetch_fred_indicator

@@ -650,9 +650,46 @@ def execute_daily_trade(
         # 如果 discussion_history 为空，尝试从 analyst_reports 中构建
         discussion_history = convo.get("discussion_history", [])
         
+        # CRITICAL FIX: Extract recommended_stocks from analyst_reports for MarketAnalyst
+        analyst_reports = convo.get("analyst_reports", {})
+        market_recommended_stocks = []
+        if analyst_reports.get("market"):
+            market_recommended_stocks = analyst_reports["market"].get("recommended_stocks", [])
+            if isinstance(market_recommended_stocks, str):
+                market_recommended_stocks = [s.strip() for s in market_recommended_stocks.split(",") if s.strip()]
+            elif not isinstance(market_recommended_stocks, list):
+                market_recommended_stocks = []
+        
+        # CRITICAL FIX: Update MarketAnalyst entry from transcript with recommended_stocks if available
+        if market_recommended_stocks:
+            # Try to find and update MarketAnalyst entry written from transcript
+            # Read the file, find MarketAnalyst entry, add recommended_stocks, rewrite
+            try:
+                convo_file = _get_project_logs_dir() / "discussion_actions.jsonl"
+                if convo_file.exists():
+                    lines = convo_file.read_text(encoding="utf-8").strip().split("\n")
+                    updated_lines = []
+                    market_updated = False
+                    for line in lines:
+                        if line.strip():
+                            try:
+                                entry = json.loads(line)
+                                # Update the most recent MarketAnalyst entry from transcript
+                                if entry.get("agent") == "MarketAnalyst" and "recommended_stocks" not in entry and not market_updated:
+                                    entry["recommended_stocks"] = market_recommended_stocks
+                                    market_updated = True
+                                updated_lines.append(json.dumps(entry, ensure_ascii=False))
+                            except:
+                                updated_lines.append(line)
+                    
+                    if market_updated:
+                        convo_file.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+                        print(f"[TRADING CYCLE] Updated MarketAnalyst entry with recommended_stocks: {market_recommended_stocks}")
+            except Exception as e:
+                print(f"[TRADING CYCLE] Warning: Failed to update MarketAnalyst entry with recommended_stocks: {e}")
+        
         # 如果 discussion_history 为空，从 analyst_reports 构建
         if not discussion_history:
-            analyst_reports = convo.get("analyst_reports", {})
             all_tool_calls = convo.get("tool_calls", [])
             for analyst_key, report in analyst_reports.items():
                 if report and isinstance(report, dict):
@@ -675,13 +712,19 @@ def execute_daily_trade(
                         if tools_used:
                             analysis = f"Analysis based on {', '.join(tools_used[:3])}. {analysis}"
                     
-                    discussion_history.append({
+                    entry_data = {
                         "analyst": analyst_name,
                         "stance": report.get("stance", "neutral"),
                         "analysis": analysis,
                         "tools_used": tools_used,
                         "key_points": report.get("recommendations", [])[:3] if report.get("recommendations") else [],
-                    })
+                    }
+                    
+                    # CRITICAL FIX: Add recommended_stocks for MarketAnalyst
+                    if analyst_key == "market" and market_recommended_stocks:
+                        entry_data["recommended_stocks"] = market_recommended_stocks
+                    
+                    discussion_history.append(entry_data)
         
         coordinator_found_in_history = False
         for entry_data in discussion_history:
@@ -741,6 +784,11 @@ def execute_daily_trade(
             stance = entry_data.get("stance", "neutral")
             analysis = entry_data.get("analysis", "No analysis provided")
             tools_used = entry_data.get("tools_used", [])
+            recommended_stocks = entry_data.get("recommended_stocks", [])  # CRITICAL FIX: Extract recommended_stocks for MarketAnalyst
+            
+            # CRITICAL FIX: If MarketAnalyst and no recommended_stocks in entry_data, try to get from analyst_reports
+            if agent_name == "MarketAnalyst" and not recommended_stocks and market_recommended_stocks:
+                recommended_stocks = market_recommended_stocks
             
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
@@ -753,6 +801,10 @@ def execute_daily_trade(
                 "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
                 "tools_used": tools_used,  # CRITICAL FIX: 确保 tools_used 被正确存储
             }
+            
+            # CRITICAL FIX: Add recommended_stocks field for MarketAnalyst (for frontend filtering)
+            if agent_name == "MarketAnalyst" and recommended_stocks:
+                entry["recommended_stocks"] = recommended_stocks if isinstance(recommended_stocks, list) else []
             
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")

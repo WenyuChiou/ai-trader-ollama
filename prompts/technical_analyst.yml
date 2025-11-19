@@ -25,7 +25,7 @@ system: |
   - Market: get_market_breadth, get_sector_rotation, get_correlation_matrix
   - Crypto: fetch_crypto_batch, get_crypto_price
   
-  **CRITICAL**: Do NOT use news tools (news_scan, plan_and_scan_news, web_search, fetch_url, fetch_jin10_news).
+  **CRITICAL**: Do NOT use news tools (news_scan, plan_and_scan_news, web_search, fetch_url).
   Technical analysis focuses on price action, indicators, and chart patterns - not news content.
   Focus on technical tools only. News analysis is handled by Sentiment Analyst.
 

@@ -5242,7 +5242,17 @@
                 if (stockFilterContainer) {
                     stockFilterContainer.style.display = 'inline-block';
                     // Extract available stocks from conversations
-                    extractTechnicalStocks();
+                    // CRITICAL FIX: Ensure portfolio is loaded before extracting stocks
+                    if (!window.currentPortfolio) {
+                        fetchPortfolio().then(portfolio => {
+                            window.currentPortfolio = portfolio;
+                            extractTechnicalStocks();
+                        }).catch(() => {
+                            extractTechnicalStocks(); // Still extract even if portfolio fetch fails
+                        });
+                    } else {
+                        extractTechnicalStocks();
+                    }
                 }
             } else {
                 if (stockFilterContainer) {
@@ -5257,7 +5267,17 @@
                 if (fundamentalStockFilterContainer) {
                     fundamentalStockFilterContainer.style.display = 'inline-block';
                     // Extract available stocks from conversations
-                    extractFundamentalStocks();
+                    // CRITICAL FIX: Ensure portfolio is loaded before extracting stocks
+                    if (!window.currentPortfolio) {
+                        fetchPortfolio().then(portfolio => {
+                            window.currentPortfolio = portfolio;
+                            extractFundamentalStocks();
+                        }).catch(() => {
+                            extractFundamentalStocks(); // Still extract even if portfolio fetch fails
+                        });
+                    } else {
+                        extractFundamentalStocks();
+                    }
                 }
             } else {
                 if (fundamentalStockFilterContainer) {
@@ -5277,6 +5297,9 @@
         function extractTechnicalStocks() {
             if (!window.currentConversations) return;
             const stocks = new Set();
+            
+            // CRITICAL FIX: Technical Analyst should analyze: Holdings + Recommended Stocks + Major Indices
+            // 1. Extract from actual tool calls (already analyzed stocks)
             window.currentConversations.forEach(c => {
                 if (c.agent && c.agent.toLowerCase().includes('technical') && c.type === 'tool') {
                     const toolInfo = parseToolInfo(c.content || '');
@@ -5302,6 +5325,46 @@
                     }
                 }
             });
+            
+            // 2. Add recommended stocks from Market Analyst
+            window.currentConversations.forEach(c => {
+                if (c.agent === 'MarketAnalyst' && c.type === 'discussion') {
+                    const content = c.content || c.summary || '';
+                    // Try to extract recommended_stocks from content or summary
+                    // Look for patterns like "recommended_stocks": ["AAPL", "GOOG"] or "Recommended: AAPL, GOOG"
+                    try {
+                        const jsonMatch = content.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            const parsed = JSON.parse(jsonMatch[0]);
+                            const recommended = parsed.recommended_stocks || parsed.recommendedStocks;
+                            if (Array.isArray(recommended)) {
+                                recommended.forEach(s => stocks.add(String(s).toUpperCase()));
+                            }
+                        }
+                    } catch (e) {
+                        // Try regex extraction
+                        const recommendedMatch = content.match(/recommended[_\s]*stocks?["\s]*:[\s]*\[([^\]]+)\]/i);
+                        if (recommendedMatch) {
+                            const symbols = recommendedMatch[1].match(/"([^"]+)"/g);
+                            if (symbols) {
+                                symbols.forEach(s => stocks.add(s.replace(/"/g, '').toUpperCase()));
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 3. Add major indices (ALWAYS required for Technical Analyst)
+            const majorIndices = ['SPY', 'QQQ', 'DIA', 'IWM', 'VTI'];
+            majorIndices.forEach(idx => stocks.add(idx));
+            
+            // 4. Add current holdings from portfolio (if available)
+            if (window.currentPortfolio && window.currentPortfolio.positions) {
+                Object.keys(window.currentPortfolio.positions).forEach(symbol => {
+                    if (symbol) stocks.add(symbol.toUpperCase());
+                });
+            }
+            
             availableTechnicalStocks = Array.from(stocks).sort();
             
             // Update select dropdown
@@ -5320,9 +5383,18 @@
         }
         
         // Extract available stocks from Fundamental Analyst tool results
+        // CRITICAL FIX: Fundamental Analyst should analyze: Holdings (non-ETF) + Recommended Stocks (non-ETF)
         function extractFundamentalStocks() {
             const stocks = new Set();
+            const etfList = ['SPY', 'QQQ', 'DIA', 'IWM', 'VTI', 'TQQQ', 'SQQQ', 'SPXL', 'UPRO', 'SH', 'PSQ', 'SDS', 'DOG'];
+            
+            // Helper function to check if symbol is ETF
+            function isETF(symbol) {
+                return etfList.includes(String(symbol).toUpperCase());
+            }
+            
             if (window.currentConversations) {
+                // 1. Extract from actual tool calls (already analyzed stocks)
                 window.currentConversations.forEach(c => {
                     if (c.type === 'tool' && c.agent === 'FundamentalAnalyst') {
                         const toolName = c.tool_name || '';
@@ -5448,8 +5520,57 @@
                         }
                     }
                 });
+                
+                // 2. Add recommended stocks from Market Analyst (non-ETF only)
+                window.currentConversations.forEach(c => {
+                    if (c.agent === 'MarketAnalyst' && c.type === 'discussion') {
+                        const content = c.content || c.summary || '';
+                        // Try to extract recommended_stocks from content or summary
+                        try {
+                            const jsonMatch = content.match(/\{[\s\S]*\}/);
+                            if (jsonMatch) {
+                                const parsed = JSON.parse(jsonMatch[0]);
+                                const recommended = parsed.recommended_stocks || parsed.recommendedStocks;
+                                if (Array.isArray(recommended)) {
+                                    recommended.forEach(s => {
+                                        const symbol = String(s).toUpperCase();
+                                        if (!isETF(symbol)) {
+                                            stocks.add(symbol);
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            // Try regex extraction
+                            const recommendedMatch = content.match(/recommended[_\s]*stocks?["\s]*:[\s]*\[([^\]]+)\]/i);
+                            if (recommendedMatch) {
+                                const symbols = recommendedMatch[1].match(/"([^"]+)"/g);
+                                if (symbols) {
+                                    symbols.forEach(s => {
+                                        const symbol = s.replace(/"/g, '').toUpperCase();
+                                        if (!isETF(symbol)) {
+                                            stocks.add(symbol);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 3. Add current holdings from portfolio (non-ETF only, if available)
+                if (window.currentPortfolio && window.currentPortfolio.positions) {
+                    Object.keys(window.currentPortfolio.positions).forEach(symbol => {
+                        const symbolUpper = String(symbol).toUpperCase();
+                        if (symbol && !isETF(symbolUpper)) {
+                            stocks.add(symbolUpper);
+                        }
+                    });
+                }
             }
-            availableFundamentalStocks = Array.from(stocks).sort();
+            
+            // Filter out ETFs from final list
+            availableFundamentalStocks = Array.from(stocks).filter(s => !isETF(s)).sort();
             
             // Update select dropdown
             const select = document.getElementById('fundamentalStockFilterSelect');
@@ -11217,6 +11338,11 @@
                 // CRITICAL FIX: 更新工具结果分类缓存
                 if (convData && convData.tool_results_by_category) {
                     window.toolResultsByCategory = convData.tool_results_by_category;
+                }
+                
+                // CRITICAL FIX: 保存 portfolio 到全局变量，供股票筛选使用
+                if (portfolio) {
+                    window.currentPortfolio = portfolio;
                 }
                 
                 // Debug: log fetched data

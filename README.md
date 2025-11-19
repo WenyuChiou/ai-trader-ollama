@@ -1032,9 +1032,6 @@ These tools allow agents to retrieve and learn from historical trading memories:
 - `fetch_crypto_batch`: Batch crypto data
 - `get_crypto_price`: Single crypto price
 
-### Jin10 (1 tool)
-- `fetch_jin10_economic_data`: Economic data from Jin10
-
 ---
 
 ## 📈 Trading Workflow

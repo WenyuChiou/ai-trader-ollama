@@ -152,17 +152,21 @@ def run_risk_analyst_llm(
                 print(f"[RISK ANALYST] Found {len(tool_calls_list)} tool calls in response")
                 # Execute tools if use_tools is True
                 if use_tools:
+                    # CRITICAL FIX: Filter out news tools (Risk Analyst should not use news tools)
+                    # News tools are restricted to Sentiment Analyst only
+                    news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
+                    filtered_tool_calls = []
+                    for tool_call in tool_calls_list:
+                        tool_name = tool_call.get("name", "")
+                        if tool_name in news_tools:
+                            print(f"[RISK ANALYST] Removing news tool '{tool_name}' (news analysis is handled by Sentiment Analyst)")
+                        else:
+                            filtered_tool_calls.append(tool_call)
+                    tool_calls_list = filtered_tool_calls
+                    
                     for tool_call in tool_calls_list:
                         tool_name = tool_call.get("name", "")
                         tool_args = tool_call.get("args", {})
-                        
-                        # CRITICAL FIX: Map deprecated news_scan to plan_and_scan_news
-                        if tool_name == "news_scan":
-                            print(f"[RISK ANALYST] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
-                            tool_name = "plan_and_scan_news"
-                            # Update tool_args if needed
-                            if "keywords" in tool_args and "tickers" not in tool_args:
-                                tool_args["tickers"] = tool_args.pop("keywords", [])
                         
                         if tool_name:
                             try:

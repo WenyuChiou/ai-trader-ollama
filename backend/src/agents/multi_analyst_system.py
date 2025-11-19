@@ -208,6 +208,18 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = market_result.get("tool_calls", [])
             
+            # CRITICAL FIX: Filter out news tools (Market Analyst should not use news tools)
+            # News tools are restricted to Sentiment Analyst only
+            news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
+            filtered_tool_calls = []
+            for tc in tool_calls_list:
+                tool_name = tc.get("name", "")
+                if tool_name in news_tools:
+                    print(f"   [FILTER] Removing news tool '{tool_name}' from Market Analyst (news analysis is handled by Sentiment Analyst)")
+                else:
+                    filtered_tool_calls.append(tc)
+            tool_calls_list = filtered_tool_calls
+            
             # CRITICAL: 强制添加记忆工具调用（必须在开始时调用）
             memory_tool_called = False
             for tc in tool_calls_list:
@@ -487,7 +499,7 @@ def run_multi_analyst_discussion(
             tool_calls_list = technical_result.get("tool_calls", [])
             
             # CRITICAL FIX: Filter out news tools (Technical Analyst should not use news tools)
-            news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url", "fetch_jin10_news"]
+            news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
             filtered_tool_calls = []
             for tc in tool_calls_list:
                 tool_name = tc.get("name", "")
@@ -900,6 +912,18 @@ def run_multi_analyst_discussion(
             
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = fundamental_result.get("tool_calls", [])
+            
+            # CRITICAL FIX: Filter out news tools (Fundamental Analyst should not use news tools)
+            # News tools are restricted to Sentiment Analyst only
+            news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
+            filtered_tool_calls = []
+            for tc in tool_calls_list:
+                tool_name = tc.get("name", "")
+                if tool_name in news_tools:
+                    print(f"   [FILTER] Removing news tool '{tool_name}' from Fundamental Analyst (news analysis is handled by Sentiment Analyst)")
+                else:
+                    filtered_tool_calls.append(tc)
+            tool_calls_list = filtered_tool_calls
             
             # CRITICAL FIX: Filter out invalid tool calls (missing name field)
             # CRITICAL FIX: Support @tool/params format (convert to name/args)

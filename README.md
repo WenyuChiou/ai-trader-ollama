@@ -29,7 +29,7 @@
 - [Configuration](#-configuration)
 - [Data Storage & Records](#-data-storage--records)
 - [Multi-Agent Architecture](#-multi-agent-architecture)
-- [Tool Suite (27 Tools)](#-tool-suite-27-tools)
+- [Tool Suite (28 Tools)](#-tool-suite-28-tools)
 - [Trading Workflow](#-trading-workflow)
 - [API Endpoints](#-api-endpoints)
 - [Deployment](#-deployment)
@@ -46,7 +46,7 @@
 
 AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combines:
 - **6 specialized LLM agents** working in collaboration
-- **27 advanced tools** for market analysis (21 market tools + 6 memory/RAG tools)
+- **28 advanced tools** for market analysis (21 market tools + 7 memory/RAG tools)
 - **Real-time data integration** from multiple sources
 - **Intelligent risk management** with position controls
 - **RAG Memory System**: Agents automatically retrieve and learn from historical trading decisions
@@ -917,7 +917,7 @@ The system includes **28 advanced tools** organized into two categories:
 - **News Tools**: `news_scan` has been removed. Use `plan_and_scan_news` instead (includes LLM-generated summaries and keywords)
 - **Automatic Conversion**: If LLM requests deprecated `news_scan`, it's automatically converted to `plan_and_scan_news`
 
-### 🧠 Memory/RAG Tools (6 Tools)
+### 🧠 Memory/RAG Tools (7 Tools)
 
 These tools allow agents to retrieve and learn from historical trading memories:
 

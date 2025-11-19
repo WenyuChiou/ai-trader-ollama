@@ -1,160 +1,160 @@
-# 测试脚本使用指南
+# Test Scripts Guide
 
-## 概述
+## Overview
 
-为了避免测试时覆盖交易记录，我们创建了独立的测试脚本。
+To avoid overwriting trading records during testing, we have created independent test scripts.
 
-## 脚本列表
+## Script List
 
-### 1. `scripts/test_news_tools.py` - 新闻工具测试
+### 1. `scripts/test_news_tools.py` - News Tools Testing
 
-**用途**: 独立测试新闻工具，不运行交易循环
+**Purpose**: Independently test news tools without running trading cycles
 
-**特点**:
-- ✅ 只测试新闻工具功能
-- ✅ 不会覆盖任何交易记录或持仓数据
-- ✅ 不会运行交易循环
-- ✅ 测试结果保存到 `data/logs/news_test_results.json`
+**Features**:
+- ✅ Tests only news tool functionality
+- ✅ Does not overwrite any trading records or position data
+- ✅ Does not run trading cycles
+- ✅ Test results saved to `data/logs/news_test_results.json`
 
-**使用方法**:
+**Usage**:
 ```bash
-# 从项目根目录运行
+# Run from project root
 python scripts/test_news_tools.py
 ```
 
-**测试内容**:
-- `news_scan`: 关键词搜索新闻
-- `plan_and_scan_news`: LLM生成查询并搜索新闻
-- `fetch_jin10_news`: 从金十数据获取新闻
+**Test Content**:
+- `news_scan`: Keyword-based news search
+- `plan_and_scan_news`: LLM-generated queries and news search
+- `fetch_jin10_news`: Fetch news from Jin10 data
 
-**输出**:
-- 控制台显示测试结果
-- 测试结果保存到 `data/logs/news_test_results.json`
+**Output**:
+- Console displays test results
+- Test results saved to `data/logs/news_test_results.json`
 
 ---
 
-### 2. `scripts/verify_portfolio.py` - 持仓记录验证
+### 2. `scripts/verify_portfolio.py` - Portfolio Record Verification
 
-**用途**: 验证 `portfolio_state.json` 和 `equity_history.jsonl` 的一致性
+**Purpose**: Verify consistency between `portfolio_state.json` and `equity_history.jsonl`
 
-**特点**:
-- ✅ 只读操作，不会修改任何数据
-- ✅ 检查持仓、现金、总价值的一致性
-- ✅ 显示详细的差异报告
+**Features**:
+- ✅ Read-only operations, does not modify any data
+- ✅ Checks consistency of positions, cash, and total value
+- ✅ Displays detailed difference reports
 
-**使用方法**:
+**Usage**:
 ```bash
-# 从项目根目录运行
+# Run from project root
 python scripts/verify_portfolio.py
 ```
 
-**检查内容**:
-1. 数据加载: 检查文件是否存在
-2. 基本信息: 显示时间戳、现金、总价值、持仓数量
-3. 持仓比较: 比较两个文件的持仓差异
-4. 现金一致性: 检查现金是否一致
-5. 总价值一致性: 检查总价值是否一致
+**Check Content**:
+1. Data Loading: Check if files exist
+2. Basic Information: Display timestamp, cash, total value, position count
+3. Position Comparison: Compare position differences between two files
+4. Cash Consistency: Check if cash is consistent
+5. Total Value Consistency: Check if total value is consistent
 
-**输出示例**:
+**Output Example**:
 ```
 ============================================================
-持仓记录验证
+Portfolio Record Verification
 ============================================================
 
-1. 加载数据...
-✅ 数据加载成功
+1. Loading data...
+✅ Data loaded successfully
 
-2. 基本信息:
+2. Basic Information:
    portfolio_state.json:
-     - 时间戳: 2025-11-18T21:55:02.516Z
-     - 现金: $13.20
-     - 总价值: $9997.48
-     - 持仓数量: 10
+     - Timestamp: 2025-11-18T21:55:02.516Z
+     - Cash: $13.20
+     - Total Value: $9997.48
+     - Position Count: 10
 
-   equity_history.jsonl (最新记录):
-     - 日期: 2025-11-18
-     - 现金: $13.20
-     - 总价值: $9997.48
-     - 持仓数量: 10
+   equity_history.jsonl (latest record):
+     - Date: 2025-11-18
+     - Cash: $13.20
+     - Total Value: $9997.48
+     - Position Count: 10
 
-3. 持仓比较:
-   共同持仓: 10 个
-     符号: AAPL, AMZN, BKR, MAR, NVDA, PSQ, SQQQ, SPXL, TQQQ, TSLA
+3. Position Comparison:
+   Common Positions: 10 symbols
+     Symbols: AAPL, AMZN, BKR, MAR, NVDA, PSQ, SQQQ, SPXL, TQQQ, TSLA
 
-4. 现金一致性:
-   ✅ 现金一致 (差异: $0.00)
+4. Cash Consistency:
+   ✅ Cash consistent (difference: $0.00)
 
-5. 总价值一致性:
-   ✅ 总价值一致 (差异: $0.00)
+5. Total Value Consistency:
+   ✅ Total value consistent (difference: $0.00)
 
-6. 验证总结:
-   ✅ 持仓记录一致
+6. Verification Summary:
+   ✅ Portfolio records are consistent
 ```
 
 ---
 
-## 重要提示
+## Important Notes
 
-### ⚠️ 不要使用 `scripts/run_daily_trading.py` 进行测试
+### ⚠️ Do NOT Use `scripts/run_daily_trading.py` for Testing
 
-**原因**:
-- `run_daily_trading.py` 会运行完整的交易循环
-- 会覆盖 `portfolio_state.json`
-- 会创建新的交易记录
-- 会影响持仓数据
+**Reason**:
+- `run_daily_trading.py` runs complete trading cycles
+- Will overwrite `portfolio_state.json`
+- Will create new trading records
+- Will affect position data
 
-**正确做法**:
-- 测试新闻工具: 使用 `scripts/test_news_tools.py`
-- 验证持仓: 使用 `scripts/verify_portfolio.py`
-- 实际交易: 使用 `scripts/run_daily_trading.py`
+**Correct Approach**:
+- Test news tools: Use `scripts/test_news_tools.py`
+- Verify portfolio: Use `scripts/verify_portfolio.py`
+- Actual trading: Use `scripts/run_daily_trading.py`
 
 ---
 
-## 文件位置
+## File Locations
 
-所有脚本都在 `scripts/` 目录下：
+All scripts are located in the `scripts/` directory:
 ```
 ai-trader-ollama/
 ├── scripts/
-│   ├── test_news_tools.py      # 新闻工具测试
-│   ├── verify_portfolio.py      # 持仓验证
-│   └── run_daily_trading.py     # 实际交易（不要用于测试）
+│   ├── test_news_tools.py      # News tools testing
+│   ├── verify_portfolio.py     # Portfolio verification
+│   └── run_daily_trading.py    # Actual trading (DO NOT use for testing)
 └── data/
     └── logs/
         ├── portfolio_state.json
         ├── equity_history.jsonl
-        └── news_test_results.json  # 测试结果
+        └── news_test_results.json  # Test results
 ```
 
 ---
 
-## 故障排除
+## Troubleshooting
 
-### 问题1: ModuleNotFoundError
+### Issue 1: ModuleNotFoundError
 
-**错误**: `ModuleNotFoundError: No module named 'src'`
+**Error**: `ModuleNotFoundError: No module named 'src'`
 
-**解决**: 确保从项目根目录运行脚本：
+**Solution**: Ensure running from project root:
 ```bash
 cd ai-trader-ollama
 python scripts/test_news_tools.py
 ```
 
-### 问题2: UnicodeEncodeError (Windows)
+### Issue 2: UnicodeEncodeError (Windows)
 
-**错误**: `UnicodeEncodeError: 'cp950' codec can't encode character`
+**Error**: `UnicodeEncodeError: 'cp950' codec can't encode character`
 
-**解决**: 脚本已包含UTF-8编码支持，如果仍有问题，设置环境变量：
+**Solution**: Scripts include UTF-8 encoding support. If issues persist, set environment variable:
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
 python scripts/test_news_tools.py
 ```
 
-### 问题3: 文件未找到
+### Issue 3: File Not Found
 
-**错误**: `portfolio_state.json 不存在或无法加载`
+**Error**: `portfolio_state.json does not exist or cannot be loaded`
 
-**解决**: 检查文件路径：
+**Solution**: Check file path:
 ```bash
 # Windows PowerShell
 Test-Path "data\logs\portfolio_state.json"
@@ -165,10 +165,74 @@ test -f data/logs/portfolio_state.json
 
 ---
 
-## 最佳实践
+## Best Practices
 
-1. **测试前备份**: 重要数据测试前先备份
-2. **使用独立脚本**: 测试时使用独立的测试脚本
-3. **验证结果**: 测试后验证数据一致性
-4. **记录测试**: 保存测试结果以便后续分析
+1. **Backup Before Testing**: Backup important data before testing
+2. **Use Independent Scripts**: Use independent test scripts for testing
+3. **Verify Results**: Verify data consistency after testing
+4. **Record Tests**: Save test results for future analysis
 
+---
+
+## Additional Test Scripts
+
+### Python Test Scripts
+
+Located in `scripts/` directory:
+- `test_api_fgi.py` - Test Fear & Greed Index API
+- `test_api_server.py` - Test API server endpoints
+- `test_frontend_features.py` - Test frontend features
+- `test_market_status.py` - Test market status checking
+- `test_railway_data.py` - Test Railway data upload
+- `test_report_generation.py` - Test report generation
+
+### PowerShell Test Scripts
+
+Located in `scripts/` directory:
+- `test_monitor_api.ps1` - Test monitor API connection
+- `test_github_pages.ps1` - Test GitHub Pages deployment
+
+### Integration Tests
+
+Located in `tests/integration/` directory:
+- `test_agent_architecture.py` - Agent system integration tests
+- `test_api.py` - API endpoint integration tests
+- `test_memory.py` - Memory system integration tests
+- `test_portfolio.py` - Portfolio management integration tests
+
+### End-to-End Tests
+
+Located in `tests/e2e/` directory:
+- `test_frontend.py` - Frontend end-to-end tests
+
+---
+
+## Running Tests
+
+### Run All Tests
+```powershell
+# From project root
+pytest tests/ -v
+```
+
+### Run Specific Test Category
+```powershell
+# Integration tests
+pytest tests/integration/ -v
+
+# E2E tests
+pytest tests/e2e/ -v
+```
+
+### Run with Coverage
+```powershell
+pytest tests/ -v --cov=backend/src --cov-report=html
+```
+
+---
+
+## See Also
+
+- [Testing Guide](TESTING.md) - Complete testing documentation
+- [Quick Start Guide](QUICK_START.md) - Installation and setup
+- [Architecture Documentation](ARCHITECTURE.md) - System architecture

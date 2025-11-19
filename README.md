@@ -2133,6 +2133,56 @@ Daily Summary:
 
 ## ⏰ Scheduled Tasks & Automation
 
+### PowerShell Scripts for Automation
+
+All automation scripts are located in `scripts/` directory and can be run from the project root.
+
+#### Setup Scripts
+
+| Script | Purpose | Usage | Requirements |
+|--------|---------|-------|-------------|
+| `setup_scheduled_tasks.ps1` | Configure automated tasks | `.\scripts\setup_scheduled_tasks.ps1` | Admin rights (optional) |
+| `setup_long_term_running.ps1` | Complete long-term setup | `.\scripts\setup_long_term_running.ps1` | Admin rights |
+| `setup_daily_upload_simple.ps1` | Setup daily data upload | `.\scripts\setup_daily_upload_simple.ps1` | Admin rights (optional) |
+
+#### Scheduled Task Scripts
+
+| Script | Purpose | Schedule | Usage |
+|--------|---------|----------|-------|
+| `schedule_daily_task.ps1` | Schedule daily trading cycle | Daily at market open | `.\scripts\schedule_daily_task.ps1` |
+| `schedule_hourly_update.ps1` | Schedule hourly data updates | Every hour | `.\scripts\schedule_hourly_update.ps1` |
+| `schedule_monitoring_task.ps1` | Schedule system monitoring | Every 30 minutes | `.\scripts\schedule_monitoring_task.ps1` |
+| `schedule_daily_upload_only.ps1` | Schedule daily data upload | Daily at specified time | `.\scripts\schedule_daily_upload_only.ps1` |
+
+#### Service Management Scripts
+
+| Script | Purpose | Usage | Requirements |
+|--------|---------|-------|-------------|
+| `start_api_task_scheduler.ps1` | Start API with Task Scheduler | `.\scripts\start_api_task_scheduler.ps1` | Admin rights |
+| `stop_all_services.ps1` | Stop all running services | `.\scripts\stop_all_services.ps1` | None |
+| `check_running_services.ps1` | Check service status | `.\scripts\check_running_services.ps1` | None |
+| `check_api_status.ps1` | Check API health | `.\scripts\check_api_status.ps1` | None |
+
+#### Data Management Scripts
+
+| Script | Purpose | Usage | Notes |
+|--------|---------|-------|-------|
+| `backup_data.ps1` | Backup system data | `.\scripts\backup_data.ps1` | Creates timestamped backups |
+| `restore_portfolio.ps1` | Restore portfolio from backup | `.\scripts\restore_portfolio.ps1` | Select backup to restore |
+| `restore_from_equity_history.ps1` | Restore from equity history | `.\scripts\restore_from_equity_history.ps1` | Reconstructs portfolio state |
+| `cleanup_backups.ps1` | Cleanup old backup files | `.\scripts\cleanup_backups.ps1` | Removes backups >7 days old |
+| `cleanup_old_memory.ps1` | Cleanup old memory files | `.\scripts\cleanup_old_memory.ps1` | Removes old memory snapshots |
+
+#### Monitoring Scripts
+
+| Script | Purpose | Usage | Notes |
+|--------|---------|-------|-------|
+| `check_long_term_health.ps1` | Check system health | `.\scripts\check_long_term_health.ps1` | Weekly health check |
+| `monitor_api_connection.ps1` | Monitor API connection | `.\scripts\monitor_api_connection.ps1` | Continuous monitoring |
+| `check_port.ps1` | Check port availability | `.\scripts\check_port.ps1` | Check if port 8000 is available |
+
+**Note**: All PowerShell scripts use UTF-8 encoding and support Windows PowerShell 5.1+ and PowerShell Core 7+. Some scripts require administrator privileges (indicated in Requirements column).
+
 ### Overview
 
 The system supports automated scheduled tasks for:
@@ -2941,8 +2991,9 @@ pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 ### Test Documentation
 
 For detailed test documentation, see:
-- **[Test README](tests/README.md)** - Test suite overview and guidelines
+- **[Test README](tests/README.md)** - Test suite overview and guidelines (English)
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation
+- **[Test Scripts Guide](docs/TEST_SCRIPTS_GUIDE.md)** - Guide for independent test scripts (English)
 - **[Test Results](docs/TEST_RESULTS.md)** - Latest test execution results
 
 ### Important Notes
@@ -2957,23 +3008,42 @@ For detailed test documentation, see:
 
 ## 🎯 Quick Reference
 
-### Setup Scripts
+### Setup Scripts (PowerShell)
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `setup_step1_install_dependencies.ps1` | Install Python dependencies | `.\scripts\setup_step1_install_dependencies.ps1` |
-| `setup_step2_configure.ps1` | Configure system and initialize data | `.\scripts\setup_step2_configure.ps1` |
-| `setup_step3_start_services.ps1` | Start API server | `.\scripts\setup_step3_start_services.ps1` |
-| `setup_all_steps.ps1` | Run all setup steps at once | `.\scripts\setup_all_steps.ps1` |
+All setup scripts are located in `scripts/` directory and can be run from the project root.
+
+| Script | Purpose | Usage | Requirements |
+|--------|---------|-------|-------------|
+| `setup_step1_install_dependencies.ps1` | Install Python dependencies and Ollama | `.\scripts\setup_step1_install_dependencies.ps1` | Python 3.10+, Ollama |
+| `setup_step2_configure.ps1` | Configure system and initialize data | `.\scripts\setup_step2_configure.ps1` | Step 1 completed |
+| `setup_step3_start_services.ps1` | Start API server | `.\scripts\setup_step3_start_services.ps1` | Steps 1-2 completed |
+| `setup_all_steps.ps1` | Run all setup steps sequentially | `.\scripts\setup_all_steps.ps1` | Python 3.10+, Ollama |
+| `setup_scheduled_tasks.ps1` | Setup automated tasks | `.\scripts\setup_scheduled_tasks.ps1` | Admin rights (optional) |
+
+**Note**: All PowerShell scripts use UTF-8 encoding and support Windows PowerShell 5.1+ and PowerShell Core 7+.
 
 ### Management Scripts
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `restart_api_fast.ps1` | Quick restart API server | `.\scripts\restart_api_fast.ps1` |
-| `start_api_task_admin.bat` | Setup Task Scheduler (long-term) | Right-click → Run as administrator |
-| `start_api_service_admin.bat` | Setup Windows Service | Right-click → Run as administrator |
-| `stop_all_services.ps1` | Stop all running services | `.\scripts\stop_all_services.ps1` |
+| Script | Purpose | Usage | Requirements |
+|--------|---------|-------|-------------|
+| `start_api_task_admin.bat` | Setup Task Scheduler (long-term) | Right-click → Run as administrator | Admin rights |
+| `start_api_service_admin.bat` | Setup Windows Service (requires NSSM) | Right-click → Run as administrator | Admin rights, NSSM |
+| `stop_all_services.ps1` | Stop all running services | `.\scripts\stop_all_services.ps1` | None |
+| `check_running_services.ps1` | Check service status | `.\scripts\check_running_services.ps1` | None |
+| `check_api_status.ps1` | Check API health | `.\scripts\check_api_status.ps1` | None |
+
+### Test Scripts
+
+| Script | Purpose | Usage | Notes |
+|--------|---------|-------|-------|
+| `test_news_tools.py` | Test news tools independently | `python scripts/test_news_tools.py` | Does not overwrite trading records |
+| `verify_portfolio.py` | Verify portfolio consistency | `python scripts/verify_portfolio.py` | Read-only, safe to run |
+| `test_api_server.py` | Test API endpoints | `python scripts/test_api_server.py` | Requires API running |
+| `test_frontend_features.py` | Test frontend features | `python scripts/test_frontend_features.py` | Requires API running |
+
+**Important**: Use independent test scripts (`test_news_tools.py`, `verify_portfolio.py`) for testing. Do NOT use `run_daily_trading.py` for testing as it will overwrite trading records.
+
+See [Test Scripts Guide](docs/TEST_SCRIPTS_GUIDE.md) for detailed information.
 
 ### Configuration Files
 

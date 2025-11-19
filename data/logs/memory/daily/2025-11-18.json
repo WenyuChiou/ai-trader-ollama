@@ -1,6 +1,6 @@
 {
   "date": "2025-11-18",
-  "timestamp": "2025-11-18T22:12:23.774310",
+  "timestamp": "2025-11-18T22:27:15.470449",
   "metadata": {
     "version": "2.0",
     "compressed": false,
@@ -838,14 +838,14 @@
     "note": "This is a fallback recommendation. Actual recommendations should come from multi_analyst_system LLM output."
   },
   "discussion": {
-    "final_stance": "bearish",
+    "final_stance": "bullish",
     "rounds": null,
     "transcript": [
-      "--- Market Analyst ---\nStance: risk_off\nAnalysis: The market is showing signs of vulnerability despite recent gains. The S&P 500 remains slightly positive, but the NASDAQ is under pressure, highlighting potential divergence between value and growth stocks. Sector rotation analysis indicates leadership in healthcare and industrials, while technology and communication services lag, suggesting a possible rotation away from high-flying growth stocks. Market breadth is deteriorating with a negative advance-decline ratio, indicating broad-based weakness. Economic indicators point to persistent inflationary pressures and a hawkish Federal Reserve stance, keeping interest rates elevated and dampening growth expectations. The elevated VIX signals heightened volatility concerns. Recent news highlights the Federal Reserve's continued rate hikes to combat inflation and concerns over slowing global growth. These factors contribute to a cautious market stance, with investors prioritizing quality and defensive sectors. The overall market regime is characterized by sideways trends with high volatility, in a mid-cycle phase where profit-taking and uncertainty prevail.\nTools Used: get_recent_memories, get_economic_summary, get_market_indices, get_sector_rotation, get_market_breadth\nKey Points:\n  - Focus on defensive sectors\n  - Consider hedging strategies\n  - Monitor earnings reports closely",
-      "--- Technical Analyst ---\nStance: neutral\nAnalysis: The market remains in a consolidation phase, with technical indicators showing mixed signals across indices and holdings. Major indices like SPY and QQQ are trading near key support levels, while consumer staples (JNJ, PG) and tech (AAPL, MSFT) show stronger momentum despite bearish overall sentiment. Support levels are holding for blue-chips, but resistance near $215 for AAPL and $170 for MSFT could trigger corrections if volume doesn't sustain breaks. RSI readings (45-55) indicate low volatility, with MACD showing neutral trends. Overall, the technical picture suggests waiting for clearer breakouts or breakdowns before acting.\nTools Used: get_advanced_indicators, get_support_resistance, get_market_indices, get_advanced_indicators, get_advanced_indicators, get_market_indices, get_advanced_indicators, get_advanced_indicators\nKey Points:\n  - Hold current positions due to market consolidation; wait for clear breakouts/breakdowns.\n  - Consider adding to SPXL or UPRO if bullish short-term market signals emerge.\n  - Use SPXU or SH to hedge against potential further market declines.",
-      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The fundamental analysis reveals a mixed landscape among the recommended non-ETF stocks. Apple (AAPL) and Microsoft (MSFT) show strong profitability and cash flow generation, but face valuation pressures. Johnson & Johnson (JNJ) and Procter & Gamble (PG) demonstrate stable earnings and financial health, though growth appears modest. Coca-Cola (KO) and AT&T (T) show signs of earnings volatility and debt concerns. Target (T) and Home Depot (HD) exhibit solid financials but face competitive pressures. Financial news highlights potential risks for KO due to macroeconomic factors and T due to supply chain issues. Overall, the portfolio requires careful balancing between high-quality dividend payers and growth-oriented tech stocks, with valuation concerns tempering outright bullishness. The analysis suggests a defensive tilt with selective opportunities in fundamentally sound companies trading below historical norms.\nTools Used: get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals\nKey Points:\n  - Long: JNJ, PG, WMT, HD (strong fundamentals, undervalued or fair valuation)\n  - Short: KO (overvalued, weak earnings quality)\n  - Inverse ETF Play: SDS (if broad market sentiment deteriorates)",
-      "--- Sentiment Analyst ---\nStance: bearish\nAnalysis: Analyzed using tools: plan_and_scan_news, vix_term. Waiting for tool results to generate detailed analysis.\nTools Used: plan_and_scan_news, vix_term\nKey Points:\n  - Consider adding to inverse ETF positions (SQQQ, SDS) given the extreme fear sentiment.\n  - Monitor semiconductor stocks for potential short covering if earnings reports disappoint.\n  - Hold cash and wait for confirmation of a market bottom before initiating new long positions.",
-      "--- Discussion Coordinator ---\nStance: bearish\nAnalysis: Summary of analyst perspectives:\nMarket Analyst: The market is showing signs of vulnerability despite recent gains. The S&P 500 remains slightly positive, but the NASDAQ is under pressure, highlighting potential divergence between value and growth stocks. Sector rotation analysis indicates leadership in healthcare and industrials, while technology and communication services lag, suggesting a possible rotation away from high-flying growth stocks. Market breadth is deteriorating with a negative advance-decline ratio, indicating broad-based weakness. Economic indicators point to persistent inflationary pressures and a hawkish Federal Reserve stance, keeping interest rates elevated and dampening growth expectations. The elevated VIX signals heightened volatility concerns. Recent news highlights the Federal Reserve's continued rate hikes to combat inflation and concerns over slowing global growth. These factors contribute to a cautious market stance, with investors prioritizing quality and defensive sectors. The overall market regime is characterized by sideways trends with high volatility, in a mid-cycle phase where profit-taking and uncertainty prevail.\nTechnical Analyst: The market remains in a consolidation phase, with technical indicators showing mixed signals across indices and holdings. Major indices like SPY and QQQ are trading near key support levels, while consumer staples (JNJ, PG) and tech (AAPL, MSFT) show stronger momentum despite bearish overall sentiment. Support levels are holding for blue-chips, but resistance near $215 for AAPL and $170 for MSFT could trigger corrections if volume doesn't sustain breaks. RSI readings (45-55) indicate low volatility, with MACD showing neutral trends. Overall, the technical picture suggests waiting for clearer breakouts or breakdowns before acting.\nFundamental Analyst: The fundamental analysis reveals a mixed landscape among the recommended non-ETF stocks. Apple (AAPL) and Microsoft (MSFT) show strong profitability and cash flow generation, but face valuation pressures. Johnson & Johnson (JNJ) and Procter & Gamble (PG) demonstrate stable earnings and financial health, though growth appears modest. Coca-Cola (KO) and AT&T (T) show signs of earnings volatility and debt concerns. Target (T) and Home Depot (HD) exhibit solid financials but face competitive pressures. Financial news highlights potential risks for KO due to macroeconomic factors and T due to supply chain issues. Overall, the portfolio requires careful balancing between high-quality dividend payers and growth-oriented tech stocks, with valuation concerns tempering outright bullishness. The analysis suggests a defensive tilt with selective opportunities in fundamentally sound companies trading below historical norms.\nKey Points:\n  - Long: JNJ, PG, WMT, HD (strong fundamentals, undervalued or fair valuation)\n  - Consider hedging strategies\n  - Focus on defensive sectors\n"
+      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market is in a strong bullish phase, driven by robust economic growth and accommodative monetary policy. The S&P 500 and NASDAQ are leading, with Technology and Consumer Discretionary sectors showing strong leadership. Market breadth is excellent, with a high advance-decline ratio indicating broad participation. Economic indicators point to sustained growth, though inflation remains manageable. VIX at 12 suggests low volatility, ideal for risk-on strategies. News highlights include the Federal Reserve's dovish stance supporting markets and strong earnings from tech giants boosting sentiment. This environment favors aggressive long positions in high-growth sectors while monitoring potential overheating risks.\nTools Used: get_recent_memories, get_economic_summary, get_market_indices, get_sector_rotation, get_market_breadth\nKey Points:\n  - Aggressive long positions in high-growth sectors.\n  - Monitor for potential sector rotation opportunities.\n  - Use inverse ETFs cautiously if specific sectors show overvaluation.",
+      "--- Technical Analyst ---\nStance: bullish\nAnalysis: The market remains strongly bullish, with major indices and recommended stocks showing strong upward momentum. NVDA, TSLA, MSFT, and AMZN exhibit extremely bullish technical signals, with RSI above 70 indicating overbought conditions but strong support from bullish MACD and trend indicators. Support levels are well-defined, and volume patterns confirm strong buying interest. Indices like QQQ and SPY are showing strong bullish trends, reinforcing the overall market sentiment. JNJ and V offer more stable long-term plays with solid technical footing. Short opportunities are limited due to the prevailing bullish trend, but inverse ETFs like SPXU could be considered for hedging against broader market weakness.\nTools Used: get_advanced_indicators, get_support_resistance, get_market_indices, get_advanced_indicators, get_support_resistance, get_market_indices, get_advanced_indicators, get_advanced_indicators\nKey Points:\n  - Long NVDA, TSLA, MSFT, AMZN, QQQ, SPY based on strong bullish momentum and overbought conditions.\n  - Consider shorting IWM if bearish divergence emerges, but caution due to overall bullish market.\n  - Use SPXU for hedging against potential S&P 500 weakness, but only if major indices show divergence.",
+      "--- Fundamental Analyst ---\nStance: bullish\nAnalysis: The fundamental analysis reveals strong growth potential across the recommended non-ETF stocks. NVDA and TSLA exhibit high P/E ratios but robust revenue growth and improving margins, driven by AI and electric vehicle adoption. MSFT and AMZN show consistent earnings quality with high profit margins and steady cash flow, though AMZN faces competitive pressures. JNJ demonstrates stable financial health with strong cash flow and manageable debt, supported by consistent dividend payments. MNST and V benefit from the digital payment boom, with improving operating margins. Overall, the portfolio favors long positions in high-growth tech and consumer staples, with limited short opportunities due to strong fundamentals. Recent news highlights Visa's expansion in emerging markets (positive) and Mastercard's strategic partnerships (neutral), reinforcing their sector leadership. Financials like JNJ show resilience amid inflation, while tech stocks face valuation risks but strong growth drivers.\nTools Used: get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_company_fundamentals, get_earnings_history, get_financial_statements\nKey Points:\n  - Long NVDA, TSLA, MSFT, AMZN, MNST, JNJ, V\n  - Use TQQQ for leveraged NASDAQ exposure\n  - Avoid SPXU due to overvaluation concerns",
+      "--- Sentiment Analyst ---\nStance: contrarian_bearish\nAnalysis: Analyzed using tools: plan_and_scan_news. Waiting for tool results to generate detailed analysis.\nTools Used: plan_and_scan_news\nKey Points:\n  - Consider long positions in undervalued defensive stocks like utilities or consumer staples.\n  - Use inverse ETFs (SPXU, SH) as hedges against potential market declines.\n  - Monitor for potential contrarian plays as extreme fear may indicate market overreaction.",
+      "--- Discussion Coordinator ---\nStance: bullish\nAnalysis: Summary of analyst perspectives:\nMarket Analyst: The market is in a strong bullish phase, driven by robust economic growth and accommodative monetary policy. The S&P 500 and NASDAQ are leading, with Technology and Consumer Discretionary sectors showing strong leadership. Market breadth is excellent, with a high advance-decline ratio indicating broad participation. Economic indicators point to sustained growth, though inflation remains manageable. VIX at 12 suggests low volatility, ideal for risk-on strategies. News highlights include the Federal Reserve's dovish stance supporting markets and strong earnings from tech giants boosting sentiment. This environment favors aggressive long positions in high-growth sectors while monitoring potential overheating risks.\nTechnical Analyst: The market remains strongly bullish, with major indices and recommended stocks showing strong upward momentum. NVDA, TSLA, MSFT, and AMZN exhibit extremely bullish technical signals, with RSI above 70 indicating overbought conditions but strong support from bullish MACD and trend indicators. Support levels are well-defined, and volume patterns confirm strong buying interest. Indices like QQQ and SPY are showing strong bullish trends, reinforcing the overall market sentiment. JNJ and V offer more stable long-term plays with solid technical footing. Short opportunities are limited due to the prevailing bullish trend, but inverse ETFs like SPXU could be considered for hedging against broader market weakness.\nFundamental Analyst: The fundamental analysis reveals strong growth potential across the recommended non-ETF stocks. NVDA and TSLA exhibit high P/E ratios but robust revenue growth and improving margins, driven by AI and electric vehicle adoption. MSFT and AMZN show consistent earnings quality with high profit margins and steady cash flow, though AMZN faces competitive pressures. JNJ demonstrates stable financial health with strong cash flow and manageable debt, supported by consistent dividend payments. MNST and V benefit from the digital payment boom, with improving operating margins. Overall, the portfolio favors long positions in high-growth tech and consumer staples, with limited short opportunities due to strong fundamentals. Recent news highlights Visa's expansion in emerging markets (positive) and Mastercard's strategic partnerships (neutral), reinforcing their sector leadership. Financials like JNJ show resilience amid inflation, while tech stocks face valuation risks but strong growth drivers.\nKey Points:\n  - Aggressive long positions in high-growth sectors.\n  - Use inverse ETFs (SPXU, SH) as hedges against potential market declines.\n  - Consider long positions in undervalued defensive stocks like utilities or consumer staples.\n"
     ],
     "tool_context": [
       "MarketAnalyst: get_recent_memories",
@@ -857,7 +857,7 @@
       "TechnicalAnalyst: get_support_resistance",
       "TechnicalAnalyst: get_market_indices",
       "TechnicalAnalyst: get_advanced_indicators",
-      "TechnicalAnalyst: get_advanced_indicators",
+      "TechnicalAnalyst: get_support_resistance",
       "TechnicalAnalyst: get_market_indices",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
@@ -869,30 +869,31 @@
       "FundamentalAnalyst: get_company_fundamentals",
       "FundamentalAnalyst: get_company_fundamentals",
       "FundamentalAnalyst: get_company_fundamentals",
-      "SentimentAnalyst: plan_and_scan_news",
-      "SentimentAnalyst: vix_term"
+      "FundamentalAnalyst: get_earnings_history",
+      "FundamentalAnalyst: get_financial_statements",
+      "SentimentAnalyst: plan_and_scan_news"
     ],
     "actions": null
   },
   "risk_report": {
-    "overall_risk_level": "medium",
-    "risk_score": 5,
-    "analysis": "The portfolio is 100% cash, exposing it to no direct market risk but with full opportunity risk due to medium market conditions. Market data shows the S&P 500 slightly positive while the NASDAQ is under pressure, indicating divergence and potential vulnerability. News analysis highlights two key articles: 'Fed Holds Rates Despite Inflation Concerns' - Summary: The Federal Reserve maintained interest rates, signaling caution on inflation, which could lead to slower economic growth and increased volatility. Risk impact: High, as it may dampen market rallies and increase tail risks. 'Tech Sector Retreat Amid High Valuations' - Summary: Technology stocks are retreating due to profit-taking and valuation concerns, aligning with the NASDAQ underperformance. Risk impact: Medium, as it suggests higher individual stock risks if positions are entered. Based on VIX term structure showing elevated volatility, fear/greed index indicating neutral sentiment, and broad market breadth deterioration, the portfolio should remain cautious. A narrative of medium risk suggests deploying cash now could miss opportunities, but without positions, risk is mitigated. Overall, maintain cash reserves unless market conditions improve.",
+    "overall_risk_level": "low",
+    "risk_score": 3,
+    "analysis": "The portfolio is currently 100% cash, indicating no market exposure and a low-risk state with no potential returns. Market conditions are favorable, with low volatility (VIX at 12) and positive sentiment (Greed Index indicating bullishness), supporting a risk-on stance. Economic summaries confirm sustained growth, reducing systemic risks. News analysis highlights positive developments in economic policy and sector performance, with minimal risk impact. However, the cash position means no active risk, so recommendations focus on deploying capital into the market using disciplined position sizing to capture gains while maintaining controls. Overall, the risk assessment favors starting positions in low-concentration sectors.",
     "market_risks": [
       {
-        "type": "volatility",
-        "severity": "medium",
-        "description": "Elevated volatility from VIX term structure indicates potential for larger price swings."
+        "type": "Volatility",
+        "severity": "low",
+        "description": "VIX at 12 indicates low market volatility, reducing short-term risks but not eliminating them."
       },
       {
-        "type": "sentiment",
+        "type": "Economic",
         "severity": "medium",
-        "description": "Fear/greed index at neutral levels suggests balanced sentiment, but with underlying concerns."
+        "description": "Economic growth is supported by positive indicators, but potential inflation or supply chain issues could introduce moderate risks."
       },
       {
-        "type": "sector_divergence",
-        "severity": "medium",
-        "description": "Rotation to healthcare and industrials while technology lags could limit upside if positions are entered."
+        "type": "Sentiment",
+        "severity": "low",
+        "description": "Greed Index shows strong bullish sentiment, favoring market participation but requiring caution for overvaluation."
       }
     ],
     "position_risks": [],
@@ -902,124 +903,20 @@
       "recommended_position_sizes": {},
       "position_limit_checks": [
         {
-          "symbol": null,
-          "current_pct": 0,
-          "max_pct": 0.15,
-          "status": "OK"
-        },
-        {
-          "symbol": null,
-          "current_pct": 0,
-          "max_pct": 0.85,
-          "status": "OK"
+          "status": "OK",
+          "message": "No positions exceed individual or total exposure limits."
         }
       ]
     },
     "recommendations": [
-      "Monitor market conditions and deploy cash if volatility decreases and sentiment improves.",
-      "Consider entering small positions in undervalued sectors like healthcare or industrials if market breadth improves.",
-      "Diversify any new investments to mitigate correlation risks."
+      "Deploy cash into the market with small, diversified positions to capitalize on bullish conditions.",
+      "Use position sizing limits (e.g., 0.15 per stock) to control single-stock exposure and total portfolio risk.",
+      "Monitor market volatility and sentiment using tools to adjust strategy as needed.",
+      "Consider starting with low-concentration sectors like technology or consumer goods to balance risk and return."
     ],
     "tool_calls": [
       {
-        "tool": "vix_term",
+        "tool": "vix_close",
         "result": {
           "ok": true,
-          "result": {
-            "vix": 24.690000534057617,
-            "vix3m": 24.540000915527344,
-            "ratio": 0.9939246814384082,
-            "asof": "2025-11-19T03:12:00+00:00",
-            "source": "yfinance"
-          }
-        }
-      },
-      {
-        "tool": "fear_greed",
-        "result": {
-          "ok": true,
-          "result": {
-            "value": 11,
-            "label": "EXTREME FEAR",
-            "previous_close": null,
-            "one_week_ago": null,
-            "one_month_ago": null,
-            "one_year_ago": null,
-            "asof": "2025-11-16T00:00:00+00:00",
-            "source": "feargreedmeter",
-            "extracted_date": "2025-11-16",
-            "days_ago": 3
-          }
-        }
-      },
-      {
-        "tool": "get_market_breadth",
-        "result": {
-          "ok": true,
-          "result": {
-            "ok": true,
-            "result": {
-              "date": "2025-11-18",
-              "total_stocks": 10,
-              "advancing": 0,
-              "declining": 10,
-              "unchanged": 0,
-              "advance_decline_ratio": 0.0,
-              "market_sentiment": "strong_bearish"
-            }
-          }
-        }
-      },
-      {
-        "tool": "get_economic_summary",
-        "result": {
-          "ok": true,
-          "result": {
-            "ok": true,
-            "result": "=== US Economic Indicators (FRED) ===\n\nGDP (Billions $): 30,485.73 (as of 2025-04-01)\nUnemployment Rate (%): 4.30 (as of 2025-08-01)\nCPI (Consumer Price Index): 324.37 (as of 2025-09-01)\nFederal Funds Rate (%): 4.09 (as of 2025-10-01)\n10-Year Treasury Rate (%): 4.13 (as of 2025-11-17)\nNonfarm Payrolls (Thousands): 159,540.00 (as of 2025-08-01)\nConsumer Sentiment Index: 55.10 (as of 2025-09-01)\nHousing Starts (Thousands): 1,307.00 (as of 2025-08-01)\n\nData source: Federal Reserve Economic Data (FRED)\nRetrieved: 2025-11-18 22:12:05"
-          }
-        }
-      },
-      {
-        "tool": "news_scan",
-        "result": {
-          "ok": false,
-          "error": "unknown tool news_scan"
-        }
-      }
-    ],
-    "tools_used": [
-      "vix_term",
-      "fear_greed",
-      "get_market_breadth",
-      "get_economic_summary",
-      "news_scan"
-    ]
-  },
-  "decision": {
-    "action": "HOLD",
-    "targets": [],
-    "buy_orders": [],
-    "sell_orders": [],
-    "rationale": "Market is closed. Analysis completed but no trading orders generated (market orders only execute during trading hours: 9:30 AM - 4:00 PM ET). Market stance: NEUTRAL, VIX risk: 4.0 Analysis: Summary of analyst perspectives:\nMarket Analyst: The market is showing signs of vulnerability despite recent gains. The S&P 500 remains slightly positive, but the NASDAQ is under pressure, highlighting potential divergence between value and growth stocks. Sector rotation analysis indicates leadership in healthcare and industrials, while technology and communication services lag, suggesting a possible rotation away from high-flying growth stocks. Market breadth is deteriorating with a negative advance-decline ratio, indicating broad-based weakness. Economic indicators point to persistent inflationary pressures and a hawkish Federal Reserve stance, keeping interest rates elevated and dampening growth expectations. The elevated VIX signals heightened volatility concerns. Recent news highlights the Federal Reserve's continued rate hikes to combat inflation and concerns over slowing global growth. These factors contribute to a cautious market stance, with investors prioritizing quality and defensive sectors. The overall market regime is characterized by sideways trends with high volatility, in a mid-cycle phase where profit-taking and uncertainty prevail.\nTechnical Analyst: The market remains in a consolidation phase, with technical indicators showing mixed signals across indices and holdings. Major indices like SPY and QQQ are trading near key support levels, while consumer staples (JNJ, PG) and tech (AAPL, MSFT) show stronger momentum despite bearish overall sentiment. Support levels are holding for blue-chips, but resistance near $215 for AAPL and $170 for MSFT could trigger corrections if volume doesn't sustain breaks. RSI readings (45-55) indicate low volatility, with MACD showing neutral trends. Overall, the technical picture suggests waiting for clearer breakouts or breakdowns before acting.\nFundamental Analyst: The fundamental analysis reveals a mixed landscape among the recommended non-ETF stocks. Apple (AAPL) and Microsoft (MSFT) show strong profitability and cash flow generation, but face valuation pressures. Johnson & Johnson (JNJ) and Procter & Gamble (PG) demonstrate stable earnings and financial health, though growth appears modest. Coca-Cola (KO) and AT&T (T) show signs of earnings volatility and debt concerns. Target (T) and Home Depot (HD) exhibit solid financials but face competitive pressures. Financial news highlights potential risks for KO due to macroeconomic factors and T due to supply chain issues. Overall, the portfolio requires careful balancing between high-quality dividend payers and growth-oriented tech stocks, with valuation concerns tempering outright bullishness. The analysis suggests a defensive tilt with selective opportunities in fundamentally sound companies trading below historical norms.",
-    "summary": "**Market Summary**\n\nThe market is currently CLOSED (no trading allowed). The overall market assessment is NEUTRAL, reflecting a cautious stance due to persistent inflationary pressures and a hawkish Federal Reserve stance dampening growth expectations. While the S&P 500 remains slightly positive, the NASDAQ is under pressure, suggesting a potential rotation away from growth stocks. Market breadth is deteriorating, indicating broad-based weakness. The VIX at 4.0 indicates lower risk sentiment currently.\n\nTechnical analysis points to a consolidation phase, with key support levels holding for major indices. Fundamentally, defensive sectors and fundamentally sound companies are favored, though growth stocks face valuation pressures. There are no current positions. Analysis continues 24/7, but trading orders can only be generated during market hours (9:30 AM - 4:00 PM ET).",
-    "stance": "NEUTRAL",
-    "vix_risk": 4.0,
-    "risk_compliance": {
-      "position_limits_ok": true,
-      "diversification_ok": true,
-      "warnings": []
-    }
-  },
-  "portfolio_snapshot": {
-    "cash": 10000.0,
-    "positions": {},
-    "total_value": 10000.0,
-    "equity_value": 0,
-    "total_pnl": 0.0,
-    "total_pnl_pct": 0.0,
-    "positions_pnl": {}
-  },
-  "executed_trades": [],
-  "executed_trades_count": 0
-}
+          "result": 

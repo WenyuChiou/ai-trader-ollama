@@ -1,144 +1,266 @@
-# Tests Directory
+# Test Suite Documentation
 
-This directory contains all tests for the AI-Trader system.
+## Overview
 
-## ⚠️ Branch-Specific Tests
-
-**Important**: Test files differ between branches!
-
-### Main Branch (`main`)
-
-**Test Coverage**: Core system tests only (production-ready features)
-
-**Test Files**:
-- `tests/integration/` - Core system integration tests
-  - `test_agent_architecture.py` - Agent system tests
-  - `test_portfolio.py` - Portfolio management tests
-  - `test_memory.py` - Memory system tests
-  - `test_api.py` - API endpoint tests
-- `tests/e2e/` - End-to-end tests
-  - `test_frontend.py` - Frontend integration tests
-
-**Does NOT Include**:
-- ❌ `tests/unit/` - Optimization component tests (only in feature branch)
-- ❌ Optimization components (ToolCoordinator, SharedContext, BudgetAllocator)
-
-**Total Tests**: ~28 tests
-
-**Purpose**: Tests for stable, production-ready features
-
-### Feature Branch (`feature/system-optimization`)
-
-**Test Coverage**: All tests including optimization components
-
-**Test Files**:
-- `tests/integration/` - Core system integration tests (same as main)
-- `tests/e2e/` - End-to-end tests (same as main)
-- `tests/unit/` - **Optimization component unit tests** (feature branch only)
-  - `test_tool_coordinator.py` - ToolCoordinator tests
-  - `test_shared_context.py` - SharedContext tests
-  - `test_budget_allocator.py` - BudgetAllocator tests
-
-**Additional Components** (feature branch only):
-- `backend/src/utils/tool_coordinator.py`
-- `backend/src/utils/shared_context.py`
-- `backend/src/utils/budget_allocator.py`
-- `backend/src/agents/multi_analyst_system_parallel.py`
-
-**Total Tests**: ~48 tests
-
-**Purpose**: Tests for new optimization features under development
-
-### Checking Your Current Branch
-
-**To check which branch you're on**:
-```bash
-git branch
-# or
-git status
-```
-
-**If you see `* main`**: You're on main branch (core tests only, ~28 tests)
-**If you see `* feature/system-optimization`**: You're on feature branch (all tests, ~48 tests)
-
----
+This directory contains the complete test suite for the AI-Trader Ollama system. All tests are organized by type and follow pytest conventions.
 
 ## Directory Structure
 
 ```
 tests/
-├── integration/       # Integration tests for system components
-├── e2e/              # End-to-end tests
-├── utils/            # Test utilities and helpers
-├── reports/          # Test reports and coverage
-├── conftest.py       # Pytest configuration and fixtures
-└── pytest.ini        # Pytest configuration file
+├── integration/             # Integration tests for system components
+│   ├── test_agent_architecture.py  # Agent system tests
+│   ├── test_portfolio.py            # Portfolio management tests
+│   ├── test_memory.py               # Memory system tests
+│   ├── test_api.py                  # API endpoint tests
+│   └── test_analysis_targets.py      # Analysis target validation tests
+├── e2e/                     # End-to-end tests
+│   └── test_frontend.py             # Frontend integration tests
+├── utils/                   # Test utilities and helpers
+│   └── test_helpers.py              # Shared test utilities
+├── conftest.py              # Pytest configuration and shared fixtures
+├── pytest.ini               # Pytest settings
+└── README.md                # This file
 ```
 
-**Note**: `tests/unit/` directory only exists in `feature/system-optimization` branch.
+## Prerequisites
+
+- Python 3.10 or higher
+- Virtual environment activated
+- Dependencies installed: `pip install -r backend/requirements.txt`
+- Ollama running (for tests that require LLM)
+- Backend API running (for API tests)
 
 ## Running Tests
 
-### Run all tests
-```bash
+### Run All Tests
+
+```powershell
+# From project root
 pytest tests/ -v
+
+# Or with more details
+pytest tests/ -v --tb=short
 ```
 
-### Run specific test category
-```bash
+### Run Specific Test Categories
+
+```powershell
 # Integration tests only
 pytest tests/integration/ -v
 
-# E2E tests only
+# End-to-end tests only
 pytest tests/e2e/ -v
+
+# Specific test file
+pytest tests/integration/test_portfolio.py -v
+
+# Specific test function
+pytest tests/integration/test_portfolio.py::test_portfolio_creation -v
 ```
 
-**Note**: Unit tests (`pytest tests/unit/ -v`) are only available in `feature/system-optimization` branch.
+### Run with Coverage
 
-### Run with coverage
-```bash
-pytest tests/ -v --cov=backend/src --cov-report=html
+```powershell
+# Install pytest-cov if not already installed
+pip install pytest-cov
+
+# Run tests with coverage
+pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
+
+# View HTML coverage report
+# Open htmlcov/index.html in your browser
 ```
 
-### Run specific test file
-```bash
-pytest tests/integration/test_agent_architecture.py -v
+### Run Tests in Parallel
+
+```powershell
+# Install pytest-xdist if not already installed
+pip install pytest-xdist
+
+# Run tests in parallel (4 workers)
+pytest tests/ -n 4 -v
 ```
 
 ## Test Categories
 
 ### Integration Tests (`tests/integration/`)
-- Test component interactions
+
+**Purpose**: Test component interactions and system integration
+
+**Test Files**:
+- `test_agent_architecture.py` - Tests agent system, tool calls, and coordination
+- `test_portfolio.py` - Tests portfolio management, position tracking, and P&L calculations
+- `test_memory.py` - Tests memory system, RAG functionality, and memory retrieval
+- `test_api.py` - Tests API endpoints, data parsing, and response formats
+- `test_analysis_targets.py` - Tests analysis target validation (holdings, recommended stocks, indices)
+
+**Characteristics**:
 - Use real dependencies where possible
 - Moderate execution time
-- Focus on critical paths
+- May require Ollama for LLM-related tests
+- May require API server for API tests
 
-### E2E Tests (`tests/e2e/`)
-- Test complete workflows
+### End-to-End Tests (`tests/e2e/`)
+
+**Purpose**: Test complete workflows from start to finish
+
+**Test Files**:
+- `test_frontend.py` - Tests frontend integration, data display, and user interactions
+
+**Characteristics**:
 - Use real system components
-- Slower execution
-- Critical user journeys
+- Slower execution time
+- Require full system setup (API server, frontend)
+- Test complete user workflows
+
+### Test Utilities (`tests/utils/`)
+
+**Purpose**: Shared utilities and helpers for tests
+
+**Files**:
+- `test_helpers.py` - Common test functions, fixtures, and utilities
 
 ## Test Fixtures
 
-Common fixtures are defined in `conftest.py`:
-- `test_data_dir` - Path to test data directory
-- `logs_dir` - Path to logs directory
-- `test_portfolio_state` - Sample portfolio state
-- `sample_market_data` - Sample market data
-- `sample_positions` - Sample positions
+Common fixtures are defined in `tests/conftest.py`:
 
-## Test Utilities
+- `test_data_dir` - Test data directory path
+- `logs_dir` - Logs directory path
+- `test_portfolio_state` - Sample portfolio state for testing
+- `sample_market_data` - Sample market data for testing
+- `sample_positions` - Sample positions for testing
 
-Helper functions in `tests/utils/test_helpers.py`:
-- `load_test_data()` - Load test data from JSON
-- `create_test_portfolio_state()` - Create test portfolio
-- `create_test_order()` - Create test order
-- `assert_portfolio_state_valid()` - Validate portfolio state
+## Writing Tests
 
-## Notes
+### Example Integration Test
 
-- Tests should be independent and not rely on execution order
-- Use fixtures for common setup/teardown
-- Mock external API calls to avoid rate limits
-- Use test data directory for sample data files
+```python
+def test_portfolio_creation():
+    """Test portfolio creation and initialization"""
+    from src.data.portfolio import Portfolio
+    
+    portfolio = Portfolio(initial_cash=10000.0)
+    
+    assert portfolio.cash == 10000.0
+    assert portfolio.total_value == 10000.0
+    assert len(portfolio._positions) == 0
+```
+
+### Example API Test
+
+```python
+def test_api_health_endpoint(client):
+    """Test API health check endpoint"""
+    response = client.get("/api/health")
+    
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+```
+
+### Best Practices
+
+1. **Use Descriptive Names**: Test function names should clearly describe what is being tested
+2. **Arrange-Act-Assert**: Structure tests with clear sections
+3. **Isolate Tests**: Each test should be independent and not rely on other tests
+4. **Use Fixtures**: Reuse common setup code via fixtures
+5. **Mock External Dependencies**: Mock external APIs and services when possible
+6. **Clean Up**: Clean up test data after tests complete
+
+## Test Status
+
+### Current Status (Main Branch)
+
+✅ **~28 tests passing** (100% pass rate)
+
+**Test Breakdown**:
+- **Integration Tests**: ~24 tests passing
+  - Agent Architecture: 6 tests ✅
+  - Portfolio Management: 7 tests ✅
+  - Memory System: 5 tests ✅
+  - API Endpoints: 5 tests ✅
+  - Analysis Targets: 1 test ✅
+- **E2E Tests**: 4/4 passing
+  - Frontend Integration: 4 tests ✅
+
+### Test Coverage
+
+Current test coverage focuses on:
+- Core functionality (portfolio, agents, memory)
+- API endpoints
+- Data consistency
+- System integration
+
+Areas that may need additional tests:
+- Edge cases and error handling
+- Performance and load testing
+- Long-term running scenarios
+
+## Continuous Integration
+
+Tests can be integrated into CI/CD pipelines:
+
+```yaml
+# Example GitHub Actions workflow
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      - run: pip install -r backend/requirements.txt
+      - run: pytest tests/ -v
+```
+
+## Troubleshooting
+
+### Issue: ModuleNotFoundError
+
+**Error**: `ModuleNotFoundError: No module named 'src'`
+
+**Solution**: Ensure you're running tests from the project root:
+```powershell
+cd ai-trader-ollama
+pytest tests/ -v
+```
+
+### Issue: Ollama Connection Error
+
+**Error**: `ConnectionError: Ollama service not available`
+
+**Solution**: Start Ollama service before running tests:
+```powershell
+ollama serve
+```
+
+### Issue: API Server Not Running
+
+**Error**: `ConnectionError: API server not available`
+
+**Solution**: Start API server before running API tests:
+```powershell
+cd backend
+python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000
+```
+
+## Related Documentation
+
+- [Testing Guide](../docs/TESTING.md) - Comprehensive testing documentation
+- [Test Scripts Guide](../docs/TEST_SCRIPTS_GUIDE.md) - Guide for independent test scripts
+- [Test Results](../docs/TEST_RESULTS.md) - Latest test execution results
+- [Quick Start Guide](../docs/QUICK_START.md) - Installation and setup
+- [Architecture Documentation](../docs/ARCHITECTURE.md) - System architecture
+
+## Contributing
+
+When adding new tests:
+
+1. Follow the existing test structure and naming conventions
+2. Add tests to the appropriate category (integration/e2e/utils)
+3. Update this README if adding new test categories
+4. Ensure tests pass before submitting PR
+5. Add docstrings to test functions explaining what is being tested

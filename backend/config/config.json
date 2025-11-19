@@ -114,18 +114,6 @@
     "SPXL",
     "UPRO"
   ],
-  "crypto": [
-    "BTC-USD",
-    "ETH-USD",
-    "SOL-USD",
-    "BNB-USD",
-    "USDT-USD",
-    "XRP-USD",
-    "ADA-USD",
-    "DOGE-USD",
-    "MATIC-USD",
-    "DOT-USD"
-  ],
   "initial_cash": 10000,
   "_comment_position_mode": "Position limit mode: 'auto' (LLM autonomous) or 'configured' (with constraints)",
   "position_limit_mode": "auto",

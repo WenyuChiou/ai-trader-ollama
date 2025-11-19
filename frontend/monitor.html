@@ -7347,6 +7347,27 @@
                         return tableHtml;
                     }
                     
+                    // CRITICAL FIX: Special handling for plan_and_scan_news - only show summary
+                    if (toolName === 'plan_and_scan_news' && data.articles && Array.isArray(data.articles) && data.articles.length > 0) {
+                        let summaryHtml = '<div style="margin-top: 8px; padding: 12px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border-left: 3px solid #f59e0b;">';
+                        summaryHtml += `<div style="font-weight: 600; color: #f59e0b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">`;
+                        summaryHtml += `<span style="font-size: 18px;">📰</span>`;
+                        summaryHtml += `<span>News Articles (${data.articles.length} items)</span>`;
+                        summaryHtml += `</div>`;
+                        
+                        data.articles.forEach((article, idx) => {
+                            const summary = article.summary || article.excerpt || 'No summary available';
+                            const title = article.title || 'Untitled';
+                            summaryHtml += `<div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; border-left: 2px solid rgba(245, 158, 11, 0.4);">`;
+                            summaryHtml += `<div style="font-weight: 600; color: #fbbf24; margin-bottom: 6px; font-size: 13px;">${idx + 1}. ${escapeHtml(title)}</div>`;
+                            summaryHtml += `<div style="color: #cbd5e1; font-size: 12px; line-height: 1.6;">${escapeHtml(summary)}</div>`;
+                            summaryHtml += `</div>`;
+                        });
+                        
+                        summaryHtml += '</div>';
+                        return summaryHtml;
+                    }
+                    
                     // Prioritize checking array fields (like indices, records, etc.), as arrays are more common
                     for (const [key, value] of Object.entries(data)) {
                         if (Array.isArray(value) && value.length > 0) {

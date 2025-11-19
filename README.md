@@ -1060,25 +1060,41 @@ Market Closed (e.g., After 4:00 PM or Weekend):
         │     │ • Macro trends            │   │
         │     │ • Sector rotation         │   │
         │     │ • Market breadth          │   │
+        │     │ • Economic indicators     │   │
+        │     │ • Tools: get_market_      │   │
+        │     │   indices, get_sector_   │   │
+        │     │   rotation, get_economic_ │   │
+        │     │   summary                │   │
         │     └──────────────────────────┘   │
         │     ┌──────────────────────────┐   │
         │     │ Technical Analyst         │   │
         │     │ • Price patterns          │   │
         │     │ • Support/resistance      │   │
         │     │ • Technical indicators    │   │
+        │     │ • Tools: get_advanced_    │   │
+        │     │   indicators, get_support │   │
+        │     │ • NO news tools (filtered)│   │
         │     └──────────────────────────┘   │
         │     ┌──────────────────────────┐   │
         │     │ Fundamental Analyst       │   │
         │     │ • Financial statements    │   │
         │     │ • Valuation metrics       │   │
         │     │ • Earnings history        │   │
+        │     │ • Tools: get_company_     │   │
+        │     │   fundamentals (unlimited)│   │
+        │     │ • Analyzes all non-ETF    │   │
+        │     │   stocks (no budget limit)│   │
         │     └──────────────────────────┘   │
         │     ┌──────────────────────────┐   │
         │     │ Sentiment Analyst         │   │
         │     │ • News sentiment          │   │
         │     │ • Fear & Greed Index      │   │
         │     │ • VIX term structure      │   │
+        │     │ • Tool: plan_and_scan_news│   │
+        │     │   (mandatory, auto-added) │   │
         │     └──────────────────────────┘   │
+        │     • Tool filtering & validation │
+        │     • Invalid calls filtered out  │
         │     Time: 30-60 seconds             │
         └─────────────────────────────────────┘
                               │
@@ -1867,6 +1883,17 @@ Order Status:
 - Tool results shared across rounds
 - Tool budget tracked per cycle
 - If budget exhausted, agents continue without tools
+- **Tool Filtering**: System automatically filters invalid tool calls and enforces restrictions:
+  - Technical Analyst: News tools are automatically filtered out
+  - Sentiment Analyst: Deprecated `news_scan` is converted to `plan_and_scan_news`
+  - Fundamental Analyst: Invalid tool calls (missing name) are filtered out
+  - All analysts: Tool calls are validated before execution
+
+**Tool Restrictions by Analyst**:
+- **Technical Analyst**: Cannot use news tools (filtered automatically)
+- **Sentiment Analyst**: Must use `plan_and_scan_news` (mandatory, auto-added if missing)
+- **Fundamental Analyst**: `get_company_fundamentals` executes without budget restrictions
+- **Market Analyst**: No specific restrictions (uses market and economic tools)
 
 **Configurable in `config.json`**:
 ```json

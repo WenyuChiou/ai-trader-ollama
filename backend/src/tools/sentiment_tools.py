@@ -414,23 +414,30 @@ def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
                 data = r.json()
                 parsed = _parse_cnn_json(data)
                 if parsed:
+                    fgi_value = parsed.get("value")
+                    print(f"[FGI] Fetched from CNN JSON: value={fgi_value}, label={parsed.get('label', 'N/A')}")
                     return parsed
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[FGI] CNN JSON endpoint failed: {e}")
 
     # 新增: feargreedmeter.com（替代數據源，更可靠）
     for url in _ALTERNATIVE_SOURCES:
         parsed = _scrape_feargreedmeter(url)
         if parsed and parsed.get("value") is not None:
+            fgi_value = parsed.get("value")
+            print(f"[FGI] Fetched from feargreedmeter.com: value={fgi_value}, label={parsed.get('label', 'N/A')}")
             return parsed
 
     # C: CNN HTML fallback
     for url in _CNN_HTML_PAGES:
         parsed = _scrape_cnn_html(url)
         if parsed and parsed.get("value") is not None:
+            fgi_value = parsed.get("value")
+            print(f"[FGI] Fetched from CNN HTML: value={fgi_value}, label={parsed.get('label', 'N/A')}")
             return parsed
 
     # 全部失敗 → stub
+    print(f"[FGI] All sources failed, returning stub (value=None)")
     return {
         "value": None,
         "label": None,

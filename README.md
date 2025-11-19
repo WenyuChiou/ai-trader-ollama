@@ -2972,7 +2972,8 @@ python scripts/init_data.py
 8. **Signal Score**:
    - ✅ Removed automatic `signal_score` sorting and filtering
    - ✅ Agents now determine signal scores independently
-8. **Agent Discussion Logic**:
+
+9. **Agent Discussion Logic**:
    - ✅ Tool filtering and validation applied before execution
    - ✅ Invalid tool calls automatically filtered out
    - ✅ Tool restrictions enforced per analyst type

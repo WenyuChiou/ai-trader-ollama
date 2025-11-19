@@ -4393,6 +4393,10 @@
             // CRITICAL FIX: Extract analyst summaries from both discussion_rounds_summaries (round > 0) and conversations (round = 0)
             const analystSummaries = {};
             
+            // Debug: Log discussion_rounds_summaries structure
+            console.log('[Conversations] discussion_rounds_summaries keys:', Object.keys(discussionRoundsSummaries || {}));
+            console.log('[Conversations] discussion_rounds_summaries content:', discussionRoundsSummaries);
+            
             // First, extract from discussion_rounds_summaries (round > 0)
             if (discussionRoundsSummaries && typeof discussionRoundsSummaries === 'object') {
                 // Iterate through all rounds, extract each analyst's summary

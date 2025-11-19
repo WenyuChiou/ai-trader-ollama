@@ -16,6 +16,7 @@ from datetime import datetime, date, timedelta, timezone
 from collections import defaultdict
 import sys
 from ..utils.json_serializer import make_json_serializable
+from ..utils.timestamp_utils import get_utc_timestamp, normalize_timestamp
 
 # Add project path
 ROOT = Path(__file__).resolve().parents[3]
@@ -255,7 +256,7 @@ class MemoryManager:
             # CRITICAL FIX: Make all data JSON serializable (handle pandas Series in risk_report, tool_calls, etc.)
             memory = {
                 "date": date,
-                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "timestamp": get_utc_timestamp(),
                 "metadata": {
                     "version": "2.0",
                     "compressed": False,
@@ -285,7 +286,7 @@ class MemoryManager:
             
             memory = {
                 "date": date,
-                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "timestamp": get_utc_timestamp(),
                 "metadata": {
                     "version": "2.0",
                     "compressed": True,

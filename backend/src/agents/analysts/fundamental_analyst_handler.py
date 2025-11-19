@@ -10,7 +10,7 @@ import json
 
 from src.agents.base import BaseAgent
 from src.agents.toolbox import ToolBox
-from src.utils.etf_checker import is_etf
+from src.utils.etf_checker import is_etf, is_crypto
 from typing import Optional
 from .common import (
     parse_analyst_response,
@@ -233,6 +233,10 @@ def run_fundamental_analyst(
                         if sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
                             if is_etf(sym_upper):
                                 print(f"   [SKIP] Skipping ETF recommended stock for fundamental analysis: {sym_upper}")
+                                continue
+                            # CRITICAL FIX: Filter out cryptocurrencies (DOGE, BTC, ETH, etc.)
+                            if is_crypto(sym_upper):
+                                print(f"   [SKIP] Skipping cryptocurrency in recommended stocks: {sym_upper}")
                                 continue
                             recommended_stocks.append(sym_upper)
             

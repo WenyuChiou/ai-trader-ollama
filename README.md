@@ -855,6 +855,10 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
   - **With Holdings**: Current holdings + Recommended stocks + Major indices (SPY, QQQ, DIA, IWM, VTI)
   - **Without Holdings**: Recommended stocks + Major indices (SPY, QQQ, DIA, IWM, VTI)
   - **All targets must be analyzed simultaneously**
+- **Tool Restrictions**: 
+  - **Does NOT use news tools** (news analysis is handled by Sentiment Analyst)
+  - System automatically filters out news tools if requested
+  - Focuses on technical indicators and price action only
 
 #### 3. **Fundamental Analyst** 💼
 - **Specialty**: Financial statements, valuation, earnings
@@ -868,7 +872,11 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 #### 4. **Sentiment Analyst** 😊
 - **Specialty**: Market psychology, news sentiment, fear/greed
 - **Priority Tools**: `fear_greed`, `vix_term`, `plan_and_scan_news` (mandatory)
-- **News Analysis**: Automatically calls `plan_and_scan_news` at the start of each analysis cycle
+- **News Analysis**: 
+  - Automatically calls `plan_and_scan_news` at the start of each analysis cycle
+  - System automatically filters out deprecated `news_scan` tool (converts to `plan_and_scan_news`)
+  - If LLM requests `news_scan`, it's automatically converted to `plan_and_scan_news`
+  - News analysis is mandatory for sentiment assessment
 
 #### 5. **Risk Analyst** 🛡️
 - **Specialty**: Risk assessment, position management
@@ -956,13 +964,17 @@ These tools allow agents to retrieve and learn from historical trading memories:
 - `vix_close`: Historical VIX prices
 - `fear_greed`: CNN Fear & Greed Index
 
-### News & Information (4 tools)
+### News & Information (3 tools)
 - `plan_and_scan_news`: LLM-powered news query (recommended, includes article content with summaries and keywords)
+  - **Usage**: Primary news tool for sentiment analysis
+  - **Features**: Returns articles with LLM-generated summaries and keywords
+  - **Parameters**: `tickers` (list of symbols), `max_articles` (default: 10), `recency_days` (default: 2), `fetch_body_top` (number of articles with full content)
+  - **Mandatory for**: Sentiment Analyst (automatically added if not requested)
+  - **Filtered from**: Technical Analyst (news analysis is handled by Sentiment Analyst)
 - `web_search`: DuckDuckGo search
 - `fetch_url`: Extract content from URL
-- `get_news_scan`: Legacy compatibility (maps to plan_and_scan_news)
 - **News Display**: Frontend displays news with summaries, sources, timestamps, and keywords (sorted by recency)
-- **Note**: `news_scan` has been removed. Use `plan_and_scan_news` instead.
+- **Note**: `news_scan` has been removed. Use `plan_and_scan_news` instead. If LLM requests `news_scan`, it's automatically converted to `plan_and_scan_news`.
 
 ### Economic Data (3 tools)
 - `get_economic_summary`: Key US economic indicators
@@ -1074,9 +1086,11 @@ Market Closed (e.g., After 4:00 PM or Weekend):
         ┌─────────────────────────────────────┐
         │  3. Discussion Coordinator          │
         │     • Synthesizes all 4 analysts    │
-        │     • 3 rounds of discussion        │
+        │     • Reviews tool results          │
+        │     • Identifies consensus/disagreement│
         │     • Final consensus (stance)       │
         │     • Tool usage tracking           │
+        │     • Tool filtering & validation   │
         └─────────────────────────────────────┘
                               │
                               ▼
@@ -2487,21 +2501,33 @@ python scripts/init_data.py
    - ✅ ETFs and indices are excluded (ETFs don't need fundamental analysis)
    - ✅ ETF detection using `is_etf()` function (checks quoteType/instrumentType)
 
-4. **Tool Name Mapping**:
-   - ✅ `get_news` → `plan_and_scan_news` (automatic mapping)
-   - ✅ `get_news_scan` → `plan_and_scan_news` (automatic mapping)
-   - ✅ `news_scan` → `plan_and_scan_news` (deprecated, automatic mapping with warning)
-   - ✅ Enhanced debugging logs for news tool execution
+4. **Tool Usage & Filtering**:
+   - ✅ **Tool Name Mapping**: 
+     - `get_news` → `plan_and_scan_news` (automatic mapping)
+     - `get_news_scan` → `plan_and_scan_news` (automatic mapping)
+     - `news_scan` → `plan_and_scan_news` (deprecated, automatic conversion with warning)
+   - ✅ **Tool Filtering by Analyst**:
+     - Technical Analyst: News tools automatically filtered out (news handled by Sentiment Analyst)
+     - Sentiment Analyst: Deprecated `news_scan` converted to `plan_and_scan_news`
+     - Fundamental Analyst: Invalid tool calls (missing name) filtered out
+   - ✅ **Tool Validation**: All tool calls validated before execution (must have valid `name` field)
    - ✅ **Removed**: `news_scan` tool registration (use `plan_and_scan_news` instead)
+   - ✅ Enhanced debugging logs for news tool execution
 5. **Fundamental Analysis Budget**:
    - ✅ Fundamental analysis tools (`get_company_fundamentals`) execute without tool budget restrictions
    - ✅ Ensures all recommended stocks and holdings are analyzed regardless of budget
+   - ✅ Tools prioritized: Fundamental tools execute first, then other tools (subject to budget)
 6. **FGI (Fear & Greed Index)**:
    - ✅ Standardized classification: 0-25 (EXTREME FEAR), 26-45 (FEAR), 46-55 (NEUTRAL), 56-75 (GREED), 76-100 (EXTREME GREED)
    - ✅ Data source priority: `feargreedmeter.com` (returns correct value 11)
 7. **Signal Score**:
    - ✅ Removed automatic `signal_score` sorting and filtering
    - ✅ Agents now determine signal scores independently
+8. **Agent Discussion Logic**:
+   - ✅ Tool filtering and validation applied before execution
+   - ✅ Invalid tool calls automatically filtered out
+   - ✅ Tool restrictions enforced per analyst type
+   - ✅ Mandatory tools automatically added (e.g., `plan_and_scan_news` for Sentiment Analyst)
 
 ### Portfolio P&L Calculation Issues
 

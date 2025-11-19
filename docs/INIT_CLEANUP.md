@@ -31,12 +31,23 @@
 - 保留最近7天的备份
 
 **手动清理**：
+
+**方法1: 删除所有备份（最简单）**
+```powershell
+# 删除所有备份文件
+powershell -ExecutionPolicy Bypass -File .\scripts\delete_all_backups.ps1
+```
+
+**方法2: 按天数清理备份**
 ```powershell
 # 清理7天前的备份（默认）
 powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1
 
 # 清理30天前的备份
 powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1 -KeepDays 30
+
+# 删除所有备份（KeepDays=0）
+powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1 -KeepDays 0
 ```
 
 ## 备份文件说明

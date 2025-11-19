@@ -589,8 +589,8 @@ class MemoryManager:
                         with weekly_file.open("w", encoding="utf-8") as f:
                             for rec in existing_records:
                                 if rec.get("week") != week_str:
-                                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                            f.write(json.dumps(existing_week_summary, ensure_ascii=False) + "\n")
+                                    f.write(json.dumps(make_json_serializable(rec), ensure_ascii=False) + "\n")
+                            f.write(json.dumps(make_json_serializable(existing_week_summary), ensure_ascii=False) + "\n")
                     else:
                         # 追加新记录
                         with weekly_file.open("a", encoding="utf-8") as f:

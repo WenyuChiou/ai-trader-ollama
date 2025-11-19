@@ -48,7 +48,9 @@
 
 ### What is AI-Trader Ollama?
 
-AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combines:
+AI-Trader Ollama is a **complete trading platform** that provides both backend trading system and frontend services, including real-time visualization, monitoring, and comprehensive testing capabilities. It is a **fully autonomous multi-agent trading system** that combines:
+
+**Backend Trading System:**
 - **6 specialized LLM agents** working in collaboration
 - **28 advanced tools** for market analysis (21 market tools + 7 memory/RAG tools)
 - **Real-time data integration** from multiple sources
@@ -56,7 +58,21 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 - **RAG Memory System**: Agents automatically retrieve and learn from historical trading decisions
 - **Time-range equity tracking**: View portfolio performance over day/week/month/custom periods
 - **Weekly memory compression**: Automatic summarization of weekly memories (Monday + weekend only)
-- **Performance Optimizations**: 
+
+**Frontend Services & Visualization:**
+- **Real-time monitoring dashboard** with live updates
+- **Interactive UI** displaying agent discussions, tool results, and trading decisions
+- **Order execution visualization** with detailed trade records
+- **Performance analytics** with charts and statistics
+- **Dark tech-themed interface** optimized for trading workflows
+
+**Testing & Quality Assurance:**
+- **Comprehensive test suite** (~29 tests) covering integration, E2E, and API endpoints
+- **Automated testing scripts** for order recording, portfolio management, and agent architecture
+- **Test documentation** in both English and Chinese
+- **Quick test utilities** for rapid development cycles
+
+**Performance Optimizations**: 
   - Tool result caching and parallel execution
   - Intelligent budget management prevents unnecessary tool requests in Round 2/3
   - Optimized mandatory tool logic (limits to top 5 recommended stocks)

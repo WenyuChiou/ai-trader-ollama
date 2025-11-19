@@ -4226,6 +4226,21 @@
                 // CRITICAL FIX: 更新工具结果分类缓存
                 if (convData && convData.tool_results_by_category) {
                     window.toolResultsByCategory = convData.tool_results_by_category;
+                    // DEBUG: Log tool results by category for troubleshooting
+                    console.log('[Refresh] Tool results by category:', {
+                        news: convData.tool_results_by_category.news?.length || 0,
+                        risk: convData.tool_results_by_category.risk?.length || 0,
+                        market: convData.tool_results_by_category.market?.length || 0,
+                        fundamental: convData.tool_results_by_category.fundamental?.length || 0,
+                        economic: convData.tool_results_by_category.economic?.length || 0,
+                        crypto: convData.tool_results_by_category.crypto?.length || 0,
+                        other: convData.tool_results_by_category.other?.length || 0
+                    });
+                    if (convData.tool_results_by_category.economic && convData.tool_results_by_category.economic.length > 0) {
+                        console.log('[Refresh] Economic tools found:', convData.tool_results_by_category.economic.map(e => e.tool_name));
+                    }
+                } else {
+                    console.warn('[Refresh] No tool_results_by_category in convData');
                 }
                 // CRITICAL FIX: 传递 discussion_rounds_summaries 以显示四个 analyst 的 summary
                 renderConversations(
@@ -12220,6 +12235,18 @@
                 // CRITICAL FIX: 更新工具结果分类缓存
                 if (convData && convData.tool_results_by_category) {
                     window.toolResultsByCategory = convData.tool_results_by_category;
+                    // DEBUG: Log tool results by category for troubleshooting
+                    console.log('[Refresh] Tool results by category:', {
+                        news: convData.tool_results_by_category.news?.length || 0,
+                        risk: convData.tool_results_by_category.risk?.length || 0,
+                        market: convData.tool_results_by_category.market?.length || 0,
+                        fundamental: convData.tool_results_by_category.fundamental?.length || 0,
+                        economic: convData.tool_results_by_category.economic?.length || 0,
+                        crypto: convData.tool_results_by_category.crypto?.length || 0,
+                        other: convData.tool_results_by_category.other?.length || 0
+                    });
+                } else {
+                    console.warn('[Refresh] No tool_results_by_category in convData');
                 }
                 
                 // CRITICAL FIX: 保存 portfolio 到全局变量，供股票筛选使用

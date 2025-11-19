@@ -11103,7 +11103,7 @@
                     }
                 }
                 
-                const history = results[1].status === 'fulfilled' ? results[1].value : [];
+                let history = results[1].status === 'fulfilled' ? results[1].value : [];
                 const backendStatus = results[2].status === 'fulfilled' ? results[2].value : null;
                 const systemInfo = results[3].status === 'fulfilled' ? results[3].value : null;
                 const convData = results[4].status === 'fulfilled' ? results[4].value : { conversations: [], total: 0, has_more: false, tool_results_by_category: {}, discussion_rounds_summaries: {} };
@@ -11128,6 +11128,7 @@
                 } else {
                     // 如果后端返回空数组，清空前端缓存
                     equityHistory = [];
+                    history = []; // CRITICAL FIX: 确保 history 也是空数组
                     console.log('[Refresh] Equity history is empty, cleared frontend cache');
                 }
                 

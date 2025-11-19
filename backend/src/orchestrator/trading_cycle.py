@@ -778,11 +778,33 @@ def execute_daily_trade(
                     
                     discussion_history.append(entry_data)
         
-        coordinator_found_in_history = False
+        # CRITICAL FIX: Group entries by agent and keep only the latest round for each agent
+        # This ensures we write the most complete analysis (from the latest round)
+        agent_entries = {}  # Map<agent_name, entry_data>
+        coordinator_entry = None
+        
         for entry_data in discussion_history:
             analyst_name = entry_data.get("analyst", "Unknown")
+            analyst_name_normalized = analyst_name.strip().lower()
             
-            # 標準化agent名稱（處理有空格和無空格的情況）
+            # Check if this is a coordinator
+            is_coordinator = (analyst_name_normalized in ["discussion coordinator", "discussioncoordinator", "coordinator"] or
+                            "discussion" in analyst_name_normalized and "coordinator" in analyst_name_normalized or
+                            analyst_name_normalized.startswith("discussion") and "coordinator" in analyst_name_normalized)
+            
+            if is_coordinator:
+                # Keep the coordinator entry (prefer round 0, or latest round)
+                if coordinator_entry is None:
+                    coordinator_entry = entry_data
+                else:
+                    # Prefer round 0, otherwise keep the latest round
+                    current_round = entry_data.get("round", 0)
+                    existing_round = coordinator_entry.get("round", 0)
+                    if current_round == 0 or (current_round > existing_round and existing_round != 0):
+                        coordinator_entry = entry_data
+                continue
+            
+            # Normalize agent name
             agent_name_map = {
                 "market": "MarketAnalyst",
                 "market analyst": "MarketAnalyst",
@@ -793,54 +815,73 @@ def execute_daily_trade(
                 "sentiment": "SentimentAnalyst",
                 "sentiment analyst": "SentimentAnalyst",
             }
-            # 先嘗試完整匹配，再嘗試小寫匹配
-            agent_name = agent_name_map.get(analyst_name, agent_name_map.get(analyst_name.lower(), analyst_name))
+            agent_name = agent_name_map.get(analyst_name_normalized, analyst_name)
             
+            # If still not matched, try to extract from the name
+            if agent_name == analyst_name and agent_name not in ["MarketAnalyst", "TechnicalAnalyst", "FundamentalAnalyst", "SentimentAnalyst", "DiscussionCoordinator"]:
+                if "market" in analyst_name_normalized:
+                    agent_name = "MarketAnalyst"
+                elif "technical" in analyst_name_normalized:
+                    agent_name = "TechnicalAnalyst"
+                elif "fundamental" in analyst_name_normalized:
+                    agent_name = "FundamentalAnalyst"
+                elif "sentiment" in analyst_name_normalized:
+                    agent_name = "SentimentAnalyst"
+            
+            # Skip if not a recognized analyst
+            if agent_name not in ["MarketAnalyst", "TechnicalAnalyst", "FundamentalAnalyst", "SentimentAnalyst"]:
+                continue
+            
+            # Keep only the latest round for each agent
+            if agent_name not in agent_entries:
+                agent_entries[agent_name] = entry_data
+            else:
+                # Compare rounds - keep the entry with the highest round number
+                current_round = entry_data.get("round", 0)
+                existing_round = agent_entries[agent_name].get("round", 0)
+                if current_round > existing_round:
+                    agent_entries[agent_name] = entry_data
+        
+        # Now process the grouped entries
+        coordinator_found_in_history = False
+        if coordinator_entry:
+            # Write coordinator entry
+            coordinator_found_in_history = True
+            stance = coordinator_entry.get("stance", "neutral")
+            analysis = coordinator_entry.get("analysis", coordinator_entry.get("summary", "No analysis provided"))
+            
+            entry = {
+                "timestamp": get_utc_timestamp(),
+                "date": trade_date_str,
+                "agent": "DiscussionCoordinator",
+                "round": 0,
+                "original_round": coordinator_entry.get("round", 0),
+                "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
+                "type": "discussion",
+                "stance": stance,
+                "summary": analysis,
+                "tools_used": coordinator_entry.get("tools_used", []),
+            }
+            with convo_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            print(f"[TRADING CYCLE] Wrote Coordinator from discussion_history (stance: {stance}, round: {coordinator_entry.get('round', 0)})")
+        
+        # Process analyst entries (already grouped and normalized)
+        for agent_name, entry_data in agent_entries.items():
             # CRITICAL FIX: Skip if this analyst was already written from transcript
             if agent_name in transcript_analysts_written:
                 print(f"[TRADING CYCLE] Skipped {agent_name} from discussion_history (already written from transcript)")
                 continue
             
-            # 检查是否是 Discussion Coordinator
-            analyst_name_lower = analyst_name.lower().strip()
-            is_coordinator = (analyst_name_lower in ["discussion coordinator", "discussioncoordinator", "coordinator"] or
-                            "discussion" in analyst_name_lower and "coordinator" in analyst_name_lower or
-                            analyst_name_lower.startswith("discussion") and "coordinator" in analyst_name_lower)
-            
-            if is_coordinator:
-                # 如果找到 Coordinator，标记并写入（统一格式为 DiscussionCoordinator）
-                # 只写入第一个 Coordinator，避免重复
-                if not coordinator_found_in_history:
-                    coordinator_found_in_history = True
-                    stance = entry_data.get("stance", "neutral")
-                    analysis = entry_data.get("analysis", entry_data.get("summary", "No analysis provided"))
-                    
-                    # CRITICAL FIX: Always use round: 0 for frontend display (frontend filters for round === 0)
-                    coordinator_round = entry_data.get("round", 0)  # Keep original round for reference
-                    
-                    entry = {
-                        "timestamp": get_utc_timestamp(),
-                        "date": trade_date_str,
-                        "agent": "DiscussionCoordinator",  # Use DiscussionCoordinator uniformly
-                        "round": 0,  # CRITICAL FIX: Always use 0 for frontend display (frontend filters for round === 0)
-                        "original_round": coordinator_round,  # CRITICAL FIX: Preserve original round number for reference
-                        "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
-                        "type": "discussion",
-                        "stance": stance,
-                        "summary": analysis,  # CRITICAL FIX: Add separate summary field for frontend use
-                        "tools_used": entry_data.get("tools_used", []),  # CRITICAL FIX: Ensure tools_used is correctly stored
-                    }
-                    with convo_file.open("a", encoding="utf-8") as f:
-                        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                    print(f"[TRADING CYCLE] Wrote Coordinator from discussion_history (stance: {stance})")
-                else:
-                    print(f"[TRADING CYCLE] Skipped duplicate Coordinator in discussion_history: {analyst_name}")
-                continue  # Skip, don't process duplicates
-            
             stance = entry_data.get("stance", "neutral")
             analysis = entry_data.get("analysis", "No analysis provided")
             tools_used = entry_data.get("tools_used", [])
             recommended_stocks = entry_data.get("recommended_stocks", [])  # CRITICAL FIX: Extract recommended_stocks for MarketAnalyst
+            
+            # CRITICAL FIX: Skip if analysis is too short or placeholder (e.g., "Waiting for tool results")
+            if not analysis or len(analysis.strip()) < 50 or "waiting for tool results" in analysis.lower():
+                print(f"[TRADING CYCLE] Skipped {agent_name} from discussion_history (analysis too short or placeholder: {analysis[:50]}...)")
+                continue
             
             # CRITICAL FIX: If MarketAnalyst and no recommended_stocks in entry_data, try to get from analyst_reports
             if agent_name == "MarketAnalyst" and not recommended_stocks and market_recommended_stocks:
@@ -869,7 +910,7 @@ def execute_daily_trade(
             
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-            print(f"[TRADING CYCLE] Wrote {agent_name} from discussion_history (stance: {stance})")
+            print(f"[TRADING CYCLE] ✅ Wrote {agent_name} from discussion_history (stance: {stance}, round: {round_num}, analysis_len: {len(analysis)})")
             transcript_analysts_written.add(agent_name)  # CRITICAL FIX: Mark as written to avoid duplicates
         
         # CRITICAL FIX: Ensure all required analysts are written (final check)

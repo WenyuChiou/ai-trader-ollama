@@ -304,16 +304,15 @@ async def fetch_conversations_api(
         # 读取对话记录
         conversations = []
         with log_file.open("r", encoding="utf-8") as f:
-            # 优化：从文件末尾读取（避免加载整个文件）
-            f.seek(0, 2)  # Seek to end
-            file_size = f.tell()
-            # 读取最后 ~80KB
-            position = max(0, file_size - 8192 * 10)
-            f.seek(position)
+            # CRITICAL FIX: Read entire file to ensure all discussion entries are included
+            # For large files, we'll process in chunks but read all lines
             lines = f.readlines()
             
-            # 处理行（从新到旧）
-            for line in reversed(lines[-limit * 3:]):
+            # CRITICAL FIX: Process lines in reverse order (newest first) but read all of them
+            # This ensures we don't miss discussion entries that might be earlier in the file
+            # CRITICAL FIX: Collect ALL entries first, then filter and limit
+            all_entries = []
+            for line in reversed(lines):
                 if not line.strip():
                     continue
                 try:
@@ -327,11 +326,25 @@ async def fetch_conversations_api(
                     if date and entry.get("date") != date:
                         continue
                     
-                    conversations.append(entry)
+                    all_entries.append(entry)
                 except json.JSONDecodeError:
                     continue
+            
+            # CRITICAL FIX: Sort all entries first
+            all_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            
+            # CRITICAL FIX: Prioritize discussion entries - collect all discussions first, then add tools
+            # This ensures we don't lose discussion entries when limiting
+            discussion_entries = [e for e in all_entries if e.get("type") == "discussion"]
+            tool_entries = [e for e in all_entries if e.get("type") == "tool"]
+            
+            # CRITICAL FIX: Include ALL discussion entries (they are important for frontend display)
+            # Then add tool entries up to the limit
+            # If limit is 100 and we have 85 discussions, include all 85 + 15 tools = 100 total
+            # If limit is 100 and we have 200 discussions, include all 200 (exceed limit to ensure all discussions are included)
+            conversations = discussion_entries + tool_entries[:max(0, limit - len(discussion_entries))]
         
-        # 排序（最新的在前）
+        # CRITICAL FIX: Final sort to ensure newest first (discussions should already be first)
         conversations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         
         # CRITICAL FIX: 处理每个对话条目，确保有 summary 字段和 tools_used
@@ -396,8 +409,12 @@ async def fetch_conversations_api(
         discussion_rounds = {}
         discussion_rounds_by_agent = {}  # CRITICAL FIX: 按 round 和 agent 分组，提取每个 agent 的 summary
         
-        # CRITICAL FIX: Also extract round=0 entries for analysts (fallback for single-round discussions)
-        analyst_names = ["MarketAnalyst", "TechnicalAnalyst", "FundamentalAnalyst", "SentimentAnalyst"]
+        # CRITICAL FIX: Include ALL discussion agents, not just analysts
+        # This ensures DiscussionCoordinator, TraderAgent, and RiskAnalyst are also included
+        all_discussion_agents = [
+            "MarketAnalyst", "TechnicalAnalyst", "FundamentalAnalyst", "SentimentAnalyst",
+            "DiscussionCoordinator", "TraderAgent", "RiskAnalyst"
+        ]
         
         for entry in processed_conversations:
             round_num = entry.get("round", 0)
@@ -411,14 +428,14 @@ async def fetch_conversations_api(
             agent = entry.get("agent", "Unknown")
             entry_type = entry.get("type", "discussion")
             
-            # CRITICAL FIX: Process both round > 0 (multi-round) and round = 0 (single-round or fallback)
-            # For round = 0, only process analyst entries (not Coordinator or TraderAgent)
+            # CRITICAL FIX: Process ALL discussion entries (round > 0 or round = 0)
+            # Include all discussion agents, not just analysts
             should_process = False
             if round_num > 0:
                 # Multi-round discussion entries
                 should_process = True
-            elif round_num == 0 and entry_type == "discussion" and agent in analyst_names:
-                # Single-round discussion entries (fallback) - only for analysts
+            elif round_num == 0 and entry_type == "discussion" and agent in all_discussion_agents:
+                # Single-round discussion entries - include ALL discussion agents
                 should_process = True
             
             if should_process:
@@ -467,8 +484,9 @@ async def fetch_conversations_api(
                     new_tools = set(tools_used) if isinstance(tools_used, list) else set()
                     existing["tools_used"] = list(existing_tools | new_tools)
         
-        # 限制结果
-        limited_conversations = processed_conversations[:limit]
+        # CRITICAL FIX: Don't limit conversations here - we already prioritized discussions in the reading phase
+        # This ensures all discussion entries are included in the response
+        limited_conversations = processed_conversations
         
         # CRITICAL FIX: 将 discussion_rounds_by_agent 转换为列表格式（每个 round 包含 agent summaries）
         discussion_rounds_summaries = {}
@@ -535,30 +553,9 @@ async def fetch_conversations_api(
                 tool_category = entry.get("tool_category", tool_category_map.get(tool_name, "other"))
                 tool_result = entry.get("tool_result", {})
                 
-                # DEBUG: Log news tools
-                if tool_category == "news":
-                    print(f"[API] ✅ Found news tool: {tool_name}, agent: {entry.get('agent', 'Unknown')}")
-                    # DEBUG: Check if tool_result has news data
-                    if isinstance(tool_result, dict):
-                        # CRITICAL FIX: Check for nested structure {ok: true, result: {...}}
-                        actual_result = tool_result
-                        if tool_result.get("ok") and "result" in tool_result:
-                            actual_result = tool_result.get("result", {})
-                            print(f"[API]   Extracted result from tool_result.ok structure")
-                        
-                        if isinstance(actual_result, dict):
-                            hits = actual_result.get("hits", [])
-                            articles = actual_result.get("articles", [])
-                            print(f"[API]   News data: {len(hits) if isinstance(hits, list) else 0} hits, {len(articles) if isinstance(articles, list) else 0} articles")
-                            print(f"[API]   actual_result keys: {list(actual_result.keys())[:10]}")
-                            if articles and isinstance(articles, list) and len(articles) > 0:
-                                print(f"[API]   First article keys: {list(articles[0].keys())[:10] if isinstance(articles[0], dict) else 'not dict'}")
-                            elif hits and isinstance(hits, list) and len(hits) > 0:
-                                print(f"[API]   First hit keys: {list(hits[0].keys())[:10] if isinstance(hits[0], dict) else 'not dict'}")
-                        else:
-                            print(f"[API]   ⚠️ actual_result is not a dict: {type(actual_result)}")
-                    else:
-                        print(f"[API]   ⚠️ tool_result is not a dict: {type(tool_result)}")
+                # CRITICAL FIX: Check for nested structure {ok: true, result: {...}}
+                if isinstance(tool_result, dict) and tool_result.get("ok") and "result" in tool_result:
+                    tool_result = tool_result.get("result", {})
                 
                 # CRITICAL FIX: 确保 tool_result 是可序列化的
                 if not isinstance(tool_result, (dict, list, str, int, float, bool, type(None))):
@@ -589,33 +586,7 @@ async def fetch_conversations_api(
                         "agent": str(entry.get("agent", "ToolSystem")),
                     }
                     
-                    # DEBUG: Log news tool entry structure
-                    if tool_category == "news":
-                        print(f"[API] Adding news tool entry: {tool_name}, result keys: {list(tool_result.keys())[:10] if isinstance(tool_result, dict) else 'not dict'}")
-                        # CRITICAL FIX: Ensure tool_result structure is correct for frontend parsing
-                        if isinstance(tool_result, dict):
-                            # Check if we need to extract from nested structure
-                            if tool_result.get("ok") and "result" in tool_result:
-                                # Keep the nested structure, frontend will extract it
-                                print(f"[API]   Tool result has nested structure: ok={tool_result.get('ok')}, has result={('result' in tool_result)}")
-                                # Extract actual_result for logging
-                                actual_result_for_log = tool_result.get("result", {})
-                                if isinstance(actual_result_for_log, dict):
-                                    articles_count = len(actual_result_for_log.get("articles", [])) if isinstance(actual_result_for_log.get("articles"), list) else 0
-                                    hits_count = len(actual_result_for_log.get("hits", [])) if isinstance(actual_result_for_log.get("hits"), list) else 0
-                                    print(f"[API]   Nested result contains: {articles_count} articles, {hits_count} hits")
-                            else:
-                                # Check if tool_result directly has articles/hits (from trading_cycle.py processing)
-                                actual_result = tool_result
-                                if isinstance(actual_result, dict):
-                                    has_articles = bool(actual_result.get("articles"))
-                                    has_hits = bool(actual_result.get("hits"))
-                                    articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
-                                    hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
-                                    print(f"[API]   Tool result structure: has_articles={has_articles} ({articles_count} items), has_hits={has_hits} ({hits_count} items)")
-                                    if not has_articles and not has_hits:
-                                        print(f"[API]   [WARN] News tool result has no articles or hits!")
-                                        print(f"[API]   [WARN] tool_result keys: {list(tool_result.keys())[:15]}")
+                    # Removed debug logs for news tool entry structure
                     
                     # 添加到对应分类
                     if tool_category in tool_results_by_category:
@@ -627,8 +598,7 @@ async def fetch_conversations_api(
                     print(f"[WARN] 跳过工具条目（序列化失败）: {tool_error}")
                     continue
         
-        # DEBUG: Log final news category count
-        print(f"[API] Final tool_results_by_category.news count: {len(tool_results_by_category['news'])}")
+        # Removed debug log for final news category count
         
         # CRITICAL FIX: 确保所有数据都是可序列化的
         # 清理 limited_conversations 中的不可序列化数据
@@ -806,8 +776,10 @@ async def get_portfolio_real_time():
                             print(f"[API] ⚠️  Failed to get real-time price for {symbol}: {e}, will try close price")
                 
                 # 策略2: 市场关闭或非交易日 - 使用收盘价（多层fallback确保总能获取到价格）
-                market_status = "CLOSED (trading day)" if today_is_trading_day else "CLOSED (non-trading day)"
-                print(f"[API] Market is {market_status} - using latest close prices for {len(positions)} positions")
+                # CRITICAL FIX: Only print CLOSED message if market is actually closed
+                if not is_market_open_now:
+                    market_status = "CLOSED (trading day)" if today_is_trading_day else "CLOSED (non-trading day)"
+                    print(f"[API] Market is {market_status} - using latest close prices for {len(positions)} positions")
                 
                 # CRITICAL FIX: 优先使用 yfinance 直接获取最新收盘价（更可靠）
                 # 这样可以确保获取到今天的收盘价（如果市场已收盘）或最近一个交易日的收盘价
@@ -1046,13 +1018,20 @@ async def get_portfolio_real_time():
             except Exception as e:
                 print(f"[API WARNING] Failed to check market status: {e}, proceeding with auto record")
         
+        # CRITICAL FIX: Disable auto-record in API endpoint to avoid duplicate records
+        # Equity recording should only happen via:
+        # 1. Frontend calling /api/portfolio/record-equity (every 30 minutes)
+        # 2. RealTimeTracker.update_and_record (when significant change detected)
+        # This prevents multiple recording mechanisms from conflicting
+        auto_record_equity = False  # Disabled to prevent duplicate records
+        
         if auto_record_equity:
             try:
                 from src.data.equity_tracker import EquityTracker
                 from datetime import datetime, timezone
                 equity_tracker = EquityTracker(root=str(logs_dir))
                 
-                # 检查最后一条记录的时间，如果超过1小时，才记录新点
+                # 检查最后一条记录的时间，如果超过30分钟，才记录新点
                 equity_file = logs_dir / "equity_history.jsonl"
                 should_record = True
                 if equity_file.exists():
@@ -1066,10 +1045,10 @@ async def get_portfolio_real_time():
                                     # 解析最后记录的时间戳
                                     last_time = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
                                     current_time = datetime.now(timezone.utc)
-                                    time_diff = (current_time - last_time).total_seconds() / 1800  # 30分钟
+                                    time_diff_minutes = (current_time - last_time).total_seconds() / 60
                                     # CRITICAL FIX: 每30分钟记录一次（市场开盘时）
                                     # 这样可以确保每30分钟都有记录，即使净值没有变化
-                                    if time_diff < 0.5:  # 30分钟 = 0.5小时
+                                    if time_diff_minutes < 30:  # 30分钟
                                         should_record = False
                     except Exception as e:
                         print(f"[API] Failed to check last equity record: {e}")

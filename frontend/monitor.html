@@ -6656,10 +6656,12 @@
                 }
                 
                 // CRITICAL FIX: If no tool entries found in conversations, try to get from tool_results_by_category
+                // For special agents (RiskAnalyst, TraderAgent), also check even if we have discussion entries
                 // Use the parameter passed to function, or fallback to global window variable
                 const availableToolResults = toolResultsByCategory || window.toolResultsByCategory || null;
-                if (filteredConversations.length === 0 && availableToolResults) {
-                    console.log(`[Filter] No tool entries in conversations, checking tool_results_by_category`);
+                const hasNoTools = filteredConversations.filter(c => (c.type || 'discussion') === 'tool').length === 0;
+                if ((hasNoTools || isSpecialAgent) && availableToolResults) {
+                    console.log(`[Filter] ${hasNoTools ? 'No tool entries' : 'Special agent'} in conversations, checking tool_results_by_category`);
                     console.log(`[Filter] Available categories:`, Object.keys(availableToolResults));
                     
                     // Map agent names to tool categories
@@ -6709,7 +6711,7 @@
                         
                         if (categoryTools.length > 0) {
                             // Convert tool_results_by_category entries to conversation format
-                            filteredConversations = categoryTools.map(toolEntry => ({
+                            const convertedTools = categoryTools.map(toolEntry => ({
                                 type: 'tool',
                                 agent: toolEntry.agent || currentAgentFilter,
                                 tool_name: toolEntry.tool_name || '',
@@ -6717,7 +6719,15 @@
                                 timestamp: toolEntry.timestamp || '',
                                 content: `Tool used: ${toolEntry.tool_name || ''}: ${JSON.stringify(toolEntry.tool_result || {})}`
                             }));
-                            console.log(`[Filter] Converted ${filteredConversations.length} tool entries from tool_results_by_category`);
+                            
+                            // CRITICAL FIX: For special agents, append tools to existing entries instead of replacing
+                            if (isSpecialAgent && filteredConversations.length > 0) {
+                                filteredConversations = [...filteredConversations, ...convertedTools];
+                                console.log(`[Filter] Appended ${convertedTools.length} tool entries to ${filteredConversations.length - convertedTools.length} existing entries for ${currentAgentFilter}`);
+                            } else {
+                                filteredConversations = convertedTools;
+                                console.log(`[Filter] Converted ${filteredConversations.length} tool entries from tool_results_by_category`);
+                            }
                         } else {
                             console.log(`[Filter] No tools in category ${category} match agent ${currentAgentFilter}`);
                         }

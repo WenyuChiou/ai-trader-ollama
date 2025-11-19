@@ -4696,6 +4696,52 @@
                 html += `<div style="margin-bottom: 32px; padding: 20px; background: rgba(15, 23, 42, 0.8); border-radius: 12px; border: 2px solid rgba(34, 211, 238, 0.3);">`;
                 html += `<h3 style="font-size: 16px; color: #22d3ee; margin-bottom: 16px; font-weight: 600;">📊 Analyst Summaries</h3>`;
                 
+                // CRITICAL FIX: First, extract individual analyst reports from DiscussionCoordinator
+                const coordinatorSummary = analystSummaries['DiscussionCoordinator']?.[0];
+                const extractedFromCoordinator = new Set();
+                
+                if (coordinatorSummary && coordinatorSummary.summary) {
+                    const coordinatorText = coordinatorSummary.summary;
+                    
+                    // CRITICAL FIX: Extract individual analyst reports from DiscussionCoordinator
+                    // Support multiple formats: "**Market Analyst**", "Market Analyst:", numbered sections, etc.
+                    const analystPatterns = [
+                        /\*\*(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\*\*\s*:?\s*([\s\S]*?)(?=\*\*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\*\*|$)/gi,
+                        /(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\s*\([^)]+\)?\s*:\s*([\s\S]*?)(?=(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\s*\(|$)/gi,
+                        /(?:^|\n)\s*(\d+)\.\s*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)[\s\S]*?:\s*([\s\S]*?)(?=(?:^|\n)\s*\d+\.\s*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)|$)/gi
+                    ];
+                    
+                    for (const pattern of analystPatterns) {
+                        const matches = [...coordinatorText.matchAll(pattern)];
+                        for (const match of matches) {
+                            const agentNameMatch = match[1] || match[2];
+                            const content = (match[2] || match[3] || '').trim();
+                            
+                            if (agentNameMatch && content && content.length > 20) {
+                                const normalizedName = agentNameMatch.replace(/\s+/g, '');
+                                if (normalizedName && !extractedFromCoordinator.has(normalizedName)) {
+                                    extractedFromCoordinator.add(normalizedName);
+                                    
+                                    // Add to analystSummaries if not already present
+                                    if (!analystSummaries[normalizedName]) {
+                                        analystSummaries[normalizedName] = [];
+                                    }
+                                    // Only add if we don't already have a better summary
+                                    if (analystSummaries[normalizedName].length === 0) {
+                                        analystSummaries[normalizedName].push({
+                                            round: '0',
+                                            summary: content,
+                                            stance: 'neutral',
+                                            tools_used: [],
+                                            extracted: true
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 // CRITICAL FIX: Display analysts in fixed order, use first entry (most recent) instead of last
                 const analystOrder = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'RiskAnalyst', 'TraderAgent'];
                 for (const agentName of analystOrder) {
@@ -4704,28 +4750,98 @@
                         const latestSummary = analystSummaries[agentName][0];
                         const agentIcon = getAgentIcon(agentName);
                         const stance = latestSummary.stance || 'neutral';
-                        const stanceColor = stance === 'bullish' ? '#10b981' : stance === 'bearish' ? '#ef4444' : '#6b7280';
+                        const stanceColor = stance === 'bullish' || stance === 'risk_on' ? '#10b981' : 
+                                          stance === 'bearish' || stance === 'risk_off' ? '#ef4444' : 
+                                          stance === 'low' || stance === 'LOW' ? '#10b981' :
+                                          stance === 'high' || stance === 'HIGH' ? '#ef4444' :
+                                          stance === 'NEUTRAL' ? '#6b7280' : '#6b7280';
                         const toolsUsed = latestSummary.tools_used || [];
                         const summaryText = latestSummary.summary || '';
+                        const isExtracted = latestSummary.extracted || false;
                         
-                        html += `<div style="margin-bottom: 16px; padding: 16px; background: rgba(34, 211, 238, 0.05); border-radius: 8px; border-left: 4px solid ${stanceColor};">`;
-                        html += `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">`;
-                        html += `<span style="font-size: 18px;">${agentIcon}</span>`;
-                        html += `<span style="font-size: 14px; font-weight: 600; color: #cbd5e1;">${agentName}</span>`;
-                        html += `<span style="font-size: 12px; padding: 2px 8px; background: ${stanceColor}20; color: ${stanceColor}; border-radius: 4px; font-weight: 500;">${stance.toUpperCase()}</span>`;
+                        // CRITICAL FIX: Special styling for TraderAgent and RiskAnalyst
+                        const isSpecialAgent = agentName === 'TraderAgent' || agentName === 'RiskAnalyst';
+                        const cardBgColor = isSpecialAgent ? 'rgba(34, 211, 238, 0.05)' : 'rgba(255, 255, 255, 0.03)';
+                        const borderColor = isSpecialAgent ? '#22d3ee' : stanceColor;
+                        const borderWidth = isSpecialAgent ? '2px' : '3px';
+                        
+                        html += `<div style="margin-bottom: 16px; padding: 16px; background: ${cardBgColor}; border-radius: 8px; border-left: ${borderWidth} solid ${borderColor}; ${isSpecialAgent ? 'box-shadow: 0 2px 8px rgba(34, 211, 238, 0.2);' : ''}">`;
+                        html += `<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">`;
+                        html += `<span style="font-size: 20px;">${agentIcon}</span>`;
+                        html += `<span style="font-size: 15px; font-weight: 600; color: ${isSpecialAgent ? '#22d3ee' : '#cbd5e1'};">${agentName}</span>`;
+                        html += `<span style="font-size: 11px; padding: 3px 8px; background: ${stanceColor}20; color: ${stanceColor}; border-radius: 4px; font-weight: 500;">${stance.toUpperCase()}</span>`;
+                        if (isExtracted) {
+                            html += `<span style="font-size: 9px; padding: 2px 6px; background: rgba(34, 211, 238, 0.2); color: #22d3ee; border-radius: 3px; font-weight: 500;">EXTRACTED</span>`;
+                        }
                         html += `</div>`;
                         
                         if (toolsUsed.length > 0) {
-                            html += `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">🔧 Tools: ${toolsUsed.join(', ')}</div>`;
+                            html += `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 10px; padding-left: 30px;">🔧 Tools: ${toolsUsed.join(', ')}</div>`;
                         }
                         
                         if (summaryText) {
-                            html += `<div style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.03); border-radius: 4px;">${escapeHtml(summaryText)}</div>`;
+                            // CRITICAL FIX: For DiscussionCoordinator, use clean and simple formatting
+                            if (agentName === 'DiscussionCoordinator') {
+                                // Skip if we extracted individual reports (don't show duplicate)
+                                if (extractedFromCoordinator.size > 0) {
+                                    html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
+                                } else {
+                                    // Show coordinator summary with clean formatting
+                                    let escapedText = escapeHtml(summaryText);
+                                    escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<span style="color: #60a5fa; font-weight: 600;">$1</span>');
+                                    escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
+                                    escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
+                                    escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
+                                    escapedText = escapedText.replace(/\n/g, '<br>');
+                                    escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                    
+                                    const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                    html += `<div style="position: relative;">`;
+                                    html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
+                                    html += `<div style="text-align: center; margin-top: 10px;">`;
+                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
+                                    html += `</div>`;
+                                    html += `</div>`;
+                                }
+                            } else if (agentName === 'TraderAgent' || agentName === 'RiskAnalyst') {
+                                // CRITICAL FIX: Special formatting for TraderAgent and RiskAnalyst
+                                let displayText = summaryText;
+                                
+                                // For TraderAgent, extract Analysis section if present
+                                if (agentName === 'TraderAgent' && displayText.includes('Analysis:')) {
+                                    const analysisMatch = displayText.match(/Analysis:\s*([\s\S]+)$/i);
+                                    if (analysisMatch) {
+                                        displayText = analysisMatch[1].trim();
+                                    }
+                                }
+                                
+                                // Format text with better styling
+                                displayText = escapeHtml(displayText);
+                                
+                                // Convert bold text
+                                displayText = displayText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
+                                
+                                // Convert numbered sections
+                                displayText = displayText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 12px; margin-bottom: 6px;">$1. $2</div>');
+                                
+                                // Convert bullet points
+                                displayText = displayText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1;">• $1</div>');
+                                
+                                // Convert newlines
+                                displayText = displayText.replace(/\n\n+/g, '<div style="height: 10px;"></div>');
+                                displayText = displayText.replace(/\n/g, '<br>');
+                                
+                                html += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 12px; background: rgba(15, 23, 42, 0.3); border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${displayText}</div>`;
+                            } else {
+                                html += `<div style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.03); border-radius: 4px;">${escapeHtml(summaryText)}</div>`;
+                            }
                         }
                         html += `</div>`;
                     } else {
-                        // CRITICAL FIX: Show placeholder if analyst is missing
-                        console.warn(`[Conversations] Missing analyst summary for: ${agentName}`);
+                        // CRITICAL FIX: Show placeholder if analyst is missing (but not for DiscussionCoordinator if we extracted reports)
+                        if (agentName !== 'DiscussionCoordinator' || extractedFromCoordinator.size === 0) {
+                            console.warn(`[Conversations] Missing analyst summary for: ${agentName}`);
+                        }
                     }
                 }
                 

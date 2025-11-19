@@ -1236,10 +1236,22 @@ def run_multi_analyst_discussion(
                                         hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
                                         articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
                                         print(f"   [OK] Tool {tool_name} executed successfully - {hits_count} hits, {articles_count} articles")
+                                        # DEBUG: 记录新闻工具结果到all_tool_calls
+                                        print(f"   [DEBUG] News tool result added to all_tool_calls: analyst=SentimentAnalyst, tool={tool_name}, hits={hits_count}, articles={articles_count}")
                                     else:
                                         print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
                                 else:
                                     print(f"   [OK] Tool {tool_name} executed successfully")
+                            elif tool_name == "fear_greed":
+                                # DEBUG: 记录FGI值
+                                if isinstance(tool_result, dict):
+                                    if tool_result.get("ok"):
+                                        actual_result = tool_result.get("result", tool_result)
+                                        fgi_value = actual_result.get("value") if isinstance(actual_result, dict) else None
+                                        fgi_label = actual_result.get("label") if isinstance(actual_result, dict) else None
+                                        print(f"   [FGI] Fear & Greed Index: value={fgi_value}, label={fgi_label}")
+                                    else:
+                                        print(f"   [WARN] fear_greed tool execution failed: {tool_result.get('error', 'Unknown error')}")
                             else:
                                 print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)

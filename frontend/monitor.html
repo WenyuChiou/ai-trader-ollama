@@ -4426,18 +4426,43 @@
                     const toolsUsed = conv.tools_used || [];
                     const timestamp = conv.timestamp || conv.date || '';
                     
+                    // CRITICAL FIX: For TraderAgent and RiskAnalyst, be more lenient with content extraction
+                    // They might have content in different fields
+                    let finalSummary = summary;
+                    if (!finalSummary || finalSummary.trim().length === 0) {
+                        // Try alternative fields for TraderAgent and RiskAnalyst
+                        if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
+                            finalSummary = conv.content || conv.message || conv.reasoning || conv.analysis || '';
+                            // For RiskAnalyst, also check risk_report
+                            if (!finalSummary && agent === 'RiskAnalyst' && conv.risk_report) {
+                                const riskReport = conv.risk_report;
+                                finalSummary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
+                            }
+                        }
+                    }
+                    
                     // Only process if we have valid summary/content
-                    if (summary && summary.trim().length > 0) {
+                    if (finalSummary && finalSummary.trim().length > 0) {
                         // Store conversation with timestamp for sorting
                         if (!analystConversations[agent]) {
                             analystConversations[agent] = [];
                         }
                         analystConversations[agent].push({
                             round: 0,
-                            summary: summary,
+                            summary: finalSummary,
                             stance: stance,
                             tools_used: toolsUsed,
                             timestamp: timestamp,
+                        });
+                    } else if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
+                        // Debug: Log if TraderAgent or RiskAnalyst conversation is skipped
+                        console.warn(`[Conversations] Skipping ${agent} conversation: no summary/content found`, {
+                            hasSummary: !!conv.summary,
+                            hasContent: !!conv.content,
+                            hasMessage: !!conv.message,
+                            hasReasoning: !!conv.reasoning,
+                            round: roundNum,
+                            type: entryType
                         });
                     }
                 }
@@ -4483,6 +4508,37 @@
             console.log('  Total conversations:', conversations.length);
             console.log('  Found analysts:', Object.keys(analystSummaries));
             console.log('  Required analysts:', requiredAnalysts);
+            console.log('  All analystNames:', analystNames);
+            
+            // CRITICAL FIX: Debug TraderAgent and RiskAnalyst specifically
+            const traderAgentConvs = conversations.filter(c => 
+                c.type === 'discussion' && 
+                (c.round === 0 || c.round === '0') && 
+                c.agent === 'TraderAgent'
+            );
+            const riskAnalystConvs = conversations.filter(c => 
+                c.type === 'discussion' && 
+                (c.round === 0 || c.round === '0') && 
+                c.agent === 'RiskAnalyst'
+            );
+            console.log('  TraderAgent conversations found:', traderAgentConvs.length);
+            if (traderAgentConvs.length > 0) {
+                console.log('    Latest TraderAgent:', {
+                    hasSummary: !!traderAgentConvs[traderAgentConvs.length - 1].summary,
+                    hasContent: !!traderAgentConvs[traderAgentConvs.length - 1].content,
+                    summaryLength: traderAgentConvs[traderAgentConvs.length - 1].summary?.length || 0,
+                    contentLength: traderAgentConvs[traderAgentConvs.length - 1].content?.length || 0
+                });
+            }
+            console.log('  RiskAnalyst conversations found:', riskAnalystConvs.length);
+            if (riskAnalystConvs.length > 0) {
+                console.log('    Latest RiskAnalyst:', {
+                    hasSummary: !!riskAnalystConvs[riskAnalystConvs.length - 1].summary,
+                    hasContent: !!riskAnalystConvs[riskAnalystConvs.length - 1].content,
+                    summaryLength: riskAnalystConvs[riskAnalystConvs.length - 1].summary?.length || 0,
+                    contentLength: riskAnalystConvs[riskAnalystConvs.length - 1].content?.length || 0
+                });
+            }
             
             if (missingAnalysts.length > 0) {
                 console.warn('[Conversations] ⚠️ Missing analyst summaries:', missingAnalysts);
@@ -4576,9 +4632,21 @@
                     const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
                     
                     if (entryType === 'discussion' && roundNum === 0 && analystNames.includes(agent)) {
-                        const summary = conv.summary || conv.content || '';
+                        let summary = conv.summary || conv.content || '';
                         const stance = conv.stance || 'neutral';
                         const toolsUsed = conv.tools_used || [];
+                        
+                        // CRITICAL FIX: For TraderAgent and RiskAnalyst, be more lenient with content extraction
+                        if (!summary || summary.trim().length === 0) {
+                            if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
+                                summary = conv.content || conv.message || conv.reasoning || conv.analysis || '';
+                                // For RiskAnalyst, also check risk_report
+                                if (!summary && agent === 'RiskAnalyst' && conv.risk_report) {
+                                    const riskReport = conv.risk_report;
+                                    summary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
+                                }
+                            }
+                        }
                         
                         if (summary && summary.trim().length > 0) {
                             // Only keep the first (most recent) conversation for each analyst

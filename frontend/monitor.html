@@ -4376,6 +4376,8 @@
             console.log('[renderConversations] Called with:', {
                 conversationsCount: conversations.length,
                 total: total,
+                hasDiscussionRoundsSummaries: !!discussionRoundsSummaries,
+                discussionRoundsSummariesKeys: discussionRoundsSummaries ? Object.keys(discussionRoundsSummaries) : []
                 has_more: has_more,
                 discussionRoundsSummaries: discussionRoundsSummaries ? Object.keys(discussionRoundsSummaries) : null
             });
@@ -4394,8 +4396,28 @@
             const analystSummaries = {};
             
             // Debug: Log discussion_rounds_summaries structure
+            console.log('[Conversations] ===== STARTING ANALYST SUMMARIES EXTRACTION =====');
             console.log('[Conversations] discussion_rounds_summaries keys:', Object.keys(discussionRoundsSummaries || {}));
-            console.log('[Conversations] discussion_rounds_summaries content:', discussionRoundsSummaries);
+            console.log('[Conversations] discussion_rounds_summaries type:', typeof discussionRoundsSummaries);
+            if (discussionRoundsSummaries && typeof discussionRoundsSummaries === 'object') {
+                // Check for DiscussionCoordinator in each round
+                for (const [roundNum, summaries] of Object.entries(discussionRoundsSummaries)) {
+                    console.log(`[Conversations] Round ${roundNum} has ${Array.isArray(summaries) ? summaries.length : 0} summaries`);
+                    if (Array.isArray(summaries)) {
+                        const coordinatorInRound = summaries.find(s => (s.agent || '').toLowerCase().includes('coordinator'));
+                        if (coordinatorInRound) {
+                            console.log(`[Conversations] ✅ Found DiscussionCoordinator in round ${roundNum}:`, {
+                                agent: coordinatorInRound.agent,
+                                summaryLength: coordinatorInRound.summary?.length || 0,
+                                hasSummary: !!coordinatorInRound.summary,
+                                summaryPreview: coordinatorInRound.summary?.substring(0, 200) || ''
+                            });
+                        }
+                    }
+                }
+            } else {
+                console.log('[Conversations] ⚠️ discussionRoundsSummaries is null or not an object');
+            }
             
             // First, extract from discussion_rounds_summaries (round > 0)
             if (discussionRoundsSummaries && typeof discussionRoundsSummaries === 'object') {

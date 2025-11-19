@@ -2131,6 +2131,139 @@ Daily Summary:
 
 ---
 
+## 🚀 Deployment
+
+### Railway Backend Deployment
+
+Railway provides a simple and reliable way to deploy the AI-Trader backend API to the cloud.
+
+#### Quick Deployment Steps
+
+1. **Connect Repository to Railway**
+   - Visit [Railway Dashboard](https://railway.app/)
+   - Click "New Project" → "Deploy from GitHub repo"
+   - Select `WenyuChiou/ai-trader-ollama` repository
+   - Railway will automatically detect Python project and deploy
+
+2. **Configuration Files**
+   - ✅ `railway.json` - Railway deployment configuration
+   - ✅ `Procfile` - Process start command
+   - ✅ `backend/requirements.txt` - Python dependencies
+
+3. **Environment Variables** (Optional but Recommended)
+   - `FRED_API_KEY` - For economic data (free API key from [FRED](https://fred.stlouisfed.org/docs/api/api_key.html))
+   - `OLLAMA_BASE_URL` - If using remote Ollama instance (default: `http://localhost:11434`)
+   - `PORT` - Railway auto-assigns (no need to set manually)
+
+4. **Deployment Process**
+   - Railway automatically builds and deploys on push to `main` branch
+   - Check deployment logs in Railway dashboard
+   - Deployment typically takes 2-5 minutes
+
+5. **Get Public URL**
+   - After deployment, Railway provides a public URL (e.g., `https://your-app.up.railway.app`)
+   - Go to Project → Settings → Networking → Generate Domain
+   - Copy the generated URL
+
+6. **Update Frontend Configuration**
+   - Edit `frontend/config.js`
+   - Update `production` URL to your Railway backend URL:
+     ```javascript
+     production: 'https://your-app.up.railway.app',
+     ```
+   - Commit and push to GitHub
+
+#### Railway Configuration
+
+**`railway.json`**:
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "pip install -r backend/requirements.txt"
+  },
+  "deploy": {
+    "startCommand": "uvicorn backend.src.api.server:app --host 0.0.0.0 --port $PORT",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
+```
+
+**`Procfile`**:
+```
+web: uvicorn backend.src.api.server:app --host 0.0.0.0 --port $PORT
+```
+
+#### Verification
+
+After deployment, verify the backend is working:
+
+1. **API Documentation**: `https://your-app.up.railway.app/docs`
+   - Should display FastAPI Swagger UI
+
+2. **Health Check**: `https://your-app.up.railway.app/api/health`
+   - Should return: `{"status": "ok"}`
+
+3. **Frontend Connection**: 
+   - Open GitHub Pages: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
+   - Check browser console (F12) for API connection status
+   - Should see successful API requests
+
+#### Railway Free Tier
+
+- **Free Tier**: $5/month credit (usually sufficient for small applications)
+- **Auto-scaling**: Railway automatically scales based on traffic
+- **Auto-restart**: Railway restarts service on failure (configured in `railway.json`)
+- **Logs**: View deployment and runtime logs in Railway dashboard
+
+#### Troubleshooting Railway Deployment
+
+**Deployment Fails**:
+- Check Railway deployment logs
+- Verify `requirements.txt` includes all dependencies
+- Ensure `Procfile` format is correct (`web: ...`)
+- Check that `railway.json` build command points to correct path
+
+**API Not Responding**:
+- Verify service is "Active" in Railway dashboard
+- Check Railway logs for errors
+- Verify `PORT` environment variable is set (Railway auto-assigns)
+- Test health endpoint: `https://your-app.up.railway.app/api/health`
+
+**Frontend Cannot Connect**:
+- Verify `frontend/config.js` has correct Railway URL
+- Check CORS settings (backend already configured for `*`)
+- Check browser console for CORS errors
+- Verify Railway service is running and accessible
+
+#### Related Documentation
+
+- 📖 [Railway Deployment Steps](RAILWAY_DEPLOYMENT_STEPS.md) - Detailed step-by-step guide (Chinese)
+- 📖 [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment documentation
+- 📖 [Daily Upload Setup](docs/DAILY_UPLOAD_SETUP.md) - Setup daily data upload to Railway
+
+### GitHub Pages Frontend Deployment
+
+The frontend is automatically deployed to GitHub Pages when you push to the `main` branch.
+
+**Configuration**:
+- **Source**: `Deploy from a branch`
+- **Branch**: `main`
+- **Folder**: `/frontend`
+- **URL**: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
+
+**Update Process**:
+1. Make changes to frontend files
+2. Commit and push to `main` branch
+3. GitHub Pages automatically deploys (1-2 minutes)
+4. Access updated frontend at GitHub Pages URL
+
+**Note**: The frontend is in read-only mode on GitHub Pages for security. Full trading controls are only available when running locally.
+
+---
+
 ## ⏰ Scheduled Tasks & Automation
 
 ### PowerShell Scripts for Automation

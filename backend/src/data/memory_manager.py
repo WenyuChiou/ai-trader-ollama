@@ -334,9 +334,10 @@ class MemoryManager:
             }
         
         # Save daily memory
+        # CRITICAL FIX: Ensure memory is JSON serializable before saving
         memory_file = self.daily_dir / f"{date}.json"
         with memory_file.open("w", encoding="utf-8") as f:
-            json.dump(memory, f, ensure_ascii=False, indent=2)
+            json.dump(make_json_serializable(memory), f, ensure_ascii=False, indent=2)
         
         # Update index
         self._update_index(date, memory)
@@ -593,7 +594,7 @@ class MemoryManager:
                     else:
                         # 追加新记录
                         with weekly_file.open("a", encoding="utf-8") as f:
-                            f.write(json.dumps(weekly_summary, ensure_ascii=False) + "\n")
+                            f.write(json.dumps(make_json_serializable(weekly_summary), ensure_ascii=False) + "\n")
                     
                     print(f"[MEMORY] Created weekly summary for {week_str}")
                     

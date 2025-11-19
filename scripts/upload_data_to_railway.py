@@ -32,8 +32,13 @@ def upload_to_railway():
         import json
         from pathlib import Path
         
-        # Get Railway URL from environment variable or use default
-        RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-b42d6.up.railway.app")
+        # Get Railway URL from config file, environment variable, or use default
+        try:
+            from scripts.config_railway import get_railway_url
+            RAILWAY_URL = get_railway_url()
+        except ImportError:
+            # Fallback if config_railway module not available
+            RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-b42d6.up.railway.app")
         
         # Find and read data files
         DATA_DIRS = [Path("data/logs"), Path("backend/data/logs")]

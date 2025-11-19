@@ -92,3 +92,6 @@ htmlcov/
 # Environment variables
 .env
 .env.local
+
+# Railway configuration (local)
+railway_config.json

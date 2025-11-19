@@ -863,10 +863,12 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
   - **With Holdings**: Non-ETF holdings + Non-ETF recommended stocks (ETFs excluded)
   - **Without Holdings**: Non-ETF recommended stocks only
   - **ETFs and indices are excluded** (ETFs don't need fundamental analysis)
+- **Budget Priority**: All fundamental analysis tools execute without tool budget restrictions (ensures all recommended stocks and holdings are analyzed)
 
 #### 4. **Sentiment Analyst** 😊
 - **Specialty**: Market psychology, news sentiment, fear/greed
-- **Priority Tools**: `fear_greed`, `vix_term`, `news_scan`
+- **Priority Tools**: `fear_greed`, `vix_term`, `plan_and_scan_news` (mandatory)
+- **News Analysis**: Automatically calls `plan_and_scan_news` at the start of each analysis cycle
 
 #### 5. **Risk Analyst** 🛡️
 - **Specialty**: Risk assessment, position management
@@ -952,13 +954,13 @@ These tools allow agents to retrieve and learn from historical trading memories:
 - `vix_close`: Historical VIX prices
 - `fear_greed`: CNN Fear & Greed Index
 
-### News & Information (5 tools)
-- `news_scan`: Scan news by keywords
+### News & Information (4 tools)
 - `plan_and_scan_news`: LLM-powered news query (recommended, includes article content with summaries and keywords)
 - `web_search`: DuckDuckGo search
 - `fetch_url`: Extract content from URL
-- `fetch_jin10_news`: Jin10 financial news
+- `get_news_scan`: Legacy compatibility (maps to plan_and_scan_news)
 - **News Display**: Frontend displays news with summaries, sources, timestamps, and keywords (sorted by recency)
+- **Note**: `news_scan` has been removed. Use `plan_and_scan_news` instead.
 
 ### Economic Data (3 tools)
 - `get_economic_summary`: Key US economic indicators
@@ -1516,7 +1518,7 @@ Cycle Start (T+0:00)
 │   └── Tool calls: get_company_fundamentals, get_earnings_history
 │
 └── Sentiment Analyst: "Market sentiment indicates..."
-    └── Tool calls: fear_greed, vix_term, news_scan
+    └── Tool calls: fear_greed, vix_term, plan_and_scan_news (mandatory)
 
 Round 2 (T+0:30)
 │
@@ -2486,7 +2488,18 @@ python scripts/init_data.py
 4. **Tool Name Mapping**:
    - ✅ `get_news` → `plan_and_scan_news` (automatic mapping)
    - ✅ `get_news_scan` → `plan_and_scan_news` (automatic mapping)
+   - ✅ `news_scan` → `plan_and_scan_news` (deprecated, automatic mapping with warning)
    - ✅ Enhanced debugging logs for news tool execution
+   - ✅ **Removed**: `news_scan` tool registration (use `plan_and_scan_news` instead)
+5. **Fundamental Analysis Budget**:
+   - ✅ Fundamental analysis tools (`get_company_fundamentals`) execute without tool budget restrictions
+   - ✅ Ensures all recommended stocks and holdings are analyzed regardless of budget
+6. **FGI (Fear & Greed Index)**:
+   - ✅ Standardized classification: 0-25 (EXTREME FEAR), 26-45 (FEAR), 46-55 (NEUTRAL), 56-75 (GREED), 76-100 (EXTREME GREED)
+   - ✅ Data source priority: `feargreedmeter.com` (returns correct value 11)
+7. **Signal Score**:
+   - ✅ Removed automatic `signal_score` sorting and filtering
+   - ✅ Agents now determine signal scores independently
 
 ### Portfolio P&L Calculation Issues
 

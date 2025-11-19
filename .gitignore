@@ -75,6 +75,7 @@ data/logs/*.log
 data/logs/*backup*.json
 data/logs/portfolio_state_backup_*.json
 data/logs/memory/
+data/backups/
 *.db
 *.sqlite
 

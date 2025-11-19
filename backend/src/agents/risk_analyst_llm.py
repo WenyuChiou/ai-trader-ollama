@@ -257,9 +257,11 @@ def run_risk_analyst_llm(
             # CRITICAL FIX: Add tool calls information to risk_report
             if tool_calls_used:
                 risk_report["tools_used"] = tool_calls_used
-                risk_report["tool_calls"] = tool_results_data
+                # CRITICAL FIX: Make tool_results_data JSON serializable (handle pandas Series)
+                risk_report["tool_calls"] = make_json_serializable(tool_results_data)
             
-            return risk_report
+            # CRITICAL FIX: Ensure entire risk_report is JSON serializable
+            return make_json_serializable(risk_report)
             
         except json.JSONDecodeError:
             print(f"[RISK ANALYST LLM] Failed to parse JSON, using fallback")

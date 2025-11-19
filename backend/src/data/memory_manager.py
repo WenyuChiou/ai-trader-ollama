@@ -15,6 +15,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, date, timedelta, timezone
 from collections import defaultdict
 import sys
+from ..utils.json_serializer import make_json_serializable
 
 # Add project path
 ROOT = Path(__file__).resolve().parents[3]
@@ -251,6 +252,7 @@ class MemoryManager:
         # Determine storage strategy based on memory age and importance score
         if memory_age < self.short_term_days:
             # Short-term memory: full storage
+            # CRITICAL FIX: Make all data JSON serializable (handle pandas Series in risk_report, tool_calls, etc.)
             memory = {
                 "date": date,
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
@@ -269,9 +271,9 @@ class MemoryManager:
                     "tool_context": discussion.get("tool_context"),  # Tool call history
                     "actions": discussion.get("actions"),
                 },
-                "risk_report": risk_report,
+                "risk_report": make_json_serializable(risk_report) if risk_report else None,
                 "decision": decision,
-                "portfolio_snapshot": portfolio_snapshot,
+                "portfolio_snapshot": make_json_serializable(portfolio_snapshot) if portfolio_snapshot else None,
                 "executed_trades": executed_trades or [],
                 "executed_trades_count": len(executed_trades) if executed_trades else 0,
             }

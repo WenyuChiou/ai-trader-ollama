@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Dict, Any, Optional, List
 from math import floor
+import json
+from ..utils.json_serializer import make_json_serializable, safe_json_dumps
 
 
 def _calculate_position_size(
@@ -394,13 +396,14 @@ def run_trader(
                 positions_summary = "No current positions"
             
             # 准备 prompt 变量（市场关闭时也需要传入基本数据）
+            # CRITICAL FIX: Use safe_json_dumps to handle pandas Series/DataFrame
             market_closed_prompt_vars = {
                 "market_status": "CLOSED",
-                "quotes_snapshot": json.dumps(market, indent=2, ensure_ascii=False) if market else "{}",
-                "risk_result_json": json.dumps(rview, indent=2, ensure_ascii=False) if rview else "{}",
-                "tech_result_json": json.dumps(mview, indent=2, ensure_ascii=False) if mview else "{}",
-                "psych_result_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
-                "consensus_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+                "quotes_snapshot": safe_json_dumps(market, indent=2, ensure_ascii=False) if market else "{}",
+                "risk_result_json": safe_json_dumps(rview, indent=2, ensure_ascii=False) if rview else "{}",
+                "tech_result_json": safe_json_dumps(mview, indent=2, ensure_ascii=False) if mview else "{}",
+                "psych_result_json": safe_json_dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+                "consensus_json": safe_json_dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
                 "positions_summary": positions_summary,
                 "final_stance": final_stance,
                 "vix_risk": vix_risk,
@@ -1056,13 +1059,14 @@ Write in natural language, approximately 100-150 words."""
             positions_summary = "No current positions"
         
         # 准备 prompt 变量（用于完整信息传递）
+        # CRITICAL FIX: Use safe_json_dumps to handle pandas Series/DataFrame
         prompt_vars = {
             "market_status": "OPEN" if is_market_open else "CLOSED",  # ⭐ 关键：传入市场状态
-            "quotes_snapshot": json.dumps(market, indent=2, ensure_ascii=False) if market else "{}",
-            "risk_result_json": json.dumps(rview, indent=2, ensure_ascii=False) if rview else "{}",
-            "tech_result_json": json.dumps(mview, indent=2, ensure_ascii=False) if mview else "{}",
-            "psych_result_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
-            "consensus_json": json.dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+            "quotes_snapshot": safe_json_dumps(market, indent=2, ensure_ascii=False) if market else "{}",
+            "risk_result_json": safe_json_dumps(rview, indent=2, ensure_ascii=False) if rview else "{}",
+            "tech_result_json": safe_json_dumps(mview, indent=2, ensure_ascii=False) if mview else "{}",
+            "psych_result_json": safe_json_dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
+            "consensus_json": safe_json_dumps(convo, indent=2, ensure_ascii=False) if convo else "{}",
             "orders_summary": "\n".join(orders_summary),
             "positions_summary": positions_summary,
             "final_stance": final_stance,

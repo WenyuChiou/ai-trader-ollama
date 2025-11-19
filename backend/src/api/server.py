@@ -232,17 +232,21 @@ async def execute_trade_direct():
         placed_orders = result.get("placed_orders", [])
         conversations_count = result.get("conversations_count", 0)
         
+        # CRITICAL FIX: Make result JSON serializable (handle pandas Series in risk_report, tool_calls, etc.)
+        from src.utils.json_serializer import make_json_serializable
+        serializable_result = make_json_serializable({
+            "placed_orders": placed_orders,
+            "conversations_count": conversations_count,
+            "is_planning": is_planning,
+            **result
+        })
+        
         return JSONResponse(
             status_code=200,
             content={
                 "ok": True,
                 "message": message,
-                "result": {
-                    "placed_orders": placed_orders,
-                    "conversations_count": conversations_count,
-                    "is_planning": is_planning,
-                    **result
-                }
+                "result": serializable_result
             },
             headers={
                 "Access-Control-Allow-Origin": "*",

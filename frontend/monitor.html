@@ -4839,19 +4839,19 @@
                                     }
                                 }
                                 
-                                // If we found numbered sections, format them properly
+                                // If we found numbered sections, format them properly (simplified, no boxes)
                                 if (sections.length > 0 && sections.some(s => s.type === 'section')) {
                                     let formattedHtml = '';
                                     sections.forEach(section => {
                                         if (section.type === 'section') {
-                                            // Format section header
-                                            formattedHtml += `<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 8px; padding-top: 12px; border-top: 1px solid rgba(34, 211, 238, 0.2);">${section.number}. ${section.title}</div>`;
+                                            // Format section header (simplified, no border/background)
+                                            formattedHtml += `<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 12px; margin-bottom: 6px;">${section.number}. ${section.title}</div>`;
                                             
                                             // Format section content (handle bullet points, sub-sections, etc.)
                                             let sectionContent = section.content;
                                             
-                                            // Convert bullet points within section
-                                            sectionContent = sectionContent.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid rgba(34, 211, 238, 0.3); color: #94a3b8;">• $1</div>');
+                                            // Convert bullet points within section (simplified)
+                                            sectionContent = sectionContent.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; color: #94a3b8;">• $1</div>');
                                             
                                             // Convert bold text (e.g., **Market Analyst**)
                                             sectionContent = sectionContent.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
@@ -4859,7 +4859,7 @@
                                             // Convert line breaks
                                             sectionContent = sectionContent.replace(/\n/g, '<br>');
                                             
-                                            formattedHtml += `<div style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 12px; padding-left: 8px;">${sectionContent}</div>`;
+                                            formattedHtml += `<div style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 12px;">${sectionContent}</div>`;
                                         } else {
                                             // Format regular text
                                             let textContent = section.content;

@@ -52,10 +52,20 @@ def run_market_analyst(
     print(f"\n[Round {current_round}] [1/4] Market Analyst analyzing...")
     
     try:
+        # CRITICAL FIX: Check budget before LLM call - if exhausted in Round 2/3, disable tools
+        remaining_budget = tool_budget - tool_calls_count
+        budget_exhausted = remaining_budget <= 0 and current_round > 1
+        
+        # Modify tools_context if budget exhausted
+        modified_tools_str = tools_str
+        if budget_exhausted:
+            print(f"   [OPTIMIZATION] Round {current_round}: Tool budget exhausted (remaining: {remaining_budget}). Disabling tool requests.")
+            modified_tools_str = "**NO TOOLS AVAILABLE - Tool budget exhausted.**\n\n**ROUND 2/3 MODE - NO TOOLS AVAILABLE**: Tool budget exhausted. You must provide analysis based on:\n1. Previous round's tool results (already executed)\n2. Discussion history from previous rounds\n3. Market data summary provided\n**DO NOT request any tools** - focus on synthesizing existing information. Provide your analysis without tool_calls array (leave it empty: [])."
+        
         market_prompt_vars = {
             "market_view": json.dumps(market_summary, indent=2),
             "previous_discussion": previous_rounds_text,
-            "tools_context": tools_str,
+            "tools_context": modified_tools_str,
             "order_status": order_status_text,
             "current_positions": positions_text,
         }
@@ -205,7 +215,12 @@ def run_market_analyst(
         
         # Execute tools (with parallel execution for independent tools in round 1)
         tool_results_summary = []
-        if use_tools and tools_to_execute:
+        # CRITICAL FIX: Early budget check - skip tool execution entirely if budget exhausted in Round 2/3
+        remaining_budget = tool_budget - tool_calls_count
+        if budget_exhausted and current_round > 1:
+            print(f"   [OPTIMIZATION] Round {current_round}: Budget exhausted (remaining: {remaining_budget}). Skipping tool execution phase entirely.")
+            tool_results_summary = []
+        elif use_tools and tools_to_execute:
             print(f"   [TOOL] Tools requested: {len(tools_to_execute)} (after cache/news filtering)")
             
             if current_round > 1:

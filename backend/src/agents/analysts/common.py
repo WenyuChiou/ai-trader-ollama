@@ -207,6 +207,15 @@ def parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             "recommended_stocks": parsed.get("recommended_stocks", []),
         }
         
+        # CRITICAL FIX: Ensure tool_calls is always a list (handle None, missing, or invalid values)
+        if not isinstance(defaults["tool_calls"], list):
+            if defaults["tool_calls"] is None:
+                defaults["tool_calls"] = []
+            elif isinstance(defaults["tool_calls"], dict):
+                defaults["tool_calls"] = [defaults["tool_calls"]]
+            else:
+                defaults["tool_calls"] = []
+        
         if not defaults["tool_calls"] and isinstance(response, str):
             tool_patterns = [
                 r'get_market_indices', r'get_sector_rotation', r'get_market_breadth',

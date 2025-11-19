@@ -76,10 +76,20 @@ def run_technical_analyst(
                     recommended_text += f"**These are Market Analyst's top recommendations - analyze them first!**\n"
                     technical_positions_text = recommended_text + "\n" + technical_positions_text
         
+        # CRITICAL FIX: Check budget before LLM call - if exhausted in Round 2/3, disable tools
+        remaining_budget = tool_budget - tool_calls_count
+        budget_exhausted = remaining_budget <= 0 and current_round > 1
+        
+        # Modify tools_context if budget exhausted
+        modified_tools_str = tools_str
+        if budget_exhausted:
+            print(f"   [OPTIMIZATION] Round {current_round}: Tool budget exhausted (remaining: {remaining_budget}). Disabling tool requests.")
+            modified_tools_str = "**NO TOOLS AVAILABLE - Tool budget exhausted.**\n\n**ROUND 2/3 MODE - NO TOOLS AVAILABLE**: Tool budget exhausted. You must provide analysis based on:\n1. Previous round's tool results (already executed)\n2. Discussion history from previous rounds\n3. Market data summary provided\n**DO NOT request any tools** - focus on synthesizing existing information. Provide your analysis without tool_calls array (leave it empty: [])."
+        
         technical_prompt_vars = {
             "market_view": json.dumps(market_summary, indent=2),
             "previous_discussion": previous_discussion_text,
-            "tools_context": tools_str,
+            "tools_context": modified_tools_str,
             "order_status": order_status_text,
             "current_positions": technical_positions_text,
         }
@@ -167,7 +177,7 @@ def run_technical_analyst(
                     mandatory_symbols.append(idx)
                     print(f"   [MANDATORY] Adding major index: {idx}")
             
-            # 3. Add Market Analyst's recommended stocks (must add)
+            # 3. Add Market Analyst's recommended stocks (OPTIMIZATION: limit to top 3-5)
             recommended_stocks = []
             if analyst_reports.get("market"):
                 market_report = analyst_reports["market"]
@@ -180,6 +190,7 @@ def run_technical_analyst(
                     
                     # CRITICAL FIX: Filter out cryptocurrencies from recommended stocks
                     from src.utils.etf_checker import is_crypto
+                    filtered_recommended = []
                     for sym in recommended_stocks:
                         sym_upper = sym.upper() if sym else ""
                         # Skip cryptocurrencies (DOGE, BTC, ETH, etc.)
@@ -187,8 +198,17 @@ def run_technical_analyst(
                             print(f"   [MANDATORY] Skipping cryptocurrency in recommended stocks: {sym}")
                             continue
                         if sym and sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
-                            mandatory_symbols.append(sym_upper)
-                            print(f"   [MANDATORY] Adding recommended stock: {sym}")
+                            filtered_recommended.append(sym_upper)
+                    
+                    # OPTIMIZATION: Limit to top 3-5 recommended stocks to preserve budget
+                    max_recommended = 5
+                    if len(filtered_recommended) > max_recommended:
+                        print(f"   [OPTIMIZATION] Limiting recommended stocks from {len(filtered_recommended)} to top {max_recommended} to preserve budget")
+                        filtered_recommended = filtered_recommended[:max_recommended]
+                    
+                    for sym in filtered_recommended:
+                        mandatory_symbols.append(sym)
+                        print(f"   [MANDATORY] Adding recommended stock: {sym}")
             
             # Add mandatory symbols to tool_calls_list
             remaining_budget = tool_budget - tool_calls_count
@@ -332,7 +352,12 @@ def run_technical_analyst(
         
         # Execute tools
         tool_results_summary = []
-        if use_tools and tool_calls_list:
+        # CRITICAL FIX: Early budget check - skip tool execution entirely if budget exhausted in Round 2/3
+        remaining_budget = tool_budget - tool_calls_count
+        if budget_exhausted and current_round > 1:
+            print(f"   [OPTIMIZATION] Round {current_round}: Budget exhausted (remaining: {remaining_budget}). Skipping tool execution phase entirely.")
+            tool_results_summary = []
+        elif use_tools and tool_calls_list:
             print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
             max_tools_per_analyst = min(8, tool_budget - tool_calls_count)
             

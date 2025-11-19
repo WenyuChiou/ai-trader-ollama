@@ -81,10 +81,28 @@ def run_sentiment_analyst(
                 fgi_reminder = f"\n\n**⚠️ REMINDER: The Fear & Greed Index in market_view is value={fgi_val}, label={fgi_lbl}. YOU MUST USE THIS EXACT VALUE ({fgi_val}) IN YOUR ANALYSIS, NOT ANY OTHER VALUE.**\n"
                 print(f"   [FGI] [PROMPT] Added FGI reminder: value={fgi_val}, label={fgi_lbl}")
         
+        # CRITICAL FIX: Check budget before LLM call - if exhausted in Round 2/3, disable tools
+        remaining_budget = tool_budget - tool_calls_count
+        budget_exhausted = remaining_budget <= 0 and current_round > 1
+        
+        # Modify tools_context if budget exhausted (but allow news tool if not cached)
+        modified_tools_str = tools_str
+        if budget_exhausted:
+            # Check if news tool is already cached
+            news_cache_key = get_tool_cache_key("plan_and_scan_news", {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10})
+            news_already_cached = news_cache_key in tool_result_cache if current_round > 1 else False
+            
+            if news_already_cached:
+                print(f"   [OPTIMIZATION] Round {current_round}: Tool budget exhausted (remaining: {remaining_budget}). Disabling tool requests (news already cached).")
+                modified_tools_str = "**NO TOOLS AVAILABLE - Tool budget exhausted.**\n\n**ROUND 2/3 MODE - NO TOOLS AVAILABLE**: Tool budget exhausted. You must provide analysis based on:\n1. Previous round's tool results (already executed, including cached news)\n2. Discussion history from previous rounds\n3. Market data summary provided\n**DO NOT request any tools** - focus on synthesizing existing information. Provide your analysis without tool_calls array (leave it empty: [])."
+            else:
+                # Allow news tool even if budget exhausted (it's mandatory for sentiment)
+                print(f"   [OPTIMIZATION] Round {current_round}: Tool budget exhausted, but allowing news tool (mandatory for sentiment analysis)")
+        
         sentiment_prompt_vars = {
             "market_view": json.dumps(market_summary, indent=2) + fgi_reminder,
             "previous_discussion": previous_discussion_text,
-            "tools_context": tools_str,
+            "tools_context": modified_tools_str,
             "order_status": order_status_text,
             "current_positions": positions_text,
         }
@@ -165,7 +183,15 @@ def run_sentiment_analyst(
         
         # Execute tools
         tool_results_summary = []
-        if use_tools and tool_calls_list:
+        # CRITICAL FIX: Early budget check - skip tool execution entirely if budget exhausted in Round 2/3 (unless news tool needed)
+        # Check if news is cached (same logic as above)
+        news_cache_key_check = get_tool_cache_key("plan_and_scan_news", {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10})
+        news_is_cached = news_cache_key_check in tool_result_cache if current_round > 1 else False
+        
+        if budget_exhausted and current_round > 1 and news_is_cached:
+            print(f"   [OPTIMIZATION] Round {current_round}: Budget exhausted (remaining: {remaining_budget}) and news cached. Skipping tool execution phase entirely.")
+            tool_results_summary = []
+        elif use_tools and tool_calls_list:
             print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
             tool_names = [tc.get("name", "unknown") for tc in tool_calls_list]
             print(f"   [TOOL] Tool names: {', '.join(tool_names)}")

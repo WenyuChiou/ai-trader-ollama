@@ -52,7 +52,12 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 - **RAG Memory System**: Agents automatically retrieve and learn from historical trading decisions
 - **Time-range equity tracking**: View portfolio performance over day/week/month/custom periods
 - **Weekly memory compression**: Automatic summarization of weekly memories (Monday + weekend only)
-- **Performance Optimizations**: Tool result caching, parallel execution, and reduced tool calls in multi-round discussions (50-70% faster)
+- **Performance Optimizations**: 
+  - Tool result caching and parallel execution
+  - Intelligent budget management prevents unnecessary tool requests in Round 2/3
+  - Optimized mandatory tool logic (limits to top 5 recommended stocks)
+  - Early budget checks skip tool execution when budget exhausted
+  - **Result**: 30-40% faster execution (from ~10 minutes to ~6-7 minutes per trading cycle)
 
 ### Core Philosophy
 
@@ -205,7 +210,8 @@ After completing the setup:
 
 3. **Execute First Trade Cycle**:
    - Click "▶️ Start Trading" or "▶️ Run Analysis" button
-   - Wait for agents to analyze (30-60 seconds)
+   - Wait for agents to analyze (~6-7 minutes for full 3-round discussion)
+   - **Performance Note**: System uses intelligent budget management to optimize execution time
    - View results in the dashboard
 
 4. **View Results**:

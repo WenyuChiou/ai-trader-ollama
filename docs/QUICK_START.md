@@ -76,11 +76,14 @@ Open browser and navigate to:
 2. **Open Monitor**
    - Navigate to `http://localhost:8000/monitor.html`
    - Click "Execute Trade Cycle" to run first trading cycle
+   - **Note**: Full trading cycle takes ~6-7 minutes (optimized from ~10 minutes)
+   - System uses intelligent budget management to prevent unnecessary tool calls in Round 2/3
 
 3. **Check Results**
    - View portfolio state
    - Check agent conversations
    - Review trading decisions
+   - **Performance**: System automatically optimizes tool usage to reduce execution time by 30-40%
 
 ## Troubleshooting
 

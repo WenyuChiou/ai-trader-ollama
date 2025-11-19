@@ -4895,12 +4895,21 @@
                         if (summaryText) {
                             // CRITICAL FIX: For DiscussionCoordinator, use clean and simple formatting
                             if (agentName === 'DiscussionCoordinator') {
+                                console.log('[Coordinator] Processing DiscussionCoordinator summary:', {
+                                    hasSummaryText: !!summaryText,
+                                    summaryLength: summaryText.length,
+                                    extractedCount: extractedFromCoordinator.size,
+                                    summaryPreview: summaryText.substring(0, 200)
+                                });
+                                
                                 // Skip if we extracted individual reports (don't show duplicate)
                                 if (extractedFromCoordinator.size > 0) {
+                                    console.log('[Coordinator] Skipping parse - individual reports extracted');
                                     html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
                                 } else {
                                     // CRITICAL FIX: 嘗試解析結構化部分
                                     console.log('[Coordinator] Attempting to parse summary text, length:', summaryText.length);
+                                    console.log('[Coordinator] Summary preview:', summaryText.substring(0, 500));
                                     const sections = parseCoordinatorSections(summaryText);
                                     
                                     // Debug: Log parsing result
@@ -4914,6 +4923,8 @@
                                             hasRecommendedStocks: !!sections.recommendedStocks,
                                             hasFinalSummary: !!sections.finalSummary
                                         });
+                                    } else {
+                                        console.log('[Coordinator] Parse failed - will use fallback format');
                                     }
                                     
                                     if (sections) {
@@ -6713,6 +6724,13 @@
                                 matches = agentVariants[filterLower].some(variant => 
                                     toolAgent.includes(variant) || variant.includes(toolAgent)
                                 );
+                            }
+                            
+                            // CRITICAL FIX: For risk category, if agent doesn't match but category matches, include it
+                            // This handles cases where MarketAnalyst calls risk tools (like VIX) but they should be shown for RiskAnalyst
+                            if (!matches && category === 'risk' && filterLower === 'riskanalyst') {
+                                console.log(`[Filter] Including risk tool for RiskAnalyst despite agent mismatch: "${toolAgent}" (risk tools are relevant for RiskAnalyst)`);
+                                matches = true;
                             }
                             
                             if (!matches) {

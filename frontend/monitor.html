@@ -9210,21 +9210,28 @@
             // 格式1: "1. Consensus Stance The overall..." (無換行，直接跟著內容)
             // 格式2: "1. Consensus Stance\nThe overall..." (有換行)
             // 實際格式: "1. Consensus Stance The overall market stance is BULLISH..."
+            // CRITICAL FIX: 使用更寬鬆的前瞻斷言，允許0個或多個空格/換行
             const numberedPatterns = [
                 // 匹配 "1. Consensus Stance" 格式（支持無換行，使用更寬鬆的匹配）
-                // 匹配 "1. Consensus Stance" 後面跟著內容，直到 "2. Key Insights" 或結尾
-                /(?:^|\s)1\.\s*(?:Consensus\s+Stance|Consensus|Stance)\s+([\s\S]*?)(?=\s+2\.\s+Key\s+Insights|$)/i,
+                // 前瞻斷言改為允許0個或多個空格/換行：\s* 而不是 \s+
+                /(?:^|\s)1\.\s*(?:Consensus\s+Stance|Consensus|Stance)\s+([\s\S]*?)(?=\s*(?:\n\s*)?2\.\s*Key\s*Insights|$)/i,
                 // 匹配 "2. Key Insights" 格式
-                /(?:^|\s)2\.\s*Key\s+Insights?\s+([\s\S]*?)(?=\s+3\.\s+Consensus\s+Areas|$)/i,
+                /(?:^|\s)2\.\s*Key\s*Insights?\s+([\s\S]*?)(?=\s*(?:\n\s*)?3\.\s*Consensus\s*Areas|$)/i,
                 // 匹配 "3. Consensus Areas" 格式
-                /(?:^|\s)3\.\s*Consensus\s+Areas?\s+([\s\S]*?)(?=\s+4\.\s+Disagreements|$)/i,
+                /(?:^|\s)3\.\s*Consensus\s*Areas?\s+([\s\S]*?)(?=\s*(?:\n\s*)?4\.\s*Disagreements|$)/i,
                 // 匹配 "4. Disagreements" 格式
-                /(?:^|\s)4\.\s*Disagreements?\s+([\s\S]*?)(?=\s+5\.\s+Recommended\s+Stocks|$)/i,
+                /(?:^|\s)4\.\s*Disagreements?\s+([\s\S]*?)(?=\s*(?:\n\s*)?5\.\s*Recommended\s*Stocks|$)/i,
                 // 匹配 "5. Recommended Stocks" 格式
-                /(?:^|\s)5\.\s*Recommended\s+Stocks?\s+([\s\S]*?)(?=\s+6\.\s+Final\s+Summary|$)/i,
+                /(?:^|\s)5\.\s*Recommended\s*Stocks?\s+([\s\S]*?)(?=\s*(?:\n\s*)?6\.\s*Final\s*Summary|$)/i,
                 // 匹配 "6. Final Summary" 格式
-                /(?:^|\s)6\.\s*Final\s+Summary\s+([\s\S]*?)(?=\s+\d+\.|$)/i
+                /(?:^|\s)6\.\s*Final\s*Summary\s+([\s\S]*?)(?=\s*(?:\n\s*)?\d+\.|$)/i
             ];
+            
+            // CRITICAL FIX: 添加詳細的調試日誌
+            console.log('[Coordinator Parse] Starting parse, original text length:', text.length);
+            console.log('[Coordinator Parse] Original text preview (first 500 chars):', text.substring(0, 500));
+            console.log('[Coordinator Parse] Clean text length:', cleanText.length);
+            console.log('[Coordinator Parse] Clean text preview (first 500 chars):', cleanText.substring(0, 500));
             
             const numberedMatches = [
                 cleanText.match(numberedPatterns[0]), // Consensus Stance
@@ -9235,7 +9242,7 @@
                 cleanText.match(numberedPatterns[5])  // Final Summary
             ];
             
-            // Debug: Log matches for troubleshooting
+            // Debug: Log matches for troubleshooting with detailed info
             console.log('[Coordinator Parse] Numbered matches:', {
                 consensusStance: !!numberedMatches[0],
                 keyInsights: !!numberedMatches[1],
@@ -9245,13 +9252,19 @@
                 finalSummary: !!numberedMatches[5]
             });
             
-            // Debug: Log actual matched content preview
-            if (numberedMatches[0] && numberedMatches[0][1]) {
-                console.log('[Coordinator Parse] Consensus Stance preview:', numberedMatches[0][1].substring(0, 200));
-            }
-            if (numberedMatches[1] && numberedMatches[1][1]) {
-                console.log('[Coordinator Parse] Key Insights preview:', numberedMatches[1][1].substring(0, 200));
-            }
+            // Debug: Log actual matched content preview and length
+            const matchNames = ['Consensus Stance', 'Key Insights', 'Consensus Areas', 'Disagreements', 'Recommended Stocks', 'Final Summary'];
+            numberedMatches.forEach((match, index) => {
+                if (match && match[1]) {
+                    console.log(`[Coordinator Parse] ${matchNames[index]} matched:`, {
+                        length: match[1].length,
+                        preview: match[1].substring(0, 200),
+                        fullMatch: match[0].substring(0, 100)
+                    });
+                } else {
+                    console.log(`[Coordinator Parse] ${matchNames[index]} NOT matched`);
+                }
+            });
             
             if (numberedMatches[0] && numberedMatches[0][1]) {
                 sections.consensusStance = numberedMatches[0][1].trim();

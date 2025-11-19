@@ -106,7 +106,7 @@ user: |
   
   **IMPORTANT**: The "tool_calls" array MUST contain at least 2 tool calls. Do not leave it empty.
     "recommendations": ["<action 1>", "<action 2>"],
-    "recommended_stocks": ["<symbol1>", "<symbol2>", "<symbol3>", ...]  # CRITICAL: List of stock symbols you recommend for trading. Can be empty if no good opportunities. Use your judgment based on market analysis, sector rotation, technical indicators, and fundamental data. Do NOT limit the number - recommend as many as you find attractive. Include both long positions (regular stocks) and short positions (inverse ETFs like SQQQ, SPXU) if market conditions warrant.
+    "recommended_stocks": ["<symbol1>", "<symbol2>", "<symbol3>", ...]  # CRITICAL: List of stock symbols you recommend for trading. **MANDATORY**: You MUST recommend at least 5-10 stocks (mix of regular stocks and ETFs). Use your judgment based on market analysis, sector rotation, technical indicators, and fundamental data. **Do NOT limit the number - recommend as many as you find attractive (aim for 5-10 stocks minimum)**. Include both long positions (regular stocks like GOOGL, TSLA, MNST, VRTX, etc.) and short positions (inverse ETFs like SQQQ, SPXU) if market conditions warrant. **IMPORTANT**: Include a diverse mix of stocks from different sectors to provide good trading opportunities.
   }
   
   **CRITICAL: Stock Recommendations:**

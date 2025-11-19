@@ -4452,6 +4452,25 @@
             // This ensures all analyst conversations are displayed, regardless of round number
             // Process conversations in reverse order to get the most recent entries first
             const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'TraderAgent', 'RiskAnalyst'];
+            console.log('[Conversations] Checking conversations array for DiscussionCoordinator...');
+            const coordinatorInConversations = conversations.filter(c => {
+                const agent = (c.agent || '').toLowerCase();
+                return agent.includes('coordinator');
+            });
+            console.log('[Conversations] Found DiscussionCoordinator entries in conversations:', coordinatorInConversations.length);
+            if (coordinatorInConversations.length > 0) {
+                coordinatorInConversations.forEach((c, idx) => {
+                    console.log(`[Conversations] DiscussionCoordinator entry ${idx + 1}:`, {
+                        agent: c.agent,
+                        type: c.type,
+                        hasSummary: !!c.summary,
+                        hasContent: !!c.content,
+                        summaryLength: c.summary?.length || 0,
+                        contentLength: c.content?.length || 0,
+                        summaryPreview: c.summary?.substring(0, 200) || c.content?.substring(0, 200) || ''
+                    });
+                });
+            }
             const seenAnalysts = new Set(); // Track which analysts we've already processed (to avoid duplicates)
             
             // CRITICAL FIX: Process conversations in reverse order (newest first) to get the most recent analyst entries

@@ -178,9 +178,16 @@ def run_technical_analyst(
                     elif not isinstance(recommended_stocks, list):
                         recommended_stocks = []
                     
+                    # CRITICAL FIX: Filter out cryptocurrencies from recommended stocks
+                    from src.utils.etf_checker import is_crypto
                     for sym in recommended_stocks:
-                        if sym and sym.upper() not in existing_symbols and sym.upper() not in mandatory_symbols:
-                            mandatory_symbols.append(sym.upper())
+                        sym_upper = sym.upper() if sym else ""
+                        # Skip cryptocurrencies (DOGE, BTC, ETH, etc.)
+                        if sym_upper and is_crypto(sym_upper):
+                            print(f"   [MANDATORY] Skipping cryptocurrency in recommended stocks: {sym}")
+                            continue
+                        if sym and sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
+                            mandatory_symbols.append(sym_upper)
                             print(f"   [MANDATORY] Adding recommended stock: {sym}")
             
             # Add mandatory symbols to tool_calls_list
@@ -244,7 +251,13 @@ def run_technical_analyst(
                     elif not isinstance(recommended_stocks, list):
                         recommended_stocks = []
                     
+                    # CRITICAL FIX: Filter out cryptocurrencies from recommended stocks
+                    from src.utils.etf_checker import is_crypto
                     for sym in recommended_stocks:
+                        # Skip cryptocurrencies (DOGE, BTC, ETH, etc.)
+                        if sym and is_crypto(sym.upper()):
+                            print(f"   [FALLBACK] Skipping cryptocurrency in recommended stocks: {sym}")
+                            continue
                         if sym and sym not in selected_symbols:
                             selected_symbols.append(sym)
                             print(f"   [FALLBACK] Adding recommended stock: {sym}")
@@ -296,7 +309,14 @@ def run_technical_analyst(
                 for symbol, pos_info in current_positions.items():
                     if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
                         priority_symbols.append(symbol)
-            priority_symbols.extend(major_indices[:3])  # SPY, QQQ, DIA
+            # CRITICAL FIX: Ensure major_indices is defined and not None before slicing
+            # major_indices is defined at line 261 in this fallback block, so it should always exist here
+            # But add defensive check to prevent any edge cases
+            if 'major_indices' in locals() and major_indices and isinstance(major_indices, list):
+                priority_symbols.extend(major_indices[:3])  # SPY, QQQ, DIA
+            else:
+                # Fallback: use hardcoded indices if major_indices is somehow not available
+                priority_symbols.extend(["SPY", "QQQ", "DIA"])
             
             for sym in priority_symbols:
                 if tool_calls_count >= tool_budget:

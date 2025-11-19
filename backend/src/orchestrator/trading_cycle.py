@@ -2,8 +2,8 @@
 from __future__ import annotations
 from typing import Dict, Any, List, Tuple, Optional
 from datetime import date, timedelta, datetime, timezone, time as dt_time
-from pathlib import Path  # 统一在文件顶部导入，避免函数内部重复导入导致的作用域问题
-import json  # 用于加载 portfolio_state.json
+from pathlib import Path  # Import at file top to avoid scope issues from repeated imports in functions
+import json  # For loading portfolio_state.json
 
 # CRITICAL: Helper function to get project root data/logs directory
 # This ensures all trading cycle operations use the same path regardless of working directory
@@ -15,53 +15,53 @@ def _get_project_logs_dir() -> Path:
     logs_dir.mkdir(parents=True, exist_ok=True)
     return logs_dir
 
-# --- Market: 批次抓價 + 指標 ---
+# --- Market: Batch price fetching + indicators ---
 from src.tools.market_tools import fetch_market_batch
 
-# --- Analyst Discussion: 使用优化的并行版本（默认） ---
+# --- Analyst Discussion: Use optimized parallel version (default) ---
 # Note: multi_analyst_system_parallel internally uses functions from multi_analyst_system,
 # so we don't import run_multi_analyst_discussion directly here
 from src.agents.multi_analyst_system_parallel import run_multi_analyst_discussion_parallel
 
-# --- Risk Analyst: 評估倉位風險 (LLM-powered) ---
+# --- Risk Analyst: Assess position risk (LLM-powered) ---
 from src.agents.risk_analyst_llm import run_risk_analyst_llm
 
-# --- Trader Agent: 交易決策 ---
+# --- Trader Agent: Trading decisions ---
 from src.agents.trader_agent import run_trader
 
-# --- Portfolio: 持倉管理 ---
+# --- Portfolio: Position management ---
 from src.data.portfolio import Portfolio
 
-# --- Trade Logger: 交易記錄 ---
+# --- Trade Logger: Trade logging ---
 from src.data.trade_log import TradeLogger
 
 
 def _default_universe() -> List[str]:
     """
-    加载完整的股票universe（默认从config.json加载）
-    如果config.json中有universe字段，使用它；否则使用最小预设
+    Load complete stock universe (default: load from config.json)
+    If universe field exists in config.json, use it; otherwise use minimal preset
     """
     try:
-        # 尝试从config.json加载完整的universe
+        # Try to load complete universe from config.json
         config_file = Path(__file__).parent.parent.parent / "config" / "config.json"
         if config_file.exists():
             with config_file.open("r", encoding="utf-8") as f:
                 config_data = json.load(f)
-                # config.json中universe字段
+                # universe field in config.json
                 if "universe" in config_data and isinstance(config_data["universe"], list):
                     symbols = config_data["universe"]
                     if symbols and len(symbols) > 0:
                         print(f"[UNIVERSE] Loaded {len(symbols)} symbols from config.json")
                         return symbols
         
-        # 也尝试从universe.json加载（如果存在）
+        # Also try to load from universe.json (if exists)
         universe_file = Path(__file__).parent.parent.parent / "config" / "universe.json"
         if universe_file.exists():
             with universe_file.open("r", encoding="utf-8") as f:
                 universe_data = json.load(f)
-                # universe.json格式可能是 {"nasdaq100": [...]} 或直接是列表
+                # universe.json format may be {"nasdaq100": [...]} or directly a list
                 if isinstance(universe_data, dict):
-                    # 尝试不同的key
+                    # Try different keys
                     for key in ["nasdaq100", "symbols", "universe", "stocks"]:
                         if key in universe_data and isinstance(universe_data[key], list):
                             symbols = universe_data[key]
@@ -75,13 +75,13 @@ def _default_universe() -> List[str]:
     except Exception as e:
         print(f"[UNIVERSE WARN] Failed to load universe from config: {e}")
     
-    # Fallback: 最小预设（仅用于测试）
+    # Fallback: Minimal preset (for testing only)
     print("[UNIVERSE WARN] Using minimal default universe (5 stocks)")
     return ["NVDA", "MSFT", "AAPL", "AMZN", "GOOGL"]
 
 
 def _default_window() -> Tuple[str, str]:
-    # 預設近 180 天
+    # Default: last 180 days
     end = date.today()
     start = end - timedelta(days=180)
     return (start.isoformat(), end.isoformat())
@@ -89,10 +89,10 @@ def _default_window() -> Tuple[str, str]:
 
 def _get_order_date(order: Dict[str, Any]) -> Optional[str]:
     """
-    从订单中提取日期（优先从placed_at提取，兼容旧的order_date字段）
+    Extract date from order (prefer placed_at, compatible with old order_date field)
     
-    返回:
-    - 订单日期 (YYYY-MM-DD) 或 None
+    Returns:
+    - Order date (YYYY-MM-DD) or None
     """
     placed_at = order.get("placed_at", "")
     if placed_at:
@@ -100,7 +100,7 @@ def _get_order_date(order: Dict[str, Any]) -> Optional[str]:
             return datetime.fromisoformat(placed_at.replace('Z', '+00:00').replace('+00:00', '')).date().isoformat()
         except:
             pass
-    # 兼容旧的order_date字段
+    # Compatible with old order_date field
     return order.get("order_date")
 
 
@@ -112,7 +112,7 @@ def _top_by_signal(stocks: Dict[str, Dict[str, float]], k: int = 5) -> List[Tupl
         except Exception:
             sc = float("nan")
         items.append((s, sc))
-    # NaN 排後
+    # NaN sorted last
     items.sort(key=lambda x: (float("-inf") if x[1] != x[1] else x[1]), reverse=True)
     return [(s, sc) for s, sc in items[:k] if sc == sc]
 
@@ -131,15 +131,15 @@ def execute_daily_trade(
     trade_logger: Optional[TradeLogger] = None,
 ) -> Dict[str, Any]:
     """
-    單日交易流程（集成 Portfolio 和 Risk Analyst）：
-      1) Market：抓取 universe 的 OHLCV + 指標（fetch_market_batch）
-      2) Analyst Discussion：若資訊不足自動用工具補齊（news_scan / vix_term / fear_greed）
-      3) Risk Analyst：評估當前倉位風險，提出倉位控管報告
-      4) Trader：依最終 stance + VIX 風險 + Risk Report 做 BUY/HOLD/SELL 建議（包含價格和數量）
-      5) 執行交易：更新 Portfolio 並記錄 Trade Logger
+    Daily trading flow (integrated with Portfolio and Risk Analyst):
+      1) Market: Fetch universe OHLCV + indicators (fetch_market_batch)
+      2) Analyst Discussion: Auto-complete missing info with tools (news_scan / vix_term / fear_greed)
+      3) Risk Analyst: Assess current position risk, provide position control report
+      4) Trader: Make BUY/HOLD/SELL recommendations based on final stance + VIX risk + Risk Report (including price and quantity)
+      5) Execute trades: Update Portfolio and log to Trade Logger
     """
 
-    # ---- 參數預設 ----
+    # ---- Parameter defaults ----
     # CRITICAL FIX: Load config values first, then override with function parameters if provided
     from src.utils.config_loader import load_config
     config = load_config()
@@ -184,16 +184,16 @@ def execute_daily_trade(
     if preferred_domains is None:
         preferred_domains = []
 
-    # ---- (1) 市場層 ----
-    # fetch_market_batch 是 LangChain StructuredTool，需要使用 .invoke() 调用
-    # 注意：fetch_market_batch 只接受 symbols, start, end 三个参数
-    # CRITICAL: 确保 end 参数正确设置（用于获取市场数据）
-    # 如果 end 是 None（实时模式），使用昨天的日期（因为今天的数据可能还不完整）
-    # 如果 end 是特定日期（规划模式），使用该日期
+    # ---- (1) Market layer ----
+    # fetch_market_batch is a LangChain StructuredTool, need to use .invoke() to call
+    # Note: fetch_market_batch only accepts symbols, start, end three parameters
+    # CRITICAL: Ensure end parameter is set correctly (for fetching market data)
+    # If end is None (real-time mode), use yesterday's date (because today's data may be incomplete)
+    # If end is a specific date (planning mode), use that date
     market_data_end = end if end else (date.today() - timedelta(days=1)).isoformat()
     
-    # CRITICAL FIX: 如果 start == end（单天查询），自动扩展 start 到 7 天前
-    # 这样可以确保 yfinance 能正确获取数据（单天查询经常失败）
+    # CRITICAL FIX: If start == end (single-day query), automatically extend start to 7 days before
+    # This ensures yfinance can correctly fetch data (single-day queries often fail)
     if start == market_data_end:
         end_dt = datetime.fromisoformat(market_data_end.split('T')[0]) if isinstance(market_data_end, str) else market_data_end
         start_dt = end_dt - timedelta(days=7)
@@ -217,22 +217,22 @@ def execute_daily_trade(
         print(f"[TRADING CYCLE] Market data fetched successfully: {stocks_count} stocks")
         if stocks_count < len(universe):
             print(f"[TRADING CYCLE] ⚠️  WARNING: Fetched {stocks_count} stocks but universe has {len(universe)} symbols")
-            # 显示哪些股票没有被获取
+            # Show which stocks were not fetched
             fetched_symbols = set(market_view.get('stocks', {}).keys())
             missing_symbols = [s for s in universe if s not in fetched_symbols]
             if missing_symbols:
                 print(f"[TRADING CYCLE] ⚠️  Missing symbols (first 10): {missing_symbols[:10]}")
     except Exception as e:
         print(f"[TRADING CYCLE] Failed to fetch market data: {e}")
-        # 如果获取失败，返回错误信息
+        # If fetch fails, return error message
         raise Exception(f"Failed to fetch market data: {e}")
-    # market_view 典型：
+    # market_view typical structure:
     # {
     #   "stocks": {SYM: {price, change_pct, rsi14, macd, bb_pos, signal_score, ...}, ...},
     #   "vix": {"level": ..., "chg_1d": ..., "zscore": ...}
     # }
 
-    # ---- (1b) 輕量 enriched 給討論層 ----
+    # ---- (1b) Lightweight enriched data for discussion layer ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
     print(f"[TRADING CYCLE] Stocks available for analysis: {len(symbols)} symbols (ALL symbols will be analyzed)")
@@ -240,35 +240,35 @@ def execute_daily_trade(
         print(f"[TRADING CYCLE] Stock symbols: {symbols}")
     else:
         print(f"[TRADING CYCLE] Stock symbols (first 10): {symbols[:10]} ... (and {len(symbols) - 10} more)")
-    # CRITICAL FIX: 移除 signal_score 自动排序
-    # signal_score 现在由 agent 自行判断，不再自动计算和排序
-    # 仍然保留 signal_score 字段（在 market_tools.py 中计算），但不再用于自动筛选
-    signal_top = []  # 不再使用 signal_score 排序
+    # CRITICAL FIX: Remove signal_score auto-sorting
+    # signal_score is now judged by agents themselves, no longer auto-calculated and sorted
+    # Still keep signal_score field (calculated in market_tools.py), but no longer used for auto-filtering
+    signal_top = []  # No longer using signal_score sorting
     print(f"[TRADING CYCLE] {len(stocks)} stocks available (signal_score judgment by agents, not auto-sorted)")
     
-    # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
-    # CRITICAL FIX: 使用 fallback 推荐（实际推荐会在 multi_analyst_system 中由 LLM 生成）
+    # ---- (1c) Market Analyst: Evaluate all universe stocks, generate recommendation list ----
+    # CRITICAL FIX: Use fallback recommendations (actual recommendations will be generated by LLM in multi_analyst_system)
     from src.tools.market_analyst import run_market_analyst
     market_analysis = run_market_analyst(market_view)
     recommended_stocks_fallback = market_analysis.get("recommended_stocks", [])
 
     enriched_market: Dict[str, Any] = {
         "symbols": symbols,
-        # 交給 discussion 自動補：vix_term / fear_greed / news
-        "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
+        # Let discussion auto-complete: vix_term / fear_greed / news
+        "vix_term": market_view.get("vix_term"),      # If calculated in market layer later, can also be passed in
         "fear_greed": market_view.get("fear_greed"),
         "news": None,
-        # CRITICAL FIX: signal_score_top 已移除，signal_score 由 agent 自行判断
-        # "signal_score_top": signal_top,  # 不再使用
+        # CRITICAL FIX: signal_score_top removed, signal_score judged by agent itself
+        # "signal_score_top": signal_top,  # No longer used
         "stocks": stocks,
         "vix": market_view.get("vix"),
-        "recommended_stocks": recommended_stocks_fallback,  # Fallback推荐（实际推荐会在 multi_analyst_system 中更新）
-        "market_sentiment": market_analysis.get("market_sentiment", "neutral"),  # 添加市場情緒
+        "recommended_stocks": recommended_stocks_fallback,  # Fallback recommendations (actual recommendations will be updated in multi_analyst_system)
+        "market_sentiment": market_analysis.get("market_sentiment", "neutral"),  # Add market sentiment
     }
 
-    # ---- 初始化 Portfolio 和 Trade Logger（如果未提供）----
+    # ---- Initialize Portfolio and Trade Logger (if not provided) ----
     if portfolio is None:
-        # CRITICAL: 尝试从 portfolio_state.json 加载现有状态，而不是创建新的空 Portfolio
+        # CRITICAL: Try to load existing state from portfolio_state.json, instead of creating new empty Portfolio
         # CRITICAL: Use project root data/logs directory explicitly
         portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
         if portfolio_file.exists():
@@ -279,7 +279,7 @@ def execute_daily_trade(
                     cash=float(state.get("cash", 10000.0)),
                     initial_value=float(state.get("initial_value", 10000.0)),
                 )
-                # 恢复持仓
+                # Restore positions
                 from src.data.portfolio import Position
                 for symbol, pos_info in state.get("positions", {}).items():
                     if isinstance(pos_info, dict):
@@ -305,7 +305,7 @@ def execute_daily_trade(
     if trade_logger is None:
         trade_logger = TradeLogger()
 
-    # ---- 最新收盤價（用於多處）----
+    # ---- Latest closing price (used in multiple places) ----
     last_prices = {}
     for s, d in stocks.items():
         try:
@@ -336,21 +336,21 @@ def execute_daily_trade(
                 except (TypeError, ValueError):
                     last_prices[symbol] = float(pos.avg_cost)
 
-    # ---- (1.5) 加載歷史記憶（長短記憶）----
+    # ---- (1.5) Load historical memories (short and long term) ----
     historical_memories = []
     try:
         from src.data.memory_manager import MemoryManager
         # CRITICAL: Use project root data/logs directory explicitly
         memory_manager = MemoryManager(root=str(_get_project_logs_dir()))
-        # 加載最近5天的記憶摘要（短期記憶）
+        # Load memory summaries from last 5 days (short-term memory)
         historical_memories = memory_manager.load_recent_memories(
             days=5,
             end_date=end if end else None,
-            summary_only=True,  # 只加載摘要，減少 prompt 長度
+            summary_only=True,  # Only load summaries, reduce prompt length
         )
         if historical_memories:
             print(f"[MEMORY] ✅ Loaded {len(historical_memories)} historical memories for context")
-            # 显示记忆日期范围
+            # Show memory date range
             if len(historical_memories) > 0:
                 dates = [m.get("date", "N/A") for m in historical_memories]
                 print(f"[MEMORY] 📅 Memory dates: {', '.join(dates)}")
@@ -358,35 +358,35 @@ def execute_daily_trade(
             print(f"[MEMORY] ⚠️ No historical memories found (agents should use memory tools to retrieve past decisions)")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to load historical memories: {e}")
-        # 不影響主流程，繼續執行
+        # Does not affect main flow, continue execution
 
-    # ---- (2) 检查当前订单状态（传递给agent）----
+    # ---- (2) Check current order status (pass to agent) ----
     from src.data.order_manager import OrderManager
     # CRITICAL: Use project root data/logs directory explicitly
     order_manager = OrderManager(root=str(_get_project_logs_dir()))
     
-    # 检查市场是否开盘（用于确定订单日期，排除周末和节假日）
-    # CRITICAL FIX: 传入 None 让函数直接获取美东时间，避免时区转换错误
+    # Check if market is open (for determining order date, exclude weekends and holidays)
+    # CRITICAL FIX: Pass None to let function directly get Eastern time, avoid timezone conversion errors
     from src.utils.trading_days import is_market_open as check_market_open
     now = datetime.now()
-    is_market_open = check_market_open(None)  # 传入 None 直接获取美东时间
+    is_market_open = check_market_open(None)  # Pass None to directly get Eastern time
     
-    # 确定要检查的订单日期
+    # Determine order date to check
     if end:
         order_date = end
     elif is_market_open:
         order_date = date.today().isoformat()
     else:
-        # 收盘后：检查明天的订单
+        # After market close: check tomorrow's orders
         tomorrow = date.today() + timedelta(days=1)
         while tomorrow.weekday() >= 5:
             tomorrow += timedelta(days=1)
         order_date = tomorrow.isoformat()
     
-    # 获取pending和filled订单
+    # Get pending and filled orders
     pending_orders = order_manager.load_pending_orders(order_date=order_date)
     
-    # 获取filled订单
+    # Get filled orders
     filled_orders = []
     # CRITICAL: Use project root data/logs directory explicitly
     filled_file = _get_project_logs_dir() / "filled_orders.jsonl"
@@ -401,7 +401,7 @@ def execute_daily_trade(
         except Exception:
             pass
     
-    # 准备订单状态信息
+    # Prepare order status information
     order_status = {
         "pending_count": len(pending_orders),
         "filled_count": len(filled_orders),
@@ -413,10 +413,10 @@ def execute_daily_trade(
     if pending_orders or filled_orders:
         print(f"[TRADING CYCLE] Order status for {order_date}: {len(pending_orders)} pending, {len(filled_orders)} filled")
     
-    # ---- (3) 多Analyst討論層 ----
-    # 运行多个专门的分析师：Market, Technical, Fundamental, Sentiment
-    # 注意：这里先准备仓位信息（在订单结算之前），但会在订单结算后更新
-    # 为了确保讨论系统也能看到当前仓位，我们先准备一个初步的仓位信息
+    # ---- (3) Multi-Analyst discussion layer ----
+    # Run multiple specialized analysts: Market, Technical, Fundamental, Sentiment
+    # Note: Prepare position information here first (before order settlement), but will update after order settlement
+    # To ensure discussion system can also see current positions, we prepare preliminary position information first
     preliminary_positions_info = {}
     preliminary_portfolio_value = 10000.0
     if portfolio:
@@ -430,7 +430,7 @@ def execute_daily_trade(
                 "market_value": pos.quantity * current_price,
             }
     
-    # CRITICAL FIX: 计算初步可用现金（根据模式决定是否应用现金储备）
+    # CRITICAL FIX: Calculate preliminary available cash (decide whether to apply cash reserve based on mode)
     # Reuse config loaded earlier (line 145)
     position_limit_mode = config.get("position_limit_mode", "auto")
     min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
@@ -446,19 +446,36 @@ def execute_daily_trade(
         preliminary_available_cash = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
         print(f"[TRADING CYCLE] Cash reserve ENABLED (configured mode): reserve={MIN_CASH_RESERVE_RATIO:.1%}, available=${preliminary_available_cash:.2f}")
     
-    # CRITICAL FIX: 使用四个独立 Analyst 的版本，确保每个 analyst 都有工具调用和 summary
-    # 获取当前仓位信息（用于 analyst 分析）
+    # CRITICAL FIX: Use version with four independent Analysts, ensure each analyst has tool calls and summary
+    # Get current position information (for analyst analysis)
+    # CRITICAL: Include complete position information (current_price, market_value, unrealized_pnl) for agent analysis
     current_positions = {}
     if portfolio:
         # FIX: Use _positions instead of positions property (positions returns Dict[str, int], _positions returns Dict[str, Position])
+        # CRITICAL: Calculate current_price from market_view to provide complete position information
         for symbol, pos in portfolio._positions.items():
+            # Get current price from market_view (if available) or use avg_cost as fallback
+            current_price = pos.avg_cost  # Default fallback
+            if market_view and "stocks" in market_view:
+                stock_data = market_view["stocks"].get(symbol, {})
+                if isinstance(stock_data, dict) and "price" in stock_data:
+                    current_price = stock_data["price"]
+            
+            market_value = pos.quantity * current_price
+            unrealized_pnl = (current_price - pos.avg_cost) * pos.quantity
+            unrealized_pnl_pct = ((current_price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0
+            
             current_positions[symbol] = {
                 "quantity": pos.quantity,
                 "avg_cost": pos.avg_cost,
                 "total_cost": pos.total_cost,
+                "current_price": current_price,  # CRITICAL: Include current price
+                "market_value": market_value,  # CRITICAL: Include market value
+                "unrealized_pnl": unrealized_pnl,  # CRITICAL: Include unrealized P&L
+                "unrealized_pnl_pct": unrealized_pnl_pct,  # CRITICAL: Include unrealized P&L percentage
             }
     
-    # 获取订单状态（用于 analyst 分析）
+    # Get order status (for analyst analysis)
     order_status = None
     if trade_logger:
         try:
@@ -471,28 +488,28 @@ def execute_daily_trade(
         except:
             order_status = None
     
-    # CRITICAL FIX: 计算 portfolio_value（使用 market_view 中的价格）
+    # CRITICAL FIX: Calculate portfolio_value (using prices from market_view)
     portfolio_value = None
     if portfolio:
-        # 从 market_view 中提取价格
+        # Extract prices from market_view
         last_prices = {}
         if market_view and "stocks" in market_view:
             for symbol, stock_data in market_view["stocks"].items():
                 if isinstance(stock_data, dict) and "price" in stock_data:
                     last_prices[symbol] = stock_data["price"]
         
-        # 如果有价格数据，使用 portfolio.value() 计算总净值
+        # If price data available, use portfolio.value() to calculate total value
         if last_prices:
             portfolio_value = portfolio.value(last_prices)
         else:
-            # 如果没有价格数据，使用现金 + 初始净值作为近似值
+            # If no price data, use cash + initial value as approximation
             portfolio_value = portfolio.cash + portfolio.initial_value
     
     # CRITICAL: Use optimized parallel version as default (direct integration)
     print("[TRADING CYCLE] ✅ Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
-    # CRITICAL FIX: 传递 historical_memories 和 rounds 给 discussion system
+    # CRITICAL FIX: Pass historical_memories and rounds to discussion system
     convo = run_multi_analyst_discussion_parallel(
-        market_view=market_view,  # 传入完整的market_view
+        market_view=market_view,  # Pass complete market_view
         use_tools=auto_tools,
         tool_budget=tool_budget,
         order_status=order_status,
@@ -500,13 +517,13 @@ def execute_daily_trade(
         portfolio_value=portfolio_value,
         available_cash=portfolio.cash if portfolio else None,
         enable_parallel=True,
-        historical_memories=historical_memories,  # 传递历史记忆
+        historical_memories=historical_memories,  # Pass historical memories
         rounds=rounds,  # CRITICAL FIX: Pass rounds parameter for multi-round discussion
     )
     final_stance = convo.get("final_stance", "neutral")
     
-    # CRITICAL FIX: 从 multi_analyst_system 的 Market Analyst LLM 输出中提取推荐股票
-    # 优先使用 LLM 的推荐，如果没有则使用 fallback
+    # CRITICAL FIX: Extract recommended stocks from Market Analyst LLM output in multi_analyst_system
+    # Prefer LLM recommendations, use fallback if not available
     # CRITICAL FIX: Filter out ETFs and invalid symbols from recommended stocks
     from src.utils.etf_checker import is_etf
     
@@ -514,7 +531,7 @@ def execute_daily_trade(
     analyst_reports = convo.get("analyst_reports", {})
     market_analyst_report = analyst_reports.get("market", {})
     if market_analyst_report:
-        # 尝试从 Market Analyst 的响应中提取 recommended_stocks
+        # Try to extract recommended_stocks from Market Analyst response
         raw_recommended = market_analyst_report.get("recommended_stocks", [])
         if raw_recommended:
             # CRITICAL FIX: Filter out ETFs and invalid symbols
@@ -524,11 +541,16 @@ def execute_daily_trade(
                 raw_recommended = []
             
             filtered_recommended = []
+            from src.utils.etf_checker import is_crypto
             for sym in raw_recommended:
                 sym_upper = str(sym).upper().strip()
                 # Skip empty or invalid format
                 if not sym_upper or len(sym_upper) > 10 or not sym_upper.replace(".", "").replace("-", "").isalnum():
                     print(f"[TRADING CYCLE] ⚠️ Skipping invalid symbol format in recommended stocks: {sym}")
+                    continue
+                # Skip cryptocurrencies (DOGE, BTC, ETH, etc.)
+                if is_crypto(sym_upper):
+                    print(f"[TRADING CYCLE] ⚠️ Skipping cryptocurrency in recommended stocks: {sym_upper}")
                     continue
                 # Skip ETFs
                 if is_etf(sym_upper):
@@ -540,7 +562,7 @@ def execute_daily_trade(
             if recommended_stocks_from_llm:
                 print(f"[TRADING CYCLE] ✅ Using LLM recommended stocks from Market Analyst: {len(recommended_stocks_from_llm)} stocks (filtered from {len(raw_recommended)} raw recommendations)")
                 print(f"[TRADING CYCLE]   Recommended stocks: {recommended_stocks_from_llm[:10]}...")
-                # 更新 enriched_market 中的推荐股票
+                # Update recommended stocks in enriched_market
                 enriched_market["recommended_stocks"] = recommended_stocks_from_llm
             else:
                 print(f"[TRADING CYCLE] ⚠️ All recommended stocks were filtered out (ETFs/invalid), using fallback")
@@ -549,17 +571,17 @@ def execute_daily_trade(
     else:
         print(f"[TRADING CYCLE] ⚠️  Market Analyst report not found in analyst_reports, using fallback")
 
-    # 將對話寫入 discussion_actions.jsonl（供前端顯示）
-    # CRITICAL FIX: 将 convo_file 和 trade_date_str 定义移到 try 块外，确保 RiskAnalyst 和 TraderAgent 写入可以访问
+    # Write conversations to discussion_actions.jsonl (for frontend display)
+    # CRITICAL FIX: Move convo_file and trade_date_str definitions outside try block, ensure RiskAnalyst and TraderAgent writes can access
     # CRITICAL: Use project root data/logs directory explicitly
     logs_dir = _get_project_logs_dir()
     convo_file = logs_dir / "discussion_actions.jsonl"
     
-    # 獲取交易日期（使用 end 參數，如果沒有則使用今天）
+    # Get trade date (use end parameter, if not available use today)
     trade_date = end if end else date.today().isoformat()
     if isinstance(trade_date, str):
-        # 確保是 YYYY-MM-DD 格式
-        # CRITICAL FIX: datetime 已在文件顶部导入，直接使用
+        # Ensure YYYY-MM-DD format
+        # CRITICAL FIX: datetime already imported at file top, use directly
         try:
             trade_date_obj = datetime.strptime(trade_date, "%Y-%m-%d").date()
             trade_date_str = trade_date_obj.isoformat()
@@ -569,15 +591,15 @@ def execute_daily_trade(
         trade_date_str = date.today().isoformat()
     
     try:
-        # Path 已经在文件顶部导入，不需要重复导入
+        # Path already imported at file top, no need to re-import
         import os
         
         transcript = convo.get("transcript", [])
         tool_context = convo.get("tool_context", [])
         actions = convo.get("actions", [])
         
-        # 寫入每一輪對話
-        # CRITICAL FIX: json 已在文件顶部导入，确保在 try 块外可以访问
+        # Write each round's conversation
+        # CRITICAL FIX: json already imported at file top, ensure accessible outside try block
         
         # CRITICAL FIX: Parse transcript array to extract individual analyst analyses
         # Transcript format: ["--- Market Analyst ---\nStance: ...\nAnalysis: ...", "--- Technical Analyst ---\n...", ...]
@@ -663,8 +685,8 @@ def execute_daily_trade(
                         "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                         "type": "discussion",
                         "stance": stance,
-                        "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
-                        "tools_used": tools_used,  # CRITICAL FIX: 确保 tools_used 被正确存储
+                        "summary": analysis,  # CRITICAL FIX: Add separate summary field for frontend use
+                        "tools_used": tools_used,  # CRITICAL FIX: Ensure tools_used is correctly stored
                     }
                     
                     with convo_file.open("a", encoding="utf-8") as f:
@@ -673,8 +695,8 @@ def execute_daily_trade(
                 else:
                     print(f"[TRADING CYCLE] Skipped {agent_name} from transcript (already written from discussion_history)")
         
-        # CRITICAL FIX: 确保从 discussion_history 中提取四个 analyst 的结果
-        # 如果 discussion_history 为空，尝试从 analyst_reports 中构建
+        # CRITICAL FIX: Ensure extraction of four analyst results from discussion_history
+        # If discussion_history is empty, try to build from analyst_reports
         discussion_history = convo.get("discussion_history", [])
         
         # CRITICAL FIX: Extract recommended_stocks from analyst_reports for MarketAnalyst
@@ -729,7 +751,7 @@ def execute_daily_trade(
                     }
                     analyst_name = analyst_name_map.get(analyst_key, analyst_key.title() + " Analyst")
                     
-                    # 从 tool_calls 中提取该 analyst 使用的工具
+                    # Extract tools used by this analyst from tool_calls
                     tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst", "").lower() == analyst_key]
                     
                     # 确保有 analysis（summary）
@@ -790,26 +812,27 @@ def execute_daily_trade(
                     stance = entry_data.get("stance", "neutral")
                     analysis = entry_data.get("analysis", entry_data.get("summary", "No analysis provided"))
                     
-                    # CRITICAL FIX: Get round number from entry_data if available (for multi-round discussion)
-                    coordinator_round = entry_data.get("round", 0)
+                    # CRITICAL FIX: Always use round: 0 for frontend display (frontend filters for round === 0)
+                    coordinator_round = entry_data.get("round", 0)  # Keep original round for reference
                     
                     entry = {
                         "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                         "date": trade_date_str,
-                        "agent": "DiscussionCoordinator",  # 统一使用 DiscussionCoordinator
-                        "round": coordinator_round,  # CRITICAL FIX: Use round number from entry_data
+                        "agent": "DiscussionCoordinator",  # Use DiscussionCoordinator uniformly
+                        "round": 0,  # CRITICAL FIX: Always use 0 for frontend display (frontend filters for round === 0)
+                        "original_round": coordinator_round,  # CRITICAL FIX: Preserve original round number for reference
                         "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                         "type": "discussion",
                         "stance": stance,
-                        "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
-                        "tools_used": entry_data.get("tools_used", []),  # CRITICAL FIX: 确保 tools_used 被正确存储
+                        "summary": analysis,  # CRITICAL FIX: Add separate summary field for frontend use
+                        "tools_used": entry_data.get("tools_used", []),  # CRITICAL FIX: Ensure tools_used is correctly stored
                     }
                     with convo_file.open("a", encoding="utf-8") as f:
                         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
                     print(f"[TRADING CYCLE] Wrote Coordinator from discussion_history (stance: {stance})")
                 else:
                     print(f"[TRADING CYCLE] Skipped duplicate Coordinator in discussion_history: {analyst_name}")
-                continue  # 跳过，不重复处理
+                continue  # Skip, don't process duplicates
             
             stance = entry_data.get("stance", "neutral")
             analysis = entry_data.get("analysis", "No analysis provided")
@@ -820,19 +843,21 @@ def execute_daily_trade(
             if agent_name == "MarketAnalyst" and not recommended_stocks and market_recommended_stocks:
                 recommended_stocks = market_recommended_stocks
             
-            # CRITICAL FIX: Get round number from entry_data if available (for multi-round discussion)
-            round_num = entry_data.get("round", 0)
+            # CRITICAL FIX: Always use round: 0 for frontend display (frontend filters for round === 0)
+            # Round information is preserved in discussion_history if needed for analysis
+            round_num = entry_data.get("round", 0)  # Keep original round for reference
             
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "date": trade_date_str,
                 "agent": agent_name,
-                "round": round_num,  # CRITICAL FIX: Use round number from entry_data
+                "round": 0,  # CRITICAL FIX: Always use 0 for frontend display (frontend filters for round === 0)
+                "original_round": round_num,  # CRITICAL FIX: Preserve original round number for reference
                 "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                 "type": "discussion",
                 "stance": stance,
-                "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
-                "tools_used": tools_used,  # CRITICAL FIX: 确保 tools_used 被正确存储
+                "summary": analysis,  # CRITICAL FIX: Add separate summary field for frontend use
+                "tools_used": tools_used,  # CRITICAL FIX: Ensure tools_used is correctly stored
             }
             
             # CRITICAL FIX: Add recommended_stocks field for MarketAnalyst (for frontend filtering)

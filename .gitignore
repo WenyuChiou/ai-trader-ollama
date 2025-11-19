@@ -70,9 +70,11 @@ Thumbs.db
 
 # Project specific
 data/logs/*.jsonl
+data/logs/*.json
 data/logs/*.log
 data/logs/*backup*.json
 data/logs/portfolio_state_backup_*.json
+data/logs/memory/
 *.db
 *.sqlite
 

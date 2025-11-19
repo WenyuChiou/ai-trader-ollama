@@ -4591,11 +4591,37 @@
                         if (agentName === 'DiscussionCoordinator') {
                             const coordinatorSummary = summary.summary || '';
                             
-                            // 检查是否包含合并格式（"Market Analyst: ... | Technical Analyst: ..."）
-                            // 方法：先按 "|" 分割，然后检查每个部分是否以 agent 名称开头
-                            if (coordinatorSummary.includes(' | ') || coordinatorSummary.match(/(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):/i)) {
-                                const parts = coordinatorSummary.split(/\s*\|\s*/);
+                            // CRITICAL FIX: 支持多种格式：
+                            // 1. "Market Analyst: ... | Technical Analyst: ..." (管道分隔)
+                            // 2. Markdown格式: "**Market Analyst** ... **Technical Analyst** ..." (粗体标题)
+                            // 3. 编号列表格式: "1. Market Analyst: ... 2. Technical Analyst: ..."
+                            
+                            // 检查是否包含合并格式（管道分隔或Markdown格式）
+                            const hasPipeFormat = coordinatorSummary.includes(' | ');
+                            const hasColonFormat = coordinatorSummary.match(/(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):/i);
+                            const hasMarkdownFormat = coordinatorSummary.match(/\*\*(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\*\*/i);
+                            
+                            if (hasPipeFormat || hasColonFormat || hasMarkdownFormat) {
                                 const extractedAgents = new Set(); // 用于跟踪已提取的 agent，避免重复
+                                
+                                // CRITICAL FIX: 支持多种格式的解析
+                                let parts = [];
+                                if (hasPipeFormat) {
+                                    // 格式1: 管道分隔 "Agent: content | Agent: content"
+                                    parts = coordinatorSummary.split(/\s*\|\s*/);
+                                } else if (hasMarkdownFormat) {
+                                    // 格式2: Markdown格式 "**Agent** content **Agent** content"
+                                    // 使用正则表达式分割，匹配 "**Agent Name**" 后跟内容，直到下一个 "**Agent Name**" 或结尾
+                                    const markdownPattern = /\*\*(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\*\*\s*([\s\S]*?)(?=\*\*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\*\*|$)/gi;
+                                    const matches = [...coordinatorSummary.matchAll(markdownPattern)];
+                                    parts = matches.map(match => `${match[1]}: ${match[2].trim()}`);
+                                } else {
+                                    // 格式3: 冒号格式 "Agent: content Agent: content" (无管道分隔)
+                                    // 使用正则表达式匹配，找到所有 "Agent Name: content" 模式
+                                    const colonPattern = /(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*([\s\S]*?)(?=(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):|$)/gi;
+                                    const matches = [...coordinatorSummary.matchAll(colonPattern)];
+                                    parts = matches.map(match => `${match[1]}: ${match[2].trim()}`);
+                                }
                                 
                                 parts.forEach(part => {
                                     const trimmedPart = part.trim();
@@ -4603,11 +4629,11 @@
                                     
                                     // CRITICAL FIX: 匹配 "Agent Name: content" 格式，使用贪婪匹配确保获取完整内容
                                     // 先尝试匹配带冒号的格式
-                                    let agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*(.+)$/i);
+                                    let agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)(?:\s*\([^)]+\))?:\s*(.+)$/i);
                                     
                                     // 如果没有匹配到，尝试匹配不带冒号的格式（可能格式不标准）
                                     if (!agentMatch) {
-                                        agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)\s+(.+)$/i);
+                                        agentMatch = trimmedPart.match(/^(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)(?:\s*\([^)]+\))?\s+(.+)$/i);
                                     }
                                     
                                     if (agentMatch) {
@@ -4681,7 +4707,35 @@
                         }
                         
                         if (summaryText) {
-                            html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px;">${escapeHtml(summaryText)}</div>`;
+                            // CRITICAL FIX: For DiscussionCoordinator, format Markdown and limit height with scroll
+                            if (agentName === 'DiscussionCoordinator') {
+                                // Escape HTML first
+                                let escapedText = escapeHtml(summaryText);
+                                
+                                // Convert Markdown headers to styled spans (safer than HTML tags)
+                                escapedText = escapedText.replace(/^##\s+(.+)$/gm, '<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 12px; margin-bottom: 6px; padding-top: 8px; border-top: 1px solid rgba(34, 211, 238, 0.2);">$1</div>');
+                                escapedText = escapedText.replace(/^###\s+(.+)$/gm, '<div style="font-size: 12px; font-weight: 600; color: #60a5fa; margin-top: 10px; margin-bottom: 4px;">$1</div>');
+                                
+                                // Convert bullet points to styled divs
+                                escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; padding-left: 8px; border-left: 2px solid rgba(34, 211, 238, 0.3);">• $1</div>');
+                                
+                                // Convert numbered lists
+                                escapedText = escapedText.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; padding-left: 8px;">$1. $2</div>');
+                                
+                                // Convert double newlines to spacing
+                                escapedText = escapedText.replace(/\n\n/g, '<div style="height: 8px;"></div>');
+                                
+                                // Add collapsible container with max height and scroll
+                                const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                html += `<div style="position: relative;">`;
+                                html += `<div id="${containerId}" style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding: 12px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px; max-height: 400px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${escapedText}</div>`;
+                                html += `<div style="text-align: center; margin-top: 8px;">`;
+                                html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='400px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 4px 12px; cursor: pointer;">▼ Expand</button>`;
+                                html += `</div>`;
+                                html += `</div>`;
+                            } else {
+                                html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px;">${escapeHtml(summaryText)}</div>`;
+                            }
                         }
                         
                         html += `</div>`;
@@ -4825,7 +4879,22 @@
                                             <span class="conversation-agent" style="font-weight: 600; color: #22d3ee;">${agentIcon} ${agent}</span>
                                             <span class="conversation-date" style="font-size: 12px; color: #6b7280;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
                                         </div>
-                                        ${analysisText ? `<div class="conversation-content" style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; margin-bottom: 12px;">${analysisText.includes('markdown-block') || analysisText.includes('<table') ? analysisText : escapeHtml(analysisText)}</div>` : ''}
+                                        ${analysisText ? (() => {
+                                            const isCoordinator = agent && agent.toLowerCase().includes('coordinator');
+                                            const contentHtml = analysisText.includes('markdown-block') || analysisText.includes('<table') ? analysisText : escapeHtml(analysisText);
+                                            if (isCoordinator && analysisText.length > 500) {
+                                                // For long DiscussionCoordinator content, add collapsible container
+                                                const containerId = `conv-coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                                return `<div style="position: relative;">
+                                                    <div id="${containerId}" style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; margin-bottom: 12px; max-height: 400px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px;">${contentHtml}</div>
+                                                    <div style="text-align: center; margin-top: 4px;">
+                                                        <button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='400px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 4px 12px; cursor: pointer;">▼ Expand</button>
+                                                    </div>
+                                                </div>`;
+                                            } else {
+                                                return `<div class="conversation-content" style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; margin-bottom: 12px;">${contentHtml}</div>`;
+                                            }
+                                        })() : ''}
                                         ${riskHtml}
                                     </div>
                                 `;
@@ -5062,12 +5131,12 @@
                                                 analysisText = coordinatorAnalysis;
                                             }
                                         } else {
-                                            // 如果没有 "|" 分隔符，尝试使用正则表达式匹配
-                                            const agentPattern = /(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):\s*([\s\S]+?)(?=\s*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst):|$)/gi;
-                                            const matches = [...coordinatorAnalysis.matchAll(agentPattern)];
+                                            // CRITICAL FIX: 支持Markdown格式 "**Agent Name** content" 或 "**Agent Name (Status)** content"
+                                            const markdownPattern = /\*\*(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)(?:\s*\([^)]+\))?\*\*\s*([\s\S]*?)(?=\*\*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)(?:\s*\([^)]+\))?\*\*|$)/gi;
+                                            const markdownMatches = [...coordinatorAnalysis.matchAll(markdownPattern)];
                                             
-                                            if (matches.length > 0) {
-                                                const formattedParts = matches.map((match, index) => {
+                                            if (markdownMatches.length > 0) {
+                                                const formattedParts = markdownMatches.map((match, index) => {
                                                     const agentName = match[1].trim();
                                                     const agentContent = match[2].trim();
                                                     const letter = String.fromCharCode(65 + index);
@@ -5075,7 +5144,21 @@
                                                 });
                                                 analysisText = formattedParts.join('\n\n');
                                             } else {
-                                                analysisText = coordinatorAnalysis;
+                                                // 如果没有Markdown格式，尝试使用正则表达式匹配冒号格式
+                                                const agentPattern = /(Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)(?:\s*\([^)]+\))?:\s*([\s\S]+?)(?=\s*(?:Market\s+Analyst|Technical\s+Analyst|Fundamental\s+Analyst|Sentiment\s+Analyst)(?:\s*\([^)]+\))?:|$)/gi;
+                                                const matches = [...coordinatorAnalysis.matchAll(agentPattern)];
+                                                
+                                                if (matches.length > 0) {
+                                                    const formattedParts = matches.map((match, index) => {
+                                                        const agentName = match[1].trim();
+                                                        const agentContent = match[2].trim();
+                                                        const letter = String.fromCharCode(65 + index);
+                                                        return `${letter}. ${agentName}:\n${agentContent}`;
+                                                    });
+                                                    analysisText = formattedParts.join('\n\n');
+                                                } else {
+                                                    analysisText = coordinatorAnalysis;
+                                                }
                                             }
                                         }
                                     } else {
@@ -6192,6 +6275,56 @@
             if (!resultText) return '';
             
             try {
+                // CRITICAL FIX: Special handling for get_recent_memories tool
+                if (toolName === 'get_recent_memories') {
+                    let memoriesData = resultText;
+                    // Handle nested ok/result structure
+                    if (typeof memoriesData === 'object' && memoriesData.ok !== undefined && memoriesData.result !== undefined) {
+                        memoriesData = memoriesData.result;
+                    }
+                    // Handle string JSON
+                    if (typeof memoriesData === 'string' && memoriesData.trim().startsWith('{')) {
+                        try {
+                            memoriesData = JSON.parse(memoriesData);
+                        } catch (e) {
+                            // Keep as string if parsing fails
+                        }
+                    }
+                    
+                    // Extract memories array and count
+                    const memories = memoriesData?.memories || memoriesData?.result?.memories || [];
+                    const count = memoriesData?.count !== undefined ? memoriesData.count : (memoriesData?.result?.count !== undefined ? memoriesData.result.count : memories.length);
+                    const ok = memoriesData?.ok !== undefined ? memoriesData.ok : (memoriesData?.result?.ok !== undefined ? memoriesData.result.ok : true);
+                    
+                    if (!ok) {
+                        const error = memoriesData?.error || memoriesData?.result?.error || 'Unknown error';
+                        return `<div style="color: #ef4444; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border-left: 3px solid #ef4444;">
+                            <strong>Error:</strong> ${escapeHtml(error)}
+                        </div>`;
+                    }
+                    
+                    if (count === 0 || memories.length === 0) {
+                        return `<div style="color: #94a3b8; padding: 8px; background: rgba(148, 163, 184, 0.1); border-radius: 4px; border-left: 3px solid #94a3b8;">
+                            <strong>📝 Recent Memories:</strong> No memories found (count: 0)<br>
+                            <span style="font-size: 11px; color: #64748b;">Agents should use memory tools to retrieve past decisions.</span>
+                        </div>`;
+                    }
+                    
+                    // Format memories list
+                    let memoriesHtml = '<div style="color: #cbd5e1; padding: 8px; background: rgba(34, 211, 238, 0.1); border-radius: 4px; border-left: 3px solid #22d3ee;">';
+                    memoriesHtml += `<strong>📝 Recent Memories (${count}):</strong><br>`;
+                    memories.forEach((memory, idx) => {
+                        const date = memory.date || memory.timestamp || 'Unknown date';
+                        const summary = memory.summary || memory.content || 'No summary';
+                        memoriesHtml += `<div style="margin-top: 8px; padding: 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                            <strong style="color: #22d3ee;">${idx + 1}. ${escapeHtml(date)}:</strong><br>
+                            <span style="font-size: 12px; color: #cbd5e1;">${escapeHtml(summary.substring(0, 200))}${summary.length > 200 ? '...' : ''}</span>
+                        </div>`;
+                    });
+                    memoriesHtml += '</div>';
+                    return memoriesHtml;
+                }
+                
                 // 检查是否是纯文本标记
                 if (typeof resultText === 'object' && resultText._is_plain_text && resultText.raw_text) {
                     // CRITICAL FIX: 如果是FRED工具，即使标记为纯文本也要特殊处理
@@ -8219,6 +8352,17 @@
                     
                     // CRITICAL FIX: 检测并转换持仓P&L列表格式为表格
                     analysisText = convertPositionPnlToTable(analysisText);
+                    
+                    // CRITICAL FIX: For DiscussionCoordinator, format Markdown headers and lists
+                    if (agentName.toLowerCase().includes('coordinator')) {
+                        // Convert Markdown headers
+                        analysisText = analysisText.replace(/^##\s+(.+)$/gm, '\n## $1\n');
+                        analysisText = analysisText.replace(/^###\s+(.+)$/gm, '\n### $1\n');
+                        // Convert bullet points
+                        analysisText = analysisText.replace(/^\*\s+(.+)$/gm, '• $1');
+                        // Convert numbered lists
+                        analysisText = analysisText.replace(/^(\d+)\.\s+(.+)$/gm, '$1. $2');
+                    }
                     
                     // CRITICAL FIX: 转换所有 Markdown 粗体格式为交互式 blocks
                     // 但对于 TraderAgent，只显示纯文本，不转换成块状
@@ -12354,14 +12498,35 @@
                 return;
             }
             
-            // 更新计数（只计算 FRED 数据）
+            // CRITICAL FIX: Deduplicate FRED data by tool_name - keep only the latest entry for each tool
+            // This prevents showing duplicate economic indicators from different agents (e.g., MarketAnalyst and RiskAnalyst)
+            const deduplicatedFredData = [];
+            const toolNameMap = new Map(); // Map<tool_name, latest_entry>
+            
+            // Sort by timestamp (newest first) to keep the latest data
+            const sortedFredData = [...fredData].sort((a, b) => {
+                const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                return timeB - timeA; // Newest first
+            });
+            
+            // Keep only the latest entry for each tool_name
+            sortedFredData.forEach(entry => {
+                const toolName = entry.tool_name || 'Unknown';
+                if (!toolNameMap.has(toolName)) {
+                    toolNameMap.set(toolName, entry);
+                    deduplicatedFredData.push(entry);
+                }
+            });
+            
+            // Update count (only count deduplicated FRED data)
             if (countElement) {
-                countElement.textContent = `${fredData.length} indicator${fredData.length > 1 ? 's' : ''}`;
+                countElement.textContent = `${deduplicatedFredData.length} indicator${deduplicatedFredData.length > 1 ? 's' : ''}`;
             }
             
-            // 渲染经济数据（只渲染 FRED 数据）
+            // Render economic data (only render deduplicated FRED data)
             let html = '';
-            fredData.forEach((toolEntry, index) => {
+            deduplicatedFredData.forEach((toolEntry, index) => {
                 const toolName = toolEntry.tool_name || 'Unknown';
                 let toolResult = toolEntry.tool_result;
                 const timestamp = toolEntry.timestamp || '';

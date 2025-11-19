@@ -85,3 +85,49 @@ def filter_etf_symbols(symbols: list[str]) -> list[str]:
     """
     return [sym for sym in symbols if is_etf(sym)]
 
+
+# Known cryptocurrency symbols (for filtering)
+KNOWN_CRYPTO_SYMBOLS = {
+    "BTC", "ETH", "DOGE", "SOL", "BNB", "USDT", "XRP", "ADA", "MATIC", "DOT",
+    "BTC-USD", "ETH-USD", "DOGE-USD", "SOL-USD", "BNB-USD", "USDT-USD", 
+    "XRP-USD", "ADA-USD", "MATIC-USD", "DOT-USD",
+}
+
+
+def is_crypto(symbol: str) -> bool:
+    """
+    Check if symbol is a cryptocurrency
+    
+    Args:
+        symbol: Stock/crypto symbol
+    
+    Returns:
+        True if cryptocurrency, False otherwise
+    """
+    if not symbol:
+        return False
+    
+    symbol_upper = symbol.upper().strip()
+    
+    # Quick check: known crypto symbols
+    if symbol_upper in KNOWN_CRYPTO_SYMBOLS:
+        return True
+    
+    # Check if ends with -USD (crypto format)
+    if symbol_upper.endswith("-USD"):
+        return True
+    
+    return False
+
+
+def filter_crypto_symbols(symbols: list[str]) -> list[str]:
+    """
+    Filter out cryptocurrency symbols, return only stock symbols
+    
+    Args:
+        symbols: symbol list
+    
+    Returns:
+        Filtered list without crypto symbols
+    """
+    return [sym for sym in symbols if not is_crypto(sym)]

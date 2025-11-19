@@ -114,7 +114,7 @@ def run_sentiment_analyst(
             executed_tool_cache_keys = set()
         
         # CRITICAL FIX: Check if news tool has already been executed in this trading cycle
-        news_tool_already_executed = any(
+        news_tool_already_executed = (
             get_tool_cache_key("plan_and_scan_news", {}) in executed_tool_cache_keys or
             get_tool_cache_key("news_scan", {}) in executed_tool_cache_keys or
             any(tc.get("tool") in news_tools for tc in all_tool_calls)

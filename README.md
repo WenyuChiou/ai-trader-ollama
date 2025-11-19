@@ -953,7 +953,7 @@ The system uses a **modular architecture** for better maintainability and code o
 
 ### Prompt Management
 
-All agent prompts are stored in **YAML files** in the `prompts/` directory:
+All agent prompts are stored in **YAML files** in the `prompts/` directory (project root level).
 
 **Prompt File Structure**:
 ```yaml
@@ -966,6 +966,8 @@ user: |
   Context:
   - Market Data: {market_view}
   - Previous Discussion: {previous_discussion}
+  - Current Positions: {current_positions}
+  - Tools Context: {tools_context}
   ...
 ```
 
@@ -984,12 +986,62 @@ user: |
 - `prompts/risk_analyst.yml`: Risk Analyst prompts
 - `prompts/trader_agent.yml`: Trader Agent prompts
 - `prompts/discussion_agent.yml`: Discussion Coordinator prompts
+- `prompts/market_agent.yml`: Market Data & Quotes agent prompts
 
 **Loading Mechanism**:
-- Prompts are loaded via `AgentFactory._load_prompts()` method
-- System prompts and user templates are extracted from YAML files
-- Template variables are replaced with actual values at runtime
-- Prompts are cached per agent instance for performance
+
+1. **File Path Resolution**:
+   - Prompts are loaded via `AgentFactory._load_prompts()` method
+   - **Primary location**: Project root `prompts/` directory
+   - **Path resolution**: Supports `../prompts/xxx.yml` or `prompts/xxx.yml` in `agents.yaml`
+   - **Automatic fallback**: Tries multiple paths if primary location not found
+   - **Error handling**: Raises `FileNotFoundError` with all attempted paths if file not found
+
+2. **YAML Parsing**:
+   - YAML files are parsed using `yaml.safe_load()`
+   - Extracts `system` and `user` fields from YAML
+   - Both fields are optional (empty string if not present)
+
+3. **Template Variable Replacement**:
+   - Template variables use `{variable_name}` format
+   - Variables are replaced at runtime using `BaseAgent.render()` method
+   - Uses regex pattern matching to replace only exact variable names
+   - Preserves other curly braces (e.g., JSON examples in prompts)
+   - Common template variables:
+     - `{market_view}`: Market data summary (JSON string)
+     - `{previous_discussion}`: Previous discussion history
+     - `{current_positions}`: Current portfolio positions
+     - `{tools_context}`: Available tools information
+     - `{order_status}`: Current order status
+     - `{analyst_reports_summary}`: Summary of all analyst reports
+     - `{market_summary}`: Market summary text
+     - `{historical_memories}`: Historical trading memories
+
+4. **Agent Execution**:
+   - `BaseAgent.run(vars)` method receives a dictionary of template variables
+   - System and user prompts are rendered with actual values
+   - Additional content can be appended via `extra_user_content` parameter
+   - Rendered prompts are sent to LLM via LangChain's `ChatOllama`
+   - Supports both text and JSON responses (`expect_json` parameter)
+
+**Example Usage**:
+```python
+# In agent handler code (e.g., market_analyst_handler.py)
+prompt_vars = {
+    "market_view": json.dumps(market_summary, indent=2),
+    "previous_discussion": previous_rounds_text,
+    "tools_context": tools_str,
+    "current_positions": positions_text,
+}
+
+# Agent.run() automatically renders template variables
+response = market_analyst.run(prompt_vars, expect_json=True)
+```
+
+**Prompt Caching**:
+- Prompts are loaded once per agent instance (cached in `AgentSpec`)
+- Template variables are replaced on each `run()` call (dynamic content)
+- No need to reload prompt files for each execution
 
 ---
 

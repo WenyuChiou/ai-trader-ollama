@@ -73,7 +73,7 @@ def run_multi_analyst_discussion(
         positions_text = "\n\n**CURRENT PORTFOLIO POSITIONS**\n"
         total_position_value = 0.0
         
-        # 从market_view获取前一交易日收盘价
+        # Get previous trading day's close price from market_view
         stocks_data = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
         
         for symbol, pos_info in current_positions.items():
@@ -85,11 +85,11 @@ def run_multi_analyst_discussion(
                 total_position_value += market_value
                 
                 if quantity > 0:
-                    # 获取前一交易日收盘价
+                    # Get previous trading day's close price
                     prev_close = None
                     if symbol in stocks_data:
                         stock_data = stocks_data[symbol]
-                        prev_close = stock_data.get("price")  # price通常是前一交易日收盘价
+                        prev_close = stock_data.get("price")  # price is usually the previous trading day's close price
                     
                     unrealized_pnl = (current_price - avg_cost) * quantity
                     unrealized_pnl_pct = ((current_price - avg_cost) / avg_cost * 100.0) if avg_cost > 0 else 0.0
@@ -100,7 +100,7 @@ def run_multi_analyst_discussion(
                     positions_text += f"    Market Value: ${market_value:.2f} ({position_pct:.1f}% of portfolio)\n"
                     positions_text += f"    Unrealized P&L: ${unrealized_pnl:.2f} ({unrealized_pnl_pct:+.1f}%)\n"
                     
-                    # 添加到持仓列表（用于Technical Analyst选单）
+                    # Add to holdings list (for Technical Analyst selection menu)
                     holdings_list.append(symbol)
         
         if portfolio_value:
@@ -113,9 +113,9 @@ def run_multi_analyst_discussion(
             if available_cash is not None:
                 positions_text += f"  - Available Cash (after reserve): ${available_cash:.2f}\n"
         
-        # CRITICAL: 添加持仓列表和指数列表，供Technical Analyst选单使用
+        # CRITICAL: Add holdings list and indices list for Technical Analyst selection menu
         # Note: Recommended stocks will be added after Market Analyst completes (see Technical Analyst section)
-        # CRITICAL FIX: 技术分析必须同时分析：持仓 + 推荐名单 + 主要指数（都要分析）
+        # CRITICAL FIX: Technical analysis must analyze simultaneously: holdings + recommended stocks + major indices (all must be analyzed)
         if holdings_list:
             positions_text += f"\n**📋 ANALYSIS MENU FOR TECHNICAL ANALYST:**\n"
             positions_text += f"**MANDATORY Analysis Targets (ALL must be analyzed):**\n"
@@ -139,7 +139,7 @@ def run_multi_analyst_discussion(
         positions_text += "- Respect position limits and diversification requirements\n"
         positions_text += "- Use available_cash information to avoid creating orders exceeding cash limits\n"
     
-    # 准备订单状态信息（如果有）
+    # Prepare order status information (if available)
     order_status_text = ""
     if order_status:
         pending_count = order_status.get("pending_count", 0)
@@ -155,7 +155,7 @@ def run_multi_analyst_discussion(
             
             if pending_orders:
                 order_status_text += "\n**Pending Orders (Not Yet Filled):**\n"
-                for order in pending_orders[:10]:  # 限制显示前10个
+                for order in pending_orders[:10]:  # Limit to first 10 orders
                     symbol = order.get("symbol", "?")
                     action = order.get("action", "?")
                     quantity = order.get("quantity", 0)
@@ -166,7 +166,7 @@ def run_multi_analyst_discussion(
             
             if filled_orders:
                 order_status_text += "\n**Recently Filled Orders:**\n"
-                for order in filled_orders[-5:]:  # 显示最近5个
+                for order in filled_orders[-5:]:  # Show last 5 orders
                     symbol = order.get("symbol", "?")
                     action = order.get("action", "?")
                     quantity = order.get("quantity", 0)
@@ -175,15 +175,15 @@ def run_multi_analyst_discussion(
             
             order_status_text += "\n**[WARN] Please consider these existing orders in your analysis. If there are pending orders, evaluate whether they should be adjusted, cancelled, or kept as-is based on current market conditions.**\n"
     
-    # 用于记录所有工具调用
+    # Track all tool calls
     all_tool_calls = []
     tool_calls_count = 0
     
-    # 存储所有analyst的分析结果
+    # Store all analyst analysis results
     analyst_reports = {}
     
-    # 对话历史记录（用于agents互相影响）
-    # 限制历史长度，避免内存累积：只保留最近 N 轮讨论（每轮4个analyst = 4条记录）
+    # Discussion history (for agents to influence each other)
+    # Limit history length to avoid memory accumulation: keep only recent N rounds (each round = 4 analysts = 4 entries)
     discussion_history = []
     
     print("\n" + "="*80)
@@ -444,7 +444,7 @@ def run_multi_analyst_discussion(
         
         print(f"\n[ROUND {current_round}/{rounds}] Completed. Discussion history: {len(discussion_history)} entries")
     
-    # ===== 5. Discussion Coordinator: 统整所有观点 =====
+    # ===== 5. Discussion Coordinator: Synthesize all perspectives =====
     # CRITICAL FIX: Coordinator runs after all rounds, using all_rounds_history
     print("\n" + "="*80)
     print("[COORDINATOR] Discussion Coordinator: Synthesizing all perspectives (all rounds)")
@@ -452,9 +452,9 @@ def run_multi_analyst_discussion(
     
     coordinator_summary = None
     try:
-        # 创建Discussion Agent来统整观点
+        # Create Discussion Agent to synthesize perspectives
         coordinator = fac.create("discussion_agent")
-        # CRITICAL FIX: 传递 historical_memories 给 Coordinator
+        # CRITICAL FIX: Pass historical_memories to Coordinator
         # Use all_rounds_history instead of discussion_history (which only contains last round)
         coordinator_summary = _run_discussion_coordinator(
             coordinator=coordinator,
@@ -463,7 +463,7 @@ def run_multi_analyst_discussion(
             market_view=market_view,
             toolbox=toolbox if use_tools else None,
             tool_budget=max(0, tool_budget - tool_calls_count),
-            historical_memories=historical_memories,  # 传递历史记忆
+            historical_memories=historical_memories,  # Pass historical memories
         )
         
         if coordinator_summary:
@@ -522,40 +522,41 @@ def run_multi_analyst_discussion(
     return {
         "final_stance": final_stance,
         "analyst_reports": analyst_reports,
-        "coordinator_summary": coordinator_summary,  # 添加coordinator统整结果
+        "coordinator_summary": coordinator_summary,  # Add coordinator synthesis result
         "tool_calls": all_tool_calls,
         "tool_calls_count": tool_calls_count,
-        "transcript": transcript_list,  # 使用对话历史生成的transcript
+        "transcript": transcript_list,  # Transcript generated from discussion history
         "discussion_history": all_rounds_history,  # CRITICAL FIX: Use all_rounds_history with round numbers
-        "tool_context": [f"{tc['analyst']}: {tc['tool']}" for tc in all_tool_calls],
+        # CRITICAL FIX: Deduplicate tool_context to show unique tools only (tools decrease in later rounds due to caching)
+        "tool_context": list(dict.fromkeys([f"{tc['analyst']}: {tc['tool']}" for tc in all_tool_calls])),  # Preserve order, remove duplicates
         "rounds": rounds,  # CRITICAL FIX: Add rounds count for RAG/memory system
     }
 
 
 def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
     """
-    从analyst结果中提取score，处理各种格式：
-    - 数字: 直接返回
-    - 字典: 计算平均值
-    - 列表: 计算平均值
-    - 不存在: 尝试通用score字段，最后返回默认值5.0
+    Extract score from analyst result, handling various formats:
+    - Number: return directly
+    - Dictionary: calculate average
+    - List: calculate average
+    - Not found: try generic score field, finally return default value 5.0
     """
-    # 先查找特定score字段
+    # First look for specific score field
     score = result.get(score_key)
     
-    # 如果找不到，尝试通用score字段
+    # If not found, try generic score field
     if score is None:
         score = result.get('score')
     
-    # 如果还是找不到，使用默认值5.0（而不是N/A）
+    # If still not found, use default value 5.0 (instead of N/A)
     if score is None:
-        # 检查是否有error字段（说明解析失败）
+        # Check if there's an error field (indicates parsing failure)
         if 'error' in result:
-            return 5.0  # 解析失败时使用默认值
-        # 检查是否有analysis（说明有响应，只是没有score）
+            return 5.0  # Use default value when parsing fails
+        # Check if there's analysis (indicates response exists, just no score)
         if result.get('analysis') or result.get('stance'):
-            return 5.0  # 有响应但没有score，使用默认值
-        return 'N/A'  # 完全没有响应时才返回N/A
+            return 5.0  # Response exists but no score, use default value
+        return 'N/A'  # Return N/A only when there's no response at all
     
     if isinstance(score, (int, float)):
         return float(score)

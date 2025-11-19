@@ -3398,6 +3398,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 | `docs/TOOLS.md` | Detailed documentation for all 29 tools (23 market + 6 memory) |
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
+| **[Key Test Files](docs/KEY_TEST_FILES.md)** | Critical test files and priority guide ⭐ |
+| **[Order Data Schema](docs/ORDER_DATA_SCHEMA.md)** | Standardized order data structure for performance analysis |
+| **[Performance API Guide](docs/PERFORMANCE_API_GUIDE.md)** | Performance analysis API documentation and expected output |
 
 ## 🧪 Testing
 

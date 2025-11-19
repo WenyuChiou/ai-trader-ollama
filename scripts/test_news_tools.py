@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 """
 独立的新闻工具测试脚本
-- 只测试新闻工具，不运行完整的交易循环
+- 只测试新闻工具，不运行交易循环
 - 不会覆盖任何交易记录或持仓数据
-- 可以安全地测试新闻工具的功能
+- 可以安全地测试新闻工具功能
 """
 from __future__ import annotations
 import sys
 import json
 from pathlib import Path
-from datetime import date, datetime, timezone
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from typing import Dict, Any, List
 
 # 添加 backend 目录到路径
 ROOT = Path(__file__).resolve().parents[1]  # scripts/ -> backend/
@@ -27,11 +27,11 @@ from src.tools.jin10_tools import fetch_jin10_news
 def test_news_scan():
     """测试 news_scan 工具"""
     print("\n" + "="*60)
-    print("Testing news_scan tool")
+    print("测试 news_scan 工具")
     print("="*60)
     
     keywords = ["NVDA", "AAPL", "market", "stocks"]
-    print(f"\nKeywords: {keywords}")
+    print(f"\n关键词: {keywords}")
     
     try:
         result = news_scan(
@@ -40,26 +40,26 @@ def test_news_scan():
             recency_days=2
         )
         
-        print(f"\nResult structure: {list(result.keys())}")
         hits = result.get("hits", [])
         queries = result.get("queries", [])
         
-        print(f"\nQueries used: {queries}")
-        print(f"\nFound {len(hits)} news hits")
+        print(f"\n✅ 成功获取 {len(hits)} 条新闻")
+        print(f"查询: {queries}")
         
         if hits:
-            print("\nFirst 3 hits:")
-            for i, hit in enumerate(hits[:3], 1):
-                print(f"\n{i}. {hit.get('title', 'No title')}")
-                print(f"   Source: {hit.get('source', 'Unknown')}")
-                print(f"   Link: {hit.get('link', 'No link')}")
-                print(f"   Published: {hit.get('published', 'Unknown')}")
+            print(f"\n前5条新闻:")
+            for i, hit in enumerate(hits[:5], 1):
+                print(f"  {i}. {hit.get('title', 'No title')[:80]}")
+                print(f"     来源: {hit.get('source', 'Unknown')}")
+                print(f"     链接: {hit.get('link', 'No link')[:80]}")
+                if hit.get('published'):
+                    print(f"     时间: {hit.get('published')}")
         else:
-            print("\n⚠️  No hits found!")
-        
+            print("⚠️ 没有找到新闻")
+            
         return result
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"❌ 错误: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -68,7 +68,7 @@ def test_news_scan():
 def test_plan_and_scan_news():
     """测试 plan_and_scan_news 工具"""
     print("\n" + "="*60)
-    print("Testing plan_and_scan_news tool")
+    print("测试 plan_and_scan_news 工具")
     print("="*60)
     
     tickers = ["NVDA", "AAPL", "TSLA"]
@@ -77,7 +77,7 @@ def test_plan_and_scan_news():
         "market_summary": "Testing news tools"
     }
     
-    print(f"\nTickers: {tickers}")
+    print(f"\n股票代码: {tickers}")
     
     try:
         result = plan_and_scan_news(
@@ -85,42 +85,38 @@ def test_plan_and_scan_news():
             mview=mview,
             recency_days=2,
             max_articles=10,
-            fetch_body_top=3  # 获取前3篇文章的内容
+            fetch_body_top=5  # 获取前5篇文章的内容
         )
         
-        print(f"\nResult structure: {list(result.keys())}")
-        queries = result.get("queries", [])
         hits = result.get("hits", [])
         articles = result.get("articles", [])
+        queries = result.get("queries", [])
         
-        print(f"\nQueries generated: {queries}")
-        print(f"\nFound {len(hits)} hits")
-        print(f"Found {len(articles)} articles with content")
+        print(f"\n✅ 成功获取:")
+        print(f"  - Hits: {len(hits)} 条")
+        print(f"  - Articles (有内容): {len(articles)} 条")
+        print(f"  - 查询: {queries}")
         
         if articles:
-            print("\nFirst 3 articles:")
+            print(f"\n前3篇文章详情:")
             for i, article in enumerate(articles[:3], 1):
-                print(f"\n{i}. {article.get('title', 'No title')}")
-                print(f"   Source: {article.get('source', 'Unknown')}")
-                print(f"   URL: {article.get('url', 'No URL')}")
-                summary = article.get('summary', '')
-                keywords = article.get('keywords', [])
-                if summary:
-                    print(f"   Summary: {summary[:100]}...")
-                if keywords:
-                    print(f"   Keywords: {', '.join(keywords)}")
+                print(f"\n  {i}. {article.get('title', 'No title')[:80]}")
+                print(f"     来源: {article.get('source', 'Unknown')}")
+                print(f"     链接: {article.get('url', 'No link')[:80]}")
+                if article.get('summary'):
+                    print(f"     摘要: {article.get('summary')[:100]}...")
+                if article.get('keywords'):
+                    print(f"     关键词: {', '.join(article.get('keywords', [])[:5])}")
         elif hits:
-            print("\nArticles not available, showing hits:")
+            print(f"\n前3条新闻标题:")
             for i, hit in enumerate(hits[:3], 1):
-                print(f"\n{i}. {hit.get('title', 'No title')}")
-                print(f"   Source: {hit.get('source', 'Unknown')}")
-                print(f"   Link: {hit.get('link', 'No link')}")
+                print(f"  {i}. {hit.get('title', 'No title')[:80]}")
         else:
-            print("\n⚠️  No news found!")
-        
+            print("⚠️ 没有找到新闻")
+            
         return result
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"❌ 错误: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -129,7 +125,7 @@ def test_plan_and_scan_news():
 def test_fetch_jin10_news():
     """测试 fetch_jin10_news 工具"""
     print("\n" + "="*60)
-    print("Testing fetch_jin10_news tool")
+    print("测试 fetch_jin10_news 工具")
     print("="*60)
     
     try:
@@ -142,28 +138,23 @@ def test_fetch_jin10_news():
             items = result.get("items", [])
             count = result.get("count", 0)
             
-            print(f"\nFound {count} news items")
+            print(f"\n✅ 成功获取 {count} 条新闻")
             
             if items:
-                print("\nFirst 3 items:")
-                for i, item in enumerate(items[:3], 1):
-                    print(f"\n{i}. {item.get('title', 'No title')}")
-                    print(f"   Time: {item.get('time', 'Unknown')}")
-                    print(f"   Category: {item.get('category', 'Unknown')}")
-                    content = item.get('content', '')
-                    if content:
-                        print(f"   Content: {content[:100]}...")
-                    url = item.get('url', '')
-                    if url:
-                        print(f"   URL: {url}")
+                print(f"\n前5条新闻:")
+                for i, item in enumerate(items[:5], 1):
+                    print(f"  {i}. {item.get('title', 'No title')[:80]}")
+                    print(f"     时间: {item.get('time', 'Unknown')}")
+                    if item.get('content'):
+                        print(f"     内容: {item.get('content')[:100]}...")
             else:
-                print("\n⚠️  No items found!")
+                print("⚠️ 没有找到新闻")
         else:
-            print(f"\n❌ Error: {result.get('error', 'Unknown error')}")
-        
+            print(f"❌ 错误: {result.get('error', 'Unknown error')}")
+            
         return result
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"❌ 错误: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -171,92 +162,47 @@ def test_fetch_jin10_news():
 
 def save_test_results(results: Dict[str, Any], output_file: Path):
     """保存测试结果到文件（不影响交易记录）"""
-    try:
-        # 只保存摘要信息，不保存完整内容
-        summary = {
-            "test_timestamp": datetime.now(timezone.utc).isoformat(),
-            "test_date": date.today().isoformat(),
-            "results": {}
-        }
-        
-        for tool_name, result in results.items():
-            if result:
-                if tool_name == "news_scan":
-                    summary["results"][tool_name] = {
-                        "hits_count": len(result.get("hits", [])),
-                        "queries": result.get("queries", [])
-                    }
-                elif tool_name == "plan_and_scan_news":
-                    summary["results"][tool_name] = {
-                        "hits_count": len(result.get("hits", [])),
-                        "articles_count": len(result.get("articles", [])),
-                        "queries": result.get("queries", [])
-                    }
-                elif tool_name == "fetch_jin10_news":
-                    summary["results"][tool_name] = {
-                        "ok": result.get("ok", False),
-                        "items_count": result.get("count", 0)
-                    }
-        
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        with output_file.open("w", encoding="utf-8") as f:
-            json.dump(summary, f, ensure_ascii=False, indent=2)
-        
-        print(f"\n✅ Test results saved to: {output_file}")
-    except Exception as e:
-        print(f"\n⚠️  Failed to save test results: {e}")
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    test_report = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "test_type": "news_tools_test",
+        "results": results
+    }
+    
+    with output_file.open("w", encoding="utf-8") as f:
+        json.dump(test_report, f, ensure_ascii=False, indent=2)
+    
+    print(f"\n✅ 测试结果已保存到: {output_file}")
 
 
 def main():
     """主函数"""
     print("\n" + "="*60)
-    print("News Tools Test Script")
+    print("新闻工具测试脚本")
     print("="*60)
-    print("\nThis script tests news tools WITHOUT running trading cycle.")
-    print("It will NOT modify any trading records or portfolio data.")
+    print("\n⚠️  注意: 此脚本只测试新闻工具，不会影响交易记录或持仓数据")
     print("="*60)
     
     results = {}
     
-    # 测试各个新闻工具
-    print("\n1. Testing news_scan...")
+    # 测试 news_scan
     results["news_scan"] = test_news_scan()
     
-    print("\n2. Testing plan_and_scan_news...")
+    # 测试 plan_and_scan_news
     results["plan_and_scan_news"] = test_plan_and_scan_news()
     
-    print("\n3. Testing fetch_jin10_news...")
+    # 测试 fetch_jin10_news
     results["fetch_jin10_news"] = test_fetch_jin10_news()
     
     # 保存测试结果
-    output_file = Path(__file__).parent.parent / "data" / "logs" / "news_tools_test_results.json"
+    output_file = ROOT / "data" / "logs" / "news_test_results.json"
     save_test_results(results, output_file)
     
-    # 总结
     print("\n" + "="*60)
-    print("Test Summary")
+    print("测试完成!")
     print("="*60)
-    for tool_name, result in results.items():
-        if result:
-            if tool_name == "news_scan":
-                hits = len(result.get("hits", []))
-                print(f"✅ {tool_name}: {hits} hits found")
-            elif tool_name == "plan_and_scan_news":
-                hits = len(result.get("hits", []))
-                articles = len(result.get("articles", []))
-                print(f"✅ {tool_name}: {hits} hits, {articles} articles")
-            elif tool_name == "fetch_jin10_news":
-                if result.get("ok"):
-                    count = result.get("count", 0)
-                    print(f"✅ {tool_name}: {count} items found")
-                else:
-                    print(f"❌ {tool_name}: Failed")
-        else:
-            print(f"❌ {tool_name}: Failed")
-    
-    print("\n" + "="*60)
-    print("Test completed!")
-    print("="*60)
+    print("\n测试结果已保存，不会影响任何交易记录或持仓数据")
 
 
 if __name__ == "__main__":

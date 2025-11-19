@@ -5459,11 +5459,22 @@
                                             
                                             let displayToolName = '';
                                             let summary = '';
+                                            let symbol = ''; // For deduplication by symbol
                                             
-                                            if (toolInfo && toolInfo.result) {
+                                            // CRITICAL FIX: Try to get tool_result from entry first (more reliable)
+                                            if (toolEntry.tool_result && typeof toolEntry.tool_result === 'object') {
+                                                displayToolName = entryToolName || 'Unknown';
+                                                summary = extractToolSummary(displayToolName, toolEntry.tool_result);
+                                                // Extract symbol for deduplication
+                                                symbol = toolEntry.tool_result.symbol || toolEntry.tool_result.Symbol || '';
+                                            } else if (toolInfo && toolInfo.result) {
                                                 // 提取简要信息
                                                 displayToolName = toolInfo.name || entryToolName || 'Unknown';
                                                 summary = extractToolSummary(displayToolName, toolInfo.result);
+                                                // Extract symbol for deduplication
+                                                if (toolInfo.result && typeof toolInfo.result === 'object') {
+                                                    symbol = toolInfo.result.symbol || toolInfo.result.Symbol || '';
+                                                }
                                             } else {
                                                 // 尝试从内容中提取 JSON
                                                 try {
@@ -5496,6 +5507,10 @@
                                                             
                                                             displayToolName = toolEntry.tool_name || parsed.tool || parsed.name || entryToolName || 'Unknown';
                                                             summary = extractToolSummary(displayToolName, resultData);
+                                                            // Extract symbol for deduplication
+                                                            if (resultData && typeof resultData === 'object') {
+                                                                symbol = resultData.symbol || resultData.Symbol || '';
+                                                            }
                                                         }
                                                     }
                                                 } catch (e) {
@@ -5503,12 +5518,20 @@
                                                 }
                                             }
                                             
-                                            // CRITICAL FIX: Deduplicate by tool name - keep only the latest entry for each tool
-                                            if (displayToolName && summary && !toolNameMap.has(displayToolName)) {
-                                                toolNameMap.set(displayToolName, true);
+                                            // CRITICAL FIX: Deduplicate by tool name + symbol (if available)
+                                            // For tools like get_company_fundamentals, same tool + same symbol = duplicate
+                                            // For tools without symbol, deduplicate by tool name only
+                                            const dedupKey = symbol ? `${displayToolName}:${symbol}` : displayToolName;
+                                            
+                                            if (displayToolName && !toolNameMap.has(dedupKey)) {
+                                                toolNameMap.set(dedupKey, true);
+                                                // Even if summary is empty, still add the tool (but try to extract summary)
+                                                if (!summary && displayToolName) {
+                                                    summary = `Used ${displayToolName}${symbol ? ` for ${symbol}` : ''}`;
+                                                }
                                                 toolSummaries.push({
-                                                    name: displayToolName,
-                                                    summary: summary
+                                                    name: displayToolName + (symbol ? ` (${symbol})` : ''),
+                                                    summary: summary || `Tool executed`
                                                 });
                                             }
                                         });

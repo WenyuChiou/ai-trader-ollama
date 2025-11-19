@@ -59,10 +59,10 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 2. **Tool Diversity**: 27 tools provide comprehensive market coverage (21 market tools + 6 memory tools)
 3. **Tool Filtering & Validation**: System automatically filters invalid tool calls and enforces restrictions per analyst type
 4. **RAG Memory System**: Agents automatically retrieve historical memories before making decisions
-4. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
-5. **Risk-First Approach**: Every decision passes through risk analysis
-6. **Transparency**: All reasoning is logged and visible
-7. **Historical Learning**: Agents learn from past successes and failures
+5. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
+6. **Risk-First Approach**: Every decision passes through risk analysis
+7. **Transparency**: All reasoning is logged and visible
+8. **Historical Learning**: Agents learn from past successes and failures
 
 ---
 

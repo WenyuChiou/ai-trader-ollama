@@ -12178,7 +12178,8 @@
                                 // 处理不同的字段名
                                 const title = item.title || item.headline || 'No title';
                                 const link = item.link || item.href || item.url || '';
-                                const source = item.source || toolResult.source || 'Unknown';
+                                // CRITICAL FIX: 从 actualResult 获取 source（如果 item 中没有）
+                                const source = item.source || actualResult.source || toolResult.source || 'Unknown';
                                 const published = item.published || item.published_timestamp || item.published_at || item.date || '';
                                 
                                 newsData.push({
@@ -12186,7 +12187,7 @@
                                     link: link,
                                     source: source,
                                     published: published,
-                                    excerpt: item.excerpt || '', // 保存内容摘要
+                                    excerpt: item.excerpt || item.body || '', // 保存内容摘要
                                     summary: item.summary || '', // LLM 生成的摘要（优先）
                                     keywords: item.keywords || [], // LLM 提取的关键字
                                     timestamp: newsTool.timestamp || '',

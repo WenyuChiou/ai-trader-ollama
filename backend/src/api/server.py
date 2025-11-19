@@ -338,6 +338,12 @@ async def fetch_conversations_api(
             discussion_entries = [e for e in all_entries if e.get("type") == "discussion"]
             tool_entries = [e for e in all_entries if e.get("type") == "tool"]
             
+            # DEBUG: Log tool entries found
+            print(f"[API] Found {len(discussion_entries)} discussion entries, {len(tool_entries)} tool entries")
+            if tool_entries:
+                sample_tool = tool_entries[0]
+                print(f"[API] Sample tool entry: agent={sample_tool.get('agent')}, type={sample_tool.get('type')}, tool_name={sample_tool.get('tool_name')}")
+            
             # CRITICAL FIX: Include ALL discussion entries (they are important for frontend display)
             # Then add tool entries up to the limit
             # If limit is 100 and we have 85 discussions, include all 85 + 15 tools = 100 total

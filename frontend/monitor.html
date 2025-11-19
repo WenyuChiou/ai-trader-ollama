@@ -9108,20 +9108,22 @@
             };
             
             // CRITICAL FIX: 首先嘗試匹配編號格式（"1. Consensus Stance", "2. Key Insights" 等）
-            // 這是更常見的格式，支持多種變體
+            // 支持多種格式：有換行和無換行的情況
+            // 格式1: "1. Consensus Stance The overall..." (無換行)
+            // 格式2: "1. Consensus Stance\nThe overall..." (有換行)
             const numberedPatterns = [
-                // 匹配 "1. Consensus Stance" 格式（更寬鬆的匹配）
-                /(?:^|\n)\s*1\.\s*(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([\s\S]*?)(?=(?:^|\n)\s*2\.|(?:^|\n)\s*\d+\.\s*Key|$)/i,
+                // 匹配 "1. Consensus Stance" 格式（支持無換行）
+                /(?:^|\s)1\.\s*(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([\s\S]*?)(?=\s*2\.\s*Key|$)/i,
                 // 匹配 "2. Key Insights" 格式
-                /(?:^|\n)\s*2\.\s*Key\s+Insights?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*3\.|(?:^|\n)\s*\d+\.\s*Consensus\s+Areas|$)/i,
+                /(?:^|\s)2\.\s*Key\s+Insights?[\s:]*([\s\S]*?)(?=\s*3\.\s*Consensus\s+Areas|$)/i,
                 // 匹配 "3. Consensus Areas" 格式
-                /(?:^|\n)\s*3\.\s*Consensus\s+Areas?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*4\.|(?:^|\n)\s*\d+\.\s*Disagreements|$)/i,
+                /(?:^|\s)3\.\s*Consensus\s+Areas?[\s:]*([\s\S]*?)(?=\s*4\.\s*Disagreements|$)/i,
                 // 匹配 "4. Disagreements" 格式
-                /(?:^|\n)\s*4\.\s*Disagreements?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*5\.|(?:^|\n)\s*\d+\.\s*Recommended|$)/i,
+                /(?:^|\s)4\.\s*Disagreements?[\s:]*([\s\S]*?)(?=\s*5\.\s*Recommended|$)/i,
                 // 匹配 "5. Recommended Stocks" 格式
-                /(?:^|\n)\s*5\.\s*Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*6\.|(?:^|\n)\s*\d+\.\s*Final|$)/i,
+                /(?:^|\s)5\.\s*Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=\s*6\.\s*Final|$)/i,
                 // 匹配 "6. Final Summary" 格式
-                /(?:^|\n)\s*6\.\s*Final\s+Summary[\s:]*([\s\S]*?)(?=(?:^|\n)\s*\d+\.|(?:^|\n)\s*Overall|$)/i
+                /(?:^|\s)6\.\s*Final\s+Summary[\s:]*([\s\S]*?)(?=\s*\d+\.|$)/i
             ];
             
             const numberedMatches = [

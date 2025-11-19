@@ -2193,8 +2193,10 @@ Railway provides a simple and reliable way to deploy the AI-Trader backend API t
 
 **`Procfile`**:
 ```
-web: uvicorn backend.src.api.server:app --host 0.0.0.0 --port $PORT
+web: cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
 ```
+
+**Note**: Both `railway.json` and `Procfile` use `cd backend` to ensure commands run from the correct directory.
 
 #### Verification
 

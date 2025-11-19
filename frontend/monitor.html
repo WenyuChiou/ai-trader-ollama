@@ -9141,21 +9141,23 @@
             
             // CRITICAL FIX: 首先嘗試匹配編號格式（"1. Consensus Stance", "2. Key Insights" 等）
             // 支持多種格式：有換行和無換行的情況
-            // 格式1: "1. Consensus Stance The overall..." (無換行)
+            // 格式1: "1. Consensus Stance The overall..." (無換行，直接跟著內容)
             // 格式2: "1. Consensus Stance\nThe overall..." (有換行)
+            // 實際格式: "1. Consensus Stance The overall market stance is BULLISH..."
             const numberedPatterns = [
-                // 匹配 "1. Consensus Stance" 格式（支持無換行）
-                /(?:^|\s)1\.\s*(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([\s\S]*?)(?=\s*2\.\s*Key|$)/i,
+                // 匹配 "1. Consensus Stance" 格式（支持無換行，使用更寬鬆的匹配）
+                // 匹配 "1. Consensus Stance" 後面跟著內容，直到 "2. Key Insights" 或結尾
+                /(?:^|\s)1\.\s*(?:Consensus\s+Stance|Consensus|Stance)\s+([\s\S]*?)(?=\s+2\.\s+Key\s+Insights|$)/i,
                 // 匹配 "2. Key Insights" 格式
-                /(?:^|\s)2\.\s*Key\s+Insights?[\s:]*([\s\S]*?)(?=\s*3\.\s*Consensus\s+Areas|$)/i,
+                /(?:^|\s)2\.\s*Key\s+Insights?\s+([\s\S]*?)(?=\s+3\.\s+Consensus\s+Areas|$)/i,
                 // 匹配 "3. Consensus Areas" 格式
-                /(?:^|\s)3\.\s*Consensus\s+Areas?[\s:]*([\s\S]*?)(?=\s*4\.\s*Disagreements|$)/i,
+                /(?:^|\s)3\.\s*Consensus\s+Areas?\s+([\s\S]*?)(?=\s+4\.\s+Disagreements|$)/i,
                 // 匹配 "4. Disagreements" 格式
-                /(?:^|\s)4\.\s*Disagreements?[\s:]*([\s\S]*?)(?=\s*5\.\s*Recommended|$)/i,
+                /(?:^|\s)4\.\s*Disagreements?\s+([\s\S]*?)(?=\s+5\.\s+Recommended\s+Stocks|$)/i,
                 // 匹配 "5. Recommended Stocks" 格式
-                /(?:^|\s)5\.\s*Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=\s*6\.\s*Final|$)/i,
+                /(?:^|\s)5\.\s*Recommended\s+Stocks?\s+([\s\S]*?)(?=\s+6\.\s+Final\s+Summary|$)/i,
                 // 匹配 "6. Final Summary" 格式
-                /(?:^|\s)6\.\s*Final\s+Summary[\s:]*([\s\S]*?)(?=\s*\d+\.|$)/i
+                /(?:^|\s)6\.\s*Final\s+Summary\s+([\s\S]*?)(?=\s+\d+\.|$)/i
             ];
             
             const numberedMatches = [
@@ -9176,6 +9178,14 @@
                 recommendedStocks: !!numberedMatches[4],
                 finalSummary: !!numberedMatches[5]
             });
+            
+            // Debug: Log actual matched content preview
+            if (numberedMatches[0] && numberedMatches[0][1]) {
+                console.log('[Coordinator Parse] Consensus Stance preview:', numberedMatches[0][1].substring(0, 200));
+            }
+            if (numberedMatches[1] && numberedMatches[1][1]) {
+                console.log('[Coordinator Parse] Key Insights preview:', numberedMatches[1][1].substring(0, 200));
+            }
             
             if (numberedMatches[0] && numberedMatches[0][1]) {
                 sections.consensusStance = numberedMatches[0][1].trim();

@@ -1,5 +1,9 @@
 # Test Suite Documentation
 
+**Language**: [English](README.md) | [中文版](README_zh.md)
+
+---
+
 ## Overview
 
 This directory contains the complete test suite for the AI-Trader Ollama system. All tests are organized by type and follow pytest conventions.
@@ -13,14 +17,16 @@ tests/
 │   ├── test_portfolio.py            # Portfolio management tests
 │   ├── test_memory.py               # Memory system tests
 │   ├── test_api.py                  # API endpoint tests
-│   └── test_analysis_targets.py      # Analysis target validation tests
+│   ├── test_analysis_targets.py    # Analysis target validation tests
+│   └── test_trading_cycle_quick.py  # Quick trading cycle test (order recording)
 ├── e2e/                     # End-to-end tests
 │   └── test_frontend.py             # Frontend integration tests
 ├── utils/                   # Test utilities and helpers
 │   └── test_helpers.py              # Shared test utilities
 ├── conftest.py              # Pytest configuration and shared fixtures
 ├── pytest.ini               # Pytest settings
-└── README.md                # This file
+├── README.md                # This file (English)
+└── README_zh.md             # Chinese version
 ```
 
 ## Prerequisites
@@ -94,6 +100,7 @@ pytest tests/ -n 4 -v
 - `test_memory.py` - Tests memory system, RAG functionality, and memory retrieval
 - `test_api.py` - Tests API endpoints, data parsing, and response formats
 - `test_analysis_targets.py` - Tests analysis target validation (holdings, recommended stocks, indices)
+- `test_trading_cycle_quick.py` - **CRITICAL**: Quick trading cycle test for order recording verification
 
 **Characteristics**:
 - Use real dependencies where possible
@@ -174,12 +181,13 @@ def test_api_health_endpoint(client):
 ✅ **~28 tests passing** (100% pass rate)
 
 **Test Breakdown**:
-- **Integration Tests**: ~24 tests passing
+- **Integration Tests**: ~25 tests passing
   - Agent Architecture: 6 tests ✅
   - Portfolio Management: 7 tests ✅
   - Memory System: 5 tests ✅
   - API Endpoints: 5 tests ✅
   - Analysis Targets: 1 test ✅
+  - Trading Cycle Quick Test: 1 test ✅ (order recording verification)
 - **E2E Tests**: 4/4 passing
   - Frontend Integration: 4 tests ✅
 
@@ -247,8 +255,20 @@ cd backend
 python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000
 ```
 
+## Key Test Files
+
+For detailed information about critical test files and their priorities, see:
+- **[Key Test Files Guide](../docs/KEY_TEST_FILES.md)** - Complete guide to critical, important, and supporting tests
+
+**Quick Reference**:
+- **Critical Tests** (run before deployment):
+  - `test_trading_cycle_quick.py` - Order recording verification
+  - `test_portfolio.py` - Portfolio & P&L calculations
+  - `test_agent_architecture.py` - Agent system & tools
+
 ## Related Documentation
 
+- [Key Test Files Guide](../docs/KEY_TEST_FILES.md) - **Critical test files and priority guide** ⭐
 - [Testing Guide](../docs/TESTING.md) - Comprehensive testing documentation
 - [Test Scripts Guide](../docs/TEST_SCRIPTS_GUIDE.md) - Guide for independent test scripts
 - [Test Results](../docs/TEST_RESULTS.md) - Latest test execution results

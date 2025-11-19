@@ -1,5 +1,9 @@
 # 💹 AI-Trader Ollama
 
+**Language**: [English](README.md) | [中文版](README_zh.md)
+
+---
+
 > **A Multi-Agent Trading System with 29 Advanced Tools + 6 Specialized LLM Agents**  
 > 📈 Analyzing **NASDAQ-100** (118+ symbols) with comprehensive fundamental, technical, and sentiment analysis  
 > 🧠 Fully autonomous agent collaboration with real-time market data integration  
@@ -796,6 +800,121 @@ curl -X POST "http://localhost:8000/api/system/init?force=true"
 - Key learnings
 
 **Usage**: Agents can access recent memories (last 5-7 days) to inform current decisions.
+
+#### RAG (Retrieval-Augmented Generation) Mechanism
+
+The system implements a sophisticated RAG mechanism that enables agents to learn from historical trading decisions through intelligent memory retrieval and semantic search.
+
+**Core Architecture**:
+
+1. **Layered Memory Storage**:
+   - **Short-term (0-7 days)**: Full storage with complete transcripts, tool context, and conversation history
+     - Location: `memory/daily/YYYY-MM-DD.json`
+     - Purpose: Detailed decision reference
+     - Features: Preserves all details for in-depth analysis
+   - **Medium-term (8-30 days)**: Summary storage with key decision points and important conversation snippets
+     - Location: `memory/weekly/YYYY-WNN.jsonl`
+     - Purpose: Pattern recognition and trend analysis
+     - Features: Extracts key information, reduces storage space
+   - **Long-term (30+ days)**: Compressed summaries with core insights and lessons learned
+     - Location: `memory/monthly/YYYY-MM.jsonl`
+     - Purpose: Long-term strategy and historical patterns
+     - Features: Highly compressed, only core information retained
+
+2. **Vectorization & Semantic Search**:
+   - **Embedding Generation**:
+     - **Primary**: Ollama API (uses `nomic-embed-text` model)
+     - **Fallback**: sentence-transformers (uses `all-MiniLM-L6-v2`, 384-dimensional vectors)
+     - Automatic fallback if Ollama is unavailable
+   - **Vector Storage**:
+     - Numpy-based vector storage (lightweight, no FAISS required)
+     - Location: `memory/vectors/`
+     - Index files: `vectors.npy` and `metadata.json`
+     - Supports cosine similarity search
+   - **Hybrid Retrieval**:
+     - **Keyword Search**: Fast filtering by symbol, date, stance
+     - **Semantic Search**: Similarity matching using embedding vectors
+     - **Fusion Ranking**: Combines both results for best matches
+
+3. **Memory Quality Scoring**:
+   - **Scoring Dimensions** (0-1 score):
+     - **Trading Impact** (30% weight): Based on P&L and trading volume
+     - **Decision Quality** (20% weight): Based on subsequent performance and decision complexity
+     - **Information Density** (20% weight): Based on key information amount and field richness
+     - **Time Decay** (30% weight): Exponential decay (`score = 0.95 ^ days_ago`), newer memories are more important
+   - **Intelligent Compression**:
+     - High-score memories (score >= 0.7): Full details preserved
+     - Medium-score memories (score >= 0.4): Summary storage
+     - Low-score memories (score < 0.4): Compressed storage only
+
+4. **Memory Relations**:
+   - **Automatic Discovery**: System automatically finds related memories:
+     - Same stocks: Memories involving the same symbol
+     - Similar market conditions: Same market stance (bullish/neutral/bearish)
+     - Similar decision patterns: Same trading actions (BUY/SELL/HOLD)
+   - **Relation Storage**: Stored in `memory/index/memory_relations.json`
+   - **Retrieval Enhancement**: Can optionally include related memories when searching
+
+5. **Caching Mechanisms**:
+   - **Hot Memory Cache**: Recent 7 days' memories kept in memory for fast access
+   - **Query Result Cache**: Caches common query results
+   - **Vector Cache**: Caches frequently accessed memory embeddings
+
+6. **Performance Optimizations**:
+   - **Index Optimization**:
+     - Date index: Fast date range lookup
+     - Stock index: Inverted index by symbol
+     - Vector index: Numpy arrays for accelerated similarity search
+   - **Expected Performance**:
+     - Keyword search: < 10ms (1000 memories)
+     - Semantic search: < 50ms (1000 memories, 384-dim vectors)
+     - Hybrid retrieval: < 60ms (keyword + semantic fusion)
+
+**How Agents Use RAG**:
+
+1. **Automatic Memory Loading**: At the start of each trading cycle, recent memories (last 5 days) are automatically loaded
+2. **Forced Memory Retrieval**: Market Analyst always calls `get_recent_memories` at the start (system-enforced)
+3. **Active Memory Search**: Agents can actively search memories using:
+   - `get_recent_memories`: Get recent trading context
+   - `search_memories_by_symbol`: Find historical decisions for specific stocks
+   - `search_memories_by_semantic`: Natural language queries (e.g., "bearish market with high volatility")
+   - `search_similar_decisions`: Find similar trading situations
+4. **Learning from History**: Agents use retrieved memories to:
+   - Avoid repeating past mistakes
+   - Learn from successful strategies
+   - Maintain consistency with proven approaches
+   - Understand market patterns over time
+
+**Configuration**:
+
+RAG settings can be configured in `backend/config/config.json`:
+
+```json
+{
+  "rag": {
+    "short_term_days": 7,
+    "medium_term_days": 30,
+    "long_term_days": 90,
+    "embedding_model": "nomic-embed-text",
+    "embedding_dimension": 384,
+    "use_ollama_embedding": true,
+    "fallback_embedding_model": "all-MiniLM-L6-v2",
+    "vector_search_top_k": 10,
+    "enable_semantic_search": true,
+    "enable_cache": true,
+    "cache_size": 100
+  }
+}
+```
+
+**Benefits**:
+- ✅ **Improved Decision Quality**: Agents learn from past successes and failures
+- ✅ **Pattern Recognition**: Identifies recurring market conditions and effective strategies
+- ✅ **Consistency**: Maintains trading consistency across similar situations
+- ✅ **Efficiency**: Intelligent caching and indexing enable fast retrieval
+- ✅ **Scalability**: Layered storage and compression handle long-term operation
+
+For detailed RAG implementation documentation, see [`docs/RAG_OPTIMIZATION.md`](docs/RAG_OPTIMIZATION.md).
 
 ### Agent Conversations (`discussion_actions.jsonl`)
 
@@ -3278,7 +3397,8 @@ tests/
 │   ├── test_agent_architecture.py  # Agent system tests
 │   ├── test_portfolio.py            # Portfolio management tests
 │   ├── test_memory.py               # Memory system tests
-│   └── test_api.py                  # API endpoint tests
+│   ├── test_api.py                  # API endpoint tests
+│   └── test_trading_cycle_quick.py  # Quick trading cycle test (order recording verification)
 ├── e2e/                     # End-to-end tests
 │   └── test_frontend.py             # Frontend integration tests
 ├── utils/                   # Test utilities and helpers
@@ -3319,6 +3439,11 @@ pytest tests/e2e/ -v
 
 # Specific test file
 pytest tests/integration/test_portfolio.py -v
+
+# Quick trading cycle test (verifies order recording)
+python tests/integration/test_trading_cycle_quick.py
+# Or with pytest:
+pytest tests/integration/test_trading_cycle_quick.py -v
 ```
 
 **Run with Coverage** (if pytest-cov installed):
@@ -3331,11 +3456,12 @@ pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 ✅ **Current Status**: **~28 tests passing** (100% pass rate)
 
 **Test Breakdown**:
-- **Integration Tests**: ~24 tests passing
+- **Integration Tests**: ~25 tests passing
   - Agent Architecture: 6 tests ✅
   - Portfolio Management: 7 tests ✅
   - Memory System: 5 tests ✅
   - API Endpoints: 5 tests ✅
+  - Trading Cycle Quick Test: 1 test ✅ (verifies order recording with forced market OPEN)
 - **E2E Tests**: 4/4 passing
   - Frontend Integration: 4 tests ✅
 
@@ -3344,7 +3470,8 @@ pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 ### Test Documentation
 
 For detailed test documentation, see:
-- **[Test README](tests/README.md)** - Test suite overview and guidelines (English)
+- **[Test Documentation (English)](tests/README.md)** | **[Test Documentation (中文)](tests/README_zh.md)** - Test suite overview and guidelines
+- **[Key Test Files](docs/KEY_TEST_FILES.md)** - **Critical test files and priority guide** ⭐
 - **[Testing Guide](docs/TESTING.md)** - Comprehensive testing documentation
 - **[Test Scripts Guide](docs/TEST_SCRIPTS_GUIDE.md)** - Guide for independent test scripts (English)
 - **[Test Results](docs/TEST_RESULTS.md)** - Latest test execution results
@@ -3393,6 +3520,7 @@ All setup scripts are located in `scripts/` directory and can be run from the pr
 | `verify_portfolio.py` | Verify portfolio consistency | `python scripts/verify_portfolio.py` | Read-only, safe to run |
 | `test_api_server.py` | Test API endpoints | `python scripts/test_api_server.py` | Requires API running |
 | `test_frontend_features.py` | Test frontend features | `python scripts/test_frontend_features.py` | Requires API running |
+| `test_trading_cycle_quick.py` | Quick trading cycle test (single round) | `python tests/integration/test_trading_cycle_quick.py` | Forces market OPEN, verifies order recording |
 
 **Important**: Use independent test scripts (`test_news_tools.py`, `verify_portfolio.py`) for testing. Do NOT use `run_daily_trading.py` for testing as it will overwrite trading records.
 

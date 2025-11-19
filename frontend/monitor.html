@@ -4900,7 +4900,21 @@
                                     html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
                                 } else {
                                     // CRITICAL FIX: 嘗試解析結構化部分
+                                    console.log('[Coordinator] Attempting to parse summary text, length:', summaryText.length);
                                     const sections = parseCoordinatorSections(summaryText);
+                                    
+                                    // Debug: Log parsing result
+                                    console.log('[Coordinator] Parse result:', sections ? 'SUCCESS' : 'FAILED');
+                                    if (sections) {
+                                        console.log('[Coordinator] Parsed sections:', {
+                                            hasConsensusStance: !!sections.consensusStance,
+                                            hasKeyInsights: !!sections.keyInsights,
+                                            hasConsensusAreas: !!sections.consensusAreas,
+                                            hasDisagreements: !!sections.disagreements,
+                                            hasRecommendedStocks: !!sections.recommendedStocks,
+                                            hasFinalSummary: !!sections.finalSummary
+                                        });
+                                    }
                                     
                                     if (sections) {
                                         // 使用結構化顯示

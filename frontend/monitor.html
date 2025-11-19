@@ -3179,7 +3179,44 @@
                     }
                     alert(message);
                     
-                    // 刷新数据
+                    // CRITICAL FIX: 清空所有缓存数据，确保初始化后显示正确的空状态
+                    console.log('[Init] Clearing all cached data...');
+                    window.currentPortfolio = null;
+                    window.currentConversations = [];
+                    window.toolResultsByCategory = null;
+                    window.lastTradesData = [];
+                    window.lastEquityData = [];
+                    if (typeof window.lastBackendStatus !== 'undefined') {
+                        window.lastBackendStatus = null;
+                    }
+                    if (typeof window.lastSystemInfo !== 'undefined') {
+                        window.lastSystemInfo = null;
+                    }
+                    
+                    // CRITICAL FIX: 重置UI状态
+                    console.log('[Init] Resetting UI state...');
+                    // 重置订单状态
+                    const pendingEl = document.getElementById('pendingOrders');
+                    const filledEl = document.getElementById('filledOrders');
+                    if (pendingEl) pendingEl.textContent = '0';
+                    if (filledEl) filledEl.textContent = '0';
+                    
+                    // 重置对话状态
+                    updateConversationStatus(false);
+                    
+                    // 清空对话显示
+                    const conversationsContent = document.getElementById('conversationsContent');
+                    if (conversationsContent) {
+                        conversationsContent.innerHTML = '<div class="empty-state">No conversations yet. Start trading to see agent discussions.</div>';
+                    }
+                    
+                    // 清空新闻数据
+                    if (typeof window.newsData !== 'undefined') {
+                        window.newsData = [];
+                    }
+                    
+                    // 刷新数据（强制刷新，不使用缓存）
+                    console.log('[Init] Refreshing data...');
                     await refreshData(true);
                     
                     // 更新自动交易状态 - 初始化后停止自动交易，等待用户手动触发第一次交易

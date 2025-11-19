@@ -1611,11 +1611,19 @@ async def system_init(force: bool = Query(False)):
         logs_dir = _get_project_logs_dir()
         
         # 备份 portfolio_state.json（如果存在）
+        backup_created = False
+        backup_filename = None
         portfolio_file = logs_dir / "portfolio_state.json"
         if portfolio_file.exists():
-            backup_file = logs_dir / f"portfolio_state_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            backup_filename = f"portfolio_state_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            backup_file = logs_dir / backup_filename
             import shutil
-            shutil.copy2(portfolio_file, backup_file)
+            try:
+                shutil.copy2(portfolio_file, backup_file)
+                backup_created = True
+                print(f"[INIT] Created backup: {backup_filename}")
+            except Exception as e:
+                print(f"[INIT] Failed to create backup: {e}")
         
         # 删除所有数据文件
         files_to_delete = [
@@ -1659,7 +1667,10 @@ async def system_init(force: bool = Query(False)):
             content={
                 "ok": True,
                 "message": f"System initialized. Deleted {len(deleted)} files.",
-                "deleted_files": deleted
+                "deleted_files": deleted,
+                "backup_created": backup_created,
+                "backup_filename": backup_filename if backup_created else None,
+                "note": "First trade after initialization must be triggered manually. Auto-trading will resume after the first manual trade."
             },
             headers={
                 "Access-Control-Allow-Origin": "*",

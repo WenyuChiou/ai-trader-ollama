@@ -5563,6 +5563,16 @@
                 container.innerHTML = `<div class="empty-conversations"><p>${emptyMessage}</p></div>`;
                 return;
             }
+            // CRITICAL FIX: Debug log to see what conversations we're rendering
+            console.log('[renderConversationsOverview] Rendering', filteredConversations.length, 'conversations');
+            console.log('[renderConversationsOverview] Agent breakdown:', 
+                filteredConversations.reduce((acc, c) => {
+                    const agent = c.agent || 'Unknown';
+                    acc[agent] = (acc[agent] || 0) + 1;
+                    return acc;
+                }, {})
+            );
+            
             container.innerHTML = `
                 <div class="conversation-list">
                     ${filteredConversations.map((c) => {

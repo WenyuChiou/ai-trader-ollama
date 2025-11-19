@@ -435,12 +435,20 @@ def _scrape_feargreedmeter(url: str) -> Optional[Dict[str, Any]]:
 def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
     """
     抓 Fear & Greed Index（多來源策略）：
-      1) CNN JSON 端點（1~2 個）
-      2) feargreedmeter.com（替代數據源，推薦）
+      1) feargreedmeter.com（優先數據源，更準確）
+      2) CNN JSON 端點（備用）
       3) CNN HTML 頁面 fallback
       都失敗 → 回 stub 結構（不阻塞主流程）。
     """
-    # A/B: CNN JSON 端點
+    # CRITICAL FIX: 優先使用 feargreedmeter.com（更準確，顯示值 11）
+    for url in _ALTERNATIVE_SOURCES:
+        parsed = _scrape_feargreedmeter(url)
+        if parsed and parsed.get("value") is not None:
+            fgi_value = parsed.get("value")
+            print(f"[FGI] Fetched from feargreedmeter.com (PRIORITY): value={fgi_value}, label={parsed.get('label', 'N/A')}")
+            return parsed
+
+    # A/B: CNN JSON 端點（備用）
     for ep in _CNN_JSON_ENDPOINTS:
         try:
             r = requests.get(ep, timeout=timeout, headers={"Accept": "application/json"})
@@ -449,25 +457,17 @@ def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
                 parsed = _parse_cnn_json(data)
                 if parsed:
                     fgi_value = parsed.get("value")
-                    print(f"[FGI] Fetched from CNN JSON: value={fgi_value}, label={parsed.get('label', 'N/A')}")
+                    print(f"[FGI] Fetched from CNN JSON (FALLBACK): value={fgi_value}, label={parsed.get('label', 'N/A')}")
                     return parsed
         except Exception as e:
             print(f"[FGI] CNN JSON endpoint failed: {e}")
-
-    # 新增: feargreedmeter.com（替代數據源，更可靠）
-    for url in _ALTERNATIVE_SOURCES:
-        parsed = _scrape_feargreedmeter(url)
-        if parsed and parsed.get("value") is not None:
-            fgi_value = parsed.get("value")
-            print(f"[FGI] Fetched from feargreedmeter.com: value={fgi_value}, label={parsed.get('label', 'N/A')}")
-            return parsed
 
     # C: CNN HTML fallback
     for url in _CNN_HTML_PAGES:
         parsed = _scrape_cnn_html(url)
         if parsed and parsed.get("value") is not None:
             fgi_value = parsed.get("value")
-            print(f"[FGI] Fetched from CNN HTML: value={fgi_value}, label={parsed.get('label', 'N/A')}")
+            print(f"[FGI] Fetched from CNN HTML (FALLBACK): value={fgi_value}, label={parsed.get('label', 'N/A')}")
             return parsed
 
     # 全部失敗 → stub

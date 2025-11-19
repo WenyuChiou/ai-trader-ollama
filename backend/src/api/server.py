@@ -550,6 +550,16 @@ async def fetch_conversations_api(
                 
             if entry.get("type") == "tool":
                 tool_name = entry.get("tool_name", "")
+                
+                # CRITICAL FIX: If tool_name is missing, try to extract from content
+                if not tool_name:
+                    content = entry.get("content", "")
+                    if isinstance(content, str) and "Tool used:" in content:
+                        # Extract tool name from "Tool used: tool_name: ..."
+                        parts = content.split("Tool used:")[-1].split(":", 1)
+                        if len(parts) > 0:
+                            tool_name = parts[0].strip()
+                
                 tool_category = entry.get("tool_category", tool_category_map.get(tool_name, "other"))
                 tool_result = entry.get("tool_result", {})
                 

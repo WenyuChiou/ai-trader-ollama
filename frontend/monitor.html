@@ -6635,16 +6635,25 @@
                 
                 console.log(`[Filter] After agent filter: ${filteredConversations.length} entries`);
                 
-                // If filtering for specific agent, show only tool results
+                // CRITICAL FIX: For RiskAnalyst and TraderAgent, show discussion entries if no tools found
+                // These agents may not always have tool calls, but their discussion content is important
+                const isSpecialAgent = currentAgentFilter === 'RiskAnalyst' || currentAgentFilter === 'TraderAgent';
+                
+                // If filtering for specific agent, show only tool results (except for special agents)
                 const beforeToolFilter = filteredConversations.length;
-                filteredConversations = filteredConversations.filter(c => {
-                    const isTool = (c.type || 'discussion') === 'tool';
-                    if (!isTool && currentAgentFilter !== 'all') {
-                        console.log(`[Filter] Non-tool entry filtered out: type="${c.type}", agent="${c.agent}"`);
-                    }
-                    return isTool;
-                });
-                console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
+                if (!isSpecialAgent) {
+                    filteredConversations = filteredConversations.filter(c => {
+                        const isTool = (c.type || 'discussion') === 'tool';
+                        if (!isTool && currentAgentFilter !== 'all') {
+                            console.log(`[Filter] Non-tool entry filtered out: type="${c.type}", agent="${c.agent}"`);
+                        }
+                        return isTool;
+                    });
+                    console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
+                } else {
+                    // For RiskAnalyst and TraderAgent, keep both discussion and tool entries
+                    console.log(`[Filter] Special agent (${currentAgentFilter}): keeping both discussion and tool entries (${filteredConversations.length} total)`);
+                }
                 
                 // CRITICAL FIX: If no tool entries found in conversations, try to get from tool_results_by_category
                 // Use the parameter passed to function, or fallback to global window variable
@@ -6717,6 +6726,22 @@
                     }
                 } else if (filteredConversations.length === 0) {
                     console.log(`[Filter] No tool_results_by_category available (toolResultsByCategory=${!!toolResultsByCategory}, window.toolResultsByCategory=${!!window.toolResultsByCategory})`);
+                }
+                
+                // CRITICAL FIX: For RiskAnalyst and TraderAgent, if no tools found, show discussion entries instead
+                // These agents may not always have tool calls, but their discussion content is important
+                if (filteredConversations.length === 0 && isSpecialAgent) {
+                    console.log(`[Filter] No tools found for ${currentAgentFilter}, showing discussion entries instead`);
+                    // Re-filter to get discussion entries for this agent
+                    const allConversations = conversations || [];
+                    filteredConversations = allConversations.filter(c => {
+                        const agent = (c.agent || c.agent_name || 'Unknown').toLowerCase();
+                        const filterLower = currentAgentFilter.toLowerCase();
+                        const matches = agent === filterLower || agent.includes(filterLower) || filterLower.includes(agent);
+                        const isDiscussion = (c.type || 'discussion') === 'discussion';
+                        return matches && isDiscussion;
+                    });
+                    console.log(`[Filter] Found ${filteredConversations.length} discussion entries for ${currentAgentFilter}`);
                 }
                 
                 // CRITICAL FIX: Filter by stock symbol for TechnicalAnalyst

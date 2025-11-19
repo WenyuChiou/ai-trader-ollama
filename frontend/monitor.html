@@ -6359,14 +6359,41 @@
             
             // Apply agent filter
             if (currentAgentFilter !== 'all') {
+                // DEBUG: Log before filtering
+                console.log(`[Filter] Filtering for agent: ${currentAgentFilter}`);
+                console.log(`[Filter] Total conversations before filter: ${filteredConversations.length}`);
+                const toolEntriesBefore = filteredConversations.filter(c => (c.type || 'discussion') === 'tool');
+                console.log(`[Filter] Tool entries before filter: ${toolEntriesBefore.length}`);
+                if (toolEntriesBefore.length > 0) {
+                    console.log(`[Filter] Sample tool entry:`, {
+                        agent: toolEntriesBefore[0].agent,
+                        type: toolEntriesBefore[0].type,
+                        tool_name: toolEntriesBefore[0].tool_name
+                    });
+                }
+                
                 filteredConversations = filteredConversations.filter(c => {
                     const agent = (c.agent || c.agent_name || 'Unknown').toLowerCase();
                     const filterLower = currentAgentFilter.toLowerCase();
-                    return agent.includes(filterLower) || filterLower.includes(agent);
+                    const matches = agent.includes(filterLower) || filterLower.includes(agent);
+                    if (!matches && (c.type || 'discussion') === 'tool') {
+                        console.log(`[Filter] Tool entry filtered out: agent="${agent}", filter="${filterLower}"`);
+                    }
+                    return matches;
                 });
                 
+                console.log(`[Filter] After agent filter: ${filteredConversations.length} entries`);
+                
                 // If filtering for specific agent, show only tool results
-                filteredConversations = filteredConversations.filter(c => (c.type || 'discussion') === 'tool');
+                const beforeToolFilter = filteredConversations.length;
+                filteredConversations = filteredConversations.filter(c => {
+                    const isTool = (c.type || 'discussion') === 'tool';
+                    if (!isTool && currentAgentFilter !== 'all') {
+                        console.log(`[Filter] Non-tool entry filtered out: type="${c.type}", agent="${c.agent}"`);
+                    }
+                    return isTool;
+                });
+                console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
                 
                 // CRITICAL FIX: Filter by stock symbol for TechnicalAnalyst
                 if (currentAgentFilter === 'TechnicalAnalyst' && currentStockFilter !== 'all') {

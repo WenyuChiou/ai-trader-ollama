@@ -46,7 +46,7 @@
 
 AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combines:
 - **6 specialized LLM agents** working in collaboration
-- **29 advanced tools** for market analysis (23 market tools + 6 memory/RAG tools)
+- **27 advanced tools** for market analysis (21 market tools + 6 memory/RAG tools)
 - **Real-time data integration** from multiple sources
 - **Intelligent risk management** with position controls
 - **RAG Memory System**: Agents automatically retrieve and learn from historical trading decisions

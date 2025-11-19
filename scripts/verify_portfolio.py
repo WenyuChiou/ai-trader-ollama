@@ -104,9 +104,27 @@ def verify_portfolio():
     print("持仓记录验证")
     print("="*60)
     
-    # 使用项目根目录的 data/logs
+    # 尝试多个可能的路径
     project_root = ROOT.parent  # backend/ -> project root
-    logs_dir = project_root / "data" / "logs"
+    possible_logs_dirs = [
+        project_root / "data" / "logs",  # 项目根目录/data/logs
+        ROOT / "data" / "logs",  # backend/data/logs
+        BACKEND_DIR / "data" / "logs",  # backend/backend/data/logs
+    ]
+    
+    logs_dir = None
+    for possible_dir in possible_logs_dirs:
+        if (possible_dir / "portfolio_state.json").exists():
+            logs_dir = possible_dir
+            print(f"找到数据目录: {logs_dir}")
+            break
+    
+    if not logs_dir:
+        print("❌ 未找到数据目录，尝试的路径:")
+        for d in possible_logs_dirs:
+            print(f"   - {d}")
+        return False
+    
     portfolio_file = logs_dir / "portfolio_state.json"
     equity_file = logs_dir / "equity_history.jsonl"
     

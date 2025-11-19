@@ -1064,6 +1064,12 @@ Market Closed (e.g., After 4:00 PM or Weekend):
 - **During Market Hours**: Full agent discussions every 30 minutes (4 analysts + coordinator + risk + trader)
 - **Market Closed**: Agents still analyze but trader generates no orders
 - **Discussion Rounds**: 3 rounds of discussion per cycle (all analysts participate in each round)
+- **Performance Optimizations**:
+  - ✅ **Tool Result Caching**: Mandatory tools (get_recent_memories, get_economic_summary) only called in Round 1, cached results reused in Rounds 2-3
+  - ✅ **News Tool Caching**: plan_and_scan_news only called in Round 1, cached results reused in later rounds
+  - ✅ **Parallel Tool Execution**: Independent tools executed in parallel using ThreadPoolExecutor (Round 1 only)
+  - ✅ **Reduced Tool Calls**: Later rounds use fewer tools (max 3 vs 5 in Round 1) as they rely more on previous round results
+  - ✅ **Expected Performance**: 50-70% time reduction in Rounds 2-3, 30-50% time reduction in Round 1 (with parallel execution)
 
 ### Complete Trading Cycle Flow
 
@@ -1496,17 +1502,24 @@ T+0:00  → Data Collection (5-10 sec)
          └── Get economic/sentiment data
               │
               ▼
-T+0:10  → Multi-Agent Analysis (30-60 sec)
+T+0:10  → Multi-Agent Analysis (30-60 sec, optimized with caching and parallel execution)
          ├── Round 1: All 4 analysts analyze independently
          │   ├── Market Analyst: Uses get_market_indices, get_sector_rotation, get_economic_summary
+         │   │   • Mandatory tools (get_recent_memories, get_economic_summary) cached for reuse
+         │   │   • Independent tools executed in parallel (ThreadPoolExecutor)
          │   ├── Technical Analyst: Uses get_advanced_indicators, get_support_resistance (NO news tools)
          │   ├── Fundamental Analyst: Uses get_company_fundamentals, get_earnings_history (NOT subject to budget - analyzes all recommended stocks and holdings)
-         │   └── Sentiment Analyst: Uses fear_greed, vix_term, plan_and_scan_news (mandatory)
+         │   └── Sentiment Analyst: Uses fear_greed, vix_term, plan_and_scan_news (mandatory, cached for reuse)
          │
          ├── Round 2: Analysts refine analysis based on Round 1
-         │   └── Additional tool calls if needed
+         │   • Uses cached mandatory tools (get_recent_memories, get_economic_summary) from Round 1
+         │   • Uses cached news tools (plan_and_scan_news) from Round 1
+         │   • Reduced tool calls (max 3 per analyst vs 5 in Round 1)
+         │   └── Additional tool calls only if needed
          │
          ├── Round 3: Final analysis and synthesis
+         │   • Uses cached mandatory tools and news tools from Round 1
+         │   • Reduced tool calls (max 3 per analyst)
          │   └── Discussion Coordinator synthesizes all views
          │
          └── Output: Consensus stance (BULLISH/BEARISH/NEUTRAL)
@@ -1910,9 +1923,15 @@ Order Status:
 - **Fundamental Analyst**: Tools are NOT subject to budget limits (analyzes all recommended stocks and holdings)
 - **Budget Allocation**: Configurable via `budget_allocation` in `config.json` (fundamental automatically excluded)
 - **Round Structure**:
-  - Round 1: Initial analysis, tool calls
-  - Round 2: Refinement based on Round 1, additional tool calls if needed
-  - Round 3: Final synthesis, Discussion Coordinator summarizes
+  - Round 1: Initial analysis, tool calls (max 5 tools per analyst)
+  - Round 2: Refinement based on Round 1, uses cached results, reduced tool calls (max 3 tools per analyst)
+  - Round 3: Final synthesis, uses cached results, reduced tool calls (max 3 tools per analyst), Discussion Coordinator summarizes
+- **Performance Optimizations**:
+  - **Tool Result Caching**: Mandatory tools (`get_recent_memories`, `get_economic_summary`) cached in Round 1, reused in Rounds 2-3
+  - **News Tool Caching**: `plan_and_scan_news` cached in Round 1, reused in later rounds
+  - **Parallel Execution**: Independent tools executed in parallel using `ThreadPoolExecutor` (Round 1 only)
+  - **Reduced Tool Calls**: Later rounds use fewer tools (40% reduction) as they rely on previous round results
+  - **Expected Performance**: 50-70% time reduction in Rounds 2-3, 30-50% time reduction in Round 1
 
 **Tool Call Rules**:
 - Each analyst can call tools independently

@@ -4984,33 +4984,60 @@
                                             // 解析 Key Insights，提取每个分析师的报告
                                             const insightsText = sections.keyInsights;
                                             const agentReports = {};
-                                            const agentPatterns = [
-                                                /\*\s*Market\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Fundamental|Technical|Sentiment|$))/i,
-                                                /\*\s*Fundamental\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Technical|Sentiment|$))/i,
-                                                /\*\s*Technical\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Sentiment|$))/i,
-                                                /\*\s*Sentiment\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Technical|$))/i
+                                            const agentNames = ['Market Analyst', 'Fundamental Analyst', 'Technical Analyst', 'Sentiment Analyst'];
+                                            
+                                            // CRITICAL FIX: 支持多种格式，包括 • 和 * 符号
+                                            // 格式1: "* Market Analyst (Bullish) content" 或 "• Market Analyst (Bullish) content"
+                                            const bulletPatterns = [
+                                                /[•*]\s*Market\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Fundamental|Technical|Sentiment|Market)\s+Analyst|$)/i,
+                                                /[•*]\s*Fundamental\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Market|Technical|Sentiment|Fundamental)\s+Analyst|$)/i,
+                                                /[•*]\s*Technical\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Market|Fundamental|Sentiment|Technical)\s+Analyst|$)/i,
+                                                /[•*]\s*Sentiment\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Market|Fundamental|Technical|Sentiment)\s+Analyst|$)/i
                                             ];
                                             
-                                            const agentNames = ['Market Analyst', 'Fundamental Analyst', 'Technical Analyst', 'Sentiment Analyst'];
-                                            agentPatterns.forEach((pattern, index) => {
+                                            bulletPatterns.forEach((pattern, index) => {
                                                 const match = insightsText.match(pattern);
                                                 if (match && match[1]) {
                                                     agentReports[agentNames[index]] = match[1].trim();
                                                 }
                                             });
                                             
-                                            // 如果没有匹配到，尝试其他格式
-                                            if (Object.keys(agentReports).length === 0) {
-                                                const altPatterns = [
-                                                    /Market\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Fundamental|Technical|Sentiment|$)/i,
-                                                    /Fundamental\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Technical|Sentiment|$)/i,
-                                                    /Technical\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Sentiment|$)/i,
-                                                    /Sentiment\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Technical|$)/i
+                                            // 格式2: "Market Analyst: content" 或 "Market Analyst (Bullish): content"
+                                            if (Object.keys(agentReports).length < 4) {
+                                                const colonPatterns = [
+                                                    /Market\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Fundamental|Technical|Sentiment|Market)\s+Analyst|$)/i,
+                                                    /Fundamental\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Market|Technical|Sentiment|Fundamental)\s+Analyst|$)/i,
+                                                    /Technical\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Market|Fundamental|Sentiment|Technical)\s+Analyst|$)/i,
+                                                    /Sentiment\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Market|Fundamental|Technical|Sentiment)\s+Analyst|$)/i
                                                 ];
-                                                altPatterns.forEach((pattern, index) => {
-                                                    const match = insightsText.match(pattern);
-                                                    if (match && match[1]) {
-                                                        agentReports[agentNames[index]] = match[1].trim();
+                                                
+                                                colonPatterns.forEach((pattern, index) => {
+                                                    // 如果这个分析师还没有被提取，尝试提取
+                                                    if (!agentReports[agentNames[index]]) {
+                                                        const match = insightsText.match(pattern);
+                                                        if (match && match[1]) {
+                                                            agentReports[agentNames[index]] = match[1].trim();
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                            
+                                            // 格式3: "**Market Analyst** content" (Markdown 格式)
+                                            if (Object.keys(agentReports).length < 4) {
+                                                const markdownPatterns = [
+                                                    /\*\*Market\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Fundamental|Technical|Sentiment|Market)\s+Analyst\*\*|$)/i,
+                                                    /\*\*Fundamental\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Market|Technical|Sentiment|Fundamental)\s+Analyst\*\*|$)/i,
+                                                    /\*\*Technical\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Market|Fundamental|Sentiment|Technical)\s+Analyst\*\*|$)/i,
+                                                    /\*\*Sentiment\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Market|Fundamental|Technical|Sentiment)\s+Analyst\*\*|$)/i
+                                                ];
+                                                
+                                                markdownPatterns.forEach((pattern, index) => {
+                                                    // 如果这个分析师还没有被提取，尝试提取
+                                                    if (!agentReports[agentNames[index]]) {
+                                                        const match = insightsText.match(pattern);
+                                                        if (match && match[1]) {
+                                                            agentReports[agentNames[index]] = match[1].trim();
+                                                        }
                                                     }
                                                 });
                                             }
@@ -9695,33 +9722,60 @@
             
             // 解析 Key Insights，提取每个分析师的报告
             const agentReports = {};
-            const agentPatterns = [
-                /\*\s*Market\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Fundamental|Technical|Sentiment|$))/i,
-                /\*\s*Fundamental\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Technical|Sentiment|$))/i,
-                /\*\s*Technical\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Sentiment|$))/i,
-                /\*\s*Sentiment\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Technical|$))/i
+            const agentNames = ['Market Analyst', 'Fundamental Analyst', 'Technical Analyst', 'Sentiment Analyst'];
+            
+            // CRITICAL FIX: 支持多种格式，包括 • 和 * 符号
+            // 格式1: "* Market Analyst (Bullish) content" 或 "• Market Analyst (Bullish) content"
+            const bulletPatterns = [
+                /[•*]\s*Market\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Fundamental|Technical|Sentiment|Market)\s+Analyst|$)/i,
+                /[•*]\s*Fundamental\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Market|Technical|Sentiment|Fundamental)\s+Analyst|$)/i,
+                /[•*]\s*Technical\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Market|Fundamental|Sentiment|Technical)\s+Analyst|$)/i,
+                /[•*]\s*Sentiment\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=[•*]\s*(?:Market|Fundamental|Technical|Sentiment)\s+Analyst|$)/i
             ];
             
-            const agentNames = ['Market Analyst', 'Fundamental Analyst', 'Technical Analyst', 'Sentiment Analyst'];
-            agentPatterns.forEach((pattern, index) => {
+            bulletPatterns.forEach((pattern, index) => {
                 const match = insightsText.match(pattern);
                 if (match && match[1]) {
                     agentReports[agentNames[index]] = match[1].trim();
                 }
             });
             
-            // 如果没有匹配到，尝试其他格式
-            if (Object.keys(agentReports).length === 0) {
-                const altPatterns = [
-                    /Market\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Fundamental|Technical|Sentiment|$)/i,
-                    /Fundamental\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Technical|Sentiment|$)/i,
-                    /Technical\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Sentiment|$)/i,
-                    /Sentiment\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Technical|$)/i
+            // 格式2: "Market Analyst: content" 或 "Market Analyst (Bullish): content"
+            if (Object.keys(agentReports).length < 4) {
+                const colonPatterns = [
+                    /Market\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Fundamental|Technical|Sentiment|Market)\s+Analyst|$)/i,
+                    /Fundamental\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Market|Technical|Sentiment|Fundamental)\s+Analyst|$)/i,
+                    /Technical\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Market|Fundamental|Sentiment|Technical)\s+Analyst|$)/i,
+                    /Sentiment\s+Analyst(?:\s*\([^)]+\))?[\s:]*([\s\S]*?)(?=(?:Market|Fundamental|Technical|Sentiment)\s+Analyst|$)/i
                 ];
-                altPatterns.forEach((pattern, index) => {
-                    const match = insightsText.match(pattern);
-                    if (match && match[1]) {
-                        agentReports[agentNames[index]] = match[1].trim();
+                
+                colonPatterns.forEach((pattern, index) => {
+                    // 如果这个分析师还没有被提取，尝试提取
+                    if (!agentReports[agentNames[index]]) {
+                        const match = insightsText.match(pattern);
+                        if (match && match[1]) {
+                            agentReports[agentNames[index]] = match[1].trim();
+                        }
+                    }
+                });
+            }
+            
+            // 格式3: "**Market Analyst** content" (Markdown 格式)
+            if (Object.keys(agentReports).length < 4) {
+                const markdownPatterns = [
+                    /\*\*Market\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Fundamental|Technical|Sentiment|Market)\s+Analyst\*\*|$)/i,
+                    /\*\*Fundamental\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Market|Technical|Sentiment|Fundamental)\s+Analyst\*\*|$)/i,
+                    /\*\*Technical\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Market|Fundamental|Sentiment|Technical)\s+Analyst\*\*|$)/i,
+                    /\*\*Sentiment\s+Analyst\*\*\s*([\s\S]*?)(?=\*\*(?:Market|Fundamental|Technical|Sentiment)\s+Analyst\*\*|$)/i
+                ];
+                
+                markdownPatterns.forEach((pattern, index) => {
+                    // 如果这个分析师还没有被提取，尝试提取
+                    if (!agentReports[agentNames[index]]) {
+                        const match = insightsText.match(pattern);
+                        if (match && match[1]) {
+                            agentReports[agentNames[index]] = match[1].trim();
+                        }
                     }
                 });
             }

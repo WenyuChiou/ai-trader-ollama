@@ -5844,9 +5844,21 @@
                             if (entry_type !== 'discussion') {
                                 return ''; // 跳过非discussion的entry
                             }
-                            // If no analysisText but has content, use content as fallback
-                            if (!analysisText && content) {
-                                analysisText = content;
+                            // CRITICAL FIX: If no analysisText but has content, use content as fallback
+                            // Also ensure analysisText is set even if extraction failed
+                            if (!analysisText || analysisText.trim().length === 0) {
+                                if (content && content.trim().length > 0) {
+                                    // Use content as fallback, but try to extract meaningful part
+                                    const contentText = content.trim();
+                                    // Try to extract Analysis: section if exists
+                                    const analysisMatch = contentText.match(/Analysis:\s*(.+)/is);
+                                    if (analysisMatch && analysisMatch[1].trim().length > 10) {
+                                        analysisText = analysisMatch[1].trim();
+                                    } else {
+                                        // Use full content as fallback
+                                        analysisText = contentText;
+                                    }
+                                }
                             }
                         }
                         

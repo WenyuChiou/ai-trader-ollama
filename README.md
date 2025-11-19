@@ -2181,10 +2181,10 @@ Railway provides a simple and reliable way to deploy the AI-Trader backend API t
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pip install -r backend/requirements.txt"
+    "buildCommand": "cd backend && pip install -r requirements.txt"
   },
   "deploy": {
-    "startCommand": "uvicorn backend.src.api.server:app --host 0.0.0.0 --port $PORT",
+    "startCommand": "cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

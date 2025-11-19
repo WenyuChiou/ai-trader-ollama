@@ -1178,6 +1178,22 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = sentiment_result.get("tool_calls", [])
             
+            # CRITICAL FIX: Filter out deprecated news_scan tool (only keep plan_and_scan_news)
+            filtered_tool_calls = []
+            for tc in tool_calls_list:
+                tool_name = tc.get("name", "")
+                if tool_name == "news_scan":
+                    print(f"   [FILTER] Removing deprecated news_scan tool (use plan_and_scan_news instead)")
+                    # Convert to plan_and_scan_news
+                    filtered_tool_calls.append({
+                        "name": "plan_and_scan_news",
+                        "args": tc.get("args", {}),
+                        "why": tc.get("why", "") + " (converted from news_scan)"
+                    })
+                else:
+                    filtered_tool_calls.append(tc)
+            tool_calls_list = filtered_tool_calls
+            
             # CRITICAL FIX: 强制SentimentAnalyst调用新闻工具（最高优先级）
             # 无论LLM是否请求，都必须调用新闻工具
             # CRITICAL FIX: news_scan 已移除，只检查 plan_and_scan_news

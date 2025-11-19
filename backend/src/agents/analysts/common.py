@@ -322,16 +322,121 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
     tool_name = tool_call.get("name", "")
     tool_args = tool_call.get("args", {})
     
-    if tool_name == "vix":
-        print(f"   [TOOL] Mapping 'vix' -> 'vix_term' (correct tool name)")
-        tool_name = "vix_term"
-        tool_call["name"] = "vix_term"
+    # CRITICAL FIX: Ensure tool_args is a dictionary
+    if not isinstance(tool_args, dict):
+        print(f"   [WARN] Tool args is not a dict (type: {type(tool_args)}), resetting to empty dict")
+        tool_args = {}
+    
+    if not tool_name:
+        print(f"   [WARN] Tool call missing name")
+        return {"ok": False, "error": "Tool call missing name"}
+    
+    # CRITICAL FIX: Tool name mapping - map incorrect tool names to correct ones
+    tool_name_mapping = {
+        "vix": "vix_term",
+        "get_news_scan": "plan_and_scan_news",
+        "get_news": "plan_and_scan_news",
+        "get_market_sentiment": "fear_greed",
+        "get_volume_analysis": "get_advanced_indicators",
+        "get_advanced_technical_data": "get_advanced_indicators",  # LLM may use incorrect name
+        "get_market_indices_data": "get_market_indices",  # LLM may use incorrect name
+        "get_support_resistance_levels": "get_support_resistance",  # LLM may use incorrect name
+        "get_stock_data": "get_advanced_indicators",  # LLM may use incorrect name
+        "calculate_technical_indicators": "get_advanced_indicators",  # LLM may use incorrect name
+        "identify_support_resistance": "get_support_resistance",  # LLM may use incorrect name
+        "analyze_market_sentiment": "fear_greed",  # LLM may use incorrect name
+    }
+    
+    if tool_name in tool_name_mapping:
+        mapped_name = tool_name_mapping[tool_name]
+        print(f"   [TOOL] Mapping '{tool_name}' -> '{mapped_name}' (correct tool name)")
+        tool_name = mapped_name
+        tool_call["name"] = mapped_name
+    
+    # Check if tool exists in toolbox
+    if tool_name not in toolbox.list():
+        print(f"   [WARN] Tool {tool_name} not found in toolbox")
+        print(f"   [INFO] Available tools: {', '.join(sorted(toolbox.list())[:10])}...")
+        return {"ok": False, "error": f"Tool {tool_name} not available"}
+    
+    # CRITICAL FIX: web_search must have query or keywords parameter
+    if tool_name == "web_search":
+        if "query" not in tool_args and "keywords" not in tool_args:
+            # If no query or keywords, add default query or skip
+            if "domains" in tool_args:
+                # If domains exist, use generic market query
+                tool_args["query"] = "market news stocks economy"
+                print(f"   [TOOL_FIX] Added default query='market news stocks economy' to web_search (domains={tool_args.get('domains')})")
+            else:
+                # If no domains and no query, return error
+                print(f"   [TOOL_ERR] web_search requires 'query' or 'keywords' parameter")
+                return {"ok": False, "error": "web_search requires 'query' or 'keywords' parameter"}
+    
+    # CRITICAL FIX: plan_and_scan_news - ensure mview parameter and fetch_body_top
+    if tool_name == "plan_and_scan_news":
+        # If fetch_body_top is not set, default to fetching top 10 articles' content
+        if "fetch_body_top" not in tool_args or tool_args.get("fetch_body_top", 0) == 0:
+            tool_args["fetch_body_top"] = 10
+            print(f"   [INFO] Auto-set fetch_body_top=10 for plan_and_scan_news to get article content")
+        
+        # If mview is not provided, create from market_summary
+        if "mview" not in tool_args and market_summary:
+            tool_args["mview"] = {
+                "vix": market_summary.get("vix", {}),
+                "stocks": market_summary.get("stocks", {}),
+            }
+            print(f"   [INFO] Auto-added mview parameter to plan_and_scan_news from market_summary")
+        elif "mview" not in tool_args:
+            # If no market_summary, create empty mview
+            tool_args["mview"] = {"vix": {}, "stocks": {}}
+            print(f"   [INFO] Auto-added empty mview parameter to plan_and_scan_news")
+    
+    # CRITICAL FIX: fear_greed tool does not accept index or crypto parameters, remove them
+    if tool_name == "fear_greed":
+        # fear_greed only accepts timeout parameter, remove other unsupported parameters
+        unsupported_params = ["index", "crypto", "source", "market"]
+        removed = []
+        for param in unsupported_params:
+            if param in tool_args:
+                del tool_args[param]
+                removed.append(param)
+        if removed:
+            print(f"   [TOOL_FIX] Removed unsupported parameters from fear_greed call: {removed}")
+        # Only keep timeout parameter (if exists), remove all other parameters
+        allowed_params = {"timeout"}
+        params_to_remove = [k for k in tool_args.keys() if k not in allowed_params]
+        for param in params_to_remove:
+            del tool_args[param]
+            if param not in unsupported_params:  # Avoid duplicate printing
+                print(f"   [TOOL_FIX] Removed unsupported '{param}' parameter from fear_greed call")
+    
+    # CRITICAL FIX: Auto-add full universe symbols to get_market_breadth
+    if tool_name == "get_market_breadth":
+        if not tool_args.get("symbols") and market_summary and market_summary.get("symbols"):
+            # Use full universe symbols (not sample_stocks)
+            tool_args["symbols"] = market_summary["symbols"]
+            print(f"   [INFO] Auto-added {len(market_summary['symbols'])} symbols to get_market_breadth (full universe)")
+    
+    # CRITICAL FIX: Check tools that require symbol parameter
+    symbol_required_tools = ["get_advanced_indicators", "get_support_resistance", "get_company_fundamentals", 
+                             "get_earnings_history", "get_financial_statements"]
+    if tool_name in symbol_required_tools:
+        # Check if symbol exists and is valid
+        symbol = tool_args.get("symbol", "")
+        if not symbol or not isinstance(symbol, str) or len(symbol.strip()) == 0:
+            if market_summary and market_summary.get("sample_stocks"):
+                # Use first sample stock as default symbol
+                default_symbol = market_summary["sample_stocks"][0]
+                tool_args["symbol"] = default_symbol
+                print(f"   [INFO] Auto-added symbol={default_symbol} to {tool_name}")
+            else:
+                # If no available symbol, return error
+                return {"ok": False, "error": "symbol is required"}
     
     try:
-        if market_summary and tool_name in ["get_market_indices", "get_sector_rotation", "get_market_breadth"]:
-            result = toolbox.invoke(tool_name, tool_args)
-        else:
-            result = toolbox.invoke(tool_name, tool_args)
+        # CRITICAL FIX: toolbox.invoke() signature is invoke(name: str, **kwargs)
+        # So we need to unpack tool_args as keyword arguments, not pass as positional
+        result = toolbox.invoke(tool_name, **tool_args)
         return result
     except Exception as e:
         print(f"   [ERROR] Tool {tool_name} execution failed: {e}")

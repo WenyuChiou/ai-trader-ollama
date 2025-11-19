@@ -847,15 +847,41 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 
 ## 🤖 Multi-Agent Architecture
 
+### Modular Architecture
+
+The system uses a **modular architecture** for better maintainability and code organization:
+
+**Core Structure**:
+- **`backend/src/agents/multi_analyst_system.py`**: Main orchestrator for multi-round discussions
+- **`backend/src/agents/analysts/`**: Modular analyst handlers
+  - `market_analyst_handler.py`: Market Analyst logic
+  - `technical_analyst_handler.py`: Technical Analyst logic
+  - `fundamental_analyst_handler.py`: Fundamental Analyst logic
+  - `sentiment_analyst_handler.py`: Sentiment Analyst logic
+  - `common.py`: Shared utilities and helper functions
+- **`backend/src/agents/factory.py`**: Agent factory for creating agent instances
+- **`prompts/`**: YAML prompt files for all agents (system prompts and user templates)
+
+**Benefits**:
+- ✅ **Separation of Concerns**: Each analyst has its own handler module
+- ✅ **Code Reusability**: Common utilities shared via `common.py`
+- ✅ **Easy Maintenance**: Changes to one analyst don't affect others
+- ✅ **Prompt Management**: All prompts stored in YAML files for easy editing
+- ✅ **Testability**: Each module can be tested independently
+
 ### Agent Specifications
 
 #### 1. **Market Analyst** 🌐
 - **Specialty**: Macro trends, sector rotation, market structure
 - **Priority Tools**: `get_market_indices`, `get_sector_rotation`, `get_market_breadth`, `get_economic_summary`
+- **Handler Module**: `backend/src/agents/analysts/market_analyst_handler.py`
+- **Prompt File**: `prompts/market_analyst.yml`
 
 #### 2. **Technical Analyst** 📈
 - **Specialty**: Chart patterns, indicators, support/resistance
 - **Priority Tools**: `get_advanced_indicators`, `get_support_resistance`, `vix_term`
+- **Handler Module**: `backend/src/agents/analysts/technical_analyst_handler.py`
+- **Prompt File**: `prompts/technical_analyst.yml`
 - **Analysis Targets**: 
   - **With Holdings**: Current holdings + Recommended stocks + Major indices (SPY, QQQ, DIA, IWM, VTI)
   - **Without Holdings**: Recommended stocks + Major indices (SPY, QQQ, DIA, IWM, VTI)
@@ -868,6 +894,8 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 #### 3. **Fundamental Analyst** 💼
 - **Specialty**: Financial statements, valuation, earnings
 - **Priority Tools**: `get_company_fundamentals`, `get_earnings_history`, `get_financial_statements`
+- **Handler Module**: `backend/src/agents/analysts/fundamental_analyst_handler.py`
+- **Prompt File**: `prompts/fundamental_analyst.yml`
 - **Analysis Targets**: 
   - **With Holdings**: Non-ETF holdings + Non-ETF recommended stocks (ETFs excluded)
   - **Without Holdings**: Non-ETF recommended stocks only
@@ -879,6 +907,8 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 #### 4. **Sentiment Analyst** 😊
 - **Specialty**: Market psychology, news sentiment, fear/greed
 - **Priority Tools**: `fear_greed`, `vix_term`, `plan_and_scan_news` (mandatory)
+- **Handler Module**: `backend/src/agents/analysts/sentiment_analyst_handler.py`
+- **Prompt File**: `prompts/sentiment_analyst.yml`
 - **News Analysis**: 
   - Automatically calls `plan_and_scan_news` at the start of each analysis cycle
   - System automatically filters out deprecated `news_scan` tool (converts to `plan_and_scan_news`)
@@ -888,10 +918,14 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 #### 5. **Risk Analyst** 🛡️
 - **Specialty**: Risk assessment, position management
 - **Priority Tools**: `vix_term`, `get_correlation_matrix`, `get_market_breadth`
+- **Handler Module**: `backend/src/agents/risk_analyst_llm.py`
+- **Prompt File**: `prompts/risk_analyst.yml`
 
 #### 6. **Trader Agent** 💰
 - **Specialty**: Trading decisions, position sizing
 - **Type**: LLM-based agent (uses deepseek-r1)
+- **Handler Module**: `backend/src/agents/trader_agent.py`
+- **Prompt File**: `prompts/trader_agent.yml`
 - **Inputs**: 
   - All analyst recommendations (consensus stance, recommended stocks)
   - Risk report (risk level, VIX score, position recommendations)
@@ -906,6 +940,56 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
   - Considers hard rules (position limits, cash constraints)
   - Integrates Risk Analyst recommendations
   - Generates natural language rationale
+
+#### 7. **Discussion Coordinator** 🤝
+- **Specialty**: Synthesizes all analyst perspectives into consensus
+- **Handler Module**: `backend/src/agents/multi_analyst_system.py` (internal function `_run_discussion_coordinator`)
+- **Prompt File**: `prompts/discussion_agent.yml`
+- **Function**: 
+  - Reviews all analyst reports and discussion history
+  - Identifies consensus and disagreements
+  - Generates unified summary with final stance
+  - Provides recommended stocks based on analyst consensus
+
+### Prompt Management
+
+All agent prompts are stored in **YAML files** in the `prompts/` directory:
+
+**Prompt File Structure**:
+```yaml
+system: |
+  Role: You are a [Agent Type]...
+  Area of expertise: ...
+  Available Tools: ...
+  
+user: |
+  Context:
+  - Market Data: {market_view}
+  - Previous Discussion: {previous_discussion}
+  ...
+```
+
+**Benefits of YAML Prompts**:
+- ✅ **Easy Editing**: Modify prompts without touching code
+- ✅ **Version Control**: Track prompt changes in Git
+- ✅ **Consistency**: All agents use the same prompt loading mechanism
+- ✅ **Template Variables**: Use `{variable_name}` for dynamic content
+- ✅ **Separation of Concerns**: Prompts separate from business logic
+
+**Available Prompt Files**:
+- `prompts/market_analyst.yml`: Market Analyst system and user prompts
+- `prompts/technical_analyst.yml`: Technical Analyst prompts
+- `prompts/fundamental_analyst.yml`: Fundamental Analyst prompts
+- `prompts/sentiment_analyst.yml`: Sentiment Analyst prompts
+- `prompts/risk_analyst.yml`: Risk Analyst prompts
+- `prompts/trader_agent.yml`: Trader Agent prompts
+- `prompts/discussion_agent.yml`: Discussion Coordinator prompts
+
+**Loading Mechanism**:
+- Prompts are loaded via `AgentFactory._load_prompts()` method
+- System prompts and user templates are extracted from YAML files
+- Template variables are replaced with actual values at runtime
+- Prompts are cached per agent instance for performance
 
 ---
 
@@ -1433,12 +1517,18 @@ External Data Sources:
         │  └── Sentiment        │
         │                       │
         │  Round 2:             │
-        │  ├── (Same agents)    │
-        │  └── Tool calls       │
+        │  ├── Market Analyst   │
+        │  ├── Technical Analyst│
+        │  ├── Fundamental (skip│
+        │  │   - reuse R1)      │
+        │  └── Sentiment        │
         │                       │
         │  Round 3:             │
-        │  ├── (Same agents)    │
-        │  └── Final synthesis  │
+        │  ├── Market Analyst   │
+        │  ├── Technical Analyst│
+        │  ├── Fundamental (skip│
+        │  │   - reuse R1)      │
+        │  └── Sentiment        │
         │                       │
         │  Discussion Coordinator│
         │  └── Consensus stance │
@@ -1919,17 +2009,26 @@ Order Status:
 
 **Discussion Rounds**:
 - **Number of Rounds**: 3 rounds per cycle (configurable)
-- **Participants**: All 4 analysts participate in each round
+- **Participants**: 
+  - Round 1: All 4 analysts (Market, Technical, Fundamental, Sentiment)
+  - Round 2-3: 3 analysts (Market, Technical, Sentiment) - Fundamental Analyst skipped (reuses Round 1 results)
 - **Tool Budget**: 15 tool calls per cycle (configurable, shared across Market/Technical/Sentiment Analysts only)
 - **Fundamental Analyst**: Tools are NOT subject to budget limits (analyzes all recommended stocks and holdings)
 - **Budget Allocation**: Configurable via `budget_allocation` in `config.json` (fundamental automatically excluded)
 - **Round Structure**:
   - Round 1: Initial analysis, tool calls (max 5 tools per analyst)
+    - All 4 analysts run: Market, Technical, Fundamental, Sentiment
+    - Fundamental Analyst performs full analysis (time-consuming, data-intensive)
   - Round 2: Refinement based on Round 1, uses cached results, reduced tool calls (max 3 tools per analyst)
+    - Market, Technical, Sentiment Analysts refine their analysis
+    - **Fundamental Analyst skipped** (reuses Round 1 analysis - fundamental data doesn't change quickly)
   - Round 3: Final synthesis, uses cached results, reduced tool calls (max 3 tools per analyst), Discussion Coordinator summarizes
+    - Market, Technical, Sentiment Analysts finalize their analysis
+    - **Fundamental Analyst skipped** (reuses Round 1 analysis)
 - **Performance Optimizations**:
   - **Tool Result Caching**: Mandatory tools (`get_recent_memories`, `get_economic_summary`) cached in Round 1, reused in Rounds 2-3
   - **News Tool Caching**: `plan_and_scan_news` cached in Round 1, reused in later rounds
+  - **Fundamental Analysis Optimization**: Fundamental Analyst only runs in Round 1, later rounds reuse Round 1 results (saves 30-60 seconds per round)
   - **Parallel Execution**: Independent tools executed in parallel using `ThreadPoolExecutor` (Round 1 only)
   - **Reduced Tool Calls**: Later rounds use fewer tools (40% reduction) as they rely on previous round results
   - **Expected Performance**: 50-70% time reduction in Rounds 2-3, 30-50% time reduction in Round 1

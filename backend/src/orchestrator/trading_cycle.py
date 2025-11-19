@@ -140,6 +140,33 @@ def execute_daily_trade(
     """
 
     # ---- 參數預設 ----
+    # CRITICAL FIX: Load config values first, then override with function parameters if provided
+    from src.utils.config_loader import load_config
+    config = load_config()
+    
+    # CRITICAL FIX: Load rounds from config.json
+    # Always use config value if available, unless explicitly overridden
+    # Note: In Python, we can't distinguish between default and explicit default value,
+    # so we always check config and use it if different from default
+    config_rounds = config.get("discussion_rounds", 3)
+    if rounds == 3:  # Using default value, use config value instead
+        rounds = config_rounds
+        print(f"[TRADING CYCLE] Using rounds from config.json: {rounds}")
+    else:
+        print(f"[TRADING CYCLE] Using explicitly provided rounds: {rounds} (config has {config_rounds})")
+    
+    # CRITICAL FIX: Load auto_tools from config.json
+    config_auto_tools = config.get("discussion_auto_tools", True)
+    if auto_tools == True:  # Using default value, use config value instead
+        auto_tools = config_auto_tools
+        print(f"[TRADING CYCLE] Using auto_tools from config.json: {auto_tools}")
+    
+    # CRITICAL FIX: Load tool_budget from config.json
+    config_tool_budget = config.get("discussion_tool_budget", config.get("tool_budget", 15))
+    if tool_budget == 8:  # Using default value, use config value instead
+        tool_budget = config_tool_budget
+        print(f"[TRADING CYCLE] Using tool_budget from config.json: {tool_budget}")
+    
     if universe is None:
         universe = _default_universe()
     # Only set default window if both start and end are None
@@ -404,8 +431,7 @@ def execute_daily_trade(
             }
     
     # CRITICAL FIX: 计算初步可用现金（根据模式决定是否应用现金储备）
-    from src.utils.config_loader import load_config
-    config = load_config()
+    # Reuse config loaded earlier (line 145)
     position_limit_mode = config.get("position_limit_mode", "auto")
     min_cash_reserve_ratio = config.get("min_cash_reserve_ratio")
     
@@ -464,7 +490,7 @@ def execute_daily_trade(
     
     # CRITICAL: Use optimized parallel version as default (direct integration)
     print("[TRADING CYCLE] ✅ Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
-    # CRITICAL FIX: 传递 historical_memories 给 discussion system
+    # CRITICAL FIX: 传递 historical_memories 和 rounds 给 discussion system
     convo = run_multi_analyst_discussion_parallel(
         market_view=market_view,  # 传入完整的market_view
         use_tools=auto_tools,
@@ -475,6 +501,7 @@ def execute_daily_trade(
         available_cash=portfolio.cash if portfolio else None,
         enable_parallel=True,
         historical_memories=historical_memories,  # 传递历史记忆
+        rounds=rounds,  # CRITICAL FIX: Pass rounds parameter for multi-round discussion
     )
     final_stance = convo.get("final_stance", "neutral")
     
@@ -763,11 +790,14 @@ def execute_daily_trade(
                     stance = entry_data.get("stance", "neutral")
                     analysis = entry_data.get("analysis", entry_data.get("summary", "No analysis provided"))
                     
+                    # CRITICAL FIX: Get round number from entry_data if available (for multi-round discussion)
+                    coordinator_round = entry_data.get("round", 0)
+                    
                     entry = {
                         "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                         "date": trade_date_str,
                         "agent": "DiscussionCoordinator",  # 统一使用 DiscussionCoordinator
-                        "round": 0,
+                        "round": coordinator_round,  # CRITICAL FIX: Use round number from entry_data
                         "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                         "type": "discussion",
                         "stance": stance,
@@ -790,11 +820,14 @@ def execute_daily_trade(
             if agent_name == "MarketAnalyst" and not recommended_stocks and market_recommended_stocks:
                 recommended_stocks = market_recommended_stocks
             
+            # CRITICAL FIX: Get round number from entry_data if available (for multi-round discussion)
+            round_num = entry_data.get("round", 0)
+            
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "date": trade_date_str,
                 "agent": agent_name,
-                "round": 0,
+                "round": round_num,  # CRITICAL FIX: Use round number from entry_data
                 "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
                 "type": "discussion",
                 "stance": stance,
@@ -809,6 +842,62 @@ def execute_daily_trade(
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
             print(f"[TRADING CYCLE] Wrote {agent_name} from discussion_history (stance: {stance})")
+            transcript_analysts_written.add(agent_name)  # CRITICAL FIX: Mark as written to avoid duplicates
+        
+        # CRITICAL FIX: Ensure all required analysts are written (final check)
+        # This guarantees that even if transcript parsing fails or discussion_history is incomplete,
+        # all analysts will still be written from analyst_reports
+        required_analysts = {
+            "MarketAnalyst": "market",
+            "TechnicalAnalyst": "technical",
+            "FundamentalAnalyst": "fundamental",
+            "SentimentAnalyst": "sentiment"
+        }
+        
+        for agent_name, analyst_key in required_analysts.items():
+            if agent_name not in transcript_analysts_written:
+                # This analyst was not written, try to write from analyst_reports
+                report = analyst_reports.get(analyst_key, {})
+                if report and isinstance(report, dict):
+                    analysis = report.get("analysis", "")
+                    stance = report.get("stance", "neutral")
+                    tools_used = report.get("tools_used", [])
+                    
+                    # Only write if we have meaningful analysis
+                    if analysis and len(analysis.strip()) > 10:
+                        entry = {
+                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                            "date": trade_date_str,
+                            "agent": agent_name,
+                            "round": 0,
+                            "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
+                            "type": "discussion",
+                            "stance": stance,
+                            "summary": analysis,
+                            "tools_used": tools_used if isinstance(tools_used, list) else [],
+                        }
+                        
+                        # Add recommended_stocks for MarketAnalyst
+                        if agent_name == "MarketAnalyst" and market_recommended_stocks:
+                            entry["recommended_stocks"] = market_recommended_stocks if isinstance(market_recommended_stocks, list) else []
+                        
+                        with convo_file.open("a", encoding="utf-8") as f:
+                            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                        print(f"[TRADING CYCLE] ✅ Wrote {agent_name} from analyst_reports (fallback, stance: {stance})")
+                        transcript_analysts_written.add(agent_name)
+                    else:
+                        print(f"[TRADING CYCLE] ⚠️ Skipped {agent_name} from analyst_reports (no valid analysis)")
+                else:
+                    print(f"[TRADING CYCLE] ⚠️ {agent_name} not found in analyst_reports")
+        
+        # CRITICAL FIX: Final verification - ensure all required analysts were written
+        written_analysts = list(transcript_analysts_written)
+        missing_analysts = [agent for agent in required_analysts.keys() if agent not in written_analysts]
+        if missing_analysts:
+            print(f"[TRADING CYCLE] ⚠️ WARNING: Missing analysts after all write attempts: {missing_analysts}")
+            print(f"[TRADING CYCLE] Written analysts: {written_analysts}")
+        else:
+            print(f"[TRADING CYCLE] ✅ All required analysts written successfully: {written_analysts}")
         
         # 寫入Coordinator統整結果（只寫一次，避免重複）
         # 如果 discussion_history 中已经有 Coordinator，就不再单独写入 coordinator_summary

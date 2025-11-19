@@ -883,7 +883,7 @@
             background: white;
             border-radius: 12px;
             padding: 30px;
-            max-width: 1200px;  /* CRITICAL FIX: 增加最大宽度，确保对话内容有足够空间显示 */
+            max-width: 1200px;  /* CRITICAL FIX: Increase max width to ensure conversation content has enough space */
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -942,7 +942,7 @@
             border-left: 3px solid #22d3ee;
             backdrop-filter: blur(5px);
             transition: all 0.2s ease;
-            /* CRITICAL FIX: 确保对话项不被截断 */
+            /* CRITICAL FIX: Ensure conversation items are not truncated */
             word-wrap: break-word;
             overflow-wrap: break-word;
             max-width: 100%;
@@ -2202,7 +2202,7 @@
                         }
                         valueEnd = arrEnd;
                     } else {
-                        // 数字、布尔值或 null
+                        // Number, boolean, or null
                         let numEnd = pos;
                         while (numEnd < len && jsonStr[numEnd] !== ',' && jsonStr[numEnd] !== '}' && jsonStr[numEnd] !== ']' && jsonStr[numEnd] !== ' ' && jsonStr[numEnd] !== '\n' && jsonStr[numEnd] !== '\t' && jsonStr[numEnd] !== '\r') {
                             numEnd++;
@@ -2232,7 +2232,7 @@
             }
         }
         
-        // 递归展开嵌套对象为扁平化的键值对
+        // Recursively flatten nested objects into key-value pairs
         function flattenObject(obj, prefix = '', maxDepth = 3, currentDepth = 0) {
             if (currentDepth >= maxDepth) {
                 return { [prefix || 'nested']: JSON.stringify(obj).substring(0, 100) + '...' };
@@ -2449,7 +2449,7 @@
                 }
             }
             
-            // VIX 和 Fear & Greed
+            // VIX and Fear & Greed
             if (toolName.includes('vix') || toolName.includes('term')) {
                 if (data.vix !== undefined) summaries.push(`VIX: ${data.vix.toFixed(1)}`);
                 if (data.ratio !== undefined) summaries.push(`Ratio: ${data.ratio.toFixed(3)}`);
@@ -2460,7 +2460,7 @@
                 if (fg !== undefined && fg !== null) summaries.push(`F&G: ${fg}${label ? ` (${label})` : ''}`);
             }
             
-            // 新闻
+            // News
             if (toolName.includes('news')) {
                 if (data.hits && Array.isArray(data.hits)) {
                     summaries.push(`${data.hits.length} articles`);
@@ -2512,17 +2512,17 @@
         function formatNumber(value, decimals = 2) {
             if (typeof value !== 'number') return String(value);
             
-            // 对于大数字（例如，大于100万），使用紧凑表示法
+            // For large numbers (e.g., greater than 1 million), use compact notation
             if (Math.abs(value) >= 1000000) {
                 return new Intl.NumberFormat('en-US', {
                     notation: 'compact',
                     compactDisplay: 'short',
                     minimumFractionDigits: 0,
-                    maximumFractionDigits: 2 // 最多保留两位小数
+                    maximumFractionDigits: 2 // Keep at most 2 decimal places
                 }).format(value);
             }
             
-            // 对于其他数字，使用固定小数位
+            // For other numbers, use fixed decimal places
             return new Intl.NumberFormat('en-US', {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
@@ -2608,7 +2608,7 @@
                 return tradeDate === today;
             });
             
-            // 去重：使用与 renderExecutionDetails 相同的逻辑（symbol|side|quantity|price）
+            // Deduplicate: Use the same logic as renderExecutionDetails (symbol|side|quantity|price)
             const seen = new Set();
             const uniqueTrades = [];
             
@@ -2626,7 +2626,7 @@
                 }
             }
             
-            // 统计 PENDING 和 FILLED 订单（使用大写状态匹配，与 renderExecutionDetails 一致）
+            // Count PENDING and FILLED orders (use uppercase status matching, consistent with renderExecutionDetails)
             const pending = uniqueTrades.filter(t => {
                 const status = (t.status || '').toUpperCase();
                 return status === 'PENDING' || status === 'ASK';
@@ -2678,7 +2678,7 @@
         // Fetch portfolio data
         async function fetchPortfolio(options = {}) {
             try {
-                // 增加超时时间到15秒，避免正常刷新时超时
+                // Increase timeout to 15 seconds to avoid timeout during normal refresh
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
@@ -2700,24 +2700,24 @@
 
                     const data = await response.json();
                     
-                    // 验证数据完整性
+                    // Validate data integrity
                     if (!data.ok || data.error) {
                         throw new Error(data.error || 'Failed to load portfolio');
                     }
                     
-                    // 确保positions_pnl存在且有效
+                    // Ensure positions_pnl exists and is valid
                     if (!data.positions_pnl || typeof data.positions_pnl !== 'object') {
                         console.warn('[Frontend] Backend did not return positions_pnl, will calculate from positions');
                         data.positions_pnl = {};
                     }
                     
-                    // 确保positions_detail存在（用于图表显示）
+                    // Ensure positions_detail exists (for chart display)
                     if (!data.positions_detail && data.positions) {
-                        // 如果后端返回的是positions（旧格式），转换为positions_detail
+                        // If backend returns positions (old format), convert to positions_detail
                         data.positions_detail = data.positions;
                     }
                     
-                    // 调试：打印portfolio数据
+                    // Debug: Print portfolio data
                     console.log('[Frontend] Portfolio data received:', {
                         cash: data.cash,
                         total_value: data.total_value,
@@ -2747,16 +2747,16 @@
 
         // Record equity to backend (only during market hours)
         async function recordEquityToBackend(equityData) {
-            // CRITICAL: 检查市场是否开盘，收盘后不记录
+            // CRITICAL: Check if market is open, do not record after market close
             try {
                 const marketOpen = await isMarketOpen(true, true); // Use cache, silent mode
                 if (!marketOpen) {
                     console.log('[Equity Record] Market is closed, skipping equity recording (will resume at next market open)');
-                    return; // 市场收盘，不记录
+                    return; // Market closed, do not record
                 }
             } catch (err) {
                 console.warn('[Equity Record] Failed to check market status:', err.message);
-                // 如果检查失败，继续记录（fallback）
+                // If check fails, continue recording (fallback)
             }
             
             try {
@@ -2828,16 +2828,16 @@
 
                 return (data.records || []).map(item => ({
                     date: item.date || item.timestamp?.split('T')[0] || '',
-                    timestamp: item.timestamp || null,  // CRITICAL: 保留 timestamp 字段用于时间显示
-                    total_value: item.total_value || 0,  // CRITICAL FIX: 使用 total_value 字段名（与 renderEquityValueChart 一致）
-                    equity_value: item.equity_value || 0,  // 也保留 equity_value 作为备选
-                    value: item.total_value || item.equity_value || 0,  // 兼容旧字段名
+                    timestamp: item.timestamp || null,  // CRITICAL: Keep timestamp field for time display
+                    total_value: item.total_value || 0,  // CRITICAL FIX: Use total_value field name (consistent with renderEquityValueChart)
+                    equity_value: item.equity_value || 0,  // Also keep equity_value as fallback
+                    value: item.total_value || item.equity_value || 0,  // Compatible with old field name
                     pnl: item.total_pnl || 0,
                 }));
             } catch (err) {
                 // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
-                    // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
+                    // If error is connection reset or timeout, server may be processing request, use debug level
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
                         console.debug('Failed to fetch equity history (server may be busy):', err.message);
@@ -2854,7 +2854,7 @@
             try {
                 const response = await fetch(`${getApiBase()}/`, {
                     method: 'GET',
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -2875,7 +2875,7 @@
             } catch (err) {
                 // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
-                    // 如果错误是连接重置或超时，可能是服务器正在处理请求，使用debug级别
+                    // If error is connection reset or timeout, server may be processing request, use debug level
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
                         console.debug('Failed to fetch backend status (server may be busy):', err.message);
@@ -2952,7 +2952,7 @@
                 const timeoutId = setTimeout(() => controller.abort(), 5000);  // 5 seconds (reduced from 10)
                 
                 const r = await fetch(`${getApiBase()}/api/market/is-open`, { 
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     signal: controller.signal
                 });
                 
@@ -3052,17 +3052,17 @@
                     return;
                 }
             } else {
-                // 没有冲突，正常确认流程
+                // No conflict, normal confirmation flow
                 const confirmMsg = `⚠️ WARNING: This will DELETE ALL trading history, conversations, and reset portfolio to initial state.\n\n` +
                                   `This action CANNOT be undone!\n\n` +
                                   `Are you sure you want to continue?`;
                 
                 if (!confirm(confirmMsg)) {
-                    return; // 用户取消
+                    return; // User cancelled
                 }
             }
             
-            // 二次确认（无论是否有冲突都需要）
+            // Second confirmation (required regardless of conflicts)
             const secondConfirm = confirm(`⚠️ FINAL CONFIRMATION\n\n` +
                                          `This will permanently delete:\n` +
                                          `- All trading history\n` +
@@ -3082,23 +3082,23 @@
                     btn.textContent = '⏳ Initializing...';
                 }
                 
-                // 停止所有进行中的操作
+                // Stop all ongoing operations
                 console.log('[Init] Stopping all ongoing operations...');
                 
-                // 停止自动交易定时器
+                // Stop auto-trading timer
                 if (tradeCheckTimer) {
                     clearInterval(tradeCheckTimer);
                     tradeCheckTimer = null;
                     console.log('[Init] Stopped auto-trade timer');
                 }
                 
-                // 重置状态标志
+                // Reset status flags
                 isTradingExecuting = false;
                 if (typeof smartAutoTradeBusy !== 'undefined') {
                     smartAutoTradeBusy = false;
                 }
                 
-                // 重置按钮状态
+                // Reset button state
                 // CRITICAL: During initialization, use fallback to avoid blocking on API call
                 const tradeBtn = document.getElementById('startTradeBtn');
                 if (tradeBtn) {
@@ -3111,7 +3111,7 @@
                     tradeBtn.textContent = isOpen ? '▶️ Start Trading' : '▶️ Run Analysis';
                 }
                 
-                // 执行初始化
+                // Execute initialization
                 console.log('[Init] Calling API to initialize system...');
                 // CRITICAL: Warn user before initializing (this will DELETE all data)
                 const confirmed = confirm(
@@ -3163,7 +3163,7 @@
                     }
                     alert(message);
                     
-                    // CRITICAL FIX: 清空所有缓存数据，确保初始化后显示正确的空状态
+                    // CRITICAL FIX: Clear all cached data to ensure correct empty state after initialization
                     console.log('[Init] Clearing all cached data...');
                     window.currentPortfolio = null;
                     window.currentConversations = [];
@@ -3177,45 +3177,45 @@
                         window.lastSystemInfo = null;
                     }
                     
-                    // CRITICAL FIX: 清空净值历史数据
+                    // CRITICAL FIX: Clear equity history data
                     equityHistory = [];
                     lastEquityChartUpdate = 0;
                     nextEquityUpdateTime = null;
                     console.log('[Init] Cleared equity history data');
                     
-                    // CRITICAL FIX: 重置UI状态
+                    // CRITICAL FIX: Reset UI state
                     console.log('[Init] Resetting UI state...');
-                    // 重置订单状态
+                    // Reset order state
                     const pendingEl = document.getElementById('pendingOrders');
                     const filledEl = document.getElementById('filledOrders');
                     if (pendingEl) pendingEl.textContent = '0';
                     if (filledEl) filledEl.textContent = '0';
                     
-                    // 重置对话状态
+                    // Reset conversation state
                     updateConversationStatus(false);
                     
-                    // 清空对话显示
+                    // Clear conversation display
                     const conversationsContent = document.getElementById('conversationsContent');
                     if (conversationsContent) {
                         conversationsContent.innerHTML = '<div class="empty-state">No conversations yet. Start trading to see agent discussions.</div>';
                     }
                     
-                    // 清空新闻数据
+                    // Clear news data
                     if (typeof window.newsData !== 'undefined') {
                         window.newsData = [];
                     }
                     
-                    // CRITICAL FIX: 清空并重新渲染净值图表
+                    // CRITICAL FIX: Clear and re-render equity chart
                     if (typeof renderEquityChart !== 'undefined') {
                         await renderEquityChart();
                         console.log('[Init] Equity chart cleared and re-rendered');
                     }
                     
-                    // 刷新数据（强制刷新，不使用缓存）
+                    // Refresh data (force refresh, do not use cache)
                     console.log('[Init] Refreshing data...');
                     await refreshData(true);
                     
-                    // 更新自动交易状态 - 初始化后停止自动交易，等待用户手动触发第一次交易
+                    // Update auto-trading state - stop auto-trading after initialization, wait for user to manually trigger first trade
                     if (typeof updateAutoTradeStatus !== 'undefined') {
                         updateAutoTradeStatus('Stopped - First trade must be manual');
                     }
@@ -3316,7 +3316,7 @@
                 btn.disabled = true;
                 btn.textContent = marketStatus === 'open' ? '⏳ Trading...' : '⏳ Planning...';
                 
-                // 添加进度提示（每5秒更新一次）
+                // Add progress indicator (update every 5 seconds)
                 let progressSeconds = 0;
                 progressInterval = setInterval(() => {
                     progressSeconds += 5;
@@ -3330,7 +3330,7 @@
             }
             
             try {
-                // 根据市场状态显示不同的消息
+                // Display different messages based on market status
                 if (marketStatus === 'closed') {
                     console.log('[Trade Cycle] Market is closed, executing analysis only (no trading)...');
                 } else {
@@ -3338,11 +3338,11 @@
                 }
                 const response = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
                     method: 'POST',
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    signal: AbortSignal.timeout(600000),  // 10分钟超时（交易循环可能需要较长时间，特别是多agent讨论）
+                    signal: AbortSignal.timeout(600000),  // 10 minute timeout (trading cycle may take longer, especially with multi-agent discussions)
                 });
                 
                 let data;
@@ -3360,13 +3360,13 @@
                     const isPlanning = data.result?.is_planning || false;
                     
                     // Update market status based on actual API response
-                    // CRITICAL FIX: 根据 message 判断市场状态（更准确）
+                    // CRITICAL FIX: Determine market status based on message (more accurate)
                     if (isPlanning || message.toLowerCase().includes('market closed') || message.toLowerCase().includes('analysis completed')) {
                         marketStatus = 'closed';
                         console.log(`[Trade Cycle] Analysis completed: ${orderCount} orders, ${convCount} conversations. ${message}`);
                     } else {
                         marketStatus = 'open';
-                        // 检查是否有订单生成
+                        // Check if orders were generated
                         if (orderCount === 0) {
                             console.warn(`[Trade Cycle] ⚠️ Trading completed but no orders generated. ${message || 'This may indicate neutral market conditions or all positions already at target levels.'}`);
                         } else {
@@ -3374,8 +3374,8 @@
                         }
                     }
                     
-                    // 刷新数据（强制刷新以确保获取最新数据）
-                    // 注意：跳过健康检查，避免在执行期间显示 connection error
+                    // Refresh data (force refresh to ensure latest data)
+                    // Note: Skip health check to avoid showing connection error during execution
                     console.log('[Trade Cycle] Refreshing data after trade execution...');
                     await refreshData(false, true);  // skipHealthCheck = true
                     console.log('[Trade Cycle] Data refresh completed');
@@ -3392,14 +3392,14 @@
                         console.warn('[Trade Cycle] Failed to refresh market status:', e);
                     }
                     
-                    // 刷新完成后，更新连接状态
+                    // After refresh completes, update connection status
                     updateConnectionStatus(true);
                 } else {
                     const errorMsg = data.error || data.message || 'Unknown error';
-                    // 检查是否是429错误（Too Many Requests - 重复执行）
+                    // Check if it's a 429 error (Too Many Requests - duplicate execution)
                     if (response.status === 429) {
                         console.warn('[Trade Cycle] Another trading cycle is already executing:', errorMsg);
-                        // 显示友好提示
+                        // Show friendly message
                         if (btn) {
                             btn.textContent = '⏳ Already Running...';
                             setTimeout(() => {
@@ -3408,7 +3408,7 @@
                                 }
                             }, 3000);
                         }
-                        // 尝试刷新数据（可能之前的执行已完成）
+                        // Try refreshing data (previous execution may have completed)
                         setTimeout(async () => {
                             try {
                                 await refreshData(false, true);
@@ -3418,7 +3418,7 @@
                         }, 2000);
                     } else {
                         console.error('[Trade Cycle] Failed:', errorMsg);
-                        // 显示错误提示（但不阻止后续操作）
+                        // Show error message (but do not block subsequent operations)
                         if (btn) {
                             btn.textContent = '❌ Error';
                             setTimeout(() => {
@@ -3430,7 +3430,7 @@
                     }
                 }
             } catch (e) {
-                // 检查是否是超时错误
+                // Check if it's a timeout error
                 if (e.name === 'AbortError' || e.name === 'TimeoutError' || e.message?.includes('timeout') || e.message?.includes('timed out')) {
                     console.warn('[Trade Cycle] Request timed out. This is normal for long-running trading cycles. The server may still be processing...');
                     // 显示提示信息
@@ -3440,7 +3440,7 @@
                         // Restore button text after 5 seconds
                         setTimeout(() => {
                             if (btn && !btn.disabled) {
-                                btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                                btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '▶️ Run Analysis';
                             }
                         }, 5000);
                     }
@@ -3454,18 +3454,18 @@
                     }
                 } else {
                     console.error('[Trade Cycle] Exception:', e);
-                    // 显示错误提示
+                    // Show error message
                     if (btn) {
                         btn.textContent = '❌ Error';
                         setTimeout(() => {
                             if (btn && !btn.disabled) {
-                                btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '📋 Plan Tomorrow';
+                                btn.textContent = marketStatus === 'open' ? '▶️ Start Trading' : '▶️ Run Analysis';
                             }
                         }, 2000);
                     }
                 }
             } finally {
-                // 清除进度提示
+                // Clear progress indicator
                 if (progressInterval) {
                     clearInterval(progressInterval);
                     progressInterval = null;
@@ -3486,7 +3486,7 @@
                     } else if (marketStatus === 'closed') {
                         btn.textContent = '▶️ Run Analysis';
                     } else {
-                        // 如果状态未知，重新检查
+                        // If status is unknown, re-check
                         try {
                             const isOpen = await isMarketOpen();
                             btn.textContent = isOpen ? '▶️ Start Trading' : '▶️ Run Analysis';
@@ -3498,22 +3498,22 @@
             }
         }
         
-        // 检查对话中是否有交易建议，如果有则执行交易（已废弃，改用直接执行）
+        // Check if there are trading suggestions in conversations, execute if found (deprecated, now using direct execution)
         let lastCheckedConvoCount = 0;
         
         async function checkAndExecuteTrade() {
             try {
-                // 获取最新对话
+                // Get latest conversations
                 const convData = await fetchConversations(CONVERSATIONS_LIMIT);
                 const conversations = convData.conversations || [];
                 const currentConvoCount = conversations.length;
                 
-                // 如果对话数量没有增加，说明没有新的讨论
+                // If conversation count hasn't increased, no new discussions
                 if (currentConvoCount <= lastCheckedConvoCount) {
                     return;
                 }
                 
-                // 检查最新对话中是否有交易建议（TraderAgent 或订单相关内容）
+                // Check if latest conversations contain trading suggestions (TraderAgent or order-related content)
                 const recentConvos = conversations.slice(lastCheckedConvoCount);
                 let hasTradeIntent = false;
                 
@@ -3522,7 +3522,7 @@
                     const content = conv.content || '';
                     const lowerContent = content.toLowerCase();
                     
-                    // 检查是否是 TraderAgent 或包含交易关键词
+                    // Check if it's TraderAgent or contains trading keywords
                     if (agent.includes('Trader') || 
                         agent.includes('trader') ||
                         lowerContent.includes('buy order') ||
@@ -3537,9 +3537,9 @@
                     }
                 }
                 
-                // 如果有交易意图，执行交易循环
+                // If trading intent exists, execute trading cycle
                 if (hasTradeIntent) {
-                    console.log('[Trade Check] 检测到交易意图，执行交易循环...');
+                    console.log('[Trade Check] Trading intent detected, executing trading cycle...');
                     lastCheckedConvoCount = currentConvoCount;
                     
                     const r = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
@@ -3569,13 +3569,13 @@
         }
         
         // Track next auto-trade execution time
-        // CRITICAL FIX: 从 localStorage 恢复 nextAutoTradeTime，避免页面刷新时重置
+        // CRITICAL FIX: Restore nextAutoTradeTime from localStorage to avoid reset on page refresh
         let nextAutoTradeTime = null;
         try {
             const stored = localStorage.getItem('nextAutoTradeTime');
             if (stored) {
                 const storedTime = parseInt(stored, 10);
-                // 只恢复未来的时间（如果时间已过，则设为 null）
+                // Only restore future times (if time has passed, set to null)
                 if (storedTime > Date.now()) {
                     nextAutoTradeTime = storedTime;
                     console.log('[Auto Trade] Restored nextAutoTradeTime from localStorage:', new Date(nextAutoTradeTime).toLocaleString());
@@ -3612,11 +3612,11 @@
                     nextTradeCountdownTimer = null;
                 }
                 nextAutoTradeTime = null;
-                saveNextAutoTradeTime(); // CRITICAL FIX: 清除 localStorage
+                saveNextAutoTradeTime(); // CRITICAL FIX: Clear localStorage
                 return;
             }
             
-            // CRITICAL FIX: 如果 timer 已经存在，只更新倒计时显示，不重置时间
+            // CRITICAL FIX: If timer already exists, only update countdown display, do not reset time
             if (tradeCheckTimer) {
                 console.log('[Auto Trade] Timer already exists, updating countdown only');
                 // 如果 nextAutoTradeTime 存在，确保倒计时正在运行
@@ -3736,7 +3736,7 @@
                                 // 如果 nextAutoTradeTime 存在且有效，保留它（可能是从之前的会话恢复的）
                                 if (!nextAutoTradeTime || nextAutoTradeTime <= Date.now()) {
                                     nextAutoTradeTime = null;
-                                    saveNextAutoTradeTime(); // CRITICAL FIX: 清除 localStorage
+                                    saveNextAutoTradeTime(); // CRITICAL FIX: Clear localStorage
                                 }
                                 console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
                                 updateAutoTradeStatus('Waiting for First Manual Trade');
@@ -3921,7 +3921,7 @@
             try {
                 const response = await fetch(`${getApiBase()}/api/agents/status`, {
                     method: 'GET',
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -3949,7 +3949,7 @@
             try {
                 const response = await fetch(`${getApiBase()}/api/tools/list`, {
                     method: 'GET',
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -3976,7 +3976,7 @@
             try {
                 const response = await fetch(`${getApiBase()}/api/system/info`, {
                     method: 'GET',
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -4008,7 +4008,7 @@
                 // CRITICAL FIX: Increase timeout for conversations endpoint (may process large files)
                 const response = await fetch(url, {
                     method: 'GET',
-                    mode: 'cors',  // 明确指定 CORS 模式
+                    mode: 'cors',  // Explicitly specify CORS mode
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -4275,10 +4275,12 @@
                 return;
             }
 
-            // CRITICAL FIX: 使用 discussion_rounds_summaries（如果可用）来显示四个 analyst 的 summary
+            // CRITICAL FIX: Extract analyst summaries from both discussion_rounds_summaries (round > 0) and conversations (round = 0)
             const analystSummaries = {};
+            
+            // First, extract from discussion_rounds_summaries (round > 0)
             if (discussionRoundsSummaries && typeof discussionRoundsSummaries === 'object') {
-                // 遍历所有轮次，提取每个 analyst 的 summary
+                // Iterate through all rounds, extract each analyst's summary
                 for (const [roundNum, summaries] of Object.entries(discussionRoundsSummaries)) {
                     if (Array.isArray(summaries)) {
                         for (const summaryEntry of summaries) {
@@ -4287,7 +4289,7 @@
                             const stance = summaryEntry.stance || 'neutral';
                             const toolsUsed = summaryEntry.tools_used || [];
                             
-                            // 存储每个 analyst 的 summary（按 agent 名称）
+                            // Store each analyst's summary (by agent name)
                             if (agent && summary) {
                                 if (!analystSummaries[agent]) {
                                     analystSummaries[agent] = [];
@@ -4302,6 +4304,110 @@
                         }
                     }
                 }
+            }
+            
+            // CRITICAL FIX: Also extract from conversations array (round = 0) for analysts
+            // This ensures all analyst conversations are displayed, even if round = 0
+            // Process conversations in reverse order to get the most recent entries first
+            const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator'];
+            const seenAnalysts = new Set(); // Track which analysts we've already processed (to avoid duplicates)
+            
+            // CRITICAL FIX: Process conversations in reverse order (newest first) to get the most recent analyst entries
+            // This ensures we always get the latest conversation for each analyst
+            // First, collect all analyst conversations, then pick the most recent one for each
+            const analystConversations = {};
+            for (let i = conversations.length - 1; i >= 0; i--) {
+                const conv = conversations[i];
+                const agent = conv.agent || '';
+                const round = conv.round || 0;
+                const entryType = conv.type || 'discussion';
+                
+                // Process discussion entries with round = 0 (or string "0") for analysts
+                // Normalize round to number for comparison
+                const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
+                
+                if (entryType === 'discussion' && roundNum === 0 && analystNames.includes(agent)) {
+                    const summary = conv.summary || conv.content || '';
+                    const stance = conv.stance || 'neutral';
+                    const toolsUsed = conv.tools_used || [];
+                    const timestamp = conv.timestamp || conv.date || '';
+                    
+                    // Only process if we have valid summary/content
+                    if (summary && summary.trim().length > 0) {
+                        // Store conversation with timestamp for sorting
+                        if (!analystConversations[agent]) {
+                            analystConversations[agent] = [];
+                        }
+                        analystConversations[agent].push({
+                            round: 0,
+                            summary: summary,
+                            stance: stance,
+                            tools_used: toolsUsed,
+                            timestamp: timestamp,
+                        });
+                    }
+                }
+            }
+            
+            // CRITICAL FIX: For each analyst, use the most recent conversation (first in reverse order)
+            for (const agent in analystConversations) {
+                const convs = analystConversations[agent];
+                if (convs.length > 0) {
+                    // Use the first one (most recent, since we processed in reverse order)
+                    const latest = convs[0];
+                    if (!analystSummaries[agent]) {
+                        analystSummaries[agent] = [];
+                    }
+                    // Replace or add the round 0 entry
+                    const existingIndex = analystSummaries[agent].findIndex(s => s.round === '0' || s.round === 0);
+                    if (existingIndex >= 0) {
+                        analystSummaries[agent][existingIndex] = {
+                            round: '0',
+                            summary: latest.summary,
+                            stance: latest.stance,
+                            tools_used: latest.tools_used,
+                        };
+                    } else {
+                        analystSummaries[agent].unshift({
+                            round: '0',
+                            summary: latest.summary,
+                            stance: latest.stance,
+                            tools_used: latest.tools_used,
+                        });
+                    }
+                    seenAnalysts.add(agent);
+                }
+            }
+            
+            // CRITICAL FIX: Final check - ensure all required analysts are present
+            // If any analyst is missing, log a warning for debugging
+            const requiredAnalysts = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst'];
+            const missingAnalysts = requiredAnalysts.filter(agent => !analystSummaries[agent] || analystSummaries[agent].length === 0);
+            
+            // Debug logging
+            console.log('[Conversations] Final analystSummaries check:');
+            console.log('  Total conversations:', conversations.length);
+            console.log('  Found analysts:', Object.keys(analystSummaries));
+            console.log('  Required analysts:', requiredAnalysts);
+            
+            if (missingAnalysts.length > 0) {
+                console.warn('[Conversations] ⚠️ Missing analyst summaries:', missingAnalysts);
+                console.log('[Conversations] Available analysts:', Object.keys(analystSummaries));
+                
+                // Debug: Check if missing analysts exist in conversations
+                for (const missingAgent of missingAnalysts) {
+                    const found = conversations.filter(c => 
+                        c.type === 'discussion' && 
+                        (c.round === 0 || c.round === '0') && 
+                        c.agent === missingAgent
+                    );
+                    console.log(`  ${missingAgent}: Found ${found.length} entries in conversations`);
+                    if (found.length > 0) {
+                        console.log(`    Latest entry: summary=${found[found.length-1].summary ? 'YES' : 'NO'}, content=${found[found.length-1].content ? 'YES' : 'NO'}`);
+                    }
+                }
+            } else {
+                console.log('[Conversations] ✅ All required analysts found:', Object.keys(analystSummaries));
             }
 
             // 按日期和轮次分组
@@ -4358,19 +4464,65 @@
                 return icons[agentName] || '🤖';
             }
             
+            // CRITICAL FIX: Fallback - if analystSummaries is still empty, extract directly from conversations
+            // This ensures we always show analyst summaries even if discussion_rounds_summaries is missing
+            if (Object.keys(analystSummaries).length === 0) {
+                console.log('[Conversations] analystSummaries is empty, using fallback extraction');
+                const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst'];
+                const fallbackConversations = {};
+                
+                // Process conversations in reverse order (newest first)
+                for (let i = conversations.length - 1; i >= 0; i--) {
+                    const conv = conversations[i];
+                    const agent = conv.agent || '';
+                    const round = conv.round || 0;
+                    const entryType = conv.type || 'discussion';
+                    
+                    // Normalize round to number
+                    const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
+                    
+                    if (entryType === 'discussion' && roundNum === 0 && analystNames.includes(agent)) {
+                        const summary = conv.summary || conv.content || '';
+                        const stance = conv.stance || 'neutral';
+                        const toolsUsed = conv.tools_used || [];
+                        
+                        if (summary && summary.trim().length > 0) {
+                            // Only keep the first (most recent) conversation for each analyst
+                            if (!fallbackConversations[agent]) {
+                                fallbackConversations[agent] = {
+                                    round: '0',
+                                    summary: summary,
+                                    stance: stance,
+                                    tools_used: toolsUsed,
+                                };
+                            }
+                        }
+                    }
+                }
+                
+                // Add fallback conversations to analystSummaries
+                for (const agent in fallbackConversations) {
+                    analystSummaries[agent] = [fallbackConversations[agent]];
+                }
+                
+                console.log('[Conversations] Fallback extraction found:', Object.keys(analystSummaries));
+            }
+            
             if (Object.keys(analystSummaries).length > 0) {
                 html += `<div style="margin-bottom: 32px; padding: 20px; background: rgba(15, 23, 42, 0.8); border-radius: 12px; border: 2px solid rgba(34, 211, 238, 0.3);">`;
                 html += `<h3 style="font-size: 16px; color: #22d3ee; margin-bottom: 16px; font-weight: 600;">📊 Analyst Summaries</h3>`;
                 
-                // 按固定顺序显示四个 analyst
+                // CRITICAL FIX: Display analysts in fixed order, use first entry (most recent) instead of last
                 const analystOrder = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst'];
                 for (const agentName of analystOrder) {
                     if (analystSummaries[agentName] && analystSummaries[agentName].length > 0) {
-                        const latestSummary = analystSummaries[agentName][analystSummaries[agentName].length - 1]; // 使用最新的 summary
+                        // Use first entry (most recent, since we unshift/add at beginning)
+                        const latestSummary = analystSummaries[agentName][0];
                         const agentIcon = getAgentIcon(agentName);
                         const stance = latestSummary.stance || 'neutral';
                         const stanceColor = stance === 'bullish' ? '#10b981' : stance === 'bearish' ? '#ef4444' : '#6b7280';
                         const toolsUsed = latestSummary.tools_used || [];
+                        const summaryText = latestSummary.summary || '';
                         
                         html += `<div style="margin-bottom: 16px; padding: 16px; background: rgba(34, 211, 238, 0.05); border-radius: 8px; border-left: 4px solid ${stanceColor};">`;
                         html += `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">`;
@@ -4383,12 +4535,20 @@
                             html += `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">🔧 Tools: ${toolsUsed.join(', ')}</div>`;
                         }
                         
-                        html += `<div style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.03); border-radius: 4px;">${escapeHtml(latestSummary.summary)}</div>`;
+                        if (summaryText) {
+                            html += `<div style="font-size: 13px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.03); border-radius: 4px;">${escapeHtml(summaryText)}</div>`;
+                        }
                         html += `</div>`;
+                    } else {
+                        // CRITICAL FIX: Show placeholder if analyst is missing
+                        console.warn(`[Conversations] Missing analyst summary for: ${agentName}`);
                     }
                 }
                 
                 html += `</div>`;
+            } else {
+                // CRITICAL FIX: Show warning if no analyst summaries found
+                console.warn('[Conversations] No analyst summaries found in any format');
             }
             
             // CRITICAL FIX: 显示 Discussion Rounds Panel（使用 discussion_rounds_summaries）

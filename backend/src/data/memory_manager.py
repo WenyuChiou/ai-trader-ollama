@@ -268,6 +268,7 @@ class MemoryManager:
                     "final_stance": discussion.get("final_stance"),
                     "rounds": discussion.get("rounds"),
                     "transcript": discussion.get("transcript"),  # Full conversation history
+                    "discussion_history": make_json_serializable(discussion.get("discussion_history")) if discussion.get("discussion_history") else None,  # CRITICAL FIX: Save structured discussion history with round numbers
                     "tool_context": discussion.get("tool_context"),  # Tool call history
                     "actions": discussion.get("actions"),
                 },

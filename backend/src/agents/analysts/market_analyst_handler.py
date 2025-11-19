@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.agents.base import BaseAgent
 from src.agents.toolbox import ToolBox
+from typing import Optional
 from .common import (
     parse_analyst_response,
     check_tool_success,
@@ -40,6 +41,7 @@ def run_market_analyst(
     mandatory_tools: List[str],
     news_tools: List[str],
     all_tool_calls: List[Dict[str, Any]],
+    executed_tool_cache_keys: Optional[set] = None,  # CRITICAL FIX: Track executed tools to prevent duplicates
 ) -> tuple[Dict[str, Any], int, List[Dict[str, Any]]]:
     """
     Run Market Analyst analysis
@@ -164,15 +166,35 @@ def run_market_analyst(
                 fallback_tools.insert(1, {"name": "get_economic_summary", "args": {}, "why": "REQUIRED: Get latest US economic indicators"})
             tool_calls_list = fallback_tools
         
-        # Filter cached tools and news tools
+        # CRITICAL FIX: Initialize executed_tool_cache_keys if not provided
+        if executed_tool_cache_keys is None:
+            executed_tool_cache_keys = set()
+        
+        # Filter cached tools, news tools, and duplicate tools
         tools_to_execute = []
         for tool_call in tool_calls_list:
             tool_name = tool_call.get("name", "")
             tool_args = tool_call.get("args", {})
             
+            # CRITICAL FIX: Check if this tool+args combination has already been executed
+            cache_key = get_tool_cache_key(tool_name, tool_args)
+            if cache_key in executed_tool_cache_keys:
+                print(f"   [DEDUP] Skipping duplicate tool call: {tool_name} with args {tool_args} (already executed)")
+                continue
+            
+            # CRITICAL FIX: News tools should only be called once per trading cycle (round 1 only)
+            if tool_name in news_tools:
+                if cache_key in executed_tool_cache_keys or any(
+                    get_tool_cache_key("plan_and_scan_news", {}) in executed_tool_cache_keys or
+                    get_tool_cache_key("news_scan", {}) in executed_tool_cache_keys
+                    for tc in all_tool_calls if tc.get("tool") in news_tools
+                ):
+                    print(f"   [DEDUP] Skipping {tool_name} (news tool already executed in this trading cycle)")
+                    continue
+            
             if current_round > 1 and tool_name in mandatory_tools:
-                cache_key = get_tool_cache_key(tool_name, tool_args)
                 if cache_key in tool_result_cache:
+                    print(f"   [CACHE] Using cached result for {tool_name}")
                     continue
             
             if current_round > 1 and tool_name in news_tools:
@@ -221,12 +243,15 @@ def run_market_analyst(
                         try:
                             tool_result = future.result()
                             if check_tool_success(tool_result):
+                                cache_key = get_tool_cache_key(tool_name, tool_call.get("args", {}))
+                                executed_tool_cache_keys.add(cache_key)  # CRITICAL FIX: Mark as executed
                                 all_tool_calls.append({"analyst": "MarketAnalyst", "tool": tool_name, "result": tool_result})
                                 tool_calls_count += 1
                                 if tool_name in mandatory_tools:
-                                    cache_key = get_tool_cache_key(tool_name, tool_call.get("args", {}))
                                     tool_result_cache[cache_key] = tool_result
                                     print(f"   [CACHE] 💾 Cached {tool_name} result for reuse in later rounds")
+                                if tool_name in news_tools:
+                                    print(f"   [CACHE] 💾 Cached {tool_name} result (news tool - will not be called again)")
                                 tool_results_summary.append(f"{tool_name}: executed successfully")
                         except Exception as e:
                             print(f"   [ERROR] Tool {tool_name} failed: {e}")
@@ -240,12 +265,17 @@ def run_market_analyst(
                     
                     tool_result = execute_tool(toolbox, tool_call, market_summary)
                     
-                    if check_tool_success(tool_result) and tool_name in mandatory_tools:
-                        cache_key = get_tool_cache_key(tool_name, tool_call.get("args", {}))
-                        tool_result_cache[cache_key] = tool_result
-                        print(f"   [CACHE] 💾 Cached {tool_name} result for reuse in later rounds")
-                    
                     if check_tool_success(tool_result):
+                        cache_key = get_tool_cache_key(tool_name, tool_call.get("args", {}))
+                        executed_tool_cache_keys.add(cache_key)  # CRITICAL FIX: Mark as executed
+                        
+                        if tool_name in mandatory_tools:
+                            tool_result_cache[cache_key] = tool_result
+                            print(f"   [CACHE] 💾 Cached {tool_name} result for reuse in later rounds")
+                        
+                        if tool_name in news_tools:
+                            print(f"   [CACHE] 💾 Cached {tool_name} result (news tool - will not be called again)")
+                        
                         all_tool_calls.append({
                             "analyst": "MarketAnalyst",
                             "tool": tool_name,

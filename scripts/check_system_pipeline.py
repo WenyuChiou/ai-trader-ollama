@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-系统 Pipeline 完整性检查脚本
-检查整个系统的数据流、API 端点、交易流程等是否完整
+System Pipeline Integrity Check Script
+Checks if the entire system's data flow, API endpoints, trading workflow, etc. are complete
 """
 
 import sys
@@ -17,20 +17,20 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# 添加 backend 到路径
+# Add backend to path
 project_root = Path(__file__).parent.parent
 backend_dir = project_root / "backend"
 sys.path.insert(0, str(backend_dir))
 
 def check_file_exists(filepath: Path, description: str) -> Tuple[bool, str]:
-    """检查文件是否存在"""
+    """Check if file exists"""
     if filepath.exists():
         return True, f"✅ {description}: {filepath}"
     else:
         return False, f"❌ {description}: {filepath} (NOT FOUND)"
 
 def check_api_endpoints() -> List[Tuple[bool, str]]:
-    """检查 API 端点"""
+    """Check API endpoints"""
     results = []
     server_file = backend_dir / "src" / "api" / "server.py"
     
@@ -38,10 +38,10 @@ def check_api_endpoints() -> List[Tuple[bool, str]]:
         results.append((False, "❌ server.py not found"))
         return results
     
-    # 读取 server.py 内容
+    # Read server.py content
     content = server_file.read_text(encoding='utf-8')
     
-    # 必需的 API 端点
+    # Required API endpoints
     required_endpoints = [
         ("GET", "/api/health", "Health check"),
         ("GET", "/api/portfolio/real-time", "Real-time portfolio"),
@@ -58,7 +58,7 @@ def check_api_endpoints() -> List[Tuple[bool, str]]:
     ]
     
     for method, endpoint, description in required_endpoints:
-        # 检查端点是否存在
+        # Check if endpoint exists
         if method == "GET":
             pattern = f'@app.get("{endpoint}"'
         elif method == "POST":
@@ -74,18 +74,18 @@ def check_api_endpoints() -> List[Tuple[bool, str]]:
     return results
 
 def check_data_files() -> List[Tuple[bool, str]]:
-    """检查数据文件结构"""
+    """Check data file structure"""
     results = []
     data_dir = project_root / "data" / "logs"
     
-    # 检查目录
+    # Check directory
     if data_dir.exists():
         results.append((True, f"✅ Data directory: {data_dir}"))
     else:
         results.append((False, f"❌ Data directory: {data_dir} (NOT FOUND)"))
         return results
     
-    # 检查关键文件（可能不存在，但目录应该存在）
+    # Check key files (may not exist, but directory should exist)
     key_files = [
         ("portfolio_state.json", "Portfolio state"),
         ("equity_history.jsonl", "Equity history"),
@@ -103,7 +103,7 @@ def check_data_files() -> List[Tuple[bool, str]]:
         else:
             results.append((True, f"⚠️  {description}: {filepath} (not created yet, will be created automatically)"))
     
-    # 检查 memory 目录
+    # Check memory directory
     memory_dir = data_dir / "memory"
     if memory_dir.exists():
         results.append((True, f"✅ Memory directory: {memory_dir}"))
@@ -113,7 +113,7 @@ def check_data_files() -> List[Tuple[bool, str]]:
     return results
 
 def check_core_modules() -> List[Tuple[bool, str]]:
-    """检查核心模块"""
+    """Check core modules"""
     results = []
     
     core_modules = [
@@ -134,7 +134,7 @@ def check_core_modules() -> List[Tuple[bool, str]]:
     return results
 
 def check_config_files() -> List[Tuple[bool, str]]:
-    """检查配置文件"""
+    """Check configuration files"""
     results = []
     
     config_files = [
@@ -147,7 +147,7 @@ def check_config_files() -> List[Tuple[bool, str]]:
         exists, msg = check_file_exists(filepath, description)
         results.append((exists, msg))
         
-        # 如果存在，检查 JSON 格式
+        # If exists, check JSON format
         if exists and filepath.suffix == ".json":
             try:
                 json.loads(filepath.read_text(encoding='utf-8'))
@@ -158,7 +158,7 @@ def check_config_files() -> List[Tuple[bool, str]]:
     return results
 
 def check_tool_integration() -> List[Tuple[bool, str]]:
-    """检查工具集成"""
+    """Check tool integration"""
     results = []
     
     tools_dir = backend_dir / "src" / "tools"
@@ -166,14 +166,14 @@ def check_tool_integration() -> List[Tuple[bool, str]]:
         tool_files = list(tools_dir.glob("*.py"))
         results.append((True, f"✅ Tools directory: {len(tool_files)} tool files found"))
         
-        # 检查关键工具（检查实际存在的文件）
+        # Check key tools (check for actual existing files)
         key_tools = [
             "market_tools.py",
             "sentiment_tools.py",
             "news_tools.py",
         ]
         
-        # 检查功能是否存在（可能在 market_tools 中）
+        # Check if functions exist (may be in market_tools)
         for tool_file in key_tools:
             tool_path = tools_dir / tool_file
             if tool_path.exists():
@@ -181,7 +181,7 @@ def check_tool_integration() -> List[Tuple[bool, str]]:
             else:
                 results.append((False, f"❌ Tool: {tool_file} (NOT FOUND)"))
         
-        # 检查技术指标和基本面功能（可能在 market_tools 或其他文件中）
+        # Check technical indicators and fundamental functions (may be in market_tools or other files)
         market_tools_path = tools_dir / "market_tools.py"
         if market_tools_path.exists():
             content = market_tools_path.read_text(encoding='utf-8')
@@ -195,14 +195,14 @@ def check_tool_integration() -> List[Tuple[bool, str]]:
     return results
 
 def check_frontend_integration() -> List[Tuple[bool, str]]:
-    """检查前端集成"""
+    """Check frontend integration"""
     results = []
     
     frontend_file = project_root / "frontend" / "monitor.html"
     if frontend_file.exists():
         results.append((True, f"✅ Frontend: {frontend_file}"))
         
-        # 检查前端是否调用了关键 API
+        # Check if frontend calls key APIs
         content = frontend_file.read_text(encoding='utf-8')
         
         key_api_calls = [
@@ -225,10 +225,10 @@ def check_frontend_integration() -> List[Tuple[bool, str]]:
     return results
 
 def check_data_flow() -> List[Tuple[bool, str]]:
-    """检查数据流完整性"""
+    """Check data flow integrity"""
     results = []
     
-    # 检查关键数据流函数
+    # Check key data flow functions
     trading_cycle_file = backend_dir / "src" / "orchestrator" / "trading_cycle.py"
     if trading_cycle_file.exists():
         content = trading_cycle_file.read_text(encoding='utf-8')
@@ -244,7 +244,7 @@ def check_data_flow() -> List[Tuple[bool, str]]:
             else:
                 results.append((False, f"❌ Function: {description} ({func_name}) (NOT FOUND)"))
         
-        # 检查 run_multi_analyst_discussion 的导入和使用
+        # Check import and usage of run_multi_analyst_discussion
         if "from src.agents.multi_analyst_system import run_multi_analyst_discussion" in content:
             results.append((True, f"✅ Multi-analyst discussion: run_multi_analyst_discussion (imported and used)"))
         elif "run_multi_analyst_discussion" in content:
@@ -255,16 +255,16 @@ def check_data_flow() -> List[Tuple[bool, str]]:
     return results
 
 def main():
-    """主函数"""
+    """Main function"""
     print("=" * 70)
-    print("系统 Pipeline 完整性检查")
+    print("System Pipeline Integrity Check")
     print("=" * 70)
     print()
     
     all_results = []
     
-    # 1. 检查核心模块
-    print("📦 检查核心模块...")
+    # 1. Check core modules
+    print("📦 Checking core modules...")
     print("-" * 70)
     core_results = check_core_modules()
     all_results.extend(core_results)
@@ -272,8 +272,8 @@ def main():
         print(msg)
     print()
     
-    # 2. 检查配置文件
-    print("⚙️  检查配置文件...")
+    # 2. Check configuration files
+    print("⚙️  Checking configuration files...")
     print("-" * 70)
     config_results = check_config_files()
     all_results.extend(config_results)
@@ -281,8 +281,8 @@ def main():
         print(msg)
     print()
     
-    # 3. 检查 API 端点
-    print("🔌 检查 API 端点...")
+    # 3. Check API endpoints
+    print("🔌 Checking API endpoints...")
     print("-" * 70)
     api_results = check_api_endpoints()
     all_results.extend(api_results)
@@ -290,8 +290,8 @@ def main():
         print(msg)
     print()
     
-    # 4. 检查工具集成
-    print("🛠️  检查工具集成...")
+    # 4. Check tool integration
+    print("🛠️  Checking tool integration...")
     print("-" * 70)
     tool_results = check_tool_integration()
     all_results.extend(tool_results)
@@ -299,8 +299,8 @@ def main():
         print(msg)
     print()
     
-    # 5. 检查数据流
-    print("📊 检查数据流...")
+    # 5. Check data flow
+    print("📊 Checking data flow...")
     print("-" * 70)
     flow_results = check_data_flow()
     all_results.extend(flow_results)
@@ -308,8 +308,8 @@ def main():
         print(msg)
     print()
     
-    # 6. 检查数据文件
-    print("💾 检查数据文件...")
+    # 6. Check data files
+    print("💾 Checking data files...")
     print("-" * 70)
     data_results = check_data_files()
     all_results.extend(data_results)
@@ -317,8 +317,8 @@ def main():
         print(msg)
     print()
     
-    # 7. 检查前端集成
-    print("🎨 检查前端集成...")
+    # 7. Check frontend integration
+    print("🎨 Checking frontend integration...")
     print("-" * 70)
     frontend_results = check_frontend_integration()
     all_results.extend(frontend_results)
@@ -326,30 +326,30 @@ def main():
         print(msg)
     print()
     
-    # 总结
+    # Summary
     print("=" * 70)
-    print("检查总结")
+    print("Check Summary")
     print("=" * 70)
     
     total = len(all_results)
     passed = sum(1 for success, _ in all_results if success)
     failed = total - passed
     
-    print(f"总计: {total}")
-    print(f"✅ 通过: {passed}")
-    print(f"❌ 失败: {failed}")
+    print(f"Total: {total}")
+    print(f"✅ Passed: {passed}")
+    print(f"❌ Failed: {failed}")
     print()
     
     if failed > 0:
-        print("失败的检查项:")
+        print("Failed checks:")
         for success, msg in all_results:
             if not success:
                 print(f"  {msg}")
         print()
-        print("⚠️  请修复上述问题后再运行系统")
+        print("⚠️  Please fix the above issues before running the system")
         return 1
     else:
-        print("✅ 所有检查通过！系统 Pipeline 完整。")
+        print("✅ All checks passed! System pipeline is complete.")
         return 0
 
 if __name__ == "__main__":

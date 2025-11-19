@@ -14,6 +14,17 @@ from src.agents.base import BaseAgent
 from src.agents.toolbox import ToolBox
 from src.utils.etf_checker import is_etf, filter_non_etf_symbols
 
+# Import modular analyst handlers
+from src.agents.analysts.market_analyst_handler import run_market_analyst
+from src.agents.analysts.technical_analyst_handler import run_technical_analyst
+from src.agents.analysts.fundamental_analyst_handler import run_fundamental_analyst
+from src.agents.analysts.sentiment_analyst_handler import run_sentiment_analyst
+from src.agents.analysts.common import (
+    format_discussion_history as _format_discussion_history,
+    limit_discussion_history as _limit_discussion_history,
+    summarize_market as _summarize_market,
+)
+
 # Maximum number of discussion history entries to keep
 MAX_DISCUSSION_HISTORY_ENTRIES = 20  # Keep at most 20 entries (approximately 5 complete discussion rounds)
 
@@ -196,6 +207,10 @@ def run_multi_analyst_discussion(
     mandatory_tools = ["get_recent_memories", "get_economic_summary"]
     news_tools = ["plan_and_scan_news", "news_scan"]
     
+    # CRITICAL FIX: Track executed tool calls to prevent duplicates
+    # Format: set of cache keys (tool_name:args) that have been executed
+    executed_tool_cache_keys: set = set()
+    
     for current_round in range(1, rounds + 1):
         print(f"\n{'='*80}")
         print(f"[ROUND {current_round}/{rounds}] Starting discussion round {current_round}")
@@ -220,1716 +235,200 @@ def run_multi_analyst_discussion(
         discussion_history = []
         
         # ===== 1. Market Analyst =====
-        print(f"\n[Round {current_round}] [1/4] Market Analyst analyzing...")
-        # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
-        if True:  # 总是运行，但只在有budget时调用工具
+        try:
+            market_analyst: BaseAgent = fac.create("market_analyst")
+            market_result, tool_calls_count, all_tool_calls = run_market_analyst(
+                market_analyst=market_analyst,
+                market_summary=market_summary,
+                previous_rounds_text=previous_rounds_text,
+                discussion_history=discussion_history,
+                tools_str=tools_str,
+                order_status_text=order_status_text,
+                positions_text=positions_text,
+                toolbox=toolbox,
+                use_tools=use_tools,
+                tool_budget=tool_budget,
+                tool_calls_count=tool_calls_count,
+                current_round=current_round,
+                tool_result_cache=tool_result_cache,
+                mandatory_tools=mandatory_tools,
+                news_tools=news_tools,
+                all_tool_calls=all_tool_calls,
+                executed_tool_cache_keys=executed_tool_cache_keys,  # CRITICAL FIX: Pass executed tool cache keys for deduplication
+            )
+            analyst_reports["market"] = market_result
+            
+            # Add to discussion history
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst"]
+            discussion_history.append({
+                "analyst": "Market Analyst",
+                "stance": market_result.get("stance", "neutral"),
+                "analysis": market_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": market_result.get("recommendations", [])[:3] if market_result.get("recommendations") else [],
+            })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
+        except Exception as e:
+            print(f"   [ERROR] Market Analyst error: {e}")
+            analyst_reports["market"] = {"error": str(e), "stance": "neutral"}
+        
+        # ===== 2. Technical Analyst =====
+        try:
+            technical_analyst: BaseAgent = fac.create("technical_analyst")
+            technical_result, tool_calls_count, all_tool_calls = run_technical_analyst(
+                technical_analyst=technical_analyst,
+                market_summary=market_summary,
+                market_view=market_view,
+                previous_rounds_text=previous_rounds_text,
+                discussion_history=discussion_history,
+                tools_str=tools_str,
+                order_status_text=order_status_text,
+                positions_text=positions_text,
+                analyst_reports=analyst_reports,
+                current_positions=current_positions,
+                toolbox=toolbox,
+                use_tools=use_tools,
+                tool_budget=tool_budget,
+                tool_calls_count=tool_calls_count,
+                current_round=current_round,
+                all_tool_calls=all_tool_calls,
+                executed_tool_cache_keys=executed_tool_cache_keys,  # CRITICAL FIX: Pass executed tool cache keys for deduplication
+            )
+            analyst_reports["technical"] = technical_result
+            
+            # Add to discussion history
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst"]
+            discussion_history.append({
+                "analyst": "Technical Analyst",
+                "stance": technical_result.get("stance", "neutral"),
+                "analysis": technical_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": technical_result.get("recommendations", [])[:3] if technical_result.get("recommendations") else [],
+            })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
+        except Exception as e:
+            print(f"   [ERROR] Technical Analyst error: {e}")
+            analyst_reports["technical"] = {"error": str(e), "stance": "neutral"}
+        
+        # ===== 3. Fundamental Analyst =====
+        # OPTIMIZATION: Skip Fundamental Analyst in rounds > 1 (fundamental data doesn't change quickly)
+        # Fundamental analysis is time-consuming and data-intensive, so we only run it in Round 1
+        # Later rounds can reuse Round 1's fundamental analysis results
+        if current_round == 1:
             try:
-                market_analyst: BaseAgent = fac.create("market_analyst")
-                market_prompt_vars = {
-                    "market_view": json.dumps(market_summary, indent=2),
-                    "previous_discussion": previous_rounds_text,  # CRITICAL FIX: Include previous rounds for rounds > 1
-                    "tools_context": tools_str,
-                    "order_status": order_status_text,  # 添加订单状态
-                    "current_positions": positions_text,  # 添加仓位信息
-                }
-                
-                # 格式化当前轮次的对话历史（用于同一轮次内的分析师互相影响）
-                current_round_discussion_text = _format_discussion_history(discussion_history)
-                if current_round_discussion_text:
-                    market_prompt_vars["previous_discussion"] = previous_rounds_text + "\n\n========== CURRENT ROUND DISCUSSION ==========\n" + current_round_discussion_text
-                else:
-                    market_prompt_vars["previous_discussion"] = previous_rounds_text
-                
-                market_response = market_analyst.run(market_prompt_vars, expect_json=True)
-                
-                # 调试：打印原始响应（前500字符）
-                if isinstance(market_response, dict):
-                    print(f"   [DEBUG] LLM Response (dict): {str(market_response)[:200]}...")
-                else:
-                    print(f"   [DEBUG] LLM Response (str, first 300 chars): {str(market_response)[:300]}...")
-                
-                market_result = _parse_analyst_response(market_response)
-                analyst_reports["market"] = market_result
-                
-                # 执行工具调用（agent自主选择，不强制）
-                tool_calls_list = market_result.get("tool_calls", [])
-                
-                # CRITICAL FIX: Filter out news tools (Market Analyst should not use news tools)
-                # News tools are restricted to Sentiment Analyst only
-                news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
-                filtered_tool_calls = []
-                for tc in tool_calls_list:
-                    tool_name = tc.get("name", "")
-                    if tool_name in news_tools:
-                        print(f"   [FILTER] Removing news tool '{tool_name}' from Market Analyst (news analysis is handled by Sentiment Analyst)")
-                    else:
-                        filtered_tool_calls.append(tc)
-                tool_calls_list = filtered_tool_calls
-                
-                # OPTIMIZATION: Only add mandatory tools in round 1, reuse cache in later rounds
-                memory_tool_called = False
-                for tc in tool_calls_list:
-                    if tc.get("name") == "get_recent_memories":
-                        memory_tool_called = True
-                        break
-                
-                # Check cache for mandatory tools in later rounds
-                if current_round > 1:
-                    # Try to use cached result for get_recent_memories
-                    memory_cache_key = _get_tool_cache_key("get_recent_memories", {"days": 5, "summary_only": True})
-                    if memory_cache_key in tool_result_cache:
-                        print(f"   [CACHE] ✅ Using cached get_recent_memories result from round 1")
-                        # Add cached result to tool_results_summary
-                        cached_result = tool_result_cache[memory_cache_key]
-                        tool_results_summary.append(f"Recent memories (cached): {cached_result.get('result', {}).get('count', 0)} records")
-                        memory_tool_called = True  # Mark as called to skip execution
-                
-                if not memory_tool_called and use_tools and (current_round == 1 or tool_calls_count < tool_budget):
-                    if current_round == 1:
-                        print(f"   [MEMORY] 🔧 FORCING memory tool call: get_recent_memories (required for all trading cycles)")
-                    else:
-                        print(f"   [MEMORY] 🔧 Adding memory tool call: get_recent_memories (cache miss)")
-                    # 在列表开头插入记忆工具调用
-                    tool_calls_list.insert(0, {
-                        "name": "get_recent_memories",
-                        "args": {"days": 5, "summary_only": True},
-                        "why": "REQUIRED: Load recent trading memories to learn from past decisions"
-                    })
-                
-                # CRITICAL: 强制添加FRED经济数据工具调用（如果配置了FRED API key）
-                fred_tool_called = False
-                for tc in tool_calls_list:
-                    if tc.get("name") in ["get_economic_summary", "get_labor_market_data", "fetch_fred_indicator"]:
-                        fred_tool_called = True
-                        break
-                
-                # Check cache for FRED tools in later rounds
-                if current_round > 1 and not fred_tool_called:
-                    fred_cache_key = _get_tool_cache_key("get_economic_summary", {})
-                    if fred_cache_key in tool_result_cache:
-                        print(f"   [CACHE] ✅ Using cached get_economic_summary result from round 1")
-                        cached_result = tool_result_cache[fred_cache_key]
-                        tool_results_summary.append("Economic summary (cached): Latest US economic indicators")
-                        fred_tool_called = True  # Mark as called to skip execution
-                
-                # 检查是否有FRED API key
-                has_fred_api = False
-                try:
-                    from src.utils.config_loader import load_config
-                    config = load_config()
-                    fred_api_key = config.get("fred_api_key")
-                    if fred_api_key and isinstance(fred_api_key, str) and fred_api_key.strip():
-                        has_fred_api = True
-                    elif os.getenv("FRED_API_KEY"):
-                        has_fred_api = True
-                except Exception:
-                    pass
-                
-                if not fred_tool_called and has_fred_api and use_tools and (current_round == 1 or tool_calls_count < tool_budget):
-                    if current_round == 1:
-                        print(f"   [FRED] 🔧 FORCING FRED tool call: get_economic_summary (required for market analysis)")
-                    else:
-                        print(f"   [FRED] 🔧 Adding FRED tool call: get_economic_summary (cache miss)")
-                    # 在记忆工具后插入FRED工具调用
-                    tool_calls_list.insert(1, {
-                        "name": "get_economic_summary",
-                        "args": {},
-                        "why": "REQUIRED: Get latest US economic indicators (GDP, unemployment, CPI, Fed funds rate) for market context"
-                    })
-                elif not has_fred_api:
-                    print(f"   [FRED] ⚠️ FRED API key not configured - skipping FRED data calls")
-                
-                # Fallback: Market Analyst必须使用工具（市场数据变化快，需要实时获取）
-                if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                    print(f"   [WARN] No tools requested, using fallback tools (Market analysis requires real-time data)")
-                    fallback_tools = [
-                        {"name": "get_recent_memories", "args": {"days": 5, "summary_only": True}, "why": "REQUIRED: Load recent trading memories"},
-                        {"name": "get_market_indices", "args": {}, "why": "Fallback: Get market indices"},
-                        {"name": "get_sector_rotation", "args": {"period": "1mo"}, "why": "Fallback: Analyze sector rotation"},
-                        {"name": "get_market_breadth", "args": {}, "why": "Fallback: Get market breadth"}
-                    ]
-                    # 如果有FRED API key，添加FRED工具
-                    if has_fred_api:
-                        fallback_tools.insert(1, {"name": "get_economic_summary", "args": {}, "why": "REQUIRED: Get latest US economic indicators"})
-                    tool_calls_list = fallback_tools
-                
-                # OPTIMIZATION: Filter out cached tools and news tools (for later rounds)
-                tools_to_execute = []
-                for tool_call in tool_calls_list:
-                    tool_name = tool_call.get("name", "")
-                    tool_args = tool_call.get("args", {})
-                    
-                    # Skip if already cached (for mandatory tools in later rounds)
-                    if current_round > 1 and tool_name in mandatory_tools:
-                        cache_key = _get_tool_cache_key(tool_name, tool_args)
-                        if cache_key in tool_result_cache:
-                            continue  # Skip, already using cached result
-                    
-                    # OPTIMIZATION: Skip news tools in later rounds (only call in round 1)
-                    if current_round > 1 and tool_name in news_tools:
-                        print(f"   [OPTIMIZATION] Skipping {tool_name} in round {current_round} (news only fetched in round 1)")
-                        continue
-                    
-                    tools_to_execute.append(tool_call)
-                
-                # 收集工具调用结果
-                tool_results_summary = []
-                if use_tools and tools_to_execute:
-                    print(f"   [TOOL] Tools requested: {len(tools_to_execute)} (after cache/news filtering)")
-                    # OPTIMIZATION: Reduce tool calls in later rounds (rely more on previous round results)
-                    if current_round > 1:
-                        max_tools_per_analyst = min(3, tool_budget - tool_calls_count)  # Reduced from 5 to 3
-                        print(f"   [OPTIMIZATION] Round {current_round}: Reduced max tools per analyst to {max_tools_per_analyst} (relying on previous round results)")
-                    else:
-                        max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
-                    
-                    # OPTIMIZATION: Parallel execution for independent tools
-                    independent_tools = []
-                    dependent_tools = []
-                    
-                    for tool_call in tools_to_execute[:max_tools_per_analyst]:
-                        if tool_calls_count >= tool_budget:
-                            break
-                        tool_name = tool_call.get("name", "unknown")
-                        
-                        # Tools that can run in parallel (independent)
-                        independent_tool_names = ["get_market_indices", "get_sector_rotation", "get_market_breadth", 
-                                                  "get_economic_summary", "get_recent_memories", "fear_greed", "vix_term"]
-                        if tool_name in independent_tool_names:
-                            independent_tools.append(tool_call)
-                        else:
-                            dependent_tools.append(tool_call)
-                    
-                    # Execute independent tools in parallel
-                    if independent_tools and current_round == 1:  # Only parallelize in round 1 for now
-                        print(f"   [PARALLEL] Executing {len(independent_tools)} independent tools in parallel...")
-                        with ThreadPoolExecutor(max_workers=min(5, len(independent_tools))) as executor:
-                            # Submit all independent tools
-                            future_to_tool = {
-                                executor.submit(_execute_tool, toolbox, tc, market_summary): tc 
-                                for tc in independent_tools
-                            }
-                            
-                            # Collect results as they complete
-                            for future in as_completed(future_to_tool):
-                                tool_call = future_to_tool[future]
-                                tool_name = tool_call.get("name", "unknown")
-                                try:
-                                    tool_result = future.result()
-                                    # Process result (same as sequential execution)
-                                    if _check_tool_success(tool_result):
-                                        all_tool_calls.append({
-                                            "analyst": "MarketAnalyst",
-                                            "tool": tool_name,
-                                            "result": tool_result
-                                        })
-                                        tool_calls_count += 1
-                                        
-                                        # OPTIMIZATION: Cache mandatory tool results
-                                        if tool_name in mandatory_tools:
-                                            cache_key = _get_tool_cache_key(tool_name, tool_call.get("args", {}))
-                                            tool_result_cache[cache_key] = tool_result
-                                            print(f"   [CACHE] 💾 Cached {tool_name} result for reuse in later rounds")
-                                        
-                                        # Add to summary
-                                        tool_results_summary.append(f"{tool_name}: executed successfully")
-                                except Exception as e:
-                                    print(f"   [ERROR] Tool {tool_name} failed: {e}")
-                    else:
-                        # Sequential execution (for dependent tools or later rounds)
-                        for tool_call in (independent_tools + dependent_tools)[:max_tools_per_analyst]:
-                            if tool_calls_count >= tool_budget:
-                                break
-                            tool_name = tool_call.get("name", "unknown")
-                            # 检查是否是记忆工具
-                            memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
-                                           "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
-                            is_memory_tool = tool_name in memory_tools
-                            
-                            if is_memory_tool:
-                                print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
-                            else:
-                                print(f"   [TOOL] Executing: {tool_name}")
-                            
-                            # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
-                            if tool_name == "news_scan":
-                                print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
-                                tool_call = {
-                                    "name": "plan_and_scan_news",
-                                    "args": {
-                                        **tool_call.get("args", {}),
-                                        "fetch_body_top": 10,  # 获取前10篇文章的内容
-                                        "tickers": tool_call.get("args", {}).get("tickers", []),
-                                        "max_articles": tool_call.get("args", {}).get("max_articles", 10),
-                                        "recency_days": tool_call.get("args", {}).get("recency_days", 2)
-                                    },
-                                    "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
-                                }
-                                tool_name = "plan_and_scan_news"
-                            
-                            tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                            
-                            # OPTIMIZATION: Cache mandatory tool results
-                            if _check_tool_success(tool_result) and tool_name in mandatory_tools:
-                                cache_key = _get_tool_cache_key(tool_name, tool_call.get("args", {}))
-                                tool_result_cache[cache_key] = tool_result
-                                print(f"   [CACHE] 💾 Cached {tool_name} result for reuse in later rounds")
-                            
-                            # CRITICAL FIX: 检查工具执行是否成功（处理记忆工具的双重嵌套）
-                            if _check_tool_success(tool_result):
-                                all_tool_calls.append({
-                                    "analyst": "MarketAnalyst",
-                                    "tool": tool_name,
-                                    "result": tool_result
-                                })
-                                tool_calls_count += 1
-                            
-                            if is_memory_tool:
-                                # 显示记忆工具调用结果摘要
-                                # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
-                                # Memory tools return {"ok": True/False, "memories": [...], "count": ...} or {"ok": False, "error": "..."}
-                                if isinstance(tool_result, dict):
-                                    if tool_result.get("ok"):
-                                        # Extract actual result from nested structure
-                                        actual_result = tool_result.get("result", tool_result)
-                                        # CRITICAL FIX: Memory tools may return {"ok": True, "memories": [...], "count": ...} 
-                                        # which gets wrapped as {"ok": True, "result": {"ok": True, "memories": [...], "count": ...}}
-                                        # Need to check if actual_result has "ok" field (double nesting)
-                                        if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                            # Memory tool failed
-                                            print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {actual_result.get('error', 'Unknown error')}")
-                                        elif isinstance(actual_result, dict) and actual_result.get("ok") is True:
-                                            # Success - extract from nested result
-                                            final_result = actual_result.get("result", actual_result)
-                                            count = final_result.get("count", 0)
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                            if tool_name == "get_recent_memories" and count > 0:
-                                                memories = final_result.get("memories", [])
-                                                if memories:
-                                                    dates = [m.get("date", "N/A") for m in memories[:3]]
-                                                    print(f"   [MEMORY] 📅 Recent memory dates: {', '.join(dates)}")
-                                        else:
-                                            # Direct result (no double nesting)
-                                            count = actual_result.get("count", 0)
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                            if tool_name == "get_recent_memories" and count > 0:
-                                                memories = actual_result.get("memories", [])
-                                                if memories:
-                                                    dates = [m.get("date", "N/A") for m in memories[:3]]
-                                                    print(f"   [MEMORY] 📅 Recent memory dates: {', '.join(dates)}")
-                                    else:
-                                        print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error')}")
-                            else:
-                                # CRITICAL FIX: 检查工具执行结果，特别是新闻工具
-                                if isinstance(tool_result, dict):
-                                    if tool_result.get("ok") is False:
-                                        print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
-                                    else:
-                                        # 对于新闻工具，检查是否有实际数据
-                                        # 基于测试结果，以下工具都可用：
-                                        # ✅ news_scan: 返回 hits
-                                        # ✅ plan_and_scan_news: 返回 hits 和 articles（推荐，有内容）
-                                        # ✅ News tools: 返回 hits/articles（通过ToolBox）
-                                        # CRITICAL FIX: news_scan 已移除，只检查 plan_and_scan_news
-                                        if tool_name == "plan_and_scan_news":
-                                            actual_result = tool_result.get("result", tool_result)
-                                            hits = actual_result.get("hits", [])
-                                            articles = actual_result.get("articles", [])
-                                            items = actual_result.get("items", [])
-                                            total_data = len(hits) + len(articles) + len(items)
-                                            if total_data > 0:
-                                                print(f"   [OK] Tool {tool_name} executed successfully ({len(hits)} hits, {len(articles)} articles, {len(items)} items)")
-                                            else:
-                                                print(f"   [WARN] Tool {tool_name} executed but returned no news data")
-                                                print(f"   [INFO] This may be normal if no recent news found for the given keywords/tickers")
-                                        else:
-                                            print(f"   [OK] Tool {tool_name} executed successfully")
-                                else:
-                                    print(f"   [OK] Tool {tool_name} executed successfully")
-                            # 格式化工具结果用于反馈
-                            tool_summary = _format_tool_result(tool_name, tool_result)
-                            tool_results_summary.append(f"{tool_name}: {tool_summary}")
-                        else:
-                            # CRITICAL FIX: 工具执行失败或返回错误（处理记忆工具的双重嵌套）
-                            if tool_result and isinstance(tool_result, dict):
-                                # Check for nested error (memory tools)
-                                actual_result = tool_result.get("result", {})
-                                if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                    error_msg = actual_result.get("error", "Unknown error")
-                                else:
-                                    error_msg = tool_result.get("error", "Unknown error")
-                                print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
-                            else:
-                                print(f"   [WARN] Tool {tool_name} returned no result")
-                else:
-                    if not tool_calls_list:
-                        print(f"   [INFO] No tools requested by agent")
-                
-                # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
-                _generate_analysis_from_tools(
-                    market_analyst, market_prompt_vars, tool_results_summary,
-                    "market", market_result, all_tool_calls, "MarketAnalyst"
+                fundamental_analyst: BaseAgent = fac.create("fundamental_analyst")
+                fundamental_result, tool_calls_count, all_tool_calls = run_fundamental_analyst(
+                    fundamental_analyst=fundamental_analyst,
+                    market_summary=market_summary,
+                    previous_rounds_text=previous_rounds_text,
+                    discussion_history=discussion_history,
+                    tools_str=tools_str,
+                    order_status_text=order_status_text,
+                    positions_text=positions_text,
+                    holdings_list=holdings_list,
+                    analyst_reports=analyst_reports,
+                    current_positions=current_positions,
+                    toolbox=toolbox,
+                    use_tools=use_tools,
+                    tool_budget=tool_budget,
+                    tool_calls_count=tool_calls_count,
+                    current_round=current_round,
+                    all_tool_calls=all_tool_calls,
+                    executed_tool_cache_keys=executed_tool_cache_keys,  # CRITICAL FIX: Pass executed tool cache keys for deduplication
                 )
+                analyst_reports["fundamental"] = fundamental_result
                 
-                # 添加到对话历史（工具调用完成后）
-                tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst"]
+                # Add to discussion history
+                tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst"]
                 discussion_history.append({
-                    "analyst": "Market Analyst",
-                    "stance": market_result.get("stance", "neutral"),
-                    "analysis": market_result.get("analysis", ""),
+                    "analyst": "Fundamental Analyst",
+                    "stance": fundamental_result.get("stance", "neutral"),
+                    "analysis": fundamental_result.get("analysis", ""),
                     "tools_used": tools_used_names,
-                    "key_points": market_result.get("recommendations", [])[:3] if market_result.get("recommendations") else [],
+                    "key_points": fundamental_result.get("recommendations", [])[:3] if fundamental_result.get("recommendations") else [],
                 })
                 _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
-                
-                print(f"   [OK] Market Stance: {market_result.get('stance', 'N/A')}")
-                analysis_text = market_result.get('analysis', '')
-                if analysis_text:
-                    analysis_preview = analysis_text[:100]
-                    print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
-                else:
-                    print(f"   [WARN] Analysis: No analysis provided (check LLM response)")
-                    if "error" in market_result:
-                        print(f"   [WARN] Error: {market_result.get('error', 'Unknown error')}")
             except Exception as e:
-                print(f"   [ERROR] Market Analyst error: {e}")
-                analyst_reports["market"] = {"error": str(e), "stance": "neutral"}
-            
-            # ===== 2. Technical Analyst =====
-            print(f"\n[Round {current_round}] [2/4] Technical Analyst analyzing...")
-            # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
-            if True:  # 总是运行，但只在有budget时调用工具
-                try:
-                    technical_analyst: BaseAgent = fac.create("technical_analyst")
-                    
-                    # CRITICAL FIX: Include previous rounds' discussion history for rounds > 1
-                    # Format current round's discussion history (for same-round analyst interaction)
-                    current_round_discussion_text = _format_discussion_history(discussion_history)
-                    if current_round_discussion_text:
-                        previous_discussion_text = previous_rounds_text + "\n\n========== CURRENT ROUND DISCUSSION ==========\n" + current_round_discussion_text
-                    else:
-                        previous_discussion_text = previous_rounds_text
-                    
-                    # CRITICAL FIX: 添加Market Analyst的推荐名单到Technical Analyst的prompt
-                    technical_positions_text = positions_text
-                    if analyst_reports.get("market"):
-                        market_report = analyst_reports["market"]
-                        recommended_stocks = market_report.get("recommended_stocks", [])
-                        if recommended_stocks:
-                            # 确保推荐股票是列表格式
-                            if isinstance(recommended_stocks, str):
-                                recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
-                            elif not isinstance(recommended_stocks, list):
-                                recommended_stocks = []
-                            
-                            if recommended_stocks:
-                                # 添加到positions_text中，让Technical Analyst知道推荐名单
-                                recommended_text = f"\n**📋 RECOMMENDED STOCKS FROM MARKET ANALYST:**\n"
-                                recommended_text += f"**Priority 1 - MUST Analyze These:** {', '.join(recommended_stocks)}\n"
-                                recommended_text += f"**These are Market Analyst's top recommendations - analyze them first!**\n"
-                                technical_positions_text = recommended_text + "\n" + technical_positions_text
-                    
-                    technical_prompt_vars = {
-                        "market_view": json.dumps(market_summary, indent=2),
-                        "previous_discussion": previous_discussion_text,
-                        "tools_context": tools_str,
-                        "order_status": order_status_text,  # 添加订单状态
-                        "current_positions": technical_positions_text,  # 添加仓位信息和推荐名单
-                    }
-                    
-                    technical_response = technical_analyst.run(technical_prompt_vars, expect_json=True)
-                    
-                    # 调试：打印原始响应
-                    if isinstance(technical_response, dict):
-                        print(f"   🔍 LLM Response (dict): {str(technical_response)[:200]}...")
-                        # 检查是否是单个tool_call对象（会被自动包装）
-                        is_single_tool_call = ("name" in technical_response and "args" in technical_response and 
-                                              "stance" not in technical_response and "analysis" not in technical_response)
-                        if is_single_tool_call:
-                            print(f"   ℹ️  LLM returned single tool_call object (will be auto-wrapped)")
-                        elif "tool_calls" not in technical_response or not technical_response.get("tool_calls"):
-                            print(f"   [WARN] LLM response missing tool_calls field")
-                    else:
-                        print(f"   🔍 LLM Response (str, first 300 chars): {str(technical_response)[:300]}...")
-                        if "tool_calls" not in str(technical_response).lower():
-                            print(f"   [WARN] LLM response (str) may not contain tool_calls")
-                    
-                    technical_result = _parse_analyst_response(technical_response)
-                    analyst_reports["technical"] = technical_result
-                    
-                    # 执行工具调用（agent自主选择，不强制）
-                    tool_calls_list = technical_result.get("tool_calls", [])
-                    
-                    # CRITICAL FIX: Filter out news tools (Technical Analyst should not use news tools)
-                    news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
-                    filtered_tool_calls = []
-                    for tc in tool_calls_list:
-                        tool_name = tc.get("name", "")
-                        if tool_name in news_tools:
-                            print(f"   [FILTER] Removing news tool '{tool_name}' from Technical Analyst (news analysis is handled by Sentiment Analyst)")
-                        else:
-                            filtered_tool_calls.append(tc)
-                    tool_calls_list = filtered_tool_calls
-                    
-                    # 如果tool_calls为空，打印警告
-                    if not tool_calls_list:
-                        print(f"   [WARN] Parsed result has no tool_calls - LLM may not have followed instructions")
-                    elif len(tool_calls_list) > 0:
-                        # 检查是否是从单个tool_call包装的
-                        if len(tool_calls_list) == 1 and isinstance(technical_response, dict) and "name" in technical_response:
-                            print(f"   ✅ Auto-wrapped single tool_call: {tool_calls_list[0].get('name', 'unknown')}")
-                        # 如果成功提取了工具调用，显示信息
-                        extracted_count = sum(1 for tc in tool_calls_list if tc.get("why", "").startswith("Extracted from"))
-                        if extracted_count > 0:
-                            print(f"   ✅ Extracted {extracted_count} tool call(s) from analysis text")
-                    
-                    # CRITICAL FIX: 移除技术分析师不应该使用的工具（新闻工具）
-                    # 技术分析师只应该使用技术分析工具，不应该使用新闻工具
-                    filtered_tool_calls = []
-                    removed_news_tools = []
-                    for tc in tool_calls_list:
-                        tool_name = tc.get("name", "")
-                        # 移除新闻相关工具
-                        # CRITICAL FIX: news_scan 已移除，只检查 plan_and_scan_news
-                        if tool_name in ["plan_and_scan_news", "web_search", "fetch_url"]:
-                            removed_news_tools.append(tool_name)
-                            print(f"   [FILTER] Removed news tool '{tool_name}' from Technical Analyst (news analysis is not part of technical analysis)")
-                        else:
-                            filtered_tool_calls.append(tc)
-                    
-                    if removed_news_tools:
-                        print(f"   [FILTER] Removed {len(removed_news_tools)} news tool(s) from Technical Analyst tool calls")
-                    
-                    tool_calls_list = filtered_tool_calls
-                    
-                    # CRITICAL FIX: 技术分析必须同时分析：持仓 + 推荐名单 + 主要指数（都要分析）
-                    # 如果没有持仓：只分析推荐名单 + 主要指数
-                    if tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                        # 提取LLM已请求的symbols
-                        existing_symbols = set()
-                        for tc in tool_calls_list:
-                            args = tc.get("args", {})
-                            symbol = args.get("symbol")
-                            if symbol:
-                                existing_symbols.add(symbol.upper())
-                        
-                        # 收集必须分析的symbols（必须同时包含所有类别）
-                        mandatory_symbols = []
-                        
-                        # 1. 添加持仓（如果有）
-                        if current_positions:
-                            for symbol, pos_info in current_positions.items():
-                                if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                    symbol_upper = symbol.upper()
-                                    if symbol_upper not in existing_symbols:
-                                        mandatory_symbols.append(symbol_upper)
-                                        print(f"   [MANDATORY] Adding holding: {symbol}")
-                        
-                        # 2. 添加主要指数（总是添加）
-                        major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
-                        for idx in major_indices:
-                            if idx not in existing_symbols and idx not in mandatory_symbols:
-                                mandatory_symbols.append(idx)
-                                print(f"   [MANDATORY] Adding major index: {idx}")
-                        
-                        # 3. 添加Market Analyst的推荐名单（必须添加）
-                        recommended_stocks = []
-                        if analyst_reports.get("market"):
-                            market_report = analyst_reports["market"]
-                            recommended_stocks = market_report.get("recommended_stocks", [])
-                            if recommended_stocks:
-                                if isinstance(recommended_stocks, str):
-                                    recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
-                                elif not isinstance(recommended_stocks, list):
-                                    recommended_stocks = []
-                                
-                                for sym in recommended_stocks:
-                                    if sym and sym.upper() not in existing_symbols and sym.upper() not in mandatory_symbols:
-                                        mandatory_symbols.append(sym.upper())
-                                        print(f"   [MANDATORY] Adding recommended stock: {sym}")
-                        
-                        # 补充必须分析的symbols到tool_calls_list（如果还有预算）
-                        # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count
-                        remaining_budget = tool_budget - tool_calls_count
-                        if mandatory_symbols and remaining_budget > 0:
-                            print(f"   [MANDATORY] Found {len(mandatory_symbols)} mandatory symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
-                            added_count = 0
-                            
-                            # 首先为所有必须分析的symbols添加get_advanced_indicators
-                            for sym in mandatory_symbols:
-                                if tool_calls_count + len(tool_calls_list) >= tool_budget:
-                                    print(f"   [MANDATORY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
-                                    break
-                                tool_calls_list.append({
-                                    "name": "get_advanced_indicators",
-                                    "args": {"symbol": sym, "period": "3mo"},
-                                    "why": f"MANDATORY: Get technical indicators for {sym} (holding/index/recommended - all must be analyzed)"
-                                })
-                                added_count += 1
-                            
-                            # 然后为持仓和指数添加support/resistance（如果还有预算）
-                            symbols_for_sr = []
-                            if current_positions:
-                                for symbol, pos_info in current_positions.items():
-                                    if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                        if symbol.upper() in mandatory_symbols:
-                                            symbols_for_sr.append(symbol.upper())
-                            # 主要指数也需要support/resistance
-                            symbols_for_sr.extend(["SPY", "QQQ", "DIA"])
-                            
-                            for sym in symbols_for_sr:
-                                if tool_calls_count + len(tool_calls_list) >= tool_budget:
-                                    break
-                                # 检查是否已经有这个symbol的support/resistance调用
-                                has_sr = any(
-                                    tc.get("name") == "get_support_resistance" and tc.get("args", {}).get("symbol", "").upper() == sym
-                                    for tc in tool_calls_list
-                                )
-                                if not has_sr:
-                                    tool_calls_list.append({
-                                        "name": "get_support_resistance",
-                                        "args": {"symbol": sym},
-                                        "why": f"MANDATORY: Get support/resistance levels for {sym} (holding/index)"
-                                    })
-                                    added_count += 1
-                            
-                            if added_count > 0:
-                                print(f"   [MANDATORY] Added {added_count} mandatory tool calls (holdings + indices + recommended stocks)")
-                    
-                    # Fallback: Technical Analyst必须使用工具（技术分析需要实时指标）
-                    # CRITICAL FIX: 必须同时分析：持仓 + 推荐名单 + 主要指数（都要分析）
-                    # 如果没有持仓：只分析推荐名单 + 主要指数
-                    if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                        print(f"   [WARN] No tools requested, using fallback tools (Technical analysis requires indicators)")
-                        
-                        # CRITICAL FIX: 必须同时分析所有类别
-                        selected_symbols = []
-                        
-                        # 1. 添加Market Analyst的推荐名单（必须添加）
-                        recommended_stocks = []
-                        if analyst_reports.get("market"):
-                            market_report = analyst_reports["market"]
-                            recommended_stocks = market_report.get("recommended_stocks", [])
-                            if recommended_stocks:
-                                # 确保推荐股票是列表格式
-                                if isinstance(recommended_stocks, str):
-                                    # 如果是字符串，尝试解析（可能是逗号分隔的列表）
-                                    recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
-                                elif not isinstance(recommended_stocks, list):
-                                    recommended_stocks = []
-                                
-                                # 添加到选择列表
-                                for sym in recommended_stocks:
-                                    if sym and sym not in selected_symbols:
-                                        selected_symbols.append(sym)
-                                        print(f"   [FALLBACK] Adding recommended stock: {sym}")
-                        
-                        # 2. 添加持仓（如果有）
-                        if current_positions:
-                            for symbol, pos_info in current_positions.items():
-                                if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                    if symbol not in selected_symbols:
-                                        selected_symbols.append(symbol)
-                                        print(f"   [FALLBACK] Adding holding: {symbol}")
-                        
-                        # 3. 添加主要指数（总是添加）
-                        major_indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
-                        for idx in major_indices:
-                            if idx not in selected_symbols:
-                                selected_symbols.append(idx)
-                        print(f"   [FALLBACK] Adding major indices: {', '.join(major_indices)}")
-                        
-                        # 4. 如果还有预算，添加高信号股票（作为补充）
-                        remaining_budget = tool_budget - tool_calls_count
-                        if len(selected_symbols) < remaining_budget:
-                            stocks = market_view.get("stocks", {}) if isinstance(market_view, dict) else {}
-                            sorted_stocks = []
-                            for sym in stocks.keys():
-                                # 跳过已经选择的推荐股票、持仓和指数
-                                if sym not in selected_symbols:
-                                    try:
-                                        score = float(stocks[sym].get("signal_score", 0))
-                                        sorted_stocks.append((sym, score))
-                                    except (ValueError, TypeError):
-                                        pass
-                            
-                            sorted_stocks.sort(key=lambda x: x[1], reverse=True)
-                            additional_count = remaining_budget - len(selected_symbols)
-                            additional_symbols = [sym for sym, _ in sorted_stocks[:additional_count]]
-                            selected_symbols.extend(additional_symbols)
-                            if additional_symbols:
-                                print(f"   [FALLBACK] Adding {len(additional_symbols)} high-signal stocks (supplement): {', '.join(additional_symbols[:5])}...")
-                        
-                        tool_calls_list = []
-                        # 为每个符号添加技术指标工具
-                        for sym in selected_symbols:
-                            if tool_calls_count >= tool_budget:
-                                break
-                            tool_calls_list.append({"name": "get_advanced_indicators", "args": {"symbol": sym, "period": "3mo"}, "why": f"Fallback: Get technical indicators for {sym} (priority: holdings/indices)"})
-                        
-                        # 为持仓和指数添加support/resistance工具（如果还有预算）
-                        # 优先为持仓和指数添加support/resistance
-                        priority_symbols = []
-                        if current_positions:
-                            for symbol, pos_info in current_positions.items():
-                                if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                    priority_symbols.append(symbol)
-                        priority_symbols.extend(major_indices[:3])  # SPY, QQQ, DIA
-                        
-                        for sym in priority_symbols:
-                            if tool_calls_count >= tool_budget:
-                                break
-                            if sym in selected_symbols:  # 确保这个符号在selected_symbols中
-                                tool_calls_list.append({"name": "get_support_resistance", "args": {"symbol": sym}, "why": f"Fallback: Get support/resistance levels for {sym} (priority: holdings/indices)"})
-                        
-                        print(f"   [FALLBACK] Selected {len(selected_symbols)} symbols for technical analysis (holdings + indices + high-signal stocks)")
-                    
-                    # 收集工具调用结果
-                    tool_results_summary = []
-                    if use_tools and tool_calls_list:
-                        print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
-                        # 增加每个analyst的工具使用限制：从5个增加到8个（支持分析多个股票）
-                        max_tools_per_analyst = min(8, tool_budget - tool_calls_count)
-                        for tool_call in tool_calls_list[:max_tools_per_analyst]:
-                            if tool_calls_count >= tool_budget:
-                                break
-                            tool_name = tool_call.get("name", "unknown")
-                            # 检查是否是记忆工具
-                            memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
-                                           "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
-                            is_memory_tool = tool_name in memory_tools
-                            
-                            if is_memory_tool:
-                                print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
-                            else:
-                                print(f"   [TOOL] Executing: {tool_name}")
-                            
-                            # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
-                            if tool_name == "news_scan":
-                                print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
-                                tool_call = {
-                                    "name": "plan_and_scan_news",
-                                    "args": {
-                                        **tool_call.get("args", {}),
-                                        "fetch_body_top": 10,  # 获取前10篇文章的内容
-                                        "tickers": tool_call.get("args", {}).get("tickers", []),
-                                        "max_articles": tool_call.get("args", {}).get("max_articles", 10),
-                                        "recency_days": tool_call.get("args", {}).get("recency_days", 2)
-                                    },
-                                    "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
-                                }
-                                tool_name = "plan_and_scan_news"
-                            
-                            tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                            # CRITICAL FIX: 检查工具执行是否成功（处理记忆工具的双重嵌套）
-                            if _check_tool_success(tool_result):
-                                all_tool_calls.append({
-                                    "analyst": "TechnicalAnalyst",
-                                    "tool": tool_name,
-                                    "result": tool_result
-                                })
-                                tool_calls_count += 1
-                                
-                                if is_memory_tool:
-                                    # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
-                                    # Memory tools return {"ok": True/False, "memories": [...], "count": ...} or {"ok": False, "error": "..."}
-                                    if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                        actual_result = tool_result.get("result", tool_result)
-                                        # CRITICAL FIX: Check for double nesting (memory tool result wrapped by toolbox)
-                                        if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                            print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {actual_result.get('error', 'Unknown error')}")
-                                        elif isinstance(actual_result, dict) and actual_result.get("ok") is True:
-                                            final_result = actual_result.get("result", actual_result)
-                                            count = final_result.get("count", 0)
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                        else:
-                                            count = actual_result.get("count", 0) if isinstance(actual_result, dict) else 0
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                    else:
-                                        print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error') if isinstance(tool_result, dict) else 'No result'}")
-                                else:
-                                    print(f"   [OK] Tool {tool_name} executed successfully")
-                                tool_summary = _format_tool_result(tool_name, tool_result)
-                                tool_results_summary.append(f"{tool_name}: {tool_summary}")
-                            else:
-                                # CRITICAL FIX: 工具执行失败或返回错误（处理记忆工具的双重嵌套）
-                                if tool_result and isinstance(tool_result, dict):
-                                    # Check for nested error (memory tools)
-                                    actual_result = tool_result.get("result", {})
-                                    if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                        error_msg = actual_result.get("error", "Unknown error")
-                                    else:
-                                        error_msg = tool_result.get("error", "Unknown error")
-                                    print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
-                                else:
-                                    print(f"   [WARN] Tool {tool_name} returned no result")
-                    else:
-                        if not tool_calls_list:
-                            print(f"   [INFO] No tools requested by agent")
-                    
-                    # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
-                    _generate_analysis_from_tools(
-                        technical_analyst, technical_prompt_vars, tool_results_summary,
-                        "technical", technical_result, all_tool_calls, "TechnicalAnalyst"
-                    )
-                    
-                    # 添加到对话历史
-                    tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst"]
-                    discussion_history.append({
-                        "analyst": "Technical Analyst",
-                        "stance": technical_result.get("stance", "neutral"),
-                        "analysis": technical_result.get("analysis", ""),
-                        "tools_used": tools_used_names,
-                        "key_points": technical_result.get("recommendations", [])[:3] if technical_result.get("recommendations") else [],
-                    })
-                    _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
-                    
-                    print(f"   [OK] Technical Stance: {technical_result.get('stance', 'N/A')}")
-                    analysis_preview = technical_result.get('analysis', '')[:100] if technical_result.get('analysis') else 'No analysis'
-                    print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
-                except Exception as e:
-                    print(f"   [ERROR] Technical Analyst error: {e}")
-                    analyst_reports["technical"] = {"error": str(e), "stance": "neutral"}
-            
-            # ===== 3. Fundamental Analyst =====
-            print(f"\n[Round {current_round}] [3/4] Fundamental Analyst analyzing...")
-            # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
-            if True:  # 总是运行，但只在有budget时调用工具
-                try:
-                    fundamental_analyst: BaseAgent = fac.create("fundamental_analyst")
-                    
-                    # CRITICAL FIX: Include previous rounds' discussion history for rounds > 1
-                    # Format current round's discussion history (for same-round analyst interaction)
-                    current_round_discussion_text = _format_discussion_history(discussion_history)
-                    if current_round_discussion_text:
-                        previous_discussion_text = previous_rounds_text + "\n\n========== CURRENT ROUND DISCUSSION ==========\n" + current_round_discussion_text
-                    else:
-                        previous_discussion_text = previous_rounds_text
-            
-                    # CRITICAL FIX: 添加Market Analyst的推荐名单和选单到Fundamental Analyst的prompt
-                    fundamental_positions_text = positions_text
-                    if analyst_reports.get("market"):
-                        market_report = analyst_reports["market"]
-                        recommended_stocks = market_report.get("recommended_stocks", [])
-                        if recommended_stocks:
-                            # 确保推荐股票是列表格式
-                            if isinstance(recommended_stocks, str):
-                                recommended_stocks = [s.strip() for s in recommended_stocks.split(",") if s.strip()]
-                            elif not isinstance(recommended_stocks, list):
-                                recommended_stocks = []
-                            
-                            if recommended_stocks:
-                                # 添加到positions_text中，让Fundamental Analyst知道推荐名单
-                                recommended_text = f"\n**📋 RECOMMENDED STOCKS FROM MARKET ANALYST:**\n"
-                                recommended_text += f"**Priority 1 - MUST Analyze These:** {', '.join(recommended_stocks)}\n"
-                                recommended_text += f"**These are Market Analyst's top recommendations - analyze them first!**\n"
-                                fundamental_positions_text = recommended_text + "\n" + fundamental_positions_text
-                    
-                    # CRITICAL FIX: 基本面分析只分析持仓（非ETF）+ 推荐名单（非ETF）
-                    # 不包括指数（ETF不需要基本面分析）
-                    # 如果没有持仓：只分析推荐名单（非ETF）
-                    if holdings_list:
-                        # 过滤掉ETF持仓
-                        non_etf_holdings = [h for h in holdings_list if not is_etf(h)]
-                        menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
-                        menu_text += f"**MANDATORY Analysis Targets (ALL must be analyzed, ETFs excluded):**\n"
-                        menu_text += f"  1. Recommended Stocks (non-ETF): (Will be filtered to exclude ETFs)\n"
-                        if non_etf_holdings:
-                            menu_text += f"  2. Current Holdings (non-ETF): {', '.join(non_etf_holdings)}\n"
-                        else:
-                            menu_text += f"  2. Current Holdings: None (all holdings are ETFs, skip fundamental analysis)\n"
-                        menu_text += f"**CRITICAL: Do NOT analyze ETFs or indices (SPY, QQQ, DIA, IWM, VTI) - ETFs don't need fundamental analysis**\n"
-                        menu_text += f"**For each symbol, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
-                        fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
-                    else:
-                        menu_text = f"\n**📋 ANALYSIS MENU FOR FUNDAMENTAL ANALYST:**\n"
-                        menu_text += f"**MANDATORY Analysis Targets (non-ETF only):**\n"
-                        menu_text += f"  1. Recommended Stocks (non-ETF): (Will be filtered to exclude ETFs)\n"
-                        menu_text += f"**CRITICAL: Do NOT analyze ETFs or indices (SPY, QQQ, DIA, IWM, VTI) - ETFs don't need fundamental analysis**\n"
-                        menu_text += f"**For each symbol, analyze fundamentals (PE ratio, earnings, financial health, etc.)**\n"
-                        fundamental_positions_text = fundamental_positions_text + "\n" + menu_text
-                    
-                    fundamental_prompt_vars = {
-                        "market_view": json.dumps(market_summary, indent=2),
-                        "previous_discussion": previous_discussion_text,
-                        "tools_context": tools_str,
-                        "order_status": order_status_text,  # 添加订单状态
-                        "current_positions": fundamental_positions_text,  # 添加仓位信息、推荐名单和选单
-                    }
-                    
-                    fundamental_response = fundamental_analyst.run(fundamental_prompt_vars, expect_json=True)
-                    
-                    # 调试：检查LLM响应中是否包含tool_calls
-                    if isinstance(fundamental_response, dict):
-                        print(f"   🔍 LLM Response (dict): {str(fundamental_response)[:200]}...")
-                        # 检查是否是单个tool_call对象（会被自动包装）
-                        is_single_tool_call = ("name" in fundamental_response and "args" in fundamental_response and 
-                                              "stance" not in fundamental_response and "analysis" not in fundamental_response)
-                        if is_single_tool_call:
-                            print(f"   ℹ️  LLM returned single tool_call object (will be auto-wrapped)")
-                        elif "tool_calls" not in fundamental_response or not fundamental_response.get("tool_calls"):
-                            print(f"   [WARN] LLM response missing tool_calls field")
-                    else:
-                        print(f"   🔍 LLM Response (str, first 300 chars): {str(fundamental_response)[:300]}...")
-                        if "tool_calls" not in str(fundamental_response).lower():
-                            print(f"   [WARN] LLM response (str) may not contain tool_calls")
-                    
-                    fundamental_result = _parse_analyst_response(fundamental_response)
-                    analyst_reports["fundamental"] = fundamental_result
-                    
-                    # 执行工具调用（agent自主选择，不强制）
-                    tool_calls_list = fundamental_result.get("tool_calls", [])
-                    
-                    # CRITICAL FIX: Filter out news tools (Fundamental Analyst should not use news tools)
-                    # News tools are restricted to Sentiment Analyst only
-                    news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]
-                    filtered_tool_calls = []
-                    for tc in tool_calls_list:
-                        tool_name = tc.get("name", "")
-                        if tool_name in news_tools:
-                            print(f"   [FILTER] Removing news tool '{tool_name}' from Fundamental Analyst (news analysis is handled by Sentiment Analyst)")
-                        else:
-                            filtered_tool_calls.append(tc)
-                    tool_calls_list = filtered_tool_calls
-                    
-                    # CRITICAL FIX: Filter out invalid tool calls (missing name field)
-                    # CRITICAL FIX: Support @tool/params format (convert to name/args)
-                    # CRITICAL FIX: Handle tickers array for get_company_fundamentals (split into multiple calls)
-                    valid_tool_calls = []
-                    for tc in tool_calls_list:
-                        if isinstance(tc, dict):
-                            # CRITICAL FIX: Support @tool/params format (some LLMs use this)
-                            if "@tool" in tc or "tool" in tc:
-                                # Convert @tool to name, params to args
-                                tool_name = tc.get("@tool") or tc.get("tool", "")
-                                tool_params = tc.get("params", {}) or tc.get("args", {})
-                                if tool_name:
-                                    converted_tc = {
-                                        "name": tool_name,
-                                        "args": tool_params,
-                                        "why": tc.get("why", "Auto-converted from @tool format")
-                                    }
-                                    # CRITICAL FIX: Handle tickers array for get_company_fundamentals
-                                    if tool_name == "get_company_fundamentals" and "tickers" in tool_params:
-                                        tickers = tool_params.get("tickers", [])
-                                        if isinstance(tickers, list) and len(tickers) > 0:
-                                            # Split into multiple tool calls (one per symbol)
-                                            for ticker in tickers:
-                                                if ticker:
-                                                    valid_tool_calls.append({
-                                                        "name": tool_name,
-                                                        "args": {"symbol": str(ticker).upper()},
-                                                        "why": f"Extracted from tickers array: {ticker}"
-                                                    })
-                                            print(f"   [OK] Split @tool format with tickers array into {len(tickers)} calls: {tool_name}")
-                                        else:
-                                            valid_tool_calls.append(converted_tc)
-                                            print(f"   [OK] Converted @tool format: {tool_name}")
-                                    else:
-                                        valid_tool_calls.append(converted_tc)
-                                        print(f"   [OK] Converted @tool format: {tool_name}")
-                                else:
-                                    print(f"   [WARN] Skipping invalid tool call (missing @tool/tool): {tc}")
-                            elif tc.get("name"):
-                                # Standard format: name/args
-                                tool_name = tc.get("name", "")
-                                tool_args = tc.get("args", {})
-                                # CRITICAL FIX: Handle tickers array for get_company_fundamentals
-                                if tool_name == "get_company_fundamentals" and "tickers" in tool_args:
-                                    tickers = tool_args.get("tickers", [])
-                                    if isinstance(tickers, list) and len(tickers) > 0:
-                                        # Split into multiple tool calls (one per symbol)
-                                        for ticker in tickers:
-                                            if ticker:
-                                                valid_tool_calls.append({
-                                                    "name": tool_name,
-                                                    "args": {"symbol": str(ticker).upper()},
-                                                    "why": f"Extracted from tickers array: {ticker}"
-                                                })
-                                        print(f"   [OK] Split tool call with tickers array into {len(tickers)} calls: {tool_name}")
-                                    else:
-                                        valid_tool_calls.append(tc)
-                                else:
-                                    valid_tool_calls.append(tc)
-                            else:
-                                print(f"   [WARN] Skipping invalid tool call (missing name): {tc}")
-                        else:
-                            print(f"   [WARN] Skipping invalid tool call (not a dict): {tc}")
-                    tool_calls_list = valid_tool_calls
-                    
-                    # 如果tool_calls为空，打印警告
-                    if not tool_calls_list:
-                        print(f"   [WARN] Parsed result has no valid tool_calls - LLM may not have followed instructions")
-                    elif len(tool_calls_list) > 0:
-                        # 检查是否是从单个tool_call包装的
-                        if len(tool_calls_list) == 1 and isinstance(fundamental_response, dict) and "name" in fundamental_response:
-                            print(f"   ✅ Auto-wrapped single tool_call: {tool_calls_list[0].get('name', 'unknown')}")
-                    
-                    # CRITICAL FIX: 基本面分析只分析：持仓（非ETF）+ 推荐名单（非ETF）
-                    # 不包括指数（ETF不需要基本面分析）
-                    # 如果没有持仓：只分析推荐名单（非ETF）
-                    if tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                        # 提取LLM已请求的symbols
-                        existing_symbols = set()
-                        for tc in tool_calls_list:
-                            args = tc.get("args", {})
-                            symbol = args.get("symbol")
-                            if symbol:
-                                existing_symbols.add(symbol.upper())
-                        
-                        # 收集必须分析的symbols（只包括非ETF）
-                        mandatory_symbols = []
-                        
-                        # 1. 添加持仓（如果有，且非ETF）
-                        if current_positions:
-                            for symbol, pos_info in current_positions.items():
-                                if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                    symbol_upper = symbol.upper()
-                                    # CRITICAL: 跳过ETF
-                                    if is_etf(symbol_upper):
-                                        print(f"   [SKIP] Skipping ETF holding for fundamental analysis: {symbol}")
-                                        continue
-                                    if symbol_upper not in existing_symbols:
-                                        mandatory_symbols.append(symbol_upper)
-                                        print(f"   [MANDATORY] Adding non-ETF holding: {symbol}")
-                        
-                        # 2. 添加Market Analyst的推荐名单（必须添加，但过滤ETF）
-                        recommended_stocks = []
-                        if analyst_reports.get("market"):
-                            market_report = analyst_reports["market"]
-                            recs = market_report.get("recommended_stocks", [])
-                            print(f"   [DEBUG] Market Analyst recommended_stocks (raw): {recs} (type: {type(recs)})")
-                            if recs:
-                                if isinstance(recs, str):
-                                    recs = [s.strip() for s in recs.split(",") if s.strip()]
-                                    print(f"   [DEBUG] Parsed recommended_stocks from string: {recs}")
-                                elif not isinstance(recs, list):
-                                    print(f"   [WARN] recommended_stocks is not a list or string: {type(recs)}")
-                                    recs = []
-                                else:
-                                    print(f"   [DEBUG] recommended_stocks is already a list: {recs}")
-                                
-                                # 确保推荐股票不在已有列表中，且不是ETF
-                                for s in recs:
-                                    sym_upper = s.upper().strip()
-                                    if not sym_upper:
-                                        continue
-                                    print(f"   [DEBUG] Processing recommended stock: {sym_upper}")
-                                    print(f"   [DEBUG]   - Already in existing_symbols: {sym_upper in existing_symbols}")
-                                    print(f"   [DEBUG]   - Already in mandatory_symbols: {sym_upper in mandatory_symbols}")
-                                    print(f"   [DEBUG]   - Is ETF: {is_etf(sym_upper)}")
-                                    
-                                    if sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
-                                        # CRITICAL: 跳过ETF
-                                        if is_etf(sym_upper):
-                                            print(f"   [SKIP] Skipping ETF recommended stock for fundamental analysis: {sym_upper}")
-                                            continue
-                                        recommended_stocks.append(sym_upper)
-                                        print(f"   [DEBUG]   ✓ Added to recommended_stocks list")
-                                    else:
-                                        print(f"   [DEBUG]   ✗ Skipped (already in existing or mandatory)")
-                            else:
-                                print(f"   [WARN] Market Analyst did not provide recommended_stocks (empty or None)")
-                        else:
-                            print(f"   [WARN] Market Analyst report not found in analyst_reports")
-                        
-                        print(f"   [DEBUG] Final recommended_stocks list (non-ETF): {recommended_stocks}")
-                        
-                        # 添加推荐股票到必须分析列表
-                        for sym in recommended_stocks:
-                            if sym not in mandatory_symbols:  # 避免重复添加
-                                mandatory_symbols.append(sym)
-                                print(f"   [MANDATORY] Adding non-ETF recommended stock: {sym}")
-                            else:
-                                print(f"   [DEBUG] Skipping duplicate recommended stock: {sym}")
-                        
-                        # CRITICAL FIX: Force add all mandatory symbols (not subject to tool budget)
-                        # Fundamental analysis must analyze all recommended stocks + holdings, not subject to tool budget
-                        print(f"   [DEBUG] Mandatory symbols to add: {mandatory_symbols}")
-                        print(f"   [DEBUG] Current tool_calls_count: {tool_calls_count}, tool_budget: {tool_budget}")
-                        print(f"   [DEBUG] Current tool_calls_list length: {len(tool_calls_list)}")
-                        
-                        if mandatory_symbols:
-                            print(f"   [MANDATORY] Found {len(mandatory_symbols)} mandatory non-ETF symbols missing from LLM's tool calls, adding... (not subject to tool budget)")
-                            added_count = 0
-                            
-                            # Add get_company_fundamentals for all mandatory symbols (not subject to budget)
-                            for sym in mandatory_symbols:
-                                # CRITICAL FIX: Validate symbol format before adding
-                                sym_upper = sym.upper().strip()
-                                if not sym_upper or len(sym_upper) > 10 or not sym_upper.replace(".", "").replace("-", "").isalnum():
-                                    print(f"   [MANDATORY] ⚠️ Skipping invalid symbol format: {sym}")
-                                    continue
-                                
-                                # CRITICAL: Check if already in tool_calls_list (avoid duplicates)
-                                already_in_list = any(
-                                    tc.get("name") == "get_company_fundamentals" and 
-                                    tc.get("args", {}).get("symbol", "").upper() == sym_upper 
-                                    for tc in tool_calls_list
-                                )
-                                if already_in_list:
-                                    print(f"   [DEBUG] Skipping {sym_upper} - already in tool_calls_list")
-                                    continue
-                                    
-                                # CRITICAL FIX: Not subject to tool budget, force add all mandatory stocks
-                                tool_calls_list.append({
-                                    "name": "get_company_fundamentals",
-                                    "args": {"symbol": sym_upper},
-                                    "why": f"MANDATORY: Get fundamental data for {sym_upper} (non-ETF holding/recommended - ETFs excluded, not subject to tool budget)"
-                                })
-                                added_count += 1
-                                print(f"   [MANDATORY] Added tool call for {sym_upper} (not subject to budget)")
-                            
-                            if added_count > 0:
-                                print(f"   [MANDATORY] Added {added_count} mandatory tool calls (non-ETF holdings + non-ETF recommended stocks, not subject to tool budget)")
-                            else:
-                                print(f"   [DEBUG] No mandatory tool calls added (all symbols already in list)")
-                        else:
-                            print(f"   [DEBUG] No mandatory symbols to add")
-                    
-                    # Fallback: Fundamental Analyst可选使用工具（如果已有数据可以基于现有分析）
-                    # CRITICAL FIX: 只分析非ETF的持仓和推荐名单，不包括指数
-                    if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                        print(f"   [WARN] No tools requested, using fallback tools (Recommended: Get latest fundamental data)")
-                        # 只使用非ETF持仓和推荐名单
-                        fallback_symbols = []
-                        
-                        # 1. 添加非ETF持仓（如果有）
-                        if current_positions:
-                            for symbol, pos_info in current_positions.items():
-                                if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
-                                    symbol_upper = symbol.upper()
-                                    # CRITICAL: 跳过ETF
-                                    if not is_etf(symbol_upper):
-                                        fallback_symbols.append(symbol_upper)
-                                        print(f"   [FALLBACK] Adding non-ETF holding: {symbol}")
-                        
-                        # 2. 添加非ETF推荐名单
-                        if analyst_reports.get("market"):
-                            market_report = analyst_reports["market"]
-                            recs = market_report.get("recommended_stocks", [])
-                            if recs:
-                                if isinstance(recs, str):
-                                    recs = [s.strip() for s in recs.split(",") if s.strip()]
-                                elif not isinstance(recs, list):
-                                    recs = []
-                                for sym in recs:
-                                    sym_upper = sym.upper().strip()
-                                    if sym_upper and sym_upper not in fallback_symbols:
-                                        # CRITICAL: 跳过ETF
-                                        if not is_etf(sym_upper):
-                                            fallback_symbols.append(sym_upper)
-                                            print(f"   [FALLBACK] Adding non-ETF recommended stock: {sym_upper}")
-                        
-                        # 如果没有找到任何非ETF符号，使用示例股票（非ETF）
-                        if not fallback_symbols:
-                            sample_stocks = market_summary.get("sample_stocks", ["NVDA", "MSFT", "AAPL"])
-                            for sym in sample_stocks:
-                                if not is_etf(sym.upper()):
-                                    fallback_symbols.append(sym.upper())
-                                    if len(fallback_symbols) >= 2:
-                                        break
-                        
-                        tool_calls_list = []
-                        for sym in fallback_symbols[:min(3, tool_budget - tool_calls_count)]:
-                            # CRITICAL FIX: Validate symbol format before adding
-                            sym_upper = sym.upper().strip() if isinstance(sym, str) else str(sym).upper().strip()
-                            if sym_upper and len(sym_upper) <= 10 and sym_upper.replace(".", "").replace("-", "").isalnum():
-                                tool_calls_list.append({"name": "get_company_fundamentals", "args": {"symbol": sym_upper}, "why": f"Fallback: Get fundamental data for {sym_upper} (non-ETF only)"})
-                            else:
-                                print(f"   [FALLBACK] ⚠️ Skipping invalid symbol format: {sym}")
-                    
-                    # 收集工具调用结果
-                    tool_results_summary = []
-                    if use_tools and tool_calls_list:
-                        print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
-                        # CRITICAL FIX: Fundamental Analyst must analyze all recommended stocks + holdings, not subject to tool budget
-                        # Prioritize executing all get_company_fundamentals tool calls (not subject to budget)
-                        fundamental_tools = [tc for tc in tool_calls_list if tc.get("name") == "get_company_fundamentals"]
-                        other_tools = [tc for tc in tool_calls_list if tc.get("name") != "get_company_fundamentals"]
-                        
-                        # Execute all fundamental analysis tools first (not subject to budget), then other tools (subject to budget)
-                        prioritized_tool_calls = fundamental_tools + other_tools
-                        print(f"   [FUNDAMENTAL] Found {len(fundamental_tools)} fundamental tools (not subject to budget) and {len(other_tools)} other tools")
-                        
-                        for tool_call in prioritized_tool_calls:
-                            tool_name = tool_call.get("name", "unknown")
-                            is_fundamental_tool = tool_name == "get_company_fundamentals"
-                            
-                            # CRITICAL FIX: Fundamental analysis tools not subject to budget, other tools subject to budget
-                            if not is_fundamental_tool and tool_calls_count >= tool_budget:
-                                print(f"   [BUDGET] Budget exhausted, skipping non-fundamental tool: {tool_name}")
-                                break
-                            
-                            # 检查是否是记忆工具
-                            memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
-                                           "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
-                            is_memory_tool = tool_name in memory_tools
-                            
-                            if is_memory_tool:
-                                print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
-                            else:
-                                if is_fundamental_tool:
-                                    print(f"   [FUNDAMENTAL] Executing fundamental tool: {tool_name} (not subject to budget)")
-                                else:
-                                    print(f"   [TOOL] Executing: {tool_name}")
-                            
-                            # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
-                            if tool_name == "news_scan":
-                                print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
-                                tool_call = {
-                                    "name": "plan_and_scan_news",
-                                    "args": {
-                                        **tool_call.get("args", {}),
-                                        "fetch_body_top": 10,  # 获取前10篇文章的内容
-                                        "tickers": tool_call.get("args", {}).get("tickers", []),
-                                        "max_articles": tool_call.get("args", {}).get("max_articles", 10),
-                                        "recency_days": tool_call.get("args", {}).get("recency_days", 2)
-                                    },
-                                    "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
-                                }
-                                tool_name = "plan_and_scan_news"
-                            
-                            # CRITICAL FIX: Validate symbol before calling get_company_fundamentals
-                            if is_fundamental_tool and tool_name == "get_company_fundamentals":
-                                symbol_arg = tool_call.get("args", {}).get("symbol", "")
-                                if symbol_arg:
-                                    symbol_upper = symbol_arg.upper().strip()
-                                    # Basic validation: check symbol format
-                                    if not symbol_upper or len(symbol_upper) > 10 or not symbol_upper.replace(".", "").replace("-", "").isalnum():
-                                        print(f"   [FUNDAMENTAL] ⚠️ Skipping invalid symbol format: {symbol_arg}")
-                                        # Add error result to track failed calls
-                                        all_tool_calls.append({
-                                            "analyst": "FundamentalAnalyst",
-                                            "tool": tool_name,
-                                            "result": {"ok": False, "error": f"Invalid symbol format: {symbol_arg}", "symbol": symbol_arg}
-                                        })
-                                        continue
-                            
-                            tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                            
-                            # CRITICAL FIX: Check for fundamental tool errors (invalid symbols)
-                            if is_fundamental_tool and isinstance(tool_result, dict):
-                                actual_result = tool_result.get("result", tool_result) if tool_result.get("ok") else tool_result
-                                if isinstance(actual_result, dict) and "error" in actual_result:
-                                    error_msg = actual_result.get("error", "Unknown error")
-                                    symbol = actual_result.get("symbol", "Unknown")
-                                    print(f"   [FUNDAMENTAL] ⚠️ Tool execution failed for {symbol}: {error_msg}")
-                                    # Still add to all_tool_calls for tracking, but mark as failed
-                                    all_tool_calls.append({
-                                        "analyst": "FundamentalAnalyst",
-                                        "tool": tool_name,
-                                        "result": tool_result
-                                    })
-                                    # CRITICAL FIX: Fundamental tools are NOT subject to budget, so don't increment tool_calls_count
-                                    # Note: Failed fundamental tools also don't count towards budget
-                                    continue
-                            
-                            # CRITICAL FIX: 检查工具执行是否成功（处理记忆工具的双重嵌套）
-                            if _check_tool_success(tool_result):
-                                all_tool_calls.append({
-                                    "analyst": "FundamentalAnalyst",
-                                    "tool": tool_name,
-                                    "result": tool_result
-                                })
-                                # CRITICAL FIX: Fundamental tools are NOT subject to budget, so don't increment tool_calls_count
-                                # This ensures Sentiment Analyst still has budget available for news tools
-                                if not is_fundamental_tool:
-                                    tool_calls_count += 1
-                                else:
-                                    print(f"   [FUNDAMENTAL] Tool {tool_name} executed (not counted towards budget, remaining budget: {tool_budget - tool_calls_count})")
-                                
-                                if is_memory_tool:
-                                    # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
-                                    # Memory tools return {"ok": True/False, "memories": [...], "count": ...} or {"ok": False, "error": "..."}
-                                    if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                        actual_result = tool_result.get("result", tool_result)
-                                        # CRITICAL FIX: Check for double nesting (memory tool result wrapped by toolbox)
-                                        if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                            print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {actual_result.get('error', 'Unknown error')}")
-                                        elif isinstance(actual_result, dict) and actual_result.get("ok") is True:
-                                            final_result = actual_result.get("result", actual_result)
-                                            count = final_result.get("count", 0)
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                        else:
-                                            count = actual_result.get("count", 0) if isinstance(actual_result, dict) else 0
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                    else:
-                                        print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error') if isinstance(tool_result, dict) else 'No result'}")
-                                else:
-                                    if is_fundamental_tool:
-                                        print(f"   [OK] Fundamental tool {tool_name} executed successfully (not subject to budget)")
-                                    else:
-                                        print(f"   [OK] Tool {tool_name} executed successfully")
-                                tool_summary = _format_tool_result(tool_name, tool_result)
-                                tool_results_summary.append(f"{tool_name}: {tool_summary}")
-                            else:
-                                # CRITICAL FIX: 工具执行失败或返回错误（处理记忆工具的双重嵌套）
-                                if tool_result and isinstance(tool_result, dict):
-                                    # Check for nested error (memory tools)
-                                    actual_result = tool_result.get("result", {})
-                                    if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                        error_msg = actual_result.get("error", "Unknown error")
-                                    else:
-                                        error_msg = tool_result.get("error", "Unknown error")
-                                    print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
-                                else:
-                                    print(f"   [WARN] Tool {tool_name} returned no result")
-                    else:
-                        if not tool_calls_list:
-                            print(f"   [INFO] No tools requested by agent")
-                    
-                    # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
-                    _generate_analysis_from_tools(
-                        fundamental_analyst, fundamental_prompt_vars, tool_results_summary,
-                        "fundamental", fundamental_result, all_tool_calls, "FundamentalAnalyst"
-                    )
-                    
-                    # 添加到对话历史
-                    tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst"]
+                print(f"   [ERROR] Fundamental Analyst error: {e}")
+                analyst_reports["fundamental"] = {"error": str(e), "stance": "neutral"}
+        else:
+            # Round > 1: Reuse Round 1's fundamental analysis
+            if "fundamental" in analyst_reports:
+                print(f"\n[Round {current_round}] [3/4] Fundamental Analyst: Skipping (reusing Round 1 analysis)")
+                # Add Round 1's fundamental analysis to discussion history for this round
+                round1_fundamental = None
+                for entry in all_rounds_history:
+                    if entry.get("analyst") == "Fundamental Analyst" and entry.get("round") == 1:
+                        round1_fundamental = entry
+                        break
+                
+                if round1_fundamental:
                     discussion_history.append({
                         "analyst": "Fundamental Analyst",
-                        "stance": fundamental_result.get("stance", "neutral"),
-                        "analysis": fundamental_result.get("analysis", ""),
-                        "tools_used": tools_used_names,
-                        "key_points": fundamental_result.get("recommendations", [])[:3] if fundamental_result.get("recommendations") else [],
+                        "stance": round1_fundamental.get("stance", "neutral"),
+                        "analysis": f"[Reusing Round 1 Analysis] {round1_fundamental.get('analysis', '')}",
+                        "tools_used": round1_fundamental.get("tools_used", []),
+                        "key_points": round1_fundamental.get("key_points", []),
+                        "round": current_round,  # CRITICAL FIX: Set round number for Round 2-3 entries
                     })
                     _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
-                    
-                    print(f"   [OK] Fundamental Stance: {fundamental_result.get('stance', 'N/A')}")
-                    analysis_preview = fundamental_result.get('analysis', '')[:100] if fundamental_result.get('analysis') else 'No analysis'
-                    print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
-                except Exception as e:
-                    print(f"   [ERROR] Fundamental Analyst error: {e}")
-                    analyst_reports["fundamental"] = {"error": str(e), "stance": "neutral"}
-    
-            # ===== 4. Sentiment Analyst =====
-            print(f"\n[Round {current_round}] [4/4] Sentiment Analyst analyzing...")
-            # CRITICAL FIX: Pre-fetch FGI from API (same as frontend panel) before Sentiment Analyst execution
-            fgi_data_from_api = None
-            try:
-                from src.tools.sentiment_tools import fetch_fear_greed
-                fgi_data_from_api = fetch_fear_greed()
-                if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
-                    fgi_value = fgi_data_from_api.get("value")
-                    fgi_label = fgi_data_from_api.get("label", "N/A")
-                    print(f"   [FGI] [OK] Pre-fetched FGI from API (same as frontend panel): value={fgi_value}, label={fgi_label}")
-                    # CRITICAL FIX: Always update market_summary with latest FGI (overwrite any existing value)
-                    market_summary["fear_greed"] = fgi_data_from_api
-                    print(f"   [FGI] [OK] Updated market_summary.fear_greed: value={fgi_value}, label={fgi_label}")
-                else:
-                    print(f"   [FGI] ⚠️ Failed to pre-fetch FGI from API, will use tool call if requested")
-            except Exception as e:
-                print(f"   [FGI] ⚠️ Error pre-fetching FGI from API: {e}, will use tool call if requested")
+            else:
+                print(f"\n[Round {current_round}] [3/4] Fundamental Analyst: No Round 1 analysis available")
+                analyst_reports["fundamental"] = {"error": "No Round 1 analysis", "stance": "neutral"}
+        
+        # ===== 4. Sentiment Analyst =====
+        # CRITICAL FIX: Pre-fetch FGI from API (same as frontend panel) before Sentiment Analyst execution
+        fgi_data_from_api = None
+        try:
+            from src.tools.sentiment_tools import fetch_fear_greed
+            fgi_data_from_api = fetch_fear_greed()
+            if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
+                fgi_value = fgi_data_from_api.get("value")
+                fgi_label = fgi_data_from_api.get("label", "N/A")
+                print(f"   [FGI] [OK] Pre-fetched FGI from API (same as frontend panel): value={fgi_value}, label={fgi_label}")
+                market_summary["fear_greed"] = fgi_data_from_api
+                print(f"   [FGI] [OK] Updated market_summary.fear_greed: value={fgi_value}, label={fgi_label}")
+            else:
+                print(f"   [FGI] ⚠️ Failed to pre-fetch FGI from API, will use tool call if requested")
+        except Exception as e:
+            print(f"   [FGI] ⚠️ Error pre-fetching FGI from API: {e}, will use tool call if requested")
+        
+        try:
+            sentiment_analyst: BaseAgent = fac.create("sentiment_analyst")
+            sentiment_result, tool_calls_count, all_tool_calls = run_sentiment_analyst(
+                sentiment_analyst=sentiment_analyst,
+                market_summary=market_summary,
+                previous_rounds_text=previous_rounds_text,
+                discussion_history=discussion_history,
+                tools_str=tools_str,
+                order_status_text=order_status_text,
+                positions_text=positions_text,
+                toolbox=toolbox,
+                use_tools=use_tools,
+                tool_budget=tool_budget,
+                tool_calls_count=tool_calls_count,
+                current_round=current_round,
+                tool_result_cache=tool_result_cache,
+                news_tools=news_tools,
+                all_tool_calls=all_tool_calls,
+                fgi_data_from_api=fgi_data_from_api,
+                executed_tool_cache_keys=executed_tool_cache_keys,  # CRITICAL FIX: Pass executed tool cache keys for deduplication
+            )
+            analyst_reports["sentiment"] = sentiment_result
             
-            # 确保所有agent都运行，即使tool_budget用完了（只是不能调用更多工具）
-            if True:  # 总是运行，但只在有budget时调用工具
-                try:
-                    sentiment_analyst: BaseAgent = fac.create("sentiment_analyst")
-                    
-                    # CRITICAL FIX: Include previous rounds' discussion history for rounds > 1
-                    # Format current round's discussion history (for same-round analyst interaction)
-                    current_round_discussion_text = _format_discussion_history(discussion_history)
-                    if current_round_discussion_text:
-                        previous_discussion_text = previous_rounds_text + "\n\n========== CURRENT ROUND DISCUSSION ==========\n" + current_round_discussion_text
-                    else:
-                        previous_discussion_text = previous_rounds_text
-                    
-                    # DEBUG: Verify FGI in market_summary before sending to LLM
-                    if "fear_greed" in market_summary:
-                        fgi_in_summary = market_summary["fear_greed"]
-                        if isinstance(fgi_in_summary, dict):
-                            fgi_val = fgi_in_summary.get("value")
-                            fgi_lbl = fgi_in_summary.get("label", "N/A")
-                            print(f"   [FGI] [DEBUG] market_summary.fear_greed before LLM: value={fgi_val}, label={fgi_lbl}")
-                            if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
-                                expected_val = fgi_data_from_api.get("value")
-                                if fgi_val != expected_val:
-                                    print(f"   [FGI] [ERROR] market_summary has wrong FGI! Expected={expected_val}, Got={fgi_val}")
-                                else:
-                                    print(f"   [FGI] [OK] market_summary.fear_greed matches pre-fetched value: {fgi_val}")
-                    
-                    # CRITICAL FIX: Add explicit FGI value reminder to prompt
-                    fgi_reminder = ""
-                    if "fear_greed" in market_summary and isinstance(market_summary["fear_greed"], dict):
-                        fgi_val = market_summary["fear_greed"].get("value")
-                        fgi_lbl = market_summary["fear_greed"].get("label", "N/A")
-                        if fgi_val is not None:
-                            fgi_reminder = f"\n\n**⚠️ REMINDER: The Fear & Greed Index in market_view is value={fgi_val}, label={fgi_lbl}. YOU MUST USE THIS EXACT VALUE ({fgi_val}) IN YOUR ANALYSIS, NOT ANY OTHER VALUE.**\n"
-                            print(f"   [FGI] [PROMPT] Added FGI reminder: value={fgi_val}, label={fgi_lbl}")
-                    
-                    sentiment_prompt_vars = {
-                        "market_view": json.dumps(market_summary, indent=2) + fgi_reminder,
-                        "previous_discussion": previous_discussion_text,
-                        "tools_context": tools_str,
-                        "order_status": order_status_text,  # 添加订单状态
-                        "current_positions": positions_text,  # 添加仓位信息
-                    }
-                    
-                    sentiment_response = sentiment_analyst.run(sentiment_prompt_vars, expect_json=True)
-                    sentiment_result = _parse_analyst_response(sentiment_response)
-                    analyst_reports["sentiment"] = sentiment_result
-                    
-                    # 执行工具调用（agent自主选择，不强制）
-                    tool_calls_list = sentiment_result.get("tool_calls", [])
-                    
-                    # CRITICAL FIX: Filter out deprecated news_scan tool (only keep plan_and_scan_news)
-                    filtered_tool_calls = []
-                    for tc in tool_calls_list:
-                        tool_name = tc.get("name", "")
-                        if tool_name == "news_scan":
-                            print(f"   [FILTER] Removing deprecated news_scan tool (use plan_and_scan_news instead)")
-                            # Convert to plan_and_scan_news
-                            filtered_tool_calls.append({
-                                "name": "plan_and_scan_news",
-                                "args": tc.get("args", {}),
-                                "why": tc.get("why", "") + " (converted from news_scan)"
-                            })
-                        else:
-                            filtered_tool_calls.append(tc)
-                    tool_calls_list = filtered_tool_calls
-                    
-                    # OPTIMIZATION: Only call news tools in round 1, use cache in later rounds
-                    has_news_tool = any(tc.get("name") == "plan_and_scan_news" for tc in tool_calls_list)
-                    news_cache_key = None
-                    news_cached = False
-                    
-                    # Check cache for news tools in later rounds
-                    if current_round > 1:
-                        news_cache_key = _get_tool_cache_key("plan_and_scan_news", {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10})
-                        if news_cache_key in tool_result_cache:
-                            print(f"   [CACHE] ✅ Using cached plan_and_scan_news result from round 1")
-                            cached_news_result = tool_result_cache[news_cache_key]
-                            # Add cached result to tool_results_summary
-                            actual_result = cached_news_result.get("result", cached_news_result)
-                            articles_count = len(actual_result.get("articles", []))
-                            hits_count = len(actual_result.get("hits", []))
-                            tool_results_summary.append(f"News (cached): {articles_count} articles, {hits_count} hits")
-                            news_cached = True
-                            has_news_tool = True  # Mark as having news tool to skip adding
-                    
-                    # CRITICAL FIX: 强制SentimentAnalyst调用新闻工具（最高优先级）
-                    # 无论LLM是否请求，都必须调用新闻工具（但只在round 1，后续轮次使用缓存）
-                    if not has_news_tool and current_round == 1:
-                        print(f"   [FORCE] Adding plan_and_scan_news to SentimentAnalyst (MANDATORY - news analysis is critical for sentiment)")
-                        # 如果预算不足，优先保证新闻工具，可以移除其他非关键工具
-                        if tool_calls_count + len(tool_calls_list) >= tool_budget:
-                            print(f"   [FORCE] Budget tight, but news tool is mandatory - will execute anyway")
-                            # 即使预算紧张，也要添加新闻工具（系统会处理预算超限）
-                        
-                        # 强制添加新闻工具到列表开头（最高优先级）
-                        tool_calls_list.insert(0, {
-                            "name": "plan_and_scan_news", 
-                            "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, 
-                            "why": "MANDATORY: News analysis with article content is critical for sentiment assessment (latest 48 hours, top 10 articles with content)"
-                        })
-                    elif not has_news_tool and current_round > 1:
-                        print(f"   [OPTIMIZATION] Skipping plan_and_scan_news in round {current_round} (using cached result from round 1)")
-                    
-                    # Fallback: Sentiment Analyst必须使用工具（情绪数据变化快，需要实时获取）
-                    if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                        print(f"   [WARN] No tools requested, using fallback tools (Sentiment analysis requires real-time data)")
-                        tool_calls_list = [
-                            {"name": "plan_and_scan_news", "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, "why": "MANDATORY: Get latest market news with article content (last 48 hours, top 10 articles) for sentiment analysis"},
-                            {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
-                            {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"}
-                        ]
-                    
-                    # 收集工具调用结果
-                    tool_results_summary = []
-                    if use_tools and tool_calls_list:
-                        print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
-                        # DEBUG: 打印请求的工具名称（特别是新闻工具）
-                        tool_names = [tc.get("name", "unknown") for tc in tool_calls_list]
-                        print(f"   [TOOL] Tool names: {', '.join(tool_names)}")
-                        
-                        # CRITICAL FIX: 对于 Sentiment Analyst，新闻工具是强制性的，不受预算限制
-                        # 分离新闻工具和其他工具
-                        news_tools_in_list = [tc for tc in tool_calls_list if tc.get("name") in ["plan_and_scan_news", "news_scan"]]
-                        other_tools_in_list = [tc for tc in tool_calls_list if tc.get("name") not in ["plan_and_scan_news", "news_scan"]]
-                        
-                        # 先执行新闻工具（不受预算限制）
-                        prioritized_tool_calls = news_tools_in_list + other_tools_in_list
-                        
-                        # 增加每个analyst的工具使用限制：从3个增加到5个
-                        # CRITICAL FIX: 对于新闻工具，不受 max_tools_per_analyst 限制
-                        max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
-                        
-                        # CRITICAL FIX: Track executed non-news tools separately
-                        executed_non_news_count = 0
-                        
-                        for tool_call in prioritized_tool_calls:
-                            tool_name = tool_call.get("name", "unknown")
-                            is_news_tool_priority = tool_name in ["plan_and_scan_news", "news_scan"]
-                            
-                            # CRITICAL FIX: 新闻工具不受 max_tools_per_analyst 限制，但其他工具受限制
-                            if not is_news_tool_priority:
-                                # 检查是否超过 max_tools_per_analyst（不包括新闻工具）
-                                if executed_non_news_count >= max_tools_per_analyst:
-                                    print(f"   [BUDGET] Skipping non-news tool {tool_name} (max_tools_per_analyst limit reached: {executed_non_news_count}/{max_tools_per_analyst})")
-                                    continue
-                                
-                                # 检查总预算（但新闻工具可以超预算）
-                                if tool_calls_count >= tool_budget:
-                                    print(f"   [BUDGET] Budget exhausted, skipping non-news tool: {tool_name}")
-                                    break
-                            
-                            # 检查是否是记忆工具
-                            memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
-                                           "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
-                            is_memory_tool = tool_name in memory_tools
-                            # CRITICAL FIX: 对于新闻工具，即使执行失败也要添加到 all_tool_calls（确保前端知道工具被调用了）
-                            is_news_tool = tool_name in ["plan_and_scan_news", "news_scan"]
-                            
-                            if is_memory_tool:
-                                print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
-                            else:
-                                print(f"   [TOOL] Executing: {tool_name}")
-                            
-                            # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
-                            if tool_name == "news_scan":
-                                print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
-                                tool_call = {
-                                    "name": "plan_and_scan_news",
-                                    "args": {
-                                        **tool_call.get("args", {}),
-                                        "fetch_body_top": 10,  # 获取前10篇文章的内容
-                                        "tickers": tool_call.get("args", {}).get("tickers", []),
-                                        "max_articles": tool_call.get("args", {}).get("max_articles", 10),
-                                        "recency_days": tool_call.get("args", {}).get("recency_days", 2)
-                                    },
-                                    "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
-                                }
-                                tool_name = "plan_and_scan_news"
-                                is_news_tool = True  # Update flag after mapping
-                            
-                            # CRITICAL FIX: If fear_greed tool is requested, use pre-fetched API value (same as frontend panel)
-                            if tool_name == "fear_greed" and fgi_data_from_api and fgi_data_from_api.get("value") is not None:
-                                print(f"   [FGI] ✅ Using pre-fetched FGI from API (same as frontend panel): value={fgi_data_from_api.get('value')}, label={fgi_data_from_api.get('label', 'N/A')}")
-                                # Return the pre-fetched FGI data in the same format as toolbox.invoke
-                                tool_result = {
-                                    "ok": True,
-                                    "result": fgi_data_from_api
-                                }
-                            else:
-                                tool_result = _execute_tool(toolbox, tool_call, market_summary)
-                                # DEBUG: Log tool execution result for news tools
-                                if tool_name == "plan_and_scan_news":
-                                    print(f"   [NEWS] [DEBUG] plan_and_scan_news execution result: ok={tool_result.get('ok') if isinstance(tool_result, dict) else 'N/A'}, type={type(tool_result)}")
-                                    if isinstance(tool_result, dict):
-                                        if tool_result.get("ok"):
-                                            actual_result = tool_result.get("result", {})
-                                            if isinstance(actual_result, dict):
-                                                articles = actual_result.get("articles", [])
-                                                hits = actual_result.get("hits", [])
-                                                print(f"   [NEWS] [DEBUG] plan_and_scan_news result: {len(articles) if isinstance(articles, list) else 0} articles, {len(hits) if isinstance(hits, list) else 0} hits")
-                                        else:
-                                            print(f"   [NEWS] [DEBUG] plan_and_scan_news failed: {tool_result.get('error', 'Unknown error')}")
-                            
-                            # CRITICAL FIX: 检查工具执行是否成功（处理记忆工具的双重嵌套）
-                            if _check_tool_success(tool_result):
-                                # OPTIMIZATION: Cache news tool results (only in round 1)
-                                if is_news_tool and current_round == 1:
-                                    cache_key = _get_tool_cache_key(tool_name, tool_call.get("args", {}))
-                                    tool_result_cache[cache_key] = tool_result
-                                    print(f"   [CACHE] 💾 Cached {tool_name} result for reuse in later rounds")
-                                
-                                # CRITICAL FIX: Always add tool call to all_tool_calls, even if result is empty
-                                # This ensures news tools are tracked even if they return no articles
-                                all_tool_calls.append({
-                                    "analyst": "SentimentAnalyst",
-                                    "tool": tool_name,
-                                    "result": tool_result
-                                })
-                                tool_calls_count += 1
-                                # Track non-news tools for budget limit
-                                if not is_news_tool_priority:
-                                    executed_non_news_count += 1
-                                
-                                # DEBUG: Log news tool addition
-                                if is_news_tool:
-                                    print(f"   [NEWS] ✅ Added {tool_name} to all_tool_calls (count: {len(all_tool_calls)})")
-                                    if isinstance(tool_result, dict):
-                                        actual_result = tool_result.get("result", tool_result) if tool_result.get("ok") else tool_result
-                                        if isinstance(actual_result, dict):
-                                            articles = actual_result.get("articles", [])
-                                            hits = actual_result.get("hits", [])
-                                            print(f"   [NEWS]   Result contains: {len(articles) if isinstance(articles, list) else 0} articles, {len(hits) if isinstance(hits, list) else 0} hits")
-                                
-                                if is_memory_tool:
-                                    # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
-                                    # Memory tools return {"ok": True/False, "memories": [...], "count": ...} or {"ok": False, "error": "..."}
-                                    if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                        actual_result = tool_result.get("result", tool_result)
-                                        # CRITICAL FIX: Check for double nesting (memory tool result wrapped by toolbox)
-                                        if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                            print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {actual_result.get('error', 'Unknown error')}")
-                                        elif isinstance(actual_result, dict) and actual_result.get("ok") is True:
-                                            final_result = actual_result.get("result", actual_result)
-                                            count = final_result.get("count", 0)
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                        else:
-                                            count = actual_result.get("count", 0) if isinstance(actual_result, dict) else 0
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                    else:
-                                        print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error') if isinstance(tool_result, dict) else 'No result'}")
-                                else:
-                                    # DEBUG: 对于新闻工具，显示更多信息
-                                    if tool_name in ["plan_and_scan_news", "news_scan"]:
-                                        if isinstance(tool_result, dict):
-                                            if tool_result.get("ok"):
-                                                actual_result = tool_result.get("result", tool_result)
-                                                hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
-                                                articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
-                                                print(f"   [OK] Tool {tool_name} executed successfully - {hits_count} hits, {articles_count} articles")
-                                                # DEBUG: 记录新闻工具结果到all_tool_calls
-                                                print(f"   [DEBUG] News tool result added to all_tool_calls: analyst=SentimentAnalyst, tool={tool_name}, hits={hits_count}, articles={articles_count}")
-                                            else:
-                                                print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
-                                        else:
-                                            print(f"   [OK] Tool {tool_name} executed successfully")
-                                    elif tool_name == "fear_greed":
-                                        # DEBUG: 记录FGI值
-                                        if isinstance(tool_result, dict):
-                                            if tool_result.get("ok"):
-                                                actual_result = tool_result.get("result", tool_result)
-                                                fgi_value = actual_result.get("value") if isinstance(actual_result, dict) else None
-                                                fgi_label = actual_result.get("label") if isinstance(actual_result, dict) else None
-                                                print(f"   [FGI] Fear & Greed Index from tool: value={fgi_value}, label={fgi_label}")
-                                                # CRITICAL FIX: Verify this matches the pre-fetched value
-                                                if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
-                                                    expected_value = fgi_data_from_api.get("value")
-                                                    if fgi_value != expected_value:
-                                                        print(f"   [FGI] [WARN] Tool returned different value! Expected={expected_value}, Got={fgi_value}")
-                                                    else:
-                                                        print(f"   [FGI] [OK] Tool value matches pre-fetched API value: {fgi_value}")
-                                            else:
-                                                print(f"   [WARN] fear_greed tool execution failed: {tool_result.get('error', 'Unknown error')}")
-                                    else:
-                                        print(f"   [OK] Tool {tool_name} executed successfully")
-                                tool_summary = _format_tool_result(tool_name, tool_result)
-                                tool_results_summary.append(f"{tool_name}: {tool_summary}")
-                            elif is_news_tool:
-                                # CRITICAL FIX: Even if news tool failed, add it to all_tool_calls so frontend knows it was attempted
-                                print(f"   [NEWS] ⚠️ {tool_name} execution failed, but still adding to all_tool_calls for tracking")
-                                all_tool_calls.append({
-                                    "analyst": "SentimentAnalyst",
-                                    "tool": tool_name,
-                                    "result": tool_result if tool_result else {"ok": False, "error": "Tool execution failed"}
-                                })
-                                # Don't increment tool_calls_count for failed tools (unless it's a news tool, which we want to track)
-                                # Actually, let's increment it anyway for news tools so they're counted
-                                tool_calls_count += 1
-                                
-                                if is_memory_tool:
-                                    # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}}, so we need to extract from "result"
-                                    # Memory tools return {"ok": True/False, "memories": [...], "count": ...} or {"ok": False, "error": "..."}
-                                    if isinstance(tool_result, dict) and tool_result.get("ok"):
-                                        actual_result = tool_result.get("result", tool_result)
-                                        # CRITICAL FIX: Check for double nesting (memory tool result wrapped by toolbox)
-                                        if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                            print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {actual_result.get('error', 'Unknown error')}")
-                                        elif isinstance(actual_result, dict) and actual_result.get("ok") is True:
-                                            final_result = actual_result.get("result", actual_result)
-                                            count = final_result.get("count", 0)
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                        else:
-                                            count = actual_result.get("count", 0) if isinstance(actual_result, dict) else 0
-                                            print(f"   [MEMORY] ✅ Memory tool {tool_name} retrieved {count} records")
-                                    else:
-                                        print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed: {tool_result.get('error', 'Unknown error') if isinstance(tool_result, dict) else 'No result'}")
-                                else:
-                                    # DEBUG: 对于新闻工具，显示更多信息
-                                    if tool_name in ["plan_and_scan_news", "news_scan"]:
-                                        if isinstance(tool_result, dict):
-                                            if tool_result.get("ok"):
-                                                actual_result = tool_result.get("result", tool_result)
-                                                hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
-                                                articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
-                                                print(f"   [OK] Tool {tool_name} executed successfully - {hits_count} hits, {articles_count} articles")
-                                                # DEBUG: 记录新闻工具结果到all_tool_calls
-                                                print(f"   [DEBUG] News tool result added to all_tool_calls: analyst=SentimentAnalyst, tool={tool_name}, hits={hits_count}, articles={articles_count}")
-                                            else:
-                                                print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
-                                        else:
-                                            print(f"   [OK] Tool {tool_name} executed successfully")
-                                    elif tool_name == "fear_greed":
-                                        # DEBUG: 记录FGI值
-                                        if isinstance(tool_result, dict):
-                                            if tool_result.get("ok"):
-                                                actual_result = tool_result.get("result", tool_result)
-                                                fgi_value = actual_result.get("value") if isinstance(actual_result, dict) else None
-                                                fgi_label = actual_result.get("label") if isinstance(actual_result, dict) else None
-                                                print(f"   [FGI] Fear & Greed Index from tool: value={fgi_value}, label={fgi_label}")
-                                                # CRITICAL FIX: Verify this matches the pre-fetched value
-                                                if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
-                                                    expected_value = fgi_data_from_api.get("value")
-                                                    if fgi_value != expected_value:
-                                                        print(f"   [FGI] [WARN] Tool returned different value! Expected={expected_value}, Got={fgi_value}")
-                                                    else:
-                                                        print(f"   [FGI] [OK] Tool value matches pre-fetched API value: {fgi_value}")
-                                            else:
-                                                print(f"   [WARN] fear_greed tool execution failed: {tool_result.get('error', 'Unknown error')}")
-                                    else:
-                                        print(f"   [OK] Tool {tool_name} executed successfully")
-                                tool_summary = _format_tool_result(tool_name, tool_result)
-                                tool_results_summary.append(f"{tool_name}: {tool_summary}")
-                            else:
-                                # CRITICAL FIX: 工具执行失败或返回错误（处理记忆工具的双重嵌套）
-                                # CRITICAL FIX: 对于新闻工具，即使执行失败也要添加到 all_tool_calls（确保前端知道工具被调用了）
-                                if is_news_tool:
-                                    print(f"   [NEWS] ⚠️ {tool_name} execution failed, but still adding to all_tool_calls for tracking")
-                                    all_tool_calls.append({
-                                        "analyst": "SentimentAnalyst",
-                                        "tool": tool_name,
-                                        "result": tool_result if tool_result else {"ok": False, "error": "Tool execution failed"}
-                                    })
-                                    tool_calls_count += 1
-                                    # Log error details for failed news tool
-                                    if tool_result and isinstance(tool_result, dict):
-                                        error_msg = tool_result.get("error", "Unknown error")
-                                        print(f"   [NEWS] ⚠️ {tool_name} error: {error_msg}")
-                                    else:
-                                        print(f"   [NEWS] ⚠️ {tool_name} returned no result")
-                                else:
-                                    # Non-news tool failed - log but don't add to all_tool_calls
-                                    if tool_result and isinstance(tool_result, dict):
-                                        # Check for nested error (memory tools)
-                                        actual_result = tool_result.get("result", {})
-                                        if isinstance(actual_result, dict) and actual_result.get("ok") is False:
-                                            error_msg = actual_result.get("error", "Unknown error")
-                                        else:
-                                            error_msg = tool_result.get("error", "Unknown error")
-                                        print(f"   [ERROR] Tool {tool_name} execution failed: {error_msg}")
-                                    else:
-                                        print(f"   [WARN] Tool {tool_name} returned no result")
-                    else:
-                        if not tool_calls_list:
-                            print(f"   [INFO] No tools requested by agent")
-                    
-                    # 如果工具调用成功但analysis为空，基于工具结果重新生成分析
-                    _generate_analysis_from_tools(
-                        sentiment_analyst, sentiment_prompt_vars, tool_results_summary,
-                        "sentiment", sentiment_result, all_tool_calls, "SentimentAnalyst"
-                    )
-                    
-                    # 添加到对话历史
-                    tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst"]
-                    discussion_history.append({
-                        "analyst": "Sentiment Analyst",
-                        "stance": sentiment_result.get("stance", "neutral"),
-                        "analysis": sentiment_result.get("analysis", ""),
-                        "tools_used": tools_used_names,
-                        "key_points": sentiment_result.get("recommendations", [])[:3] if sentiment_result.get("recommendations") else [],
-                    })
-                    _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
-                    
-                    print(f"   [OK] Sentiment Stance: {sentiment_result.get('stance', 'N/A')}")
-                    analysis_preview = sentiment_result.get('analysis', '')[:100] if sentiment_result.get('analysis') else 'No analysis'
-                    print(f"   [ANALYSIS] Analysis: {analysis_preview}...")
-                except Exception as e:
-                    print(f"   [ERROR] Sentiment Analyst error: {e}")
-                    analyst_reports["sentiment"] = {"error": str(e), "stance": "neutral"}
+            # Add to discussion history
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst"]
+            discussion_history.append({
+                "analyst": "Sentiment Analyst",
+                "stance": sentiment_result.get("stance", "neutral"),
+                "analysis": sentiment_result.get("analysis", ""),
+                "tools_used": tools_used_names,
+                "key_points": sentiment_result.get("recommendations", [])[:3] if sentiment_result.get("recommendations") else [],
+            })
+            _limit_discussion_history(discussion_history, MAX_DISCUSSION_HISTORY_ENTRIES)
+        except Exception as e:
+            print(f"   [ERROR] Sentiment Analyst error: {e}")
+            analyst_reports["sentiment"] = {"error": str(e), "stance": "neutral"}
         
         # End of round loop - Coordinator runs after all rounds
         # CRITICAL FIX: Coordinator should run after all rounds, not inside the loop
@@ -3274,35 +1773,27 @@ def _run_discussion_coordinator(
     3. 统整关键观点
     4. 形成最终建议
     """
-    # 格式化讨论历史
+    # Format discussion history
     discussion_text = _format_discussion_history(discussion_history)
     
-    # 准备coordinator的prompt - 使用自然语言总结，不强制JSON
-    coordinator_prompt = f"""You are a Discussion Coordinator. Your task is to synthesize and unify the perspectives from all analysts into a clear, concise summary.
-
-**Previous Discussion History:**
-{discussion_text}
-
-**Analyst Reports Summary:**
-"""
-    
+    # Build analyst reports summary
+    analyst_reports_summary = ""
     for analyst_type, report in analyst_reports.items():
         if "error" not in report:
             stance = report.get("stance", "neutral")
             analysis = report.get("analysis", "")[:300]
             tools_used = report.get("tools_used", [])
-            coordinator_prompt += f"\n- **{analyst_type.capitalize()} Analyst**: Stance={stance}\n"
-            coordinator_prompt += f"  Analysis: {analysis}\n"
+            analyst_reports_summary += f"\n- **{analyst_type.capitalize()} Analyst**: Stance={stance}\n"
+            analyst_reports_summary += f"  Analysis: {analysis}\n"
             if tools_used:
-                coordinator_prompt += f"  Tools used: {', '.join(tools_used[:5])}\n"
+                analyst_reports_summary += f"  Tools used: {', '.join(tools_used[:5])}\n"
     
-    # CRITICAL FIX: 添加历史记忆信息到 Coordinator prompt
-    # CRITICAL FIX: Handle historical_memories safely (check if it's a list and contains dicts)
+    # Format historical memories
+    historical_memories_text = ""
     if historical_memories and isinstance(historical_memories, list) and len(historical_memories) > 0:
-        memory_summary = "**Recent Trading History (Last 5 Days):**\n"
+        memory_summary = ""
         try:
-            # CRITICAL FIX: Safely iterate through historical_memories (ensure each item is a dict)
-            for mem in historical_memories[:3]:  # 只显示最近3天的记忆
+            for mem in historical_memories[:3]:  # Show last 3 days
                 if isinstance(mem, dict):
                     date_str = mem.get("date", "N/A")
                     stance = mem.get("stance", "N/A")
@@ -3312,47 +1803,32 @@ def _run_discussion_coordinator(
                     else:
                         action = str(decisions) if decisions else "N/A"
                     memory_summary += f"- {date_str}: Stance={stance}, Action={action}\n"
-                else:
-                    # Skip non-dict items
-                    continue
-            coordinator_prompt += f"\n{memory_summary}\n"
         except Exception as e:
             print(f"   [WARN] Failed to process historical_memories: {e}")
-            # Continue without memory summary
+        if memory_summary:
+            historical_memories_text = memory_summary
     
-    coordinator_prompt += f"""
-
-**Market Context:**
-{_summarize_market(market_view)}
-
-**Your Task:**
-Review all analyst perspectives above and provide a comprehensive natural language summary that:
-1. Synthesizes the key insights from each analyst, including their tool results and data findings
-2. Incorporates relevant news content and market narratives mentioned in the analyst reports
-3. Identifies areas of consensus and any disagreements
-4. Provides a unified market stance (bullish, bearish, or neutral)
-5. Highlights critical points that need attention
-6. Offers actionable recommendations
-
-**Output Format:**
-Write a comprehensive summary, approximately 100-150 words in length, that integrates all perspectives, tool results, and news content. Start with your overall stance, then provide a detailed synthesis. Use natural language - no need for JSON or structured format.
-
-**Important Requirements:**
-- Your summary should be approximately 100-150 words (aim for 100-150 words, not 500 words)
-- Synthesize all tool results mentioned by analysts (technical indicators, fundamental data, sentiment metrics, news content, etc.)
-- **MANDATORY**: If any analyst used news_scan or mentioned news content, you MUST explicitly mention and analyze news content in your summary. Use phrases like "news analysis", "recent news", "market news", "news reports", or "news articles" to make it clear you're discussing news.
-- Incorporate key news themes and narratives from news_scan or other news tools
-- Provide a clear, coherent narrative that explains the unified stance based on all available data
-- Write in a clear, professional style suitable for financial analysis
-
-Example format:
-"Based on the analysis from all analysts, the market stance is [bullish/bearish/neutral]. [Your comprehensive 100-150 word summary integrating all perspectives, tool results, news content, highlighting consensus and disagreements, key insights, and recommendations. If news was analyzed, explicitly mention 'news analysis' or 'recent news' in your summary.]"
-"""
+    # Prepare prompt variables for YAML template
+    market_summary = _summarize_market(market_view)
+    
+    # Format historical memories for prompt (empty string if none)
+    if historical_memories_text:
+        historical_memories_formatted = f"**Recent Trading History (Last 5 Days):**\n{historical_memories_text}\n"
+    else:
+        historical_memories_formatted = ""
+    
+    # Use YAML prompt via coordinator.run() with template variables
+    prompt_vars = {
+        "previous_discussion": discussion_text,
+        "analyst_reports_summary": analyst_reports_summary,
+        "market_summary": market_summary,
+        "historical_memories": historical_memories_formatted,
+    }
     
     try:
-        # 使用coordinator的run方法，直接使用文本模式（自然语言总结）
+        # Use coordinator's YAML prompt template (loaded from prompts/discussion_agent.yml)
         text_response = coordinator.run(
-            {"user": coordinator_prompt},
+            prompt_vars,
             expect_json=False
         )
         

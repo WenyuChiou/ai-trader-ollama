@@ -1641,26 +1641,27 @@ async def system_init(force: bool = Query(False)):
                 file_path.unlink()
                 deleted.append(filename)
         
-        # CRITICAL FIX: 清理旧的备份文件（保留最近7天的备份）
-        # 这样可以避免备份文件积累过多
+        # CRITICAL FIX: 清理所有旧的备份文件（初始化时删除所有旧备份，只保留刚创建的新备份）
+        # 这样可以确保初始化后目录干净，只保留最新的备份
         backup_files = list(logs_dir.glob("*backup*.json"))
         if backup_files:
-            from datetime import timedelta
-            cutoff_date = datetime.now() - timedelta(days=7)
             old_backups_deleted = 0
             for backup_file in backup_files:
                 try:
-                    # 检查文件修改时间
-                    file_mtime = datetime.fromtimestamp(backup_file.stat().st_mtime)
-                    if file_mtime < cutoff_date:
-                        backup_file.unlink()
-                        old_backups_deleted += 1
-                        deleted.append(f"old_backup: {backup_file.name}")
+                    # 如果刚创建了新备份，保留它；否则删除所有旧备份
+                    if backup_filename and backup_file.name == backup_filename:
+                        # 保留刚创建的新备份
+                        print(f"[INIT] Keeping newly created backup: {backup_file.name}")
+                        continue
+                    # 删除所有其他备份文件
+                    backup_file.unlink()
+                    old_backups_deleted += 1
+                    deleted.append(f"old_backup: {backup_file.name}")
                 except Exception as e:
                     print(f"[INIT] Failed to delete old backup {backup_file.name}: {e}")
             
             if old_backups_deleted > 0:
-                print(f"[INIT] Deleted {old_backups_deleted} old backup files (older than 7 days)")
+                print(f"[INIT] Deleted {old_backups_deleted} old backup files during initialization")
         
         return JSONResponse(
             status_code=200,

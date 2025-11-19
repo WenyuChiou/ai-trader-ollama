@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import date, datetime, timezone
+from src.utils.timestamp_utils import get_utc_timestamp, normalize_timestamp, ensure_timestamp_has_z_suffix
 
 
 class EquityTracker:
@@ -177,9 +178,10 @@ class EquityTracker:
                 # 如果检查失败，继续记录（但记录警告）
                 print(f"[EQUITY WARNING] Failed to check previous equity: {e}, continuing with record")
         
-        # CRITICAL: 确保时间戳始终包含Z后缀（UTC时区标识）
-        # 使用UTC时间，ISO 8601格式，确保前端能正确解析
-        timestamp_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        # CRITICAL: Ensure timestamp always includes Z suffix (UTC timezone indicator)
+        # Use UTC time, ISO 8601 format with millisecond precision (3 decimal places)
+        # Format: YYYY-MM-DDTHH:MM:SS.fffZ
+        timestamp_str = get_utc_timestamp()
         
         # CRITICAL FIX: 从snapshot或顶层获取total_pnl和total_pnl_pct
         if snapshot:
@@ -250,15 +252,16 @@ class EquityTracker:
                                 record["timestamp"] = record["date"] + "T12:00:00.000Z"
                                 print(f"[EQUITY] Added missing timestamp for record {record.get('date')}: {record['timestamp']}")
                             else:
-                                # 如果连date都没有，使用当前时间
-                                record["timestamp"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                                # If date is also missing, use current time
+                                record["timestamp"] = get_utc_timestamp()
                         
-                        # 确保timestamp格式正确（包含Z后缀）
-                        if record.get("timestamp") and not record["timestamp"].endswith('Z'):
-                            # 检查是否包含时区信息（+ 或 - 在位置10之后）
-                            ts = record["timestamp"]
-                            if '+' not in ts and ('-' not in ts[10:] if len(ts) > 10 else True):
-                                record["timestamp"] = record["timestamp"] + 'Z'
+                        # Ensure timestamp format is correct (normalize to standard format)
+                        if record.get("timestamp"):
+                            try:
+                                record["timestamp"] = normalize_timestamp(record["timestamp"])
+                            except ValueError:
+                                # If normalization fails, at least ensure Z suffix
+                                record["timestamp"] = ensure_timestamp_has_z_suffix(record["timestamp"])
                         
                         # 日期过滤（如果提供了日期参数）
                         record_date = record.get("date", "")

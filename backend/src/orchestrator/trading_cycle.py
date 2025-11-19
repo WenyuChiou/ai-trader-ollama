@@ -35,6 +35,9 @@ from src.data.portfolio import Portfolio
 # --- Trade Logger: Trade logging ---
 from src.data.trade_log import TradeLogger
 
+# --- Timestamp utilities ---
+from src.utils.timestamp_utils import get_utc_timestamp
+
 
 def _default_universe() -> List[str]:
     """
@@ -678,7 +681,7 @@ def execute_daily_trade(
                     transcript_analysts_written.add(agent_name)
                     
                     entry = {
-                        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        "timestamp": get_utc_timestamp(),
                         "date": trade_date_str,
                         "agent": agent_name,
                         "round": 0,
@@ -816,7 +819,7 @@ def execute_daily_trade(
                     coordinator_round = entry_data.get("round", 0)  # Keep original round for reference
                     
                     entry = {
-                        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        "timestamp": get_utc_timestamp(),
                         "date": trade_date_str,
                         "agent": "DiscussionCoordinator",  # Use DiscussionCoordinator uniformly
                         "round": 0,  # CRITICAL FIX: Always use 0 for frontend display (frontend filters for round === 0)
@@ -848,7 +851,7 @@ def execute_daily_trade(
             round_num = entry_data.get("round", 0)  # Keep original round for reference
             
             entry = {
-                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "timestamp": get_utc_timestamp(),
                 "date": trade_date_str,
                 "agent": agent_name,
                 "round": 0,  # CRITICAL FIX: Always use 0 for frontend display (frontend filters for round === 0)
@@ -891,7 +894,7 @@ def execute_daily_trade(
                     # Only write if we have meaningful analysis
                     if analysis and len(analysis.strip()) > 10:
                         entry = {
-                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                            "timestamp": get_utc_timestamp(),
                             "date": trade_date_str,
                             "agent": agent_name,
                             "round": 0,
@@ -936,7 +939,7 @@ def execute_daily_trade(
                     summary = "Coordinator synthesized all analyst perspectives."
                 
                 entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "timestamp": get_utc_timestamp(),
                     "date": trade_date_str,
                     "agent": "DiscussionCoordinator",
                     "round": 0,
@@ -1142,7 +1145,7 @@ def execute_daily_trade(
                             pass
             
             entry = {
-                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "timestamp": get_utc_timestamp(),
                 "date": trade_date_str,
                 "agent": agent_name,  # CRITICAL FIX: 使用调用工具的 agent 名称（MarketAnalyst, TechnicalAnalyst等），而不是 ToolSystem
                 "round": 0,
@@ -1404,7 +1407,7 @@ def execute_daily_trade(
                             "initial_value": current_portfolio.initial_value,
                             "total_value": total_value,  # Add total_value for consistency
                             "positions": {},
-                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+                            "timestamp": get_utc_timestamp()
                         }
                         
                         for symbol, pos in current_portfolio._positions.items():
@@ -1659,7 +1662,7 @@ def execute_daily_trade(
         tool_calls = risk_report.get("tool_calls", [])
         
         risk_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "timestamp": get_utc_timestamp(),
             "date": trade_date_str,
             "agent": "RiskAnalyst",
             "round": 0,
@@ -1711,7 +1714,7 @@ def execute_daily_trade(
                 tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
                 
                 tool_entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "timestamp": get_utc_timestamp(),
                     "date": trade_date_str,
                     "agent": "RiskAnalyst",
                     "round": 0,
@@ -2199,7 +2202,7 @@ def execute_daily_trade(
                         placed_order["fill_price"] = current_price
                         placed_order["fill_reason"] = "Market order executed immediately at current price"
                         # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
-                        placed_order["filled_at"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                        placed_order["filled_at"] = get_utc_timestamp()
                         placed_order["fill_result"] = fill_result
                         
                         # CRITICAL: 手动从pending中移除并写入filled
@@ -2374,7 +2377,7 @@ def execute_daily_trade(
                         placed_order["fill_price"] = current_price
                         placed_order["fill_reason"] = "Market order executed immediately at current price"
                         # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
-                        placed_order["filled_at"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                        placed_order["filled_at"] = get_utc_timestamp()
                         placed_order["fill_result"] = fill_result
                         # 记录realized_pnl
                         if realized_pnl:
@@ -2518,7 +2521,7 @@ def execute_daily_trade(
         
         # 对话内容只包含 summary（简洁显示）
         trader_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "timestamp": get_utc_timestamp(),
             "date": trade_date_str,
             "agent": "TraderAgent",
             "round": 0,
@@ -2575,7 +2578,7 @@ def execute_daily_trade(
                 "initial_value": portfolio.initial_value,
                 "total_value": total_value,
                 "positions": {},
-                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                "timestamp": get_utc_timestamp(),
                 "snapshot": {
                     "cash": portfolio.cash,
                     "total_value": total_value,
@@ -2706,7 +2709,7 @@ def execute_daily_trade(
                             "initial_value": current_portfolio.initial_value,
                             "total_value": total_value,  # Add total_value for consistency
                             "positions": {},
-                            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+                            "timestamp": get_utc_timestamp()
                         }
                         
                         for symbol, pos in current_portfolio._positions.items():

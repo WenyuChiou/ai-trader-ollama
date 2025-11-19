@@ -12,7 +12,7 @@ import json
 import gzip
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from collections import defaultdict
 import sys
 

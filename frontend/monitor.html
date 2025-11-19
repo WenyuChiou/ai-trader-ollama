@@ -4949,33 +4949,9 @@
                         if (summaryText) {
                             // CRITICAL FIX: For DiscussionCoordinator, use clean and simple formatting
                             if (agentName === 'DiscussionCoordinator') {
-                                console.log('[Coordinator] Processing DiscussionCoordinator summary:', {
-                                    hasSummaryText: !!summaryText,
-                                    summaryLength: summaryText.length,
-                                    extractedCount: extractedFromCoordinator.size,
-                                    summaryPreview: summaryText.substring(0, 200)
-                                });
-                                
                                 // CRITICAL FIX: Always try to parse structured sections first
                                 // Even if we extracted individual reports, we should still try to parse the structured format
-                                console.log('[Coordinator] Attempting to parse summary text, length:', summaryText.length);
-                                console.log('[Coordinator] Summary preview:', summaryText.substring(0, 500));
                                 const sections = parseCoordinatorSections(summaryText);
-                                
-                                // Debug: Log parsing result
-                                console.log('[Coordinator] Parse result:', sections ? 'SUCCESS' : 'FAILED');
-                                if (sections) {
-                                    console.log('[Coordinator] Parsed sections:', {
-                                        hasConsensusStance: !!sections.consensusStance,
-                                        hasKeyInsights: !!sections.keyInsights,
-                                        hasConsensusAreas: !!sections.consensusAreas,
-                                        hasDisagreements: !!sections.disagreements,
-                                        hasRecommendedStocks: !!sections.recommendedStocks,
-                                        hasFinalSummary: !!sections.finalSummary
-                                    });
-                                } else {
-                                    console.log('[Coordinator] Parse failed - will use fallback format');
-                                }
                                 
                                 // If structured parsing succeeded, use collapsible sections
                                 if (sections) {
@@ -5132,11 +5108,9 @@
                                 } else {
                                     // If structured parsing failed, check if we extracted individual reports
                                     if (extractedFromCoordinator.size > 0) {
-                                        console.log('[Coordinator] Structured parse failed, but individual reports were extracted');
                                         html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
                                     } else {
                                         // 如果無法解析結構，使用原始格式
-                                        console.log('[Coordinator] Using fallback format - no structured sections, no extracted reports');
                                         let cleanText = stripHtml(summaryText);
                                         let escapedText = escapeHtml(cleanText);
                                         escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
@@ -6171,11 +6145,9 @@
                                         
                                         if (isCoordinator) {
                                             // 嘗試解析結構化部分
-                                            console.log('[Coordinator] Rendering in conversation list, attempting parse');
                                             const sections = parseCoordinatorSections(analysisText);
                                             
                                             if (sections) {
-                                                console.log('[Coordinator] Parse successful in conversation list');
                                                 // 使用結構化顯示
                                                 const containerId = `coordinator-conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                                                 let structuredHtml = `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">`;
@@ -6222,7 +6194,7 @@
                                                 structuredHtml += `</div></div>`;
                                                 return structuredHtml;
                                             } else {
-                                                console.log('[Coordinator] Parse failed in conversation list, using fallback');
+                                                // Parse failed, use fallback
                                             }
                                         }
                                         
@@ -7384,13 +7356,9 @@
                                     const isCoordinator = agentName && agentName.toLowerCase().includes('coordinator');
                                     
                                     if (isCoordinator) {
-                                        console.log('[Coordinator] Rendering in overview, attempting parse');
-                                        console.log('[Coordinator] Analysis text length:', analysisText.length);
-                                        console.log('[Coordinator] Analysis text preview:', analysisText.substring(0, 500));
                                         const sections = parseCoordinatorSections(analysisText);
                                         
                                         if (sections) {
-                                            console.log('[Coordinator] Parse successful in overview');
                                             // 使用結構化顯示
                                             const containerId = `coordinator-overview-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                                             let structuredHtml = `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">`;
@@ -7437,7 +7405,7 @@
                                             structuredHtml += `</div></div>`;
                                             return structuredHtml;
                                         } else {
-                                            console.log('[Coordinator] Parse failed in overview, using fallback');
+                                            // Parse failed, use fallback
                                         }
                                     }
                                     
@@ -9449,12 +9417,6 @@
                 /(?:^|\s)6\.\s*Final\s*Summary\s+([\s\S]*?)(?=\s*(?:\n\s*)?\d+\.|$)/i
             ];
             
-            // CRITICAL FIX: 添加詳細的調試日誌
-            console.log('[Coordinator Parse] Starting parse, original text length:', text.length);
-            console.log('[Coordinator Parse] Original text preview (first 500 chars):', text.substring(0, 500));
-            console.log('[Coordinator Parse] Clean text length:', cleanText.length);
-            console.log('[Coordinator Parse] Clean text preview (first 500 chars):', cleanText.substring(0, 500));
-            
             const numberedMatches = [
                 cleanText.match(numberedPatterns[0]), // Consensus Stance
                 cleanText.match(numberedPatterns[1]), // Key Insights
@@ -9463,30 +9425,6 @@
                 cleanText.match(numberedPatterns[4]), // Recommended Stocks
                 cleanText.match(numberedPatterns[5])  // Final Summary
             ];
-            
-            // Debug: Log matches for troubleshooting with detailed info
-            console.log('[Coordinator Parse] Numbered matches:', {
-                consensusStance: !!numberedMatches[0],
-                keyInsights: !!numberedMatches[1],
-                consensusAreas: !!numberedMatches[2],
-                disagreements: !!numberedMatches[3],
-                recommendedStocks: !!numberedMatches[4],
-                finalSummary: !!numberedMatches[5]
-            });
-            
-            // Debug: Log actual matched content preview and length
-            const matchNames = ['Consensus Stance', 'Key Insights', 'Consensus Areas', 'Disagreements', 'Recommended Stocks', 'Final Summary'];
-            numberedMatches.forEach((match, index) => {
-                if (match && match[1]) {
-                    console.log(`[Coordinator Parse] ${matchNames[index]} matched:`, {
-                        length: match[1].length,
-                        preview: match[1].substring(0, 200),
-                        fullMatch: match[0].substring(0, 100)
-                    });
-                } else {
-                    console.log(`[Coordinator Parse] ${matchNames[index]} NOT matched`);
-                }
-            });
             
             if (numberedMatches[0] && numberedMatches[0][1]) {
                 sections.consensusStance = numberedMatches[0][1].trim();
@@ -9621,22 +9559,16 @@
             // 檢查是否有任何部分被提取（至少要有2個部分才算成功）
             const extractedSections = Object.values(sections).filter(s => s && s.length > 0);
             
-            console.log('[Coordinator Parse] Extracted sections count:', extractedSections.length);
-            console.log('[Coordinator Parse] Extracted sections:', Object.keys(sections).filter(key => sections[key] && sections[key].length > 0));
-            
             if (extractedSections.length < 2) {
-                console.log('[Coordinator Parse] FAILED: Less than 2 sections extracted. Will try fallback parsing.');
                 // CRITICAL FIX: 如果正則匹配失敗，嘗試基於關鍵詞的簡單分割邏輯
                 return tryFallbackParsing(cleanText);
             }
             
-            console.log('[Coordinator Parse] SUCCESS: Parsed into', extractedSections.length, 'sections');
             return sections;
         }
         
         // CRITICAL FIX: 備用解析邏輯 - 基於關鍵詞分割
         function tryFallbackParsing(text) {
-            console.log('[Coordinator Parse] Trying fallback parsing...');
             const sections = {
                 intro: '',
                 consensusStance: '',
@@ -9682,7 +9614,6 @@
                 
                 if (content.length > 20) {
                     sections[current.key] = content;
-                    console.log(`[Coordinator Parse] Fallback extracted ${current.key}:`, content.substring(0, 100));
                 }
             }
             
@@ -9697,7 +9628,6 @@
             
             // 檢查是否成功提取了至少2個部分
             const extractedSections = Object.values(sections).filter(s => s && s.length > 0);
-            console.log('[Coordinator Parse] Fallback extracted sections count:', extractedSections.length);
             
             return extractedSections.length >= 2 ? sections : null;
         }

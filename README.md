@@ -830,6 +830,7 @@ curl -X POST "http://localhost:8000/api/system/init?force=true"
 - All 7 agents are displayed in the frontend with special styling for TraderAgent and RiskAnalyst
 - Content extraction: Frontend intelligently extracts content from `summary` field, falling back to `content` field or `risk_report` for RiskAnalyst
 - Discussion Coordinator: Automatically extracts individual analyst reports from the coordinator's summary and displays them separately
+- **Recent Discussions**: Frontend displays only the latest 3 discussion entries (one per agent, sorted by timestamp) to avoid clutter, while still showing all tool entries
 
 ---
 

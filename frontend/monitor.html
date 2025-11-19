@@ -4232,7 +4232,6 @@
                     convData.conversations || [], 
                     convData.total || 0, 
                     convData.has_more || false,
-                    convData.tool_results_by_category || null,
                     convData.discussion_rounds_summaries || {}
                 );
                 // CRITICAL FIX: 同时渲染经济数据
@@ -4359,6 +4358,13 @@
         function renderConversations(conversations, total = 0, has_more = false, discussionRoundsSummaries = null) {
             const content = document.getElementById('conversationsContent');
             
+            console.log('[renderConversations] Called with:', {
+                conversationsCount: conversations.length,
+                total: total,
+                has_more: has_more,
+                discussionRoundsSummaries: discussionRoundsSummaries ? Object.keys(discussionRoundsSummaries) : null
+            });
+            
             if (conversations.length === 0) {
                 content.innerHTML = `
                     <div class="empty-conversations">
@@ -4384,7 +4390,8 @@
                             const toolsUsed = summaryEntry.tools_used || [];
                             
                             // Store each analyst's summary (by agent name)
-                            if (agent && summary) {
+                            // CRITICAL FIX: Only store if we have both agent and summary
+                            if (agent && summary && summary.trim().length > 0) {
                                 if (!analystSummaries[agent]) {
                                     analystSummaries[agent] = [];
                                 }
@@ -4400,8 +4407,8 @@
                 }
             }
             
-            // CRITICAL FIX: Also extract from conversations array (round = 0) for analysts
-            // This ensures all analyst conversations are displayed, even if round = 0
+            // CRITICAL FIX: Also extract from conversations array for analysts
+            // This ensures all analyst conversations are displayed, regardless of round number
             // Process conversations in reverse order to get the most recent entries first
             const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'TraderAgent', 'RiskAnalyst'];
             const seenAnalysts = new Set(); // Track which analysts we've already processed (to avoid duplicates)
@@ -4410,53 +4417,81 @@
             // This ensures we always get the latest conversation for each analyst
             // First, collect all analyst conversations, then pick the most recent one for each
             const analystConversations = {};
+            
+            // Debug: Log all analyst entries found
+            const debugAnalystEntries = [];
             for (let i = conversations.length - 1; i >= 0; i--) {
                 const conv = conversations[i];
                 const agent = conv.agent || '';
                 const round = conv.round || 0;
                 const entryType = conv.type || 'discussion';
                 
-                // Process discussion entries with round = 0 (or string "0") for analysts
                 // Normalize round to number for comparison
                 const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
                 
-                if (entryType === 'discussion' && roundNum === 0 && analystNames.includes(agent)) {
+                // CRITICAL FIX: Allow all rounds, not just round 0 (some agents may have round > 0)
+                if (entryType === 'discussion' && analystNames.includes(agent)) {
+                    debugAnalystEntries.push({
+                        agent: agent,
+                        round: roundNum,
+                        hasSummary: !!conv.summary,
+                        hasContent: !!conv.content,
+                        summaryLength: conv.summary ? conv.summary.length : 0,
+                        contentLength: conv.content ? conv.content.length : 0
+                    });
                     const summary = conv.summary || conv.content || '';
                     const stance = conv.stance || 'neutral';
                     const toolsUsed = conv.tools_used || [];
                     const timestamp = conv.timestamp || conv.date || '';
                     
-                    // CRITICAL FIX: For TraderAgent and RiskAnalyst, be more lenient with content extraction
+                    // CRITICAL FIX: For all agents, be more lenient with content extraction
                     // They might have content in different fields
                     let finalSummary = summary;
                     if (!finalSummary || finalSummary.trim().length === 0) {
-                        // Try alternative fields for TraderAgent and RiskAnalyst
-                        if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
-                            const contentText = conv.content || conv.message || conv.reasoning || conv.analysis || '';
-                            
+                        // Try alternative fields for all agents
+                        const contentText = conv.content || conv.message || conv.reasoning || conv.analysis || '';
+                        
+                        if (agent === 'TraderAgent' && contentText) {
                             // CRITICAL FIX: For TraderAgent, extract "Analysis:" section from content
-                            if (agent === 'TraderAgent' && contentText) {
-                                const analysisMatch = contentText.match(/Analysis:\s*([\s\S]+)$/i);
-                                if (analysisMatch) {
-                                    finalSummary = analysisMatch[1].trim();
+                            const analysisMatch = contentText.match(/Analysis:\s*([\s\S]+)$/i);
+                            if (analysisMatch) {
+                                finalSummary = analysisMatch[1].trim();
+                            } else {
+                                // If no "Analysis:" section, use content as-is
+                                finalSummary = contentText;
+                            }
+                        } else if (agent === 'RiskAnalyst') {
+                            // For RiskAnalyst, try content first
+                            finalSummary = contentText;
+                            // Also check risk_report
+                            if (!finalSummary && conv.risk_report) {
+                                const riskReport = conv.risk_report;
+                                finalSummary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
+                            }
+                        } else {
+                            // CRITICAL FIX: For other agents (MarketAnalyst, TechnicalAnalyst, etc.), also try content field
+                            // Extract "Analysis:" section if present, otherwise use full content
+                            if (contentText) {
+                                if (contentText.includes('Analysis:')) {
+                                    const analysisMatch = contentText.match(/Analysis:\s*([\s\S]+)$/i);
+                                    if (analysisMatch) {
+                                        finalSummary = analysisMatch[1].trim();
+                                    } else {
+                                        finalSummary = contentText;
+                                    }
                                 } else {
-                                    // If no "Analysis:" section, use content as-is
                                     finalSummary = contentText;
                                 }
-                            } else if (agent === 'RiskAnalyst') {
-                                // For RiskAnalyst, try content first
-                                finalSummary = contentText;
-                                // Also check risk_report
-                                if (!finalSummary && conv.risk_report) {
-                                    const riskReport = conv.risk_report;
-                                    finalSummary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
-                                }
-                            } else {
-                                finalSummary = contentText;
                             }
                         }
                     } else if (agent === 'TraderAgent' && summary && summary.includes('Stance:')) {
                         // CRITICAL FIX: If summary contains "Stance:" format, extract Analysis part
+                        const analysisMatch = summary.match(/Analysis:\s*([\s\S]+)$/i);
+                        if (analysisMatch) {
+                            finalSummary = analysisMatch[1].trim();
+                        }
+                    } else if (summary && summary.includes('Analysis:')) {
+                        // CRITICAL FIX: For other agents, also extract "Analysis:" section if present
                         const analysisMatch = summary.match(/Analysis:\s*([\s\S]+)$/i);
                         if (analysisMatch) {
                             finalSummary = analysisMatch[1].trim();
@@ -4470,24 +4505,41 @@
                             analystConversations[agent] = [];
                         }
                         analystConversations[agent].push({
-                            round: 0,
+                            round: roundNum,
                             summary: finalSummary,
                             stance: stance,
                             tools_used: toolsUsed,
                             timestamp: timestamp,
                         });
-                    } else if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
-                        // Debug: Log if TraderAgent or RiskAnalyst conversation is skipped
+                    } else {
+                        // Debug: Log if any analyst conversation is skipped
                         console.warn(`[Conversations] Skipping ${agent} conversation: no summary/content found`, {
                             hasSummary: !!conv.summary,
                             hasContent: !!conv.content,
                             hasMessage: !!conv.message,
                             hasReasoning: !!conv.reasoning,
+                            hasAnalysis: !!conv.analysis,
                             round: roundNum,
-                            type: entryType
+                            type: entryType,
+                            agent: agent
                         });
                     }
                 }
+            }
+            
+            if (debugAnalystEntries.length > 0) {
+                console.log('[Conversations] Found analyst entries:', debugAnalystEntries);
+                const byAgent = {};
+                debugAnalystEntries.forEach(e => {
+                    if (!byAgent[e.agent]) byAgent[e.agent] = [];
+                    byAgent[e.agent].push(e);
+                });
+                console.log('[Conversations] Analyst entries by agent:', byAgent);
+            } else {
+                console.warn('[Conversations] ⚠️ No analyst entries found in conversations!');
+                console.log('[Conversations] Available agents in conversations:', 
+                    conversations.map(c => ({ agent: c.agent, type: c.type, round: c.round }))
+                );
             }
             
             // CRITICAL FIX: For each analyst, use the most recent conversation (first in reverse order)
@@ -4653,20 +4705,49 @@
                     // Normalize round to number
                     const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
                     
-                    if (entryType === 'discussion' && roundNum === 0 && analystNames.includes(agent)) {
+                    // CRITICAL FIX: Allow all rounds, not just round 0
+                    if (entryType === 'discussion' && analystNames.includes(agent)) {
                         let summary = conv.summary || conv.content || '';
                         const stance = conv.stance || 'neutral';
                         const toolsUsed = conv.tools_used || [];
                         
-                        // CRITICAL FIX: For TraderAgent and RiskAnalyst, be more lenient with content extraction
+                        // CRITICAL FIX: For all agents, be more lenient with content extraction
                         if (!summary || summary.trim().length === 0) {
-                            if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
-                                summary = conv.content || conv.message || conv.reasoning || conv.analysis || '';
-                                // For RiskAnalyst, also check risk_report
-                                if (!summary && agent === 'RiskAnalyst' && conv.risk_report) {
+                            const contentText = conv.content || conv.message || conv.reasoning || conv.analysis || '';
+                            
+                            if (agent === 'TraderAgent' && contentText) {
+                                const analysisMatch = contentText.match(/Analysis:\s*([\s\S]+)$/i);
+                                if (analysisMatch) {
+                                    summary = analysisMatch[1].trim();
+                                } else {
+                                    summary = contentText;
+                                }
+                            } else if (agent === 'RiskAnalyst') {
+                                summary = contentText;
+                                if (!summary && conv.risk_report) {
                                     const riskReport = conv.risk_report;
                                     summary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
                                 }
+                            } else {
+                                // For other agents, extract "Analysis:" section if present
+                                if (contentText) {
+                                    if (contentText.includes('Analysis:')) {
+                                        const analysisMatch = contentText.match(/Analysis:\s*([\s\S]+)$/i);
+                                        if (analysisMatch) {
+                                            summary = analysisMatch[1].trim();
+                                        } else {
+                                            summary = contentText;
+                                        }
+                                    } else {
+                                        summary = contentText;
+                                    }
+                                }
+                            }
+                        } else if (summary && summary.includes('Analysis:')) {
+                            // Extract "Analysis:" section if present
+                            const analysisMatch = summary.match(/Analysis:\s*([\s\S]+)$/i);
+                            if (analysisMatch) {
+                                summary = analysisMatch[1].trim();
                             }
                         }
                         
@@ -6203,22 +6284,51 @@
             const count = document.getElementById('convCount');
             if (!container) return;
             
+            // CRITICAL FIX: 只显示最近三次讨论（按时间排序，每个代理只显示最新的一次）
+            // 首先按时间戳排序（最新的在前）
+            const sortedConversations = [...conversations].sort((a, b) => {
+                const timeA = new Date(a.timestamp || a.date || 0).getTime();
+                const timeB = new Date(b.timestamp || b.date || 0).getTime();
+                return timeB - timeA; // 降序，最新的在前
+            });
+            
+            // 提取讨论记录（排除工具记录）
+            const allDiscussionEntries = sortedConversations.filter(c => (c.type || 'discussion') === 'discussion');
+            
+            // 按代理分组，每个代理只保留最新的一次讨论
+            const latestByAgent = {};
+            allDiscussionEntries.forEach(entry => {
+                const agent = entry.agent || entry.agent_name || 'Unknown';
+                if (!latestByAgent[agent] || 
+                    new Date(entry.timestamp || entry.date || 0) > new Date(latestByAgent[agent].timestamp || latestByAgent[agent].date || 0)) {
+                    latestByAgent[agent] = entry;
+                }
+            });
+            
+            // 获取所有代理的最新讨论，按时间排序，只取最近三次
+            const latestDiscussions = Object.values(latestByAgent)
+                .sort((a, b) => {
+                    const timeA = new Date(a.timestamp || a.date || 0).getTime();
+                    const timeB = new Date(b.timestamp || b.date || 0).getTime();
+                    return timeB - timeA;
+                })
+                .slice(0, 3); // 只取最近三次
+            
+            // 获取工具记录（不限制数量）
+            const toolEntries = sortedConversations.filter(c => (c.type || 'discussion') === 'tool');
+            
+            // 合并：最近三次讨论 + 所有工具记录
+            let filteredConversations = [...latestDiscussions, ...toolEntries];
+            
             // Apply agent filter
-            let filteredConversations = conversations;
             if (currentAgentFilter !== 'all') {
-                // Filter by agent name (case-insensitive partial match)
-                filteredConversations = conversations.filter(c => {
+                filteredConversations = filteredConversations.filter(c => {
                     const agent = (c.agent || c.agent_name || 'Unknown').toLowerCase();
                     const filterLower = currentAgentFilter.toLowerCase();
-                    // Match exact or partial (e.g., "TechnicalAnalyst" matches "technical")
                     return agent.includes(filterLower) || filterLower.includes(agent);
                 });
-            }
-            
-            // If filtering for specific agent, show only tool results
-            // Otherwise, show all (discussion + tools)
-            if (currentAgentFilter !== 'all') {
-                // Show only tool results for the selected agent
+                
+                // If filtering for specific agent, show only tool results
                 filteredConversations = filteredConversations.filter(c => (c.type || 'discussion') === 'tool');
                 
                 // CRITICAL FIX: Filter by stock symbol for TechnicalAnalyst
@@ -6267,8 +6377,6 @@
             if (count) {
                 const toolCount = filteredConversations.filter(c => (c.type || 'discussion') === 'tool').length;
                 const discussionCount = filteredConversations.filter(c => (c.type || 'discussion') !== 'tool').length;
-                // Debug: log conversation types
-                console.log('[Conversations] Total:', filteredConversations.length, 'Discussions:', discussionCount, 'Tools:', toolCount);
                 if (currentAgentFilter !== 'all') {
                     count.textContent = `${toolCount} tools`;
                 } else {
@@ -6282,15 +6390,6 @@
                 container.innerHTML = `<div class="empty-conversations"><p>${emptyMessage}</p></div>`;
                 return;
             }
-            // CRITICAL FIX: Debug log to see what conversations we're rendering
-            console.log('[renderConversationsOverview] Rendering', filteredConversations.length, 'conversations');
-            console.log('[renderConversationsOverview] Agent breakdown:', 
-                filteredConversations.reduce((acc, c) => {
-                    const agent = c.agent || 'Unknown';
-                    acc[agent] = (acc[agent] || 0) + 1;
-                    return acc;
-                }, {})
-            );
             
             container.innerHTML = `
                 <div class="conversation-list">
@@ -11721,15 +11820,9 @@
             const nextBtn = document.getElementById('executionNextPage');
             if (!tbody) return;
             
-            // CRITICAL: Filter only today's orders (consistent with updateOrderStatus)
-            const today = new Date().toISOString().split('T')[0];
-            const todayTrades = (trades || []).filter(t => {
-                const tradeDate = t.placed_at ? t.placed_at.split('T')[0] : 
-                                 (t.date ? t.date.split('T')[0] : 
-                                  (t.timestamp ? t.timestamp.split('T')[0] : 
-                                   (t.filled_at ? t.filled_at.split('T')[0] : '')));
-                return tradeDate === today;
-            });
+            // CRITICAL FIX: Show all orders (not just today's) - users need to see all buy/sell orders
+            // Filter to show all orders (no date restriction)
+            const todayTrades = trades || [];
             
             // 保存所有交易数据用于分页
             executionAllTrades = todayTrades || [];

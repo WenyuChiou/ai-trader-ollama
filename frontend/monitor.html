@@ -5011,8 +5011,14 @@
                                         
                                         html += `</div>`;
                                         html += `</div>`;
+                                } else {
+                                    // If structured parsing failed, check if we extracted individual reports
+                                    if (extractedFromCoordinator.size > 0) {
+                                        console.log('[Coordinator] Structured parse failed, but individual reports were extracted');
+                                        html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
                                     } else {
                                         // 如果無法解析結構，使用原始格式
+                                        console.log('[Coordinator] Using fallback format - no structured sections, no extracted reports');
                                         let cleanText = stripHtml(summaryText);
                                         let escapedText = escapeHtml(cleanText);
                                         escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');

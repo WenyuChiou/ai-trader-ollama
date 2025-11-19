@@ -2968,7 +2968,8 @@ python scripts/init_data.py
 7. **FGI (Fear & Greed Index)**:
    - ✅ Standardized classification: 0-25 (EXTREME FEAR), 26-45 (FEAR), 46-55 (NEUTRAL), 56-75 (GREED), 76-100 (EXTREME GREED)
    - ✅ Data source priority: `feargreedmeter.com` (returns correct value 11)
-7. **Signal Score**:
+
+8. **Signal Score**:
    - ✅ Removed automatic `signal_score` sorting and filtering
    - ✅ Agents now determine signal scores independently
 8. **Agent Discussion Logic**:

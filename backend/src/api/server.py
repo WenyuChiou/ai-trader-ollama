@@ -396,6 +396,9 @@ async def fetch_conversations_api(
         discussion_rounds = {}
         discussion_rounds_by_agent = {}  # CRITICAL FIX: 按 round 和 agent 分组，提取每个 agent 的 summary
         
+        # CRITICAL FIX: Also extract round=0 entries for analysts (fallback for single-round discussions)
+        analyst_names = ["MarketAnalyst", "TechnicalAnalyst", "FundamentalAnalyst", "SentimentAnalyst"]
+        
         for entry in processed_conversations:
             round_num = entry.get("round", 0)
             # CRITICAL FIX: 处理 round_num 可能是字符串或数字的情况
@@ -405,13 +408,25 @@ async def fetch_conversations_api(
                 except (ValueError, TypeError):
                     round_num = 0
             
-            if round_num > 0:  # 只处理有 round 编号的条目（1, 2, 3）
+            agent = entry.get("agent", "Unknown")
+            entry_type = entry.get("type", "discussion")
+            
+            # CRITICAL FIX: Process both round > 0 (multi-round) and round = 0 (single-round or fallback)
+            # For round = 0, only process analyst entries (not Coordinator or TraderAgent)
+            should_process = False
+            if round_num > 0:
+                # Multi-round discussion entries
+                should_process = True
+            elif round_num == 0 and entry_type == "discussion" and agent in analyst_names:
+                # Single-round discussion entries (fallback) - only for analysts
+                should_process = True
+            
+            if should_process:
                 if round_num not in discussion_rounds:
                     discussion_rounds[round_num] = []
                 discussion_rounds[round_num].append(entry)
                 
                 # CRITICAL FIX: 按 round 和 agent 分组，提取 summary
-                agent = entry.get("agent", "Unknown")
                 if round_num not in discussion_rounds_by_agent:
                     discussion_rounds_by_agent[round_num] = {}
                 

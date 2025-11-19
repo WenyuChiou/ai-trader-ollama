@@ -552,40 +552,83 @@ def execute_daily_trade(
         # 寫入每一輪對話
         # CRITICAL FIX: json 已在文件顶部导入，确保在 try 块外可以访问
         
-        # CRITICAL FIX: 写入三轮 Discussion 信息（从 transcript 中提取，设置正确的 round 字段）
+        # CRITICAL FIX: Parse transcript array to extract individual analyst analyses
+        # Transcript format: ["--- Market Analyst ---\nStance: ...\nAnalysis: ...", "--- Technical Analyst ---\n...", ...]
         transcript = convo.get("transcript", [])
+        transcript_analysts_written = set()  # Track which analysts were written from transcript to avoid duplicates
+        
         if transcript and isinstance(transcript, list):
-            for round_num, round_text in enumerate(transcript, 1):
-                if not round_text or not isinstance(round_text, str):
+            for transcript_item in transcript:
+                if not transcript_item or not isinstance(transcript_item, str):
                     continue
                 
-                # 解析 transcript 格式: "--- Round {r} ---\n{out_text}"
-                # 提取轮次和内容
-                round_content = round_text
-                if "--- Round" in round_text:
-                    # 提取轮次编号和内容
-                    parts = round_text.split("--- Round", 1)
-                    if len(parts) == 2:
-                        round_info = parts[1].split("---", 1)
-                        if len(round_info) > 1:
-                            round_content = round_info[1].strip()
+                # Parse transcript format: "--- Analyst Name ---\nStance: X\nAnalysis: Y\nTools Used: ...\nKey Points: ..."
+                lines = transcript_item.strip().split('\n')
+                if not lines or not lines[0].startswith('---'):
+                    continue
                 
-                # 写入每轮讨论
-                round_entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-                    "date": trade_date_str,
-                    "agent": "DiscussionCoordinator",
-                    "round": round_num,  # CRITICAL: 使用实际轮次编号（1, 2, 3）
-                    "content": f"Round {round_num} Discussion:\n\n{round_content}",
-                    "type": "discussion",
-                    "stance": final_stance,  # 使用最终 stance
-                    "summary": round_content,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
-                    "tools_used": [],  # CRITICAL FIX: 确保 tools_used 被正确存储（讨论轮次可能没有工具）
+                # Extract analyst name from first line: "--- Market Analyst ---" -> "Market Analyst"
+                analyst_line = lines[0].strip()
+                analyst_name_raw = analyst_line.replace('---', '').strip()
+                
+                # Map to standard agent names
+                analyst_name_map = {
+                    "Market Analyst": "MarketAnalyst",
+                    "Technical Analyst": "TechnicalAnalyst",
+                    "Fundamental Analyst": "FundamentalAnalyst",
+                    "Sentiment Analyst": "SentimentAnalyst",
+                    "Discussion Coordinator": "DiscussionCoordinator",
                 }
+                agent_name = analyst_name_map.get(analyst_name_raw, analyst_name_raw.replace(' ', ''))
                 
-                with convo_file.open("a", encoding="utf-8") as f:
-                    f.write(json.dumps(round_entry, ensure_ascii=False) + "\n")
-                print(f"[TRADING CYCLE] Wrote Discussion Round {round_num} entry")
+                # Extract stance and analysis from remaining lines
+                stance = "neutral"
+                analysis = ""
+                tools_used = []
+                
+                for i, line in enumerate(lines[1:], 1):
+                    line = line.strip()
+                    if line.startswith("Stance:"):
+                        stance = line.replace("Stance:", "").strip()
+                    elif line.startswith("Analysis:"):
+                        # Analysis may span multiple lines, collect until next section
+                        analysis_parts = [line.replace("Analysis:", "").strip()]
+                        for j in range(i + 1, len(lines)):
+                            next_line = lines[j].strip()
+                            if next_line.startswith("Tools Used:") or next_line.startswith("Key Points:"):
+                                break
+                            analysis_parts.append(next_line)
+                        analysis = '\n'.join(analysis_parts).strip()
+                    elif line.startswith("Tools Used:"):
+                        tools_str = line.replace("Tools Used:", "").strip()
+                        if tools_str:
+                            tools_used = [t.strip() for t in tools_str.split(',') if t.strip()]
+                
+                # If no analysis extracted, use the full transcript item (minus header)
+                if not analysis:
+                    analysis = '\n'.join(lines[1:]).strip()
+                
+                # Only write if this analyst hasn't been written from discussion_history yet
+                if agent_name not in transcript_analysts_written:
+                    transcript_analysts_written.add(agent_name)
+                    
+                    entry = {
+                        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                        "date": trade_date_str,
+                        "agent": agent_name,
+                        "round": 0,
+                        "content": f"Stance: {stance}\n\nAnalysis: {analysis}",
+                        "type": "discussion",
+                        "stance": stance,
+                        "summary": analysis,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
+                        "tools_used": tools_used,  # CRITICAL FIX: 确保 tools_used 被正确存储
+                    }
+                    
+                    with convo_file.open("a", encoding="utf-8") as f:
+                        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                    print(f"[TRADING CYCLE] Wrote {agent_name} from transcript (stance: {stance})")
+                else:
+                    print(f"[TRADING CYCLE] Skipped {agent_name} from transcript (already written from discussion_history)")
         
         # CRITICAL FIX: 确保从 discussion_history 中提取四个 analyst 的结果
         # 如果 discussion_history 为空，尝试从 analyst_reports 中构建

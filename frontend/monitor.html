@@ -9399,6 +9399,84 @@
             // 檢查是否有任何部分被提取（至少要有2個部分才算成功）
             const extractedSections = Object.values(sections).filter(s => s && s.length > 0);
             
+            console.log('[Coordinator Parse] Extracted sections count:', extractedSections.length);
+            console.log('[Coordinator Parse] Extracted sections:', Object.keys(sections).filter(key => sections[key] && sections[key].length > 0));
+            
+            if (extractedSections.length < 2) {
+                console.log('[Coordinator Parse] FAILED: Less than 2 sections extracted. Will try fallback parsing.');
+                // CRITICAL FIX: 如果正則匹配失敗，嘗試基於關鍵詞的簡單分割邏輯
+                return tryFallbackParsing(cleanText);
+            }
+            
+            console.log('[Coordinator Parse] SUCCESS: Parsed into', extractedSections.length, 'sections');
+            return sections;
+        }
+        
+        // CRITICAL FIX: 備用解析邏輯 - 基於關鍵詞分割
+        function tryFallbackParsing(text) {
+            console.log('[Coordinator Parse] Trying fallback parsing...');
+            const sections = {
+                intro: '',
+                consensusStance: '',
+                keyInsights: '',
+                consensusAreas: '',
+                disagreements: '',
+                recommendedStocks: '',
+                finalSummary: '',
+                overall: ''
+            };
+            
+            // 使用關鍵詞分割文本
+            const keywords = [
+                { key: 'consensusStance', patterns: ['1. Consensus Stance', 'Consensus Stance', '1. Consensus'] },
+                { key: 'keyInsights', patterns: ['2. Key Insights', 'Key Insights', '2. Key'] },
+                { key: 'consensusAreas', patterns: ['3. Consensus Areas', 'Consensus Areas', '3. Consensus'] },
+                { key: 'disagreements', patterns: ['4. Disagreements', 'Disagreements', '4. Disagreement'] },
+                { key: 'recommendedStocks', patterns: ['5. Recommended Stocks', 'Recommended Stocks', '5. Recommended'] },
+                { key: 'finalSummary', patterns: ['6. Final Summary', 'Final Summary', '6. Final'] }
+            ];
+            
+            // 找到所有關鍵詞的位置
+            const positions = [];
+            keywords.forEach(({ key, patterns }) => {
+                patterns.forEach(pattern => {
+                    const index = text.indexOf(pattern);
+                    if (index !== -1) {
+                        positions.push({ key, pattern, index });
+                    }
+                });
+            });
+            
+            // 按位置排序
+            positions.sort((a, b) => a.index - b.index);
+            
+            // 提取每個部分
+            for (let i = 0; i < positions.length; i++) {
+                const current = positions[i];
+                const next = positions[i + 1];
+                const startIndex = current.index + current.pattern.length;
+                const endIndex = next ? next.index : text.length;
+                const content = text.substring(startIndex, endIndex).trim();
+                
+                if (content.length > 20) {
+                    sections[current.key] = content;
+                    console.log(`[Coordinator Parse] Fallback extracted ${current.key}:`, content.substring(0, 100));
+                }
+            }
+            
+            // 提取開頭介紹（在第一個關鍵詞之前）
+            if (positions.length > 0) {
+                const firstIndex = positions[0].index;
+                const intro = text.substring(0, firstIndex).trim();
+                if (intro.length > 10) {
+                    sections.intro = intro;
+                }
+            }
+            
+            // 檢查是否成功提取了至少2個部分
+            const extractedSections = Object.values(sections).filter(s => s && s.length > 0);
+            console.log('[Coordinator Parse] Fallback extracted sections count:', extractedSections.length);
+            
             return extractedSections.length >= 2 ? sections : null;
         }
         

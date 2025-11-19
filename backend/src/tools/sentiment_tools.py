@@ -35,6 +35,29 @@ _ALTERNATIVE_SOURCES = [
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
+def _get_fgi_label(value: int) -> str:
+    """
+    根據 FGI 值返回對應的標籤（標準分級）：
+    - 0-25: EXTREME FEAR
+    - 26-45: FEAR
+    - 46-55: NEUTRAL
+    - 56-75: GREED
+    - 76-100: EXTREME GREED
+    """
+    if value is None:
+        return None
+    value = int(value)
+    if value <= 25:
+        return "EXTREME FEAR"
+    elif value <= 45:
+        return "FEAR"
+    elif value <= 55:
+        return "NEUTRAL"
+    elif value <= 75:
+        return "GREED"
+    else:  # 76-100
+        return "EXTREME GREED"
+
 def _parse_cnn_json(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     解析 CNN dataviz JSON 結構；不同環境可能鍵名略有差異，故作寬鬆解析。
@@ -86,6 +109,16 @@ def _parse_cnn_json(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
     if value is None and label is None:
         return None
+
+    # CRITICAL FIX: 如果沒有label，根據value計算標準分級
+    if value is not None and not label:
+        label = _get_fgi_label(value)
+    # 如果label存在但格式不標準，也根據value重新計算
+    elif value is not None:
+        # 標準化label格式（確保使用標準分級）
+        label_upper = label.upper() if label else ""
+        if "EXTREME FEAR" not in label_upper and "EXTREME FEAR" not in label_upper.replace(" ", ""):
+            label = _get_fgi_label(value)
 
     return {
         "value": value,
@@ -232,6 +265,16 @@ def _scrape_cnn_html(url: str) -> Optional[Dict[str, Any]]:
         if val is None and label is None:
             return None
 
+        # CRITICAL FIX: 如果沒有label，根據value計算標準分級
+        if val is not None and not label:
+            label = _get_fgi_label(val)
+        # 如果label存在但格式不標準，也根據value重新計算
+        elif val is not None:
+            # 標準化label格式（確保使用標準分級）
+            label_upper = label.upper() if label else ""
+            if "EXTREME FEAR" not in label_upper and "EXTREME FEAR" not in label_upper.replace(" ", ""):
+                label = _get_fgi_label(val)
+
         # 解析日期
         asof = _now_iso()
         if date_str:
@@ -332,18 +375,9 @@ def _scrape_feargreedmeter(url: str) -> Optional[Dict[str, Any]]:
                     val = candidate
                     break
         
-        # 提取標籤（根據數值範圍推斷）
+        # CRITICAL FIX: 使用標準分級函數提取標籤
         if val is not None:
-            if val <= 25:
-                label = "Extreme Fear"
-            elif val <= 45:
-                label = "Fear"
-            elif val <= 55:
-                label = "Neutral"
-            elif val <= 75:
-                label = "Greed"
-            else:
-                label = "Extreme Greed"
+            label = _get_fgi_label(val)
         
         # 提取日期信息（"X days ago" 或 "X hours ago"）
         date_patterns = [

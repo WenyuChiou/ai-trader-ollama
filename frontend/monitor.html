@@ -5859,20 +5859,21 @@
                 // 更新 FGI 部分
                 const fgiDiv = existingCard.querySelector('div[style*="FEAR & GREED"]');
                 if (fgiDiv) {
-                    // 根据值确定颜色
+                    // CRITICAL FIX: 使用標準分級確定顏色（與後端一致）
+                    // 0-25: EXTREME FEAR, 26-45: FEAR, 46-55: NEUTRAL, 56-75: GREED, 76-100: EXTREME GREED
                     let fgColor = '#6b7280';
-                    if (fgValue > 0) {
-                        if (fgValue >= 75) fgColor = '#ef4444';
-                        else if (fgValue >= 55) fgColor = '#f59e0b';
-                        else if (fgValue >= 45) fgColor = '#6b7280';
-                        else if (fgValue >= 25) fgColor = '#10b981';
-                        else fgColor = '#ef4444';
+                    if (fgValue >= 0) {
+                        if (fgValue <= 25) fgColor = '#ef4444'; // EXTREME FEAR - 紅色
+                        else if (fgValue <= 45) fgColor = '#f59e0b'; // FEAR - 橙色
+                        else if (fgValue <= 55) fgColor = '#6b7280'; // NEUTRAL - 灰色
+                        else if (fgValue <= 75) fgColor = '#10b981'; // GREED - 綠色
+                        else fgColor = '#ef4444'; // EXTREME GREED - 紅色
                     }
                     
                     fgiDiv.innerHTML = `
                         <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;">FEAR & GREED</div>
-                        <div style="font-size: 18px; font-weight: 700; color: ${fgColor};">${fgLabel}</div>
-                        ${fgValue > 0 ? `<div style="font-size: 12px; color: ${fgColor}; margin-top: 4px; font-weight: 600;">${fgValue}</div>` : ''}
+                        <div style="font-size: 18px; font-weight: 700; color: ${fgColor};">${fgLabel || 'N/A'}</div>
+                        ${fgValue >= 0 ? `<div style="font-size: 12px; color: ${fgColor}; margin-top: 4px; font-weight: 600;">${fgValue}</div>` : ''}
                     `;
                 }
             }
@@ -6235,13 +6236,29 @@
                         fgLabel = typeof fg === 'object' ? (fg.label || fg.classification || '') : '';
                     }
                     
-                    // 根据值确定标签
-                    if (fgValue > 0 && !fgLabel) {
-                        if (fgValue >= 75) fgLabel = 'Extreme Greed';
-                        else if (fgValue >= 55) fgLabel = 'Greed';
-                        else if (fgValue >= 45) fgLabel = 'Neutral';
-                        else if (fgValue >= 25) fgLabel = 'Fear';
-                        else fgLabel = 'Extreme Fear';
+                    // CRITICAL FIX: 使用標準分級（與後端一致）
+                    // 0-25: EXTREME FEAR, 26-45: FEAR, 46-55: NEUTRAL, 56-75: GREED, 76-100: EXTREME GREED
+                    if (fgValue >= 0 && !fgLabel) {
+                        if (fgValue <= 25) fgLabel = 'EXTREME FEAR';
+                        else if (fgValue <= 45) fgLabel = 'FEAR';
+                        else if (fgValue <= 55) fgLabel = 'NEUTRAL';
+                        else if (fgValue <= 75) fgLabel = 'GREED';
+                        else fgLabel = 'EXTREME GREED';
+                    }
+                    // 標準化現有label格式
+                    if (fgLabel) {
+                        const labelUpper = fgLabel.toUpperCase();
+                        if (labelUpper.includes('EXTREME FEAR') || (fgValue <= 25 && !labelUpper.includes('FEAR'))) {
+                            fgLabel = 'EXTREME FEAR';
+                        } else if (labelUpper.includes('FEAR') && !labelUpper.includes('EXTREME')) {
+                            fgLabel = 'FEAR';
+                        } else if (labelUpper.includes('NEUTRAL')) {
+                            fgLabel = 'NEUTRAL';
+                        } else if (labelUpper.includes('GREED') && !labelUpper.includes('EXTREME')) {
+                            fgLabel = 'GREED';
+                        } else if (labelUpper.includes('EXTREME GREED')) {
+                            fgLabel = 'EXTREME GREED';
+                        }
                     }
                     
                     // 更新顶部面板
@@ -6249,14 +6266,14 @@
                         updateFGIPanel(fgValue, fgLabel);
                     }
                     
-                    // 返回简洁的显示
+                    // CRITICAL FIX: 根據標準分級設置顏色
                     let fgColor = '#6b7280';
-                    if (fgValue > 0) {
-                        if (fgValue >= 75) fgColor = '#ef4444';
-                        else if (fgValue >= 55) fgColor = '#f59e0b';
-                        else if (fgValue >= 45) fgColor = '#6b7280';
-                        else if (fgValue >= 25) fgColor = '#10b981';
-                        else fgColor = '#ef4444';
+                    if (fgValue >= 0) {
+                        if (fgValue <= 25) fgColor = '#ef4444'; // EXTREME FEAR - 紅色
+                        else if (fgValue <= 45) fgColor = '#f59e0b'; // FEAR - 橙色
+                        else if (fgValue <= 55) fgColor = '#6b7280'; // NEUTRAL - 灰色
+                        else if (fgValue <= 75) fgColor = '#10b981'; // GREED - 綠色
+                        else fgColor = '#ef4444'; // EXTREME GREED - 紅色
                     }
                     
                     return `

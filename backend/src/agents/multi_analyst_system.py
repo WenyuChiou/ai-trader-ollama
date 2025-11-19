@@ -891,25 +891,50 @@ def run_multi_analyst_discussion(
                 if analyst_reports.get("market"):
                     market_report = analyst_reports["market"]
                     recs = market_report.get("recommended_stocks", [])
+                    print(f"   [DEBUG] Market Analyst recommended_stocks (raw): {recs} (type: {type(recs)})")
                     if recs:
                         if isinstance(recs, str):
                             recs = [s.strip() for s in recs.split(",") if s.strip()]
+                            print(f"   [DEBUG] Parsed recommended_stocks from string: {recs}")
                         elif not isinstance(recs, list):
+                            print(f"   [WARN] recommended_stocks is not a list or string: {type(recs)}")
                             recs = []
+                        else:
+                            print(f"   [DEBUG] recommended_stocks is already a list: {recs}")
+                        
                         # 确保推荐股票不在已有列表中，且不是ETF
                         for s in recs:
                             sym_upper = s.upper().strip()
-                            if sym_upper and sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
+                            if not sym_upper:
+                                continue
+                            print(f"   [DEBUG] Processing recommended stock: {sym_upper}")
+                            print(f"   [DEBUG]   - Already in existing_symbols: {sym_upper in existing_symbols}")
+                            print(f"   [DEBUG]   - Already in mandatory_symbols: {sym_upper in mandatory_symbols}")
+                            print(f"   [DEBUG]   - Is ETF: {is_etf(sym_upper)}")
+                            
+                            if sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
                                 # CRITICAL: 跳过ETF
                                 if is_etf(sym_upper):
                                     print(f"   [SKIP] Skipping ETF recommended stock for fundamental analysis: {sym_upper}")
                                     continue
                                 recommended_stocks.append(sym_upper)
+                                print(f"   [DEBUG]   ✓ Added to recommended_stocks list")
+                            else:
+                                print(f"   [DEBUG]   ✗ Skipped (already in existing or mandatory)")
+                    else:
+                        print(f"   [WARN] Market Analyst did not provide recommended_stocks (empty or None)")
+                else:
+                    print(f"   [WARN] Market Analyst report not found in analyst_reports")
+                
+                print(f"   [DEBUG] Final recommended_stocks list (non-ETF): {recommended_stocks}")
                 
                 # 添加推荐股票到必须分析列表
                 for sym in recommended_stocks:
-                    mandatory_symbols.append(sym)
-                    print(f"   [MANDATORY] Adding non-ETF recommended stock: {sym}")
+                    if sym not in mandatory_symbols:  # 避免重复添加
+                        mandatory_symbols.append(sym)
+                        print(f"   [MANDATORY] Adding non-ETF recommended stock: {sym}")
+                    else:
+                        print(f"   [DEBUG] Skipping duplicate recommended stock: {sym}")
                 
                 # 补充必须分析的symbols到tool_calls_list（如果还有预算）
                 # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count

@@ -79,7 +79,7 @@ risk_report = {
             "why": "To identify macroeconomic risks that could affect portfolio opportunities."
         },
         {
-            "name": "news_scan",
+            "name": "plan_and_scan_news",
             "args": {},
             "why": "To scan for risk-related news and analyze its impact, as part of the mandatory news analysis requirement."
         }

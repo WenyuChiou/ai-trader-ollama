@@ -503,7 +503,7 @@ def generate_html_report(output_path: Path) -> None:
                     
                     # Truncate very long results
                     # News tools get more space (5000 chars), others get 3000 chars
-                    is_news_tool = tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news", "business_rss"]
+                    is_news_tool = tool_name in ["plan_and_scan_news", "business_rss"]
                     max_length = 5000 if is_news_tool else 3000
                     if len(result_text) > max_length:
                         result_text = result_text[:max_length] + f"\n... (truncated, showing first {max_length} characters)"

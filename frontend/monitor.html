@@ -5814,8 +5814,13 @@
                             `;
                         } else {
                             // Show discussions (original behavior)
-                            if (entry_type !== 'discussion' || !analysisText) {
-                                return ''; // 跳过非discussion或没有analysis的entry
+                            // CRITICAL FIX: Allow discussion entries even if analysisText is empty (use content as fallback)
+                            if (entry_type !== 'discussion') {
+                                return ''; // 跳过非discussion的entry
+                            }
+                            // If no analysisText but has content, use content as fallback
+                            if (!analysisText && content) {
+                                analysisText = content;
                             }
                         }
                         

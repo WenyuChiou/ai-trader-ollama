@@ -2978,7 +2978,8 @@ python scripts/init_data.py
    - ✅ Invalid tool calls automatically filtered out
    - ✅ Tool restrictions enforced per analyst type
    - ✅ Mandatory tools automatically added (e.g., `plan_and_scan_news` for Sentiment Analyst)
-9. **Tool Result Deduplication**:
+
+10. **Tool Result Deduplication**:
    - ✅ Frontend automatically deduplicates tool results by tool name (keeps only latest result)
    - ✅ Prevents duplicate display of same tool results from different agents or rounds
    - ✅ Economic data panel deduplicates FRED indicators (e.g., `get_economic_summary` called by multiple agents)

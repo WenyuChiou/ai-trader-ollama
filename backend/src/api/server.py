@@ -1633,6 +1633,27 @@ async def system_init(force: bool = Query(False)):
                 file_path.unlink()
                 deleted.append(filename)
         
+        # CRITICAL FIX: 清理旧的备份文件（保留最近7天的备份）
+        # 这样可以避免备份文件积累过多
+        backup_files = list(logs_dir.glob("*backup*.json"))
+        if backup_files:
+            from datetime import timedelta
+            cutoff_date = datetime.now() - timedelta(days=7)
+            old_backups_deleted = 0
+            for backup_file in backup_files:
+                try:
+                    # 检查文件修改时间
+                    file_mtime = datetime.fromtimestamp(backup_file.stat().st_mtime)
+                    if file_mtime < cutoff_date:
+                        backup_file.unlink()
+                        old_backups_deleted += 1
+                        deleted.append(f"old_backup: {backup_file.name}")
+                except Exception as e:
+                    print(f"[INIT] Failed to delete old backup {backup_file.name}: {e}")
+            
+            if old_backups_deleted > 0:
+                print(f"[INIT] Deleted {old_backups_deleted} old backup files (older than 7 days)")
+        
         return JSONResponse(
             status_code=200,
             content={

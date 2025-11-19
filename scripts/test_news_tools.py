@@ -15,10 +15,11 @@ from typing import Dict, Any, List
 
 # 添加 backend 目录到路径
 ROOT = Path(__file__).resolve().parents[1]  # scripts/ -> backend/
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-if str(ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(ROOT / "src"))
+BACKEND_DIR = ROOT / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(BACKEND_DIR / "src") not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR / "src"))
 
 from src.tools.news_tools import news_scan, plan_and_scan_news
 from src.tools.jin10_tools import fetch_jin10_news
@@ -196,7 +197,8 @@ def main():
     results["fetch_jin10_news"] = test_fetch_jin10_news()
     
     # 保存测试结果
-    output_file = ROOT / "data" / "logs" / "news_test_results.json"
+    project_root = ROOT.parent  # backend/ -> project root
+    output_file = project_root / "data" / "logs" / "news_test_results.json"
     save_test_results(results, output_file)
     
     print("\n" + "="*60)

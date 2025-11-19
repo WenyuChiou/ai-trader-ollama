@@ -13,10 +13,11 @@ from typing import Dict, Any, List, Optional
 
 # 添加 backend 目录到路径
 ROOT = Path(__file__).resolve().parents[1]  # scripts/ -> backend/
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-if str(ROOT / "src") not in sys.path:
-    sys.path.insert(0, str(ROOT / "src"))
+BACKEND_DIR = ROOT / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(BACKEND_DIR / "src") not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR / "src"))
 
 from src.data.portfolio import Portfolio
 
@@ -96,7 +97,9 @@ def verify_portfolio():
     print("持仓记录验证")
     print("="*60)
     
-    logs_dir = ROOT / "data" / "logs"
+    # 使用项目根目录的 data/logs
+    project_root = ROOT.parent  # backend/ -> project root
+    logs_dir = project_root / "data" / "logs"
     portfolio_file = logs_dir / "portfolio_state.json"
     equity_file = logs_dir / "equity_history.jsonl"
     

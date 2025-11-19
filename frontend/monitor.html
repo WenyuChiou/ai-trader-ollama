@@ -4891,106 +4891,38 @@
                         }
                         
                         if (summaryText) {
-                            // CRITICAL FIX: For DiscussionCoordinator, format Markdown and limit height with scroll
+                            // CRITICAL FIX: For DiscussionCoordinator, use clean and simple formatting
                             if (agentName === 'DiscussionCoordinator') {
                                 // Escape HTML first
                                 let escapedText = escapeHtml(summaryText);
                                 
-                                // CRITICAL FIX: Handle numbered sections format (e.g., "1. Consensus Stance", "2. Key Insights")
-                                // Split by numbered sections first, then format each section
-                                const numberedSectionPattern = /^(\d+)\.\s+([\s\S]*?)(?=^\d+\.\s+|$)/gm;
-                                const sections = [];
-                                let lastIndex = 0;
-                                let match;
+                                // CRITICAL FIX: Clean and simple formatting - no complex parsing
+                                // Convert bold text (e.g., **Market Analyst**) to colored text
+                                escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<span style="color: #60a5fa; font-weight: 600;">$1</span>');
                                 
-                                // Find all numbered sections
-                                while ((match = numberedSectionPattern.exec(escapedText)) !== null) {
-                                    if (match.index > lastIndex) {
-                                        // Add content before this section
-                                        const beforeText = escapedText.substring(lastIndex, match.index).trim();
-                                        if (beforeText) {
-                                            sections.push({ type: 'text', content: beforeText });
-                                        }
-                                    }
-                                    sections.push({ 
-                                        type: 'section', 
-                                        number: match[1], 
-                                        title: match[2].split('\n')[0].trim(),
-                                        content: match[2].substring(match[2].split('\n')[0].length).trim()
-                                    });
-                                    lastIndex = match.index + match[0].length;
-                                }
+                                // Convert numbered sections (e.g., "1. Consensus Stance") to clean headers
+                                escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
                                 
-                                // Add remaining content after last section
-                                if (lastIndex < escapedText.length) {
-                                    const afterText = escapedText.substring(lastIndex).trim();
-                                    if (afterText) {
-                                        sections.push({ type: 'text', content: afterText });
-                                    }
-                                }
+                                // Convert bullet points to simple list items
+                                escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
                                 
-                                // If we found numbered sections, format them properly (simplified, no boxes)
-                                if (sections.length > 0 && sections.some(s => s.type === 'section')) {
-                                    let formattedHtml = '';
-                                    sections.forEach(section => {
-                                        if (section.type === 'section') {
-                                            // Format section header (simplified, no border/background)
-                                            formattedHtml += `<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 12px; margin-bottom: 6px;">${section.number}. ${section.title}</div>`;
-                                            
-                                            // Format section content (handle bullet points, sub-sections, etc.)
-                                            let sectionContent = section.content;
-                                            
-                                            // Convert bullet points within section (simplified)
-                                            sectionContent = sectionContent.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; color: #94a3b8;">• $1</div>');
-                                            
-                                            // Convert bold text (e.g., **Market Analyst**)
-                                            sectionContent = sectionContent.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
-                                            
-                                            // Convert line breaks
-                                            sectionContent = sectionContent.replace(/\n/g, '<br>');
-                                            
-                                            formattedHtml += `<div style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 12px;">${sectionContent}</div>`;
-                                        } else {
-                                            // Format regular text
-                                            let textContent = section.content;
-                                            textContent = textContent.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
-                                            textContent = textContent.replace(/\n/g, '<br>');
-                                            formattedHtml += `<div style="font-size: 12px; color: #cbd5e1; line-height: 1.6; margin-bottom: 8px;">${textContent}</div>`;
-                                        }
-                                    });
-                                    
-                                    // Add collapsible container with formatted content
-                                    const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                    html += `<div style="position: relative;">`;
-                                    html += `<div id="${containerId}" style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding: 12px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; max-height: 400px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${formattedHtml}</div>`;
-                                    html += `<div style="text-align: center; margin-top: 8px;">`;
-                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='400px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 4px 12px; cursor: pointer;">▼ Expand</button>`;
-                                    html += `</div>`;
-                                    html += `</div>`;
-                                } else {
-                                    // Fallback: Use original formatting for non-numbered content
-                                    // Convert Markdown headers to styled spans
-                                    escapedText = escapedText.replace(/^##\s+(.+)$/gm, '<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 12px; margin-bottom: 6px; padding-top: 8px; border-top: 1px solid rgba(34, 211, 238, 0.2);">$1</div>');
-                                    escapedText = escapedText.replace(/^###\s+(.+)$/gm, '<div style="font-size: 12px; font-weight: 600; color: #60a5fa; margin-top: 10px; margin-bottom: 4px;">$1</div>');
-                                    
-                                    // Convert bullet points to styled divs
-                                    escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; padding-left: 8px; border-left: 2px solid rgba(34, 211, 238, 0.3);">• $1</div>');
-                                    
-                                    // Convert numbered lists (non-section format)
-                                    escapedText = escapedText.replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; padding-left: 8px;">$1. $2</div>');
-                                    
-                                    // Convert double newlines to spacing
-                                    escapedText = escapedText.replace(/\n\n/g, '<div style="height: 8px;"></div>');
-                                    
-                                    // Add collapsible container with max height and scroll
-                                    const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                    html += `<div style="position: relative;">`;
-                                    html += `<div id="${containerId}" style="font-size: 12px; color: #cbd5e1; line-height: 1.6; padding: 12px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; max-height: 400px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
-                                    html += `<div style="text-align: center; margin-top: 8px;">`;
-                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='400px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 4px 12px; cursor: pointer;">▼ Expand</button>`;
-                                    html += `</div>`;
-                                    html += `</div>`;
-                                }
+                                // Convert double newlines to spacing
+                                escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
+                                
+                                // Convert single newlines to breaks
+                                escapedText = escapedText.replace(/\n/g, '<br>');
+                                
+                                // Clean up any remaining formatting issues
+                                escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                
+                                // Add clean container with scroll
+                                const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                html += `<div style="position: relative;">`;
+                                html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
+                                html += `<div style="text-align: center; margin-top: 10px;">`;
+                                html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
+                                html += `</div>`;
+                                html += `</div>`;
                             } else {
                                 html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px;">${escapeHtml(summaryText)}</div>`;
                             }

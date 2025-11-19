@@ -2999,8 +2999,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 # Restart service
 Restart-Service -Name AITraderAPI
 
-# Or use the service script
-powershell -ExecutionPolicy Bypass -File .\scripts\start_api_service.ps1
+# Or use the admin batch file (recommended)
+# Right-click: scripts\start_api_service_admin.bat
 # Then choose (R)estart
 ```
 
@@ -3015,9 +3015,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
 # Then choose (R)estart
 ```
 
-**Stable Start** (with auto-restart, but requires window open):
+**Quick Restart** (if API is running in a window):
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\restart_api_fast.ps1
 ```
 
 ### Run API in Background (Close CMD and Keep Running)
@@ -3043,7 +3043,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_stable_bypass.ps1
    **Method B**: Run in administrator PowerShell
    ```powershell
    # Open PowerShell as administrator, then run:
-   powershell -ExecutionPolicy Bypass -File .\scripts\start_api_service.ps1
+   # Right-click: scripts\start_api_service_admin.bat
+   # Or manually:
+   powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
    ```
    
    **Note**: The script will automatically install NSSM if not found.

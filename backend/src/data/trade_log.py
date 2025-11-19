@@ -2,7 +2,7 @@ from __future__ import annotations
 import json, time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TradeLogger:
@@ -46,7 +46,7 @@ class TradeLogger:
             "quantity": int(quantity),
             "amount": float(amount),
             "status": status,
-            "ts": timestamp or time.strftime("%Y-%m-%d %H:%M:%S"),
+            "ts": timestamp or datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         }
         
         if reason:
@@ -61,7 +61,7 @@ class TradeLogger:
     def log_trade_record(self, record: Dict[str, Any]) -> None:
         """记录完整的交易记录对象"""
         if "ts" not in record:
-            record["ts"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            record["ts"] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         with self.fp.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     

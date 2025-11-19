@@ -253,7 +253,7 @@ class MemoryManager:
             # Short-term memory: full storage
             memory = {
                 "date": date,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "metadata": {
                     "version": "2.0",
                     "compressed": False,
@@ -282,7 +282,7 @@ class MemoryManager:
             
             memory = {
                 "date": date,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "metadata": {
                     "version": "2.0",
                     "compressed": True,

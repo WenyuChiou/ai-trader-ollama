@@ -1027,12 +1027,24 @@ def run_multi_analyst_discussion(
             tool_results_summary = []
             if use_tools and tool_calls_list:
                 print(f"   [TOOL] Tools requested: {len(tool_calls_list)}")
-                # 增加每个analyst的工具使用限制：从3个增加到5个
-                max_tools_per_analyst = min(5, tool_budget - tool_calls_count)
-                for tool_call in tool_calls_list[:max_tools_per_analyst]:
-                    if tool_calls_count >= tool_budget:
-                        break
+                # CRITICAL FIX: Fundamental Analyst 必须分析所有推荐股票+持仓，不受工具预算限制
+                # 优先执行所有 get_company_fundamentals 工具调用（不受预算限制）
+                fundamental_tools = [tc for tc in tool_calls_list if tc.get("name") == "get_company_fundamentals"]
+                other_tools = [tc for tc in tool_calls_list if tc.get("name") != "get_company_fundamentals"]
+                
+                # 先执行所有基本面分析工具（不受预算限制），再执行其他工具（受预算限制）
+                prioritized_tool_calls = fundamental_tools + other_tools
+                print(f"   [FUNDAMENTAL] Found {len(fundamental_tools)} fundamental tools (不受预算限制) and {len(other_tools)} other tools")
+                
+                for tool_call in prioritized_tool_calls:
                     tool_name = tool_call.get("name", "unknown")
+                    is_fundamental_tool = tool_name == "get_company_fundamentals"
+                    
+                    # CRITICAL FIX: 基本面分析工具不受预算限制，其他工具受预算限制
+                    if not is_fundamental_tool and tool_calls_count >= tool_budget:
+                        print(f"   [BUDGET] Budget exhausted, skipping non-fundamental tool: {tool_name}")
+                        break
+                    
                     # 检查是否是记忆工具
                     memory_tools = ["get_recent_memories", "search_memories_by_symbol", "search_memories_by_date_range", 
                                    "get_weekly_memory_summary", "get_monthly_memory_summary", "search_similar_decisions"]
@@ -1041,7 +1053,10 @@ def run_multi_analyst_discussion(
                     if is_memory_tool:
                         print(f"   [MEMORY] 🔍 Executing memory tool: {tool_name}")
                     else:
-                        print(f"   [TOOL] Executing: {tool_name}")
+                        if is_fundamental_tool:
+                            print(f"   [FUNDAMENTAL] Executing fundamental tool: {tool_name} (不受预算限制)")
+                        else:
+                            print(f"   [TOOL] Executing: {tool_name}")
                     
                     # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
                     if tool_name == "news_scan":
@@ -1078,7 +1093,10 @@ def run_multi_analyst_discussion(
                             else:
                                 print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
                         else:
-                            print(f"   [OK] Tool {tool_name} executed successfully")
+                            if is_fundamental_tool:
+                                print(f"   [OK] Fundamental tool {tool_name} executed successfully (不受预算限制)")
+                            else:
+                                print(f"   [OK] Tool {tool_name} executed successfully")
                         tool_summary = _format_tool_result(tool_name, tool_result)
                         tool_results_summary.append(f"{tool_name}: {tool_summary}")
                     else:

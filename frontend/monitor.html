@@ -5544,15 +5544,17 @@
                                                 <div style="color: #cbd5e1;">${toolsList}</div>
                                             </div>`;
                                         } else {
-                                            // 如果没有找到工具结果，至少显示工具名称
+                                            // CRITICAL FIX: Deduplicate tools_used list before displaying
+                                            const uniqueTools = [...new Set(conv.tools_used || [])];
                                             toolsSummaryHtml = `<div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 12px;">
-                                                <strong style="color: #f59e0b;">🔧 Tools Used:</strong> ${conv.tools_used.join(', ')}
+                                                <strong style="color: #f59e0b;">🔧 Tools Used:</strong> ${uniqueTools.join(', ')}
                                             </div>`;
                                         }
                                     } else {
-                                        // 如果没有找到对应的 tool 条目，只显示工具名称列表
+                                        // CRITICAL FIX: Deduplicate tools_used list before displaying
+                                        const uniqueTools = [...new Set(conv.tools_used || [])];
                                         toolsSummaryHtml = `<div style="margin-top: 8px; padding: 10px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; border-left: 3px solid #f59e0b; font-size: 12px;">
-                                            <strong style="color: #f59e0b;">🔧 Tools Used:</strong> ${conv.tools_used.join(', ')}
+                                            <strong style="color: #f59e0b;">🔧 Tools Used:</strong> ${uniqueTools.join(', ')}
                                         </div>`;
                                     }
                                 }

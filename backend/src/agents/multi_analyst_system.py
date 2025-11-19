@@ -2024,12 +2024,49 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         print(f"   [INFO] Mapping tool name '{tool_name}' -> '{mapped_name}' (correct tool name)")
         tool_name = mapped_name
         tool_call["name"] = mapped_name  # Update the tool_call dict as well
+        
+        # CRITICAL FIX: 当映射到 plan_and_scan_news 时，清理和映射参数
+        if mapped_name == "plan_and_scan_news":
+            # 参数名映射
+            if "symbols" in tool_args and "tickers" not in tool_args:
+                tool_args["tickers"] = tool_args.pop("symbols")
+            if "count" in tool_args and "max_articles" not in tool_args:
+                tool_args["max_articles"] = tool_args.pop("count")
+            if "days" in tool_args and "recency_days" not in tool_args:
+                tool_args["recency_days"] = tool_args.pop("days")
+            if "recency" in tool_args and "recency_days" not in tool_args:
+                tool_args["recency_days"] = tool_args.pop("recency")
+            # 移除不支持的参数
+            supported_params = {"tickers", "mview", "preferred_domains", "recency_days", "max_articles", "fetch_body_top"}
+            tool_args = {k: v for k, v in tool_args.items() if k in supported_params}
     
     # 检查工具是否存在
     if tool_name not in toolbox.list():
         print(f"   [WARN] Tool {tool_name} not found in toolbox")
         print(f"   [INFO] Available tools: {', '.join(sorted(toolbox.list()))}")
         return {"ok": False, "error": f"Tool {tool_name} not available"}
+    
+    # CRITICAL FIX: 对于 plan_and_scan_news，确保参数正确（即使没有映射，也要清理参数）
+    if tool_name == "plan_and_scan_news":
+        # 参数名映射
+        if "symbols" in tool_args and "tickers" not in tool_args:
+            tool_args["tickers"] = tool_args.pop("symbols")
+            print(f"   [INFO] Mapped parameter 'symbols' -> 'tickers'")
+        if "count" in tool_args and "max_articles" not in tool_args:
+            tool_args["max_articles"] = tool_args.pop("count")
+            print(f"   [INFO] Mapped parameter 'count' -> 'max_articles'")
+        if "days" in tool_args and "recency_days" not in tool_args:
+            tool_args["recency_days"] = tool_args.pop("days")
+            print(f"   [INFO] Mapped parameter 'days' -> 'recency_days'")
+        if "recency" in tool_args and "recency_days" not in tool_args:
+            tool_args["recency_days"] = tool_args.pop("recency")
+            print(f"   [INFO] Mapped parameter 'recency' -> 'recency_days'")
+        # 移除不支持的参数
+        supported_params = {"tickers", "mview", "preferred_domains", "recency_days", "max_articles", "fetch_body_top"}
+        unsupported = [k for k in tool_args.keys() if k not in supported_params]
+        if unsupported:
+            print(f"   [INFO] Removing unsupported parameters: {unsupported}")
+            tool_args = {k: v for k, v in tool_args.items() if k in supported_params}
     
     try:
         result = toolbox.invoke(tool_name, **tool_args)

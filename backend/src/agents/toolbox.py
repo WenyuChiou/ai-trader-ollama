@@ -288,7 +288,22 @@ class ToolBox:
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """
         适配器：plan_and_scan_news 需要 tickers 和 mview 参数。
+        CRITICAL FIX: 处理参数名映射（LLM可能使用错误的参数名）
         """
+        # CRITICAL FIX: 参数名映射 - 将LLM可能使用的错误参数名转换为正确参数名
+        # symbols -> tickers
+        if "symbols" in kwargs and "tickers" not in kwargs:
+            kwargs["tickers"] = kwargs.pop("symbols")
+        # count -> max_articles
+        if "count" in kwargs and "max_articles" not in kwargs:
+            kwargs["max_articles"] = kwargs.pop("count")
+        # days -> recency_days
+        if "days" in kwargs and "recency_days" not in kwargs:
+            kwargs["recency_days"] = kwargs.pop("days")
+        # recency -> recency_days
+        if "recency" in kwargs and "recency_days" not in kwargs:
+            kwargs["recency_days"] = kwargs.pop("recency")
+        
         # 提取 tickers 参数（必需）
         tickers = kwargs.pop("tickers", None)
         if not tickers:
@@ -315,8 +330,12 @@ class ToolBox:
                 "stocks": kwargs.pop("stocks", {}),
             }
         
-        # 调用函数，传入必需的参数
-        return plan_and_scan_news(tickers=tickers, mview=mview, **kwargs)
+        # CRITICAL FIX: 移除所有不支持的参数，只保留支持的参数
+        supported_params = {"preferred_domains", "recency_days", "max_articles", "fetch_body_top"}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in supported_params}
+        
+        # 调用函数，传入必需的参数和过滤后的可选参数
+        return plan_and_scan_news(tickers=tickers, mview=mview, **filtered_kwargs)
 
     def _economic_summary_adapter(self, **kwargs) -> Dict[str, Any]:
         """

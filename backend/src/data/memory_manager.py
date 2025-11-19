@@ -465,22 +465,22 @@ class MemoryManager:
     
     def _compress_old_memories(self, days_threshold: Optional[int] = None) -> None:
         """
-        压缩旧记忆到 weekly/monthly 目录
-        周级别浓缩：只保留周一开始和周末的记录，其他天的记录删除
+        Compress old memories to weekly/monthly directories
+        Weekly compression: Keep only Monday and weekend records, delete other days
         """
         if days_threshold is None:
             days_threshold = self.medium_term_days
         
         cutoff_date = date.today() - timedelta(days=days_threshold)
         
-        # 按周分组记忆文件
+        # Group memory files by week
         weekly_groups: Dict[str, List[tuple[Path, date]]] = defaultdict(list)
         
         for memory_file in self.daily_dir.glob("*.json"):
             try:
                 memory_date = datetime.strptime(memory_file.stem, "%Y-%m-%d").date()
                 
-                # 只处理超过阈值的记忆
+                # Only process memories beyond threshold
                 if memory_date < cutoff_date:
                     week_str = f"{memory_date.isocalendar()[0]}-W{memory_date.isocalendar()[1]:02d}"
                     weekly_groups[week_str].append((memory_file, memory_date))
@@ -488,13 +488,13 @@ class MemoryManager:
                 print(f"[MEMORY WARN] Failed to parse date from {memory_file.stem}: {e}")
                 continue
         
-        # 处理每一周的记忆
+        # Process memories for each week
         for week_str, memory_files in weekly_groups.items():
             try:
-                # 按日期排序
+                # Sort by date
                 memory_files.sort(key=lambda x: x[1])
                 
-                # 找到周一和周末（周五或周六，取决于最后交易日）
+                # Find Monday and weekend (Friday or Saturday, depending on last trading day)
                 monday_record = None
                 weekend_record = None
                 other_records = []
@@ -506,16 +506,16 @@ class MemoryManager:
                         if monday_record is None:
                             monday_record = (memory_file, memory_date)
                     elif weekday >= 4:  # Friday or later (weekend)
-                        # 保留最后一个周末记录
+                        # Keep the last weekend record
                         weekend_record = (memory_file, memory_date)
                     else:
-                        # 其他天的记录
+                        # Other days' records
                         other_records.append((memory_file, memory_date))
                 
-                # 保存周级别浓缩记忆（只保留周一和周末）
+                # Save weekly compressed memory (keep only Monday and weekend)
                 weekly_file = self.weekly_dir / f"{week_str}.jsonl"
                 
-                # 读取现有的周级别记录（如果有）
+                # Read existing weekly records (if any)
                 existing_records = []
                 if weekly_file.exists():
                     try:
@@ -526,7 +526,7 @@ class MemoryManager:
                     except Exception:
                         pass
                 
-                # 创建新的周级别记录
+                # Create new weekly record
                 weekly_summary = {
                     "week": week_str,
                     "monday": None,
@@ -535,31 +535,31 @@ class MemoryManager:
                     "compressed_days": len(other_records),
                 }
                 
-                # 保存周一的记录
+                # Save Monday record
                 if monday_record:
                     memory_file, memory_date = monday_record
                     try:
                         with memory_file.open("r", encoding="utf-8") as f:
                             monday_memory = json.load(f)
                         weekly_summary["monday"] = self._create_compressed_memory(monday_memory)
-                        memory_file.unlink()  # 删除原始文件
+                        memory_file.unlink()  # Delete original file
                         print(f"[MEMORY] Compressed Monday {memory_date} to weekly archive")
                     except Exception as e:
                         print(f"[MEMORY WARN] Failed to compress Monday {memory_date}: {e}")
                 
-                # 保存周末的记录
+                # Save weekend record
                 if weekend_record:
                     memory_file, memory_date = weekend_record
                     try:
                         with memory_file.open("r", encoding="utf-8") as f:
                             weekend_memory = json.load(f)
                         weekly_summary["weekend"] = self._create_compressed_memory(weekend_memory)
-                        memory_file.unlink()  # 删除原始文件
+                        memory_file.unlink()  # Delete original file
                         print(f"[MEMORY] Compressed Weekend {memory_date} to weekly archive")
                     except Exception as e:
                         print(f"[MEMORY WARN] Failed to compress Weekend {memory_date}: {e}")
                 
-                # 删除其他天的记录（不保存）
+                # Delete other days' records (don't save)
                 for memory_file, memory_date in other_records:
                     try:
                         memory_file.unlink()

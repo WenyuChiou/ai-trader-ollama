@@ -74,5 +74,5 @@ pytest tests/integration/test_analysis_targets.py -v
 
 - [Analysis Targets Specification](ANALYSIS_TARGETS.md)
 - [Fundamental Analysis Guide](FUNDAMENTAL_ANALYSIS.md)
-- [News Integration Guide](NEWS_INTEGRATION_TEST_RESULTS.md)
+- [News Integration](TEST_SCRIPTS_GUIDE.md) - News tools testing guide
 

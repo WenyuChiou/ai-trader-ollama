@@ -2729,7 +2729,7 @@ python scripts/init_data.py
 - Refresh the browser page (F5 or Ctrl+R) to see the fix
 - All position fields should now display correctly
 
-**Related Documentation**: See [`docs/FRONTEND_POSITIONS_FIX.md`](docs/FRONTEND_POSITIONS_FIX.md)
+**Related Documentation**: See [`docs/FRONTEND_EQUITY_DISPLAY.md`](docs/FRONTEND_EQUITY_DISPLAY.md) for frontend display fixes
 
 ### News Display & Analysis Target Updates
 
@@ -2796,7 +2796,7 @@ python scripts/init_data.py
 - ✅ **Fixed**: Added `total_cost` and `cost_basis` fields
 - ✅ **Fixed**: Corrected `total_value = cash + equity_value` calculation
 
-**Related Documentation**: See [`docs/PORTFOLIO_PNL_FIX.md`](docs/PORTFOLIO_PNL_FIX.md)
+**Related Documentation**: See [`docs/RECORD_CONSISTENCY.md`](docs/RECORD_CONSISTENCY.md) for portfolio P&L calculation consistency rules
 
 ### API Endpoint Errors
 
@@ -2806,7 +2806,7 @@ python scripts/init_data.py
 - ✅ **Fixed**: Added `POST` method support to `/api/trading/check-pending-orders`
 - ✅ **Fixed**: VIX and Fear & Greed endpoints now return default values instead of 500 errors when data fetch fails
 
-**Related Documentation**: See [`docs/FRONTEND_CONSOLE_ERRORS_FIXED.md`](docs/FRONTEND_CONSOLE_ERRORS_FIXED.md)
+**Related Documentation**: See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for API endpoint troubleshooting
 
 ### Restart Backend API
 
@@ -3041,7 +3041,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 
 | File | Description |
 |------|-------------|
-| `docs/AGENT_SYSTEM.md` | Complete agent architecture |
+| `docs/AGENTS.md` | Complete agent architecture |
 | `docs/TOOLS.md` | Detailed documentation for all 29 tools (23 market + 6 memory) |
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |

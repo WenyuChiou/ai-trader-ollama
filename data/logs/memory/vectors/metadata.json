@@ -1,5 +1,5 @@
-{
-  "2025-11-18": {
+[
+  {
     "date": "2025-11-18",
     "stance": "bullish",
     "stocks_involved": [],
@@ -26,7 +26,6 @@
       "KDP"
     ],
     "action": "HOLD",
-    "risk_level": "low",
-    "memory_type": "short_term"
+    "risk_level": "low"
   }
-}
+]

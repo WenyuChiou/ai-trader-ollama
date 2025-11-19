@@ -150,7 +150,7 @@ python -c "import json; config = json.load(open('backend/config/config.json')); 
 
 ## 相关文档
 
-- [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) - 详细优化改动
-- [`docs/AGENT_LOOP_EXECUTION_REPORT.md`](docs/AGENT_LOOP_EXECUTION_REPORT.md) - 执行结果报告
-- [`docs/OPTIMIZATION_RESULTS.md`](docs/OPTIMIZATION_RESULTS.md) - 性能改进指标
+- [Agent Loop Optimization Changes](AGENT_LOOP_OPTIMIZATION_CHANGES.md) - Detailed optimization changes
+- [Agent Loop Execution Report](AGENT_LOOP_EXECUTION_REPORT.md) - Execution results report
+- [Optimization Results](OPTIMIZATION_RESULTS.md) - Performance improvement metrics
 

@@ -438,9 +438,9 @@ def _format_discussion_history(discussion_history):
 
 ## 📚 相关文档
 
-- [Agent Architecture Optimization](docs/AGENT_ARCHITECTURE_OPTIMIZATION.md)
-- [Optimization Results](docs/OPTIMIZATION_RESULTS.md)
-- [Test Results](docs/TEST_RESULTS.md)
+- [Architecture Documentation](ARCHITECTURE.md)
+- [Optimization Results](OPTIMIZATION_RESULTS.md)
+- [Test Results](TEST_RESULTS.md)
 
 ---
 

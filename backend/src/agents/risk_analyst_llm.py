@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Dict, Any, Optional
 from pathlib import Path
 import json
+from ..utils.json_serializer import make_json_serializable
 
 
 def run_risk_analyst_llm(

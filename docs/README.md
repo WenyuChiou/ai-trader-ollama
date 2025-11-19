@@ -85,7 +85,7 @@ This directory contains all detailed documentation for the AI-Trader Ollama syst
 
 ## ⏰ Trading Hours Logic
 
-- **[Trading Hours Logic](../backend/docs/TRADING_HOURS_LOGIC.md)** - Pre-market, market hours, and after-hours logic
+- **[Market Status Mechanism](MARKET_STATUS_MECHANISM.md)** - Pre-market, market hours, and after-hours logic
   - Pre-market behavior (00:00 - 9:30 AM)
   - Market hours behavior (9:30 AM - 4:00 PM)
   - After-hours behavior (4:00 PM - 00:00)

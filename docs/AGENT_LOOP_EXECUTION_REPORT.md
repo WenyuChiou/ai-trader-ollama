@@ -346,9 +346,9 @@
 
 ## 📚 相关文档
 
-- [Agent Loop Optimization Changes](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md)
-- [Optimization Results](docs/OPTIMIZATION_RESULTS.md)
-- [Test Results](docs/TEST_RESULTS.md)
+- [Agent Loop Optimization Changes](AGENT_LOOP_OPTIMIZATION_CHANGES.md)
+- [Optimization Results](OPTIMIZATION_RESULTS.md)
+- [Test Results](TEST_RESULTS.md)
 
 ---
 

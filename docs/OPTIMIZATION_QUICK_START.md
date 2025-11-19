@@ -69,7 +69,7 @@
 
 ## 详细文档
 
-- [`docs/HOW_TO_ENABLE_OPTIMIZATIONS.md`](docs/HOW_TO_ENABLE_OPTIMIZATIONS.md) - 完整启用指南
-- [`docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md`](docs/AGENT_LOOP_OPTIMIZATION_CHANGES.md) - 优化改动详情
-- [`docs/OPTIMIZATION_RESULTS.md`](docs/OPTIMIZATION_RESULTS.md) - 性能改进指标
+- [How to Enable Optimizations](HOW_TO_ENABLE_OPTIMIZATIONS.md) - Complete enablement guide
+- [Agent Loop Optimization Changes](AGENT_LOOP_OPTIMIZATION_CHANGES.md) - Optimization change details
+- [Optimization Results](OPTIMIZATION_RESULTS.md) - Performance improvement metrics
 

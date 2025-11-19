@@ -1,4 +1,8 @@
 # src/agents/factory.py
+"""
+Agent factory for creating agent instances from configuration.
+This is a stable core module used by other agent implementations.
+"""
 from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Tuple

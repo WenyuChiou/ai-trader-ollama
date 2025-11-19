@@ -1,4 +1,8 @@
 # src/agents/base.py
+"""
+Base agent classes and utilities.
+This is a stable core module used by other agent implementations.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

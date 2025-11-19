@@ -1,4 +1,10 @@
 # src/agents/market_analyst.py
+"""
+DEPRECATED: This module is kept for backward compatibility.
+The main trading system now uses multi_analyst_system.py for market analysis.
+Note: trading_cycle.py uses src.tools.market_analyst, not this file.
+This file may be removed in a future version.
+"""
 from __future__ import annotations
 from typing import Dict, Any
 

@@ -1,3 +1,8 @@
+"""
+DEPRECATED: This module is kept for backward compatibility.
+The main trading system now uses risk_analyst_llm.py (LLM-powered Risk Analyst).
+This file may be removed in a future version.
+"""
 from __future__ import annotations
 from typing import Dict, Any, Optional
 from ..tools.analysis_tools import risk_score

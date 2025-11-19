@@ -1,4 +1,9 @@
 # src/agents/market_agent.py
+"""
+DEPRECATED: This module is kept for backward compatibility.
+The main trading system now uses multi_analyst_system.py for market analysis.
+This file may be removed in a future version.
+"""
 from __future__ import annotations
 from typing import Dict, Any, Iterable
 

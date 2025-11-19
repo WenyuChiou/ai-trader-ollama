@@ -773,6 +773,25 @@ def execute_daily_trade(
             elif tool_name in ["fetch_crypto_batch", "get_crypto_price"]:
                 tool_category = "crypto"
             
+            # CRITICAL FIX: 对于 get_company_fundamentals，确保 tool_result 包含 symbol（即使结果被截断）
+            tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
+            if tool_name == "get_company_fundamentals" and isinstance(actual_result, dict):
+                # 确保 symbol 字段存在（即使结果被截断，也要保留 symbol）
+                if "symbol" not in tool_result_data:
+                    # 尝试从 actual_result 中提取 symbol
+                    symbol = actual_result.get("symbol") or actual_result.get("Symbol")
+                    if symbol:
+                        tool_result_data["symbol"] = symbol
+                    # 如果 actual_result 被截断了，尝试从 content 中提取
+                    elif "symbol" in result_text:
+                        try:
+                            import re
+                            symbol_match = re.search(r'"symbol"\s*:\s*"([^"]+)"', result_text)
+                            if symbol_match:
+                                tool_result_data["symbol"] = symbol_match.group(1)
+                        except:
+                            pass
+            
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "date": trade_date_str,
@@ -782,7 +801,7 @@ def execute_daily_trade(
                 "type": "tool",
                 "tool_name": tool_name,
                 "tool_category": tool_category,  # CRITICAL FIX: 添加工具分类
-                "tool_result": actual_result if isinstance(actual_result, dict) else {"raw": result_text},  # CRITICAL FIX: 添加工具结果（结构化数据）
+                "tool_result": tool_result_data,  # CRITICAL FIX: 添加工具结果（结构化数据，确保包含 symbol）
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")

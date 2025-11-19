@@ -56,8 +56,9 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 ### Core Philosophy
 
 1. **Multi-perspective Analysis**: Different agents analyze the market from their specialized viewpoints
-2. **Tool Diversity**: 29 tools provide comprehensive market coverage (23 market tools + 6 memory tools)
-3. **RAG Memory System**: Agents automatically retrieve historical memories before making decisions
+2. **Tool Diversity**: 27 tools provide comprehensive market coverage (21 market tools + 6 memory tools)
+3. **Tool Filtering & Validation**: System automatically filters invalid tool calls and enforces restrictions per analyst type
+4. **RAG Memory System**: Agents automatically retrieve historical memories before making decisions
 4. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
 5. **Risk-First Approach**: Every decision passes through risk analysis
 6. **Transparency**: All reasoning is logged and visible
@@ -902,13 +903,18 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 
 ---
 
-## 🛠️ Tool Suite (28 Tools)
+## 🛠️ Tool Suite (27 Tools)
 
-The system includes **28 advanced tools** organized into two categories:
-- **22 Market Analysis Tools**: Real-time data, technical indicators, fundamental data, news, and economic indicators
+The system includes **27 advanced tools** organized into two categories:
+- **21 Market Analysis Tools**: Real-time data, technical indicators, fundamental data, news, and economic indicators
 - **6 Memory/RAG Tools**: Historical memory retrieval for learning from past trading decisions
 
-**Note**: `news_scan` has been removed. Use `plan_and_scan_news` instead (includes LLM-generated summaries and keywords).
+**Tool Usage Rules**:
+- **Tool Budget**: Shared across all analysts (default: 15 calls per cycle)
+- **Tool Filtering**: System automatically filters invalid tool calls and enforces restrictions
+- **Tool Validation**: All tool calls are validated before execution (must have valid `name` field)
+- **News Tools**: `news_scan` has been removed. Use `plan_and_scan_news` instead (includes LLM-generated summaries and keywords)
+- **Automatic Conversion**: If LLM requests deprecated `news_scan`, it's automatically converted to `plan_and_scan_news`
 
 ### 🧠 Memory/RAG Tools (6 Tools)
 

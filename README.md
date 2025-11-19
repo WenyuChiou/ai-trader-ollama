@@ -2984,7 +2984,8 @@ python scripts/init_data.py
    - ✅ Prevents duplicate display of same tool results from different agents or rounds
    - ✅ Economic data panel deduplicates FRED indicators (e.g., `get_economic_summary` called by multiple agents)
    - ✅ Conversation panel deduplicates tool summaries to show unique tools only
-10. **Cryptocurrency Filtering**:
+
+11. **Cryptocurrency Filtering**:
    - ✅ Cryptocurrency symbols (DOGE, BTC, ETH, etc.) automatically filtered from stock analysis
    - ✅ Prevents errors when crypto symbols are mistakenly included in stock recommendations
    - ✅ System focuses on traditional stocks and ETFs only

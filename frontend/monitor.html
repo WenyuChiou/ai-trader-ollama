@@ -5754,24 +5754,31 @@
                                 }
                             }
                             
-                            // 清理杂讯：移除 "Requested tool:" 开头的占位文本
-                            if (analysisText.startsWith('Requested tool:')) {
+                            // CRITICAL FIX: Don't clear if it starts with "Requested tool:" - it might be valid content
+                            // Only clear if it's clearly a placeholder (very short)
+                            if (analysisText.startsWith('Requested tool:') && analysisText.length < 50) {
                                 analysisText = '';
                             }
                             
                             // 清理：移除 JSON 代码块标记和多余的格式
                             analysisText = analysisText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
                             
-                            // 清理：移除 JSON 格式内容（如果存在）
+                            // CRITICAL FIX: Don't remove JSON content - it may be the actual analysis (e.g., Technical Analyst)
+                            // Only try to extract text after JSON if JSON is clearly a wrapper and there's substantial text after it
                             if (analysisText.includes('{') && analysisText.includes('"stance"')) {
-                                // 尝试提取 JSON 后的实际分析文本
+                                // Try to extract text after JSON only if there's substantial content after it
                                 const jsonEnd = analysisText.lastIndexOf('}');
-                                if (jsonEnd > 0 && jsonEnd < analysisText.length - 50) {
-                                    // 如果 JSON 后面还有文本，使用后面的文本
-                                    const afterJson = analysisText.substring(jsonEnd + 1).trim();
-                                    if (afterJson.length > 50) {
-                                        analysisText = afterJson;
+                                if (jsonEnd > 0 && jsonEnd < analysisText.length - 100) {
+                                    // Only if JSON is clearly a wrapper (less than 30% of total length) and there's substantial text after
+                                    const jsonLength = jsonEnd + 1;
+                                    const totalLength = analysisText.length;
+                                    if (jsonLength < totalLength * 0.3) {
+                                        const afterJson = analysisText.substring(jsonEnd + 1).trim();
+                                        if (afterJson.length > 100) {
+                                            analysisText = afterJson;
+                                        }
                                     }
+                                    // Otherwise, keep the JSON as it may be the actual analysis content
                                 }
                             }
                             

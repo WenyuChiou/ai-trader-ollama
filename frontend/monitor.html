@@ -4599,7 +4599,7 @@
             console.log('  Required analysts:', requiredAnalysts);
             console.log('  All analystNames:', analystNames);
             
-            // CRITICAL FIX: Debug TraderAgent and RiskAnalyst specifically
+            // CRITICAL FIX: Debug TraderAgent, RiskAnalyst, and FundamentalAnalyst specifically
             const traderAgentConvs = conversations.filter(c => 
                 c.type === 'discussion' && 
                 (c.round === 0 || c.round === '0') && 
@@ -4609,6 +4609,10 @@
                 c.type === 'discussion' && 
                 (c.round === 0 || c.round === '0') && 
                 c.agent === 'RiskAnalyst'
+            );
+            const fundamentalAnalystConvs = conversations.filter(c => 
+                c.type === 'discussion' && 
+                c.agent === 'FundamentalAnalyst'
             );
             console.log('  TraderAgent conversations found:', traderAgentConvs.length);
             if (traderAgentConvs.length > 0) {
@@ -4625,8 +4629,19 @@
                     hasSummary: !!riskAnalystConvs[riskAnalystConvs.length - 1].summary,
                     hasContent: !!riskAnalystConvs[riskAnalystConvs.length - 1].content,
                     summaryLength: riskAnalystConvs[riskAnalystConvs.length - 1].summary?.length || 0,
-                    contentLength: riskAnalystConvs[riskAnalystConvs.length - 1].content?.length || 0
+                    contentLength: riskAnalystConvs[riskAnalystConvs.length - 1].content?.length || 0,
+                    hasRiskReport: !!riskAnalystConvs[riskAnalystConvs.length - 1].risk_report
                 });
+            }
+            console.log('  FundamentalAnalyst conversations found:', fundamentalAnalystConvs.length);
+            if (fundamentalAnalystConvs.length > 0) {
+                console.log('    All FundamentalAnalyst entries:', fundamentalAnalystConvs.map(c => ({
+                    round: c.round,
+                    hasSummary: !!c.summary,
+                    hasContent: !!c.content,
+                    summaryLength: c.summary?.length || 0,
+                    contentLength: c.content?.length || 0
+                })));
             }
             
             if (missingAnalysts.length > 0) {
@@ -4901,8 +4916,11 @@
                                         
                                         // 顯示 Consensus Stance（始終展開）
                                         if (sections.consensusStance) {
+                                            // Extract just the stance value (e.g., "BULLISH", "NEUTRAL") for title
+                                            const stanceMatch = sections.consensusStance.match(/^([A-Z]+(?:\s+[A-Z]+)*)/);
+                                            const stanceValue = stanceMatch ? stanceMatch[1] : sections.consensusStance.substring(0, 50);
                                             html += formatCollapsibleSection(
-                                                `🎯 Consensus Stance: ${sections.consensusStance}`,
+                                                `🎯 Consensus Stance: ${stanceValue}`,
                                                 sections.consensusStance,
                                                 `${containerId}-stance`,
                                                 true
@@ -9021,81 +9039,133 @@
                 overall: ''
             };
             
-            // 提取 Consensus Stance（支持多種格式）
-            const stancePatterns = [
-                /(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([A-Z]+(?:\s+[A-Z]+)*)/i,
-                /(?:Consensus\s+Stance)[\s:]*([A-Z]+(?:\s+[A-Z]+)*)/i
+            // CRITICAL FIX: 首先嘗試匹配編號格式（"1. Consensus Stance", "2. Key Insights" 等）
+            // 這是更常見的格式
+            const numberedPatterns = [
+                // 匹配 "1. Consensus Stance" 格式
+                /(?:^|\n)\s*1\.\s*(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([\s\S]*?)(?=(?:^|\n)\s*2\.|$)/i,
+                // 匹配 "2. Key Insights" 格式
+                /(?:^|\n)\s*2\.\s*Key\s+Insights?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*3\.|$)/i,
+                // 匹配 "3. Consensus Areas" 格式
+                /(?:^|\n)\s*3\.\s*Consensus\s+Areas?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*4\.|$)/i,
+                // 匹配 "4. Disagreements" 格式
+                /(?:^|\n)\s*4\.\s*Disagreements?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*5\.|$)/i,
+                // 匹配 "5. Recommended Stocks" 格式
+                /(?:^|\n)\s*5\.\s*Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=(?:^|\n)\s*6\.|$)/i,
+                // 匹配 "6. Final Summary" 格式
+                /(?:^|\n)\s*6\.\s*Final\s+Summary[\s:]*([\s\S]*?)(?=(?:^|\n)\s*\d+\.|$)/i
             ];
-            for (const pattern of stancePatterns) {
-                const match = cleanText.match(pattern);
-                if (match) {
-                    sections.consensusStance = match[1].trim();
-                    break;
+            
+            const numberedMatches = [
+                cleanText.match(numberedPatterns[0]), // Consensus Stance
+                cleanText.match(numberedPatterns[1]), // Key Insights
+                cleanText.match(numberedPatterns[2]), // Consensus Areas
+                cleanText.match(numberedPatterns[3]), // Disagreements
+                cleanText.match(numberedPatterns[4]), // Recommended Stocks
+                cleanText.match(numberedPatterns[5])  // Final Summary
+            ];
+            
+            if (numberedMatches[0] && numberedMatches[0][1]) {
+                sections.consensusStance = numberedMatches[0][1].trim();
+            }
+            if (numberedMatches[1] && numberedMatches[1][1]) {
+                sections.keyInsights = numberedMatches[1][1].trim();
+            }
+            if (numberedMatches[2] && numberedMatches[2][1]) {
+                sections.consensusAreas = numberedMatches[2][1].trim();
+            }
+            if (numberedMatches[3] && numberedMatches[3][1]) {
+                sections.disagreements = numberedMatches[3][1].trim();
+            }
+            if (numberedMatches[4] && numberedMatches[4][1]) {
+                sections.recommendedStocks = numberedMatches[4][1].trim();
+            }
+            if (numberedMatches[5] && numberedMatches[5][1]) {
+                sections.finalSummary = numberedMatches[5][1].trim();
+            }
+            
+            // 如果編號格式沒有匹配到，嘗試非編號格式
+            if (!sections.consensusStance) {
+                const stancePatterns = [
+                    /(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([A-Z]+(?:\s+[A-Z]+)*)/i,
+                    /(?:Consensus\s+Stance)[\s:]*([A-Z]+(?:\s+[A-Z]+)*)/i
+                ];
+                for (const pattern of stancePatterns) {
+                    const match = cleanText.match(pattern);
+                    if (match) {
+                        sections.consensusStance = match[1].trim();
+                        break;
+                    }
                 }
             }
             
-            // 提取 Key Insights（改進正則表達式，更準確地匹配）
-            const keyInsightsPatterns = [
-                /(?:Key\s+Insights?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Consensus\s+Areas?|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall)|Consensus\s+Areas?|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
-                /Key\s+Insights?[\s:]*([\s\S]*?)(?=Consensus\s+Areas?|Disagreements?|Recommended|Final|Overall|$)/i
-            ];
-            for (const pattern of keyInsightsPatterns) {
-                const match = cleanText.match(pattern);
-                if (match && match[1].trim().length > 20) {
-                    sections.keyInsights = match[1].trim();
-                    break;
+            if (!sections.keyInsights) {
+                const keyInsightsPatterns = [
+                    /(?:Key\s+Insights?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Consensus\s+Areas?|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall)|Consensus\s+Areas?|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
+                    /Key\s+Insights?[\s:]*([\s\S]*?)(?=Consensus\s+Areas?|Disagreements?|Recommended|Final|Overall|$)/i
+                ];
+                for (const pattern of keyInsightsPatterns) {
+                    const match = cleanText.match(pattern);
+                    if (match && match[1].trim().length > 20) {
+                        sections.keyInsights = match[1].trim();
+                        break;
+                    }
                 }
             }
             
-            // 提取 Consensus Areas
-            const consensusAreasPatterns = [
-                /(?:Consensus\s+Areas?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall)|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
-                /Consensus\s+Areas?[\s:]*([\s\S]*?)(?=Disagreements?|Recommended|Final|Overall|$)/i
-            ];
-            for (const pattern of consensusAreasPatterns) {
-                const match = cleanText.match(pattern);
-                if (match && match[1].trim().length > 20) {
-                    sections.consensusAreas = match[1].trim();
-                    break;
+            if (!sections.consensusAreas) {
+                const consensusAreasPatterns = [
+                    /(?:Consensus\s+Areas?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall)|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
+                    /Consensus\s+Areas?[\s:]*([\s\S]*?)(?=Disagreements?|Recommended|Final|Overall|$)/i
+                ];
+                for (const pattern of consensusAreasPatterns) {
+                    const match = cleanText.match(pattern);
+                    if (match && match[1].trim().length > 20) {
+                        sections.consensusAreas = match[1].trim();
+                        break;
+                    }
                 }
             }
             
-            // 提取 Disagreements
-            const disagreementsPatterns = [
-                /(?:Disagreements?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Recommended\s+Stocks?|Final\s+Summary|Overall)|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
-                /Disagreements?[\s:]*([\s\S]*?)(?=Recommended|Final|Overall|$)/i
-            ];
-            for (const pattern of disagreementsPatterns) {
-                const match = cleanText.match(pattern);
-                if (match && match[1].trim().length > 20) {
-                    sections.disagreements = match[1].trim();
-                    break;
+            if (!sections.disagreements) {
+                const disagreementsPatterns = [
+                    /(?:Disagreements?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Recommended\s+Stocks?|Final\s+Summary|Overall)|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
+                    /Disagreements?[\s:]*([\s\S]*?)(?=Recommended|Final|Overall|$)/i
+                ];
+                for (const pattern of disagreementsPatterns) {
+                    const match = cleanText.match(pattern);
+                    if (match && match[1].trim().length > 20) {
+                        sections.disagreements = match[1].trim();
+                        break;
+                    }
                 }
             }
             
-            // 提取 Recommended Stocks
-            const recommendedPatterns = [
-                /(?:Recommended\s+Stocks?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Final\s+Summary|Overall)|Final\s+Summary|Overall|$)/i,
-                /Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=Final|Overall|$)/i
-            ];
-            for (const pattern of recommendedPatterns) {
-                const match = cleanText.match(pattern);
-                if (match && match[1].trim().length > 20) {
-                    sections.recommendedStocks = match[1].trim();
-                    break;
+            if (!sections.recommendedStocks) {
+                const recommendedPatterns = [
+                    /(?:Recommended\s+Stocks?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Final\s+Summary|Overall)|Final\s+Summary|Overall|$)/i,
+                    /Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=Final|Overall|$)/i
+                ];
+                for (const pattern of recommendedPatterns) {
+                    const match = cleanText.match(pattern);
+                    if (match && match[1].trim().length > 20) {
+                        sections.recommendedStocks = match[1].trim();
+                        break;
+                    }
                 }
             }
             
-            // 提取 Final Summary
-            const finalSummaryPatterns = [
-                /(?:Final\s+Summary)[\s:]*([\s\S]*?)(?=\d+\.\s*Overall|Overall|$)/i,
-                /Final\s+Summary[\s:]*([\s\S]*?)(?=Overall|$)/i
-            ];
-            for (const pattern of finalSummaryPatterns) {
-                const match = cleanText.match(pattern);
-                if (match && match[1].trim().length > 20) {
-                    sections.finalSummary = match[1].trim();
-                    break;
+            if (!sections.finalSummary) {
+                const finalSummaryPatterns = [
+                    /(?:Final\s+Summary)[\s:]*([\s\S]*?)(?=\d+\.\s*Overall|Overall|$)/i,
+                    /Final\s+Summary[\s:]*([\s\S]*?)(?=Overall|$)/i
+                ];
+                for (const pattern of finalSummaryPatterns) {
+                    const match = cleanText.match(pattern);
+                    if (match && match[1].trim().length > 20) {
+                        sections.finalSummary = match[1].trim();
+                        break;
+                    }
                 }
             }
             
@@ -9107,8 +9177,8 @@
             
             // 提取開頭介紹（在 Consensus Stance 或 Key Insights 之前）
             const introPatterns = [
-                /^([\s\S]*?)(?=Consensus\s+Stance|Key\s+Insights)/i,
-                /^([\s\S]*?)(?=\d+\.\s*(?:Consensus|Key|Consensus\s+Areas))/i
+                /^([\s\S]*?)(?=\d+\.\s*(?:Consensus\s+Stance|Consensus|Stance|Key\s+Insights)|Consensus\s+Stance|Key\s+Insights)/i,
+                /^([\s\S]*?)(?=1\.\s*(?:Consensus|Key|Consensus\s+Areas))/i
             ];
             for (const pattern of introPatterns) {
                 const match = cleanText.match(pattern);

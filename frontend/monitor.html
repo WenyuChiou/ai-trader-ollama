@@ -5757,8 +5757,9 @@
                                 }
                             }
                             
-                            // 如果清理后为空或太短，不显示
-                            if (analysisText.length < 30) {
+                            // CRITICAL FIX: Don't clear analysisText if it's too short - allow short summaries to display
+                            // Only clear if it's truly empty or just whitespace
+                            if (analysisText.trim().length === 0) {
                                 analysisText = '';
                             }
                             

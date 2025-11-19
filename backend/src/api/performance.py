@@ -317,6 +317,109 @@ def _calculate_statistics(
     # Count trading days
     trading_days = len(set(r.get("date") or (r.get("timestamp", "").split("T")[0] if r.get("timestamp") else "") for r in equity_history))
     
+    # Calculate Sortino ratio (downside risk-adjusted return)
+    sortino_ratio = None
+    if len(equity_history) > 1:
+        returns = []
+        for i in range(1, len(equity_history)):
+            prev_value = float(equity_history[i-1].get("total_value", 0.0))
+            curr_value = float(equity_history[i].get("total_value", 0.0))
+            if prev_value > 0:
+                daily_return = (curr_value - prev_value) / prev_value
+                returns.append(daily_return)
+        
+        if returns:
+            try:
+                import statistics
+                avg_return = statistics.mean(returns)
+                # Calculate downside deviation (only negative returns)
+                downside_returns = [r for r in returns if r < 0]
+                if downside_returns:
+                    downside_dev = statistics.stdev(downside_returns) if len(downside_returns) > 1 else 0.0
+                    sortino_ratio = (avg_return / downside_dev * (252 ** 0.5)) if downside_dev > 0 else 0.0  # Annualized
+                else:
+                    sortino_ratio = float('inf') if avg_return > 0 else 0.0  # No downside, perfect ratio
+            except (ImportError, ValueError):
+                if len(returns) > 1:
+                    avg_return = sum(returns) / len(returns)
+                    downside_returns = [r for r in returns if r < 0]
+                    if downside_returns:
+                        downside_avg = sum(downside_returns) / len(downside_returns)
+                        downside_variance = sum((x - downside_avg) ** 2 for x in downside_returns) / (len(downside_returns) - 1)
+                        downside_dev = downside_variance ** 0.5
+                        sortino_ratio = (avg_return / downside_dev * (252 ** 0.5)) if downside_dev > 0 else 0.0
+                    else:
+                        sortino_ratio = float('inf') if avg_return > 0 else 0.0
+    
+    # Calculate Calmar ratio (return / max drawdown)
+    calmar_ratio = None
+    if annualized_return_pct and max_drawdown_pct > 0:
+        calmar_ratio = annualized_return_pct / max_drawdown_pct
+    
+    # Calculate average holding period from trades
+    avg_holding_period = None
+    if sell_orders:
+        holding_periods = []
+        for sell_order in sell_orders:
+            symbol = sell_order.get("symbol")
+            if not symbol:
+                continue
+            
+            # Find corresponding buy order
+            buy_orders_for_symbol = [o for o in filled_orders if o.get("symbol") == symbol and o.get("action") == "BUY"]
+            if not buy_orders_for_symbol:
+                continue
+            
+            # Get most recent buy order before this sell
+            sell_timestamp = sell_order.get("filled_at") or sell_order.get("placed_at")
+            if not sell_timestamp:
+                continue
+            
+            try:
+                sell_date = datetime.fromisoformat(sell_timestamp.replace("Z", "+00:00"))
+                buy_dates = []
+                for buy_order in buy_orders_for_symbol:
+                    buy_timestamp = buy_order.get("filled_at") or buy_order.get("placed_at")
+                    if buy_timestamp:
+                        try:
+                            buy_date = datetime.fromisoformat(buy_timestamp.replace("Z", "+00:00"))
+                            if buy_date < sell_date:
+                                buy_dates.append(buy_date)
+                        except (ValueError, TypeError):
+                            continue
+                
+                if buy_dates:
+                    # Use most recent buy date
+                    most_recent_buy = max(buy_dates)
+                    holding_days = (sell_date - most_recent_buy).days
+                    if holding_days > 0:
+                        holding_periods.append(holding_days)
+            except (ValueError, TypeError):
+                continue
+        
+        if holding_periods:
+            avg_holding_period = sum(holding_periods) / len(holding_periods)
+    
+    # Find best and worst trades
+    best_trade = None
+    worst_trade = None
+    if sell_orders:
+        trades_with_pnl = [(o, float(o.get("realized_pnl", 0.0))) for o in sell_orders if o.get("realized_pnl") is not None]
+        if trades_with_pnl:
+            trades_with_pnl.sort(key=lambda x: x[1], reverse=True)
+            best_trade = {
+                "symbol": trades_with_pnl[0][0].get("symbol"),
+                "realized_pnl": trades_with_pnl[0][1],
+                "realized_pnl_pct": trades_with_pnl[0][0].get("realized_pnl_pct", 0.0),
+                "filled_at": trades_with_pnl[0][0].get("filled_at") or trades_with_pnl[0][0].get("placed_at")
+            }
+            worst_trade = {
+                "symbol": trades_with_pnl[-1][0].get("symbol"),
+                "realized_pnl": trades_with_pnl[-1][1],
+                "realized_pnl_pct": trades_with_pnl[-1][0].get("realized_pnl_pct", 0.0),
+                "filled_at": trades_with_pnl[-1][0].get("filled_at") or trades_with_pnl[-1][0].get("placed_at")
+            }
+    
     return {
         "initial_value": initial_value,
         "current_value": current_value,
@@ -332,6 +435,11 @@ def _calculate_statistics(
         "total_realized_pnl": round(total_realized_pnl, 2),
         "avg_trade_return": round(avg_trade_return, 2),
         "sharpe_ratio": round(sharpe_ratio, 3) if sharpe_ratio else None,
+        "sortino_ratio": round(sortino_ratio, 3) if sortino_ratio and sortino_ratio != float('inf') else None,
+        "calmar_ratio": round(calmar_ratio, 3) if calmar_ratio else None,
+        "avg_holding_period": round(avg_holding_period, 1) if avg_holding_period else None,
+        "best_trade": best_trade,
+        "worst_trade": worst_trade,
         "trading_days": trading_days,
         "data_points": len(equity_history)
     }

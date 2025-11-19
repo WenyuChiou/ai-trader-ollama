@@ -1130,16 +1130,27 @@
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
         }
 
         .order-status.pending {
             background: #fef3c7;
             color: #92400e;
+            animation: pulse-pending 2s ease-in-out infinite;
+        }
+
+        .order-status.pending::after {
+            content: 'SCHEDULED';
+            font-size: 9px;
+            margin-left: 4px;
+            opacity: 0.8;
         }
 
         .order-status.filled {
             background: #d1fae5;
             color: #065f46;
+            animation: fade-in-filled 0.5s ease-in;
         }
 
         .order-status.rejected {
@@ -1158,14 +1169,51 @@
             height: 6px;
             border-radius: 50%;
             display: inline-block;
+            transition: all 0.3s ease;
         }
 
         .order-status.pending::before {
             background: #f59e0b;
+            animation: pulse-dot 1.5s ease-in-out infinite;
         }
 
         .order-status.filled::before {
             background: #10b981;
+        }
+
+        /* Animations for order status */
+        @keyframes pulse-pending {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            50% { opacity: 0.9; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+
+        @keyframes fade-in-filled {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Tooltip for order status */
+        .order-status[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 10px;
+            background: rgba(15, 23, 42, 0.95);
+            color: #e2e8f0;
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 4px;
+            pointer-events: none;
         }
 
         .order-status.rejected::before {
@@ -1305,7 +1353,10 @@
                 <div class="chart-header">
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <h2>📈 Total Asset Value Over Time</h2>
-                        <span style="font-size: 12px; color: #94a3b8;" id="nextEquityUpdateTime">Next update: Calculating...</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 12px; color: #94a3b8;" id="nextEquityUpdateTime">Next update: Calculating...</span>
+                            <div id="equityUpdateNotification" style="display: none;"></div>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px;">
                         <!-- Time Range Selector -->
@@ -1852,6 +1903,44 @@
         let lastEquityChartUpdate = 0; // Timestamp of last equity chart update
         let nextEquityUpdateTime = null; // Next scheduled update time (next :00 or :30)
         let equityUpdateCountdownTimer = null; // Timer for updating countdown display
+        let lastEquityValue = null; // Track last equity value for change detection
+        let equityUpdateHistory = []; // Track last 5 equity updates
+        
+        // Format relative time (e.g., "2 minutes ago", "just now")
+        function formatRelativeTime(timestamp) {
+            if (!timestamp) return '-';
+            try {
+                const now = new Date();
+                const time = new Date(timestamp);
+                const diffMs = now - time;
+                const diffSecs = Math.floor(diffMs / 1000);
+                const diffMins = Math.floor(diffSecs / 60);
+                const diffHours = Math.floor(diffMins / 60);
+                const diffDays = Math.floor(diffHours / 24);
+                
+                if (diffSecs < 60) {
+                    return 'just now';
+                } else if (diffMins < 60) {
+                    return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+                } else if (diffHours < 24) {
+                    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+                } else if (diffDays < 7) {
+                    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+                } else {
+                    // For older dates, show formatted date with time
+                    return time.toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: diffDays < 365 ? undefined : 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            } catch (e) {
+                return timestamp;
+            }
+        }
         
         // Calculate next equity update time (next :00 or :30)
         function calculateNextEquityUpdateTime() {
@@ -1879,7 +1968,7 @@
             return nextUpdate.getTime();
         }
         
-        // Update next equity update time display
+        // Update next equity update time display with visual progress bar
         async function updateNextEquityUpdateDisplay() {
             const displayEl = document.getElementById('nextEquityUpdateTime');
             if (!displayEl) return;
@@ -1888,8 +1977,7 @@
             try {
                 const marketOpen = await isMarketOpen(true, true); // Use cache, silent mode
                 if (!marketOpen) {
-                    displayEl.textContent = 'Market Close - No Update';
-                    displayEl.style.color = '#94a3b8'; // Gray color for closed market
+                    displayEl.innerHTML = '<span style="color: #94a3b8;">Market Close - No Update</span>';
                     return; // Don't show countdown when market is closed
                 }
             } catch (err) {
@@ -1897,15 +1985,15 @@
                 console.debug('[Equity Update] Failed to check market status:', err.message);
             }
             
-            // Market is open, show next update time
-            displayEl.style.color = '#22d3ee'; // Cyan color for active updates
-            
+            // Market is open, show next update time with progress indicator
             if (!nextEquityUpdateTime) {
                 nextEquityUpdateTime = calculateNextEquityUpdateTime();
             }
             
             const now = Date.now();
             const timeUntil = nextEquityUpdateTime - now;
+            const totalInterval = 30 * 60 * 1000; // 30 minutes in milliseconds
+            const progress = Math.max(0, Math.min(100, ((totalInterval - timeUntil) / totalInterval) * 100));
             
             if (timeUntil <= 0) {
                 // Time reached, reset to next update time
@@ -1913,14 +2001,20 @@
                 const nextDate = new Date(nextEquityUpdateTime);
                 const hours = String(nextDate.getHours()).padStart(2, '0');
                 const minutes = String(nextDate.getMinutes()).padStart(2, '0');
-                displayEl.textContent = `Next update: ${hours}:${minutes}`;
+                displayEl.innerHTML = `<span style="color: #22d3ee;">Next update: ${hours}:${minutes}</span>`;
             } else {
                 const minutes = Math.floor(timeUntil / 60000);
                 const seconds = Math.floor((timeUntil % 60000) / 1000);
                 const nextDate = new Date(nextEquityUpdateTime);
                 const hours = String(nextDate.getHours()).padStart(2, '0');
                 const mins = String(nextDate.getMinutes()).padStart(2, '0');
-                displayEl.textContent = `Next update: ${hours}:${mins} (in ${minutes}m ${seconds}s)`;
+                
+                // Visual progress bar
+                const progressBar = `<div style="display: inline-block; width: 60px; height: 4px; background: rgba(34, 211, 238, 0.2); border-radius: 2px; margin-left: 8px; vertical-align: middle;">
+                    <div style="width: ${progress}%; height: 100%; background: #22d3ee; border-radius: 2px; transition: width 1s ease;"></div>
+                </div>`;
+                
+                displayEl.innerHTML = `<span style="color: #22d3ee;">Next update: ${hours}:${mins} (in ${minutes}m ${seconds}s)</span>${progressBar}`;
             }
         }
         
@@ -8746,6 +8840,47 @@
 
         // Render summary cards
         function renderSummaryCards(portfolio) {
+            // Track equity value changes for notification
+            const currentEquity = portfolio?.total_value || portfolio?.equity_value || 0;
+            if (lastEquityValue !== null && lastEquityValue !== currentEquity) {
+                const change = currentEquity - lastEquityValue;
+                const changePct = lastEquityValue > 0 ? ((change / lastEquityValue) * 100) : 0;
+                const changeClass = change >= 0 ? 'trade-profit' : 'trade-loss';
+                const changeSign = change >= 0 ? '+' : '';
+                
+                // Add to update history (keep last 5)
+                equityUpdateHistory.unshift({
+                    timestamp: new Date().toISOString(),
+                    value: currentEquity,
+                    change: change,
+                    changePct: changePct
+                });
+                if (equityUpdateHistory.length > 5) {
+                    equityUpdateHistory.pop();
+                }
+                
+                // Show notification
+                const notificationEl = document.getElementById('equityUpdateNotification');
+                if (notificationEl) {
+                    const now = new Date();
+                    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                    notificationEl.innerHTML = `
+                        <div style="padding: 8px 12px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; animation: fade-in 0.5s ease-in;">
+                            <span style="color: #e2e8f0; font-size: 12px;">Equity updated at ${timeStr}: </span>
+                            <span class="${changeClass}" style="font-weight: 600;">${changeSign}$${Math.abs(change).toFixed(2)} (${changeSign}${Math.abs(changePct).toFixed(2)}%)</span>
+                        </div>
+                    `;
+                    notificationEl.style.display = 'block';
+                    
+                    // Auto-hide after 5 seconds
+                    setTimeout(() => {
+                        if (notificationEl) {
+                            notificationEl.style.display = 'none';
+                        }
+                    }, 5000);
+                }
+            }
+            lastEquityValue = currentEquity;
             const container = document.getElementById('summaryCards');
             const initialValue = portfolio.initial_value || 10000;
             const totalValue = portfolio.total_value || 0;
@@ -10466,7 +10601,7 @@
             
             const stats = data.statistics;
             
-            // Render stat cards
+            // Render stat cards with enhanced metrics
             if (statsCards) {
                 const cards = [
                     { label: 'Total Return', value: `$${stats.total_return?.toFixed(2) || '0.00'}`, pct: `${stats.total_return_pct?.toFixed(2) || '0.00'}%`, color: stats.total_return >= 0 ? '#10b981' : '#ef4444' },
@@ -10474,7 +10609,10 @@
                     { label: 'Initial Value', value: `$${stats.initial_value?.toFixed(2) || '0.00'}`, pct: null, color: '#94a3b8' },
                     { label: 'Win Rate', value: `${stats.win_rate?.toFixed(2) || '0.00'}%`, pct: `${stats.winning_trades || 0}/${stats.total_trades || 0}`, color: '#8b5cf6' },
                     { label: 'Max Drawdown', value: `$${stats.max_drawdown?.toFixed(2) || '0.00'}`, pct: `${stats.max_drawdown_pct?.toFixed(2) || '0.00'}%`, color: '#ef4444' },
-                    { label: 'Sharpe Ratio', value: stats.sharpe_ratio?.toFixed(3) || 'N/A', pct: null, color: '#f59e0b' }
+                    { label: 'Sharpe Ratio', value: stats.sharpe_ratio?.toFixed(3) || 'N/A', pct: null, color: '#f59e0b' },
+                    { label: 'Sortino Ratio', value: stats.sortino_ratio?.toFixed(3) || 'N/A', pct: 'Downside risk', color: '#06b6d4' },
+                    { label: 'Calmar Ratio', value: stats.calmar_ratio?.toFixed(3) || 'N/A', pct: 'Return/Drawdown', color: '#a855f7' },
+                    { label: 'Avg Holding', value: stats.avg_holding_period ? `${stats.avg_holding_period.toFixed(1)} days` : 'N/A', pct: null, color: '#14b8a6' }
                 ];
                 
                 statsCards.innerHTML = cards.map(card => `
@@ -10486,7 +10624,7 @@
                 `).join('');
             }
             
-            // Render metrics table
+            // Render metrics table with enhanced metrics
             if (metricsBody) {
                 const metrics = [
                     { name: 'Total Return', value: `$${stats.total_return?.toFixed(2) || '0.00'} (${stats.total_return_pct?.toFixed(2) || '0.00'}%)`, desc: 'Total profit/loss from initial investment' },
@@ -10496,7 +10634,12 @@
                     { name: 'Total Trades', value: `${stats.total_trades || 0}`, desc: 'Total number of closed trades' },
                     { name: 'Realized P&L', value: `$${stats.total_realized_pnl?.toFixed(2) || '0.00'}`, desc: 'Total realized profit/loss from closed trades' },
                     { name: 'Avg Trade Return', value: `$${stats.avg_trade_return?.toFixed(2) || '0.00'}`, desc: 'Average profit/loss per trade' },
-                    { name: 'Sharpe Ratio', value: stats.sharpe_ratio?.toFixed(3) || 'N/A', desc: 'Risk-adjusted return measure' },
+                    { name: 'Sharpe Ratio', value: stats.sharpe_ratio?.toFixed(3) || 'N/A', desc: 'Risk-adjusted return measure (higher is better)' },
+                    { name: 'Sortino Ratio', value: stats.sortino_ratio?.toFixed(3) || 'N/A', desc: 'Downside risk-adjusted return (higher is better)' },
+                    { name: 'Calmar Ratio', value: stats.calmar_ratio?.toFixed(3) || 'N/A', desc: 'Annualized return / Max drawdown (higher is better)' },
+                    { name: 'Avg Holding Period', value: stats.avg_holding_period ? `${stats.avg_holding_period.toFixed(1)} days` : 'N/A', desc: 'Average number of days positions are held' },
+                    { name: 'Best Trade', value: stats.best_trade ? `${stats.best_trade.symbol}: $${stats.best_trade.realized_pnl?.toFixed(2) || 0} (${stats.best_trade.realized_pnl_pct?.toFixed(2) || 0}%)` : 'N/A', desc: 'Best performing trade' },
+                    { name: 'Worst Trade', value: stats.worst_trade ? `${stats.worst_trade.symbol}: $${stats.worst_trade.realized_pnl?.toFixed(2) || 0} (${stats.worst_trade.realized_pnl_pct?.toFixed(2) || 0}%)` : 'N/A', desc: 'Worst performing trade' },
                     { name: 'Trading Days', value: `${stats.trading_days || 0}`, desc: 'Number of days with trading activity' },
                     { name: 'Data Points', value: `${stats.data_points || 0}`, desc: 'Number of equity records' }
                 ];
@@ -10979,6 +11122,11 @@
                         { 'Metric': 'Total Realized P&L', 'Value': stats.total_realized_pnl || 0 },
                         { 'Metric': 'Avg Trade Return', 'Value': stats.avg_trade_return || 0 },
                         { 'Metric': 'Sharpe Ratio', 'Value': stats.sharpe_ratio || 'N/A' },
+                        { 'Metric': 'Sortino Ratio', 'Value': stats.sortino_ratio || 'N/A', 'Description': 'Downside risk-adjusted return (higher is better)' },
+                        { 'Metric': 'Calmar Ratio', 'Value': stats.calmar_ratio || 'N/A', 'Description': 'Annualized return / Max drawdown (higher is better)' },
+                        { 'Metric': 'Avg Holding Period', 'Value': stats.avg_holding_period ? `${stats.avg_holding_period} days` : 'N/A', 'Description': 'Average number of days positions are held' },
+                        { 'Metric': 'Best Trade', 'Value': stats.best_trade ? `${stats.best_trade.symbol}: $${stats.best_trade.realized_pnl?.toFixed(2) || 0}` : 'N/A' },
+                        { 'Metric': 'Worst Trade', 'Value': stats.worst_trade ? `${stats.worst_trade.symbol}: $${stats.worst_trade.realized_pnl?.toFixed(2) || 0}` : 'N/A' },
                         { 'Metric': 'Trading Days', 'Value': stats.trading_days || 0 },
                         { 'Metric': 'Data Points', 'Value': stats.data_points || 0 }
                     ];
@@ -11123,7 +11271,18 @@
                 const priceRangeDisplay = priceRange ? `$${Number(priceRange.min || 0).toFixed(2)} - $${Number(priceRange.max || 0).toFixed(2)}` : '-';
                 
                 const status = t.status || 'UNKNOWN';
+                // CRITICAL: Market orders execute immediately during market hours
+                // PENDING status only exists when market is closed (scheduled for next market open)
                 const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
+                
+                // Enhanced tooltip for order status
+                let statusTooltip = '';
+                if (status === 'FILLED') {
+                    const fillTime = t.filled_at ? new Date(t.filled_at).toLocaleString() : 'Unknown';
+                    statusTooltip = `Market order executed at ${fillTime}. Fill price: $${fillPrice ? Number(fillPrice).toFixed(2) : 'N/A'}`;
+                } else if (status === 'PENDING') {
+                    statusTooltip = `Scheduled for next market open (9:30 AM ET). Market orders execute immediately during trading hours.`;
+                }
                 
                 // order_date已移除，使用placed_at的日期部分（仅用于判断明日订单，不显示）
                 const placedAt = t.placed_at || t.filled_at || '';
@@ -11149,7 +11308,7 @@
                         <td>${fillPriceDisplay}</td>
                         <td>${priceRangeDisplay}</td>
                         <td>${realizedPnlDisplay}</td>
-                        <td><span class="status-pill ${statusClass}">${status}</span></td>
+                        <td><span class="status-pill ${statusClass}" title="${statusTooltip || status}">${status}</span></td>
                     </tr>
                 `;
             }).join('');
@@ -11200,13 +11359,25 @@
                 const fillPrice = t.fill_price || t.price || null;
                 const priceDisplay = fillPrice ? `$${Number(fillPrice).toFixed(2)}` : '-';
                 const status = (t.status || 'UNKNOWN').toUpperCase();
+                // CRITICAL: Market orders execute immediately during market hours
+                // PENDING status only exists when market is closed (scheduled for next market open)
                 const statusClass = status === 'FILLED' ? 'status-filled' : status === 'PENDING' ? 'status-pending' : 'status-other';
                 // order_date已移除，使用placed_at的日期部分
                 const placedAt = t.placed_at || t.filled_at || '';
                 const orderDate = placedAt ? new Date(placedAt).toISOString().split('T')[0] : '';
                 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 const isTomorrowOrder = orderDate && orderDate >= tomorrow;
-                const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">TOMORROW</span>' : '';
+                
+                // Enhanced tooltip for order status
+                let statusTooltip = '';
+                if (status === 'FILLED') {
+                    const fillTime = t.filled_at ? new Date(t.filled_at).toLocaleString() : 'Unknown';
+                    statusTooltip = `Market order executed at ${fillTime}. Fill price: $${fillPrice ? Number(fillPrice).toFixed(2) : 'N/A'}`;
+                } else if (status === 'PENDING') {
+                    statusTooltip = `Scheduled for next market open (9:30 AM ET). Market orders execute immediately during trading hours.`;
+                }
+                
+                const tomorrowBadge = isTomorrowOrder ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">SCHEDULED</span>' : '';
                 let realizedPnlDisplay = '-';
                 if (side === 'SELL' && status === 'FILLED' && t.realized_pnl !== undefined && t.realized_pnl !== null) {
                     const pnl = Number(t.realized_pnl);
@@ -12033,10 +12204,11 @@
                         (responseTime < 0.5 ? 'success' : responseTime < 1.0 ? 'warning' : 'error');
                 }
                 
-                // Update timestamp
+                // Update timestamp with timezone support
                 const timestamp = (portfolio && !portfolio.error) ? (portfolio.timestamp || new Date().toISOString()) : new Date().toISOString();
-                // Format timestamp in English (YYYY-MM-DD HH:MM:SS)
-                const formatTimestamp = (ts) => {
+                
+                // Format timestamp with timezone indicator
+                const formatTimestamp = (ts, includeTimezone = true) => {
                     const d = new Date(ts);
                     const year = d.getFullYear();
                     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -12044,13 +12216,37 @@
                     const hours = String(d.getHours()).padStart(2, '0');
                     const minutes = String(d.getMinutes()).padStart(2, '0');
                     const seconds = String(d.getSeconds()).padStart(2, '0');
+                    
+                    // Get ET timezone
+                    const etTime = new Date(ts).toLocaleString('en-US', {
+                        timeZone: 'America/New_York',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                    
+                    // Extract ET time components
+                    const etMatch = etTime.match(/(\d{2})\/(\d{2})\/(\d{4}), (\d{2}):(\d{2}):(\d{2})/);
+                    if (etMatch && includeTimezone) {
+                        const [, etMonth, etDay, etYear, etHours, etMinutes, etSeconds] = etMatch;
+                        // Determine EST/EDT
+                        const isDST = d.toLocaleString('en-US', {timeZone: 'America/New_York', timeZoneName: 'short'}).includes('EDT');
+                        const tzLabel = isDST ? 'EDT' : 'EST';
+                        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} (${etYear}-${etMonth}-${etDay} ${etHours}:${etMinutes}:${etSeconds} ${tzLabel})`;
+                    }
                     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
                 };
+                
                 const tsText = `Data: ${formatTimestamp(timestamp)}`;
                 document.getElementById('dataTimestamp').textContent = tsText;
                 const tsTop = document.getElementById('dataTimestampTop');
                 if (tsTop) tsTop.textContent = tsText;
-                // Format time in English (24-hour format)
+                
+                // Format time with relative time display
                 const now = new Date();
                 const hours = String(now.getHours()).padStart(2, '0');
                 const minutes = String(now.getMinutes()).padStart(2, '0');

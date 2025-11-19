@@ -85,7 +85,11 @@ The system provides comprehensive performance analysis through API endpoints and
 - **Annualized Return**: Return adjusted for time period (if data spans multiple days)
 - **Win Rate**: Percentage of profitable trades
 - **Maximum Drawdown**: Largest peak-to-trough decline
-- **Sharpe Ratio**: Risk-adjusted return measure (annualized)
+- **Sharpe Ratio**: Risk-adjusted return measure (annualized, higher is better)
+- **Sortino Ratio**: Downside risk-adjusted return (only considers negative returns, higher is better)
+- **Calmar Ratio**: Annualized return divided by maximum drawdown (higher is better)
+- **Average Holding Period**: Average number of days positions are held
+- **Best/Worst Trade**: Best and worst performing trades with symbols and P&L
 - **Trading Statistics**: Total trades, winning trades, losing trades, average trade return
 
 #### Using Performance APIs
@@ -115,7 +119,11 @@ curl "http://localhost:8000/api/performance/symbol-analysis?symbol=NVDA"
 - **Win Rate**: `(Winning Trades / Total Trades) * 100`
 - **Max Drawdown**: Largest decline from a peak value
 - **Sharpe Ratio**: `(Average Return / Standard Deviation) * sqrt(252)` (annualized, higher is better)
+- **Sortino Ratio**: `(Average Return / Downside Deviation) * sqrt(252)` (annualized, only considers negative returns, higher is better)
+- **Calmar Ratio**: `Annualized Return % / Max Drawdown %` (higher is better, measures return per unit of drawdown risk)
 - **Average Holding Period**: Average days between buy and sell for each symbol
+- **Best Trade**: Highest realized P&L trade with symbol, amount, and percentage
+- **Worst Trade**: Lowest realized P&L trade with symbol, amount, and percentage
 
 #### Data Sources
 

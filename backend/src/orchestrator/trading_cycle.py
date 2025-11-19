@@ -748,6 +748,12 @@ def execute_daily_trade(
             analyst_name = tool_call.get("analyst", "Unknown")
             # CRITICAL FIX: Check both "tool" and "name" fields (some tool_calls may use "name")
             tool_name = tool_call.get("tool", "") or tool_call.get("name", "")
+            
+            # CRITICAL FIX: Map deprecated news_scan to plan_and_scan_news (for Risk Analyst and others)
+            if tool_name == "news_scan":
+                print(f"[TRADING CYCLE] [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
+                tool_name = "plan_and_scan_news"
+            
             tool_result = tool_call.get("result", {})
             
             # 標準化agent名稱

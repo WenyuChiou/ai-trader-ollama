@@ -5106,7 +5106,8 @@
                                     ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
                                     ${stanceHtml}
                                     ${toolsSummaryHtml}
-                                    ${entry_type === 'tool' ? (toolHtml + toolResultHtml) : ''}
+                                    ${entry_type === 'tool' && !toolsSummaryHtml ? (toolHtml + toolResultHtml) : ''}
+                                    ${entry_type === 'tool' && toolsSummaryHtml ? toolResultHtml : ''}
                                     ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
                                         <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                         <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${analysisText.includes('<table') || analysisText.includes('markdown-block') ? analysisText : escapeHtml(analysisText)}</div>

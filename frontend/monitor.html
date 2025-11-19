@@ -12139,26 +12139,34 @@
                     
                     // CRITICAL FIX: plan_and_scan_news 返回 {hits: [...], articles: [...]}
                     // 优先使用 articles（包含 summary 和 keywords）
-                    if (toolResult.articles && Array.isArray(toolResult.articles)) {
+                    // 检查 toolResult 的结构：可能是 {ok: true, result: {...}} 或直接是 {...}
+                    let actualResult = toolResult;
+                    if (toolResult && typeof toolResult === 'object' && toolResult.ok && toolResult.result) {
+                        actualResult = toolResult.result;
+                        console.log('[News] Extracted result from tool_result.ok structure');
+                    }
+                    
+                    if (actualResult.articles && Array.isArray(actualResult.articles)) {
                         // plan_and_scan_news 格式（包含 LLM 生成的 summary 和 keywords）
-                        newsItems = toolResult.articles;
+                        newsItems = actualResult.articles;
                         console.log('[News] Found', newsItems.length, 'articles with content from', toolName);
-                    } else if (toolResult.hits && Array.isArray(toolResult.hits)) {
-                        // news_scan 格式
-                        newsItems = toolResult.hits;
-                    } else if (toolResult.items && Array.isArray(toolResult.items)) {
-                        // fetch_jin10_news 格式
-                        newsItems = toolResult.items;
-                    } else if (Array.isArray(toolResult)) {
+                    } else if (actualResult.hits && Array.isArray(actualResult.hits)) {
+                        // plan_and_scan_news 也可能返回 hits（如果没有 articles）
+                        newsItems = actualResult.hits;
+                        console.log('[News] Found', newsItems.length, 'hits from', toolName);
+                    } else if (actualResult.items && Array.isArray(actualResult.items)) {
+                        // fetch_jin10_news 格式（已移除，但保留兼容性）
+                        newsItems = actualResult.items;
+                    } else if (Array.isArray(actualResult)) {
                         // 如果 tool_result 本身就是数组
-                        newsItems = toolResult;
+                        newsItems = actualResult;
                         console.log('[News] Found', newsItems.length, 'news items (direct array) from', toolName);
-                    } else if (toolResult && typeof toolResult === 'object') {
+                    } else if (actualResult && typeof actualResult === 'object') {
                         // CRITICAL FIX: 检查是否是数组对象（键为数字字符串的对象）
-                        const keys = Object.keys(toolResult);
+                        const keys = Object.keys(actualResult);
                         if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
                             // 这是一个数组对象，转换为数组
-                            newsItems = Object.values(toolResult);
+                            newsItems = Object.values(actualResult);
                             console.log('[News] Found', newsItems.length, 'news items (array-like object) from', toolName);
                         }
                     }
@@ -12190,14 +12198,20 @@
                         }
                     } else {
                         // DEBUG: Log why no news items were found
+                        let actualResult = toolResult;
+                        if (toolResult && typeof toolResult === 'object' && toolResult.ok && toolResult.result) {
+                            actualResult = toolResult.result;
+                        }
                         console.warn('[News] No news items found for', toolName, {
                             hasToolResult: !!toolResult,
                             toolResultType: typeof toolResult,
                             toolResultKeys: toolResult && typeof toolResult === 'object' ? Object.keys(toolResult).slice(0, 10) : [],
-                            hasArticles: !!(toolResult && toolResult.articles),
-                            hasHits: !!(toolResult && toolResult.hits),
-                            hasItems: !!(toolResult && toolResult.items),
-                            isArray: Array.isArray(toolResult)
+                            actualResultKeys: actualResult && typeof actualResult === 'object' ? Object.keys(actualResult).slice(0, 10) : [],
+                            hasArticles: !!(actualResult && actualResult.articles),
+                            hasHits: !!(actualResult && actualResult.hits),
+                            hasItems: !!(actualResult && actualResult.items),
+                            isArray: Array.isArray(actualResult),
+                            actualResultType: typeof actualResult
                         });
                     }
                 }
@@ -12698,10 +12712,20 @@
             console.log('[News Modal] Collected', newsData.length, 'news items');
             
             if (newsData.length === 0) {
+                // CRITICAL FIX: 检查是否有新闻工具调用但无数据
+                const hasNewsTools = toolResultsByCategory && toolResultsByCategory.news && toolResultsByCategory.news.length > 0;
+                let message = '';
+                if (hasNewsTools) {
+                    message = 'News tools (plan_and_scan_news) were called but returned no articles. This may be normal if no recent news found.';
+                } else {
+                    message = 'News tools (plan_and_scan_news) have not been used yet. SentimentAnalyst should call plan_and_scan_news automatically.';
+                }
+                
                 newsContent.innerHTML = `
                     <div style="text-align: center; padding: 40px; color: #94a3b8;">
                         <p style="font-size: 16px; margin-bottom: 8px;">📰 No news data available</p>
-                        <p style="font-size: 14px;">News tools (news_scan, plan_and_scan_news) have not been used yet.</p>
+                        <p style="font-size: 14px;">${message}</p>
+                        ${hasNewsTools ? '<p style="font-size: 12px; margin-top: 8px; color: #64748b;">Check browser console for detailed debug logs.</p>' : ''}
                     </div>
                 `;
             } else {

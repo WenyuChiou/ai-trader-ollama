@@ -5327,6 +5327,50 @@
                         
                         // CRITICAL FIX: Only process get_company_fundamentals tool
                         if (toolName === 'get_company_fundamentals') {
+                            // Method 0: Extract from tool call args (most reliable - from the actual tool call)
+                            // Check if content contains "Tool used: get_company_fundamentals: {...}" and extract symbol from args
+                            try {
+                                const content = c.content || '';
+                                // CRITICAL FIX: Extract symbol from JSON result in content
+                                // Content format: "Tool used: get_company_fundamentals: {...JSON...}"
+                                // The JSON contains the tool result with "symbol" field
+                                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                                if (jsonMatch) {
+                                    try {
+                                        const parsed = JSON.parse(jsonMatch[0]);
+                                        // Recursively extract result (handle nested {"ok": true, "result": {...}})
+                                        let resultData = parsed;
+                                        while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                            resultData = resultData.result;
+                                        }
+                                        // Extract symbol from result
+                                        if (resultData && typeof resultData === 'object') {
+                                            const symbol = resultData.symbol || 
+                                                         resultData.Symbol ||
+                                                         (resultData.fundamentals && resultData.fundamentals.symbol) ||
+                                                         (resultData.fundamentals && resultData.fundamentals.Symbol);
+                                            if (symbol) {
+                                                stocks.add(String(symbol).toUpperCase());
+                                            }
+                                        }
+                                    } catch (parseError) {
+                                        // If JSON parsing fails, try regex extraction
+                                        const symbolMatch = content.match(/"symbol"\s*:\s*"([^"]+)"/i);
+                                        if (symbolMatch && symbolMatch[1]) {
+                                            stocks.add(String(symbolMatch[1]).toUpperCase());
+                                        }
+                                    }
+                                } else {
+                                    // Fallback: try regex extraction if no JSON found
+                                    const symbolMatch = content.match(/"symbol"\s*:\s*"([^"]+)"/i);
+                                    if (symbolMatch && symbolMatch[1]) {
+                                        stocks.add(String(symbolMatch[1]).toUpperCase());
+                                    }
+                                }
+                            } catch (e) {
+                                // Ignore parsing errors
+                            }
+                            
                             // Method 1: Extract from tool_result field (preferred)
                             if (c.tool_result && typeof c.tool_result === 'object') {
                                 // Check for symbol in various locations
@@ -5353,7 +5397,7 @@
                                 }
                             }
                             
-                            // Method 3: Extract from content string (parse JSON args)
+                            // Method 3: Extract from content string (parse JSON - extract symbol from result)
                             try {
                                 const content = c.content || '';
                                 // Try to find symbol in JSON: "Tool used: get_company_fundamentals: {...}"
@@ -5378,6 +5422,27 @@
                             } catch (e) {
                                 // Ignore parsing errors
                             }
+                            
+                            // Method 4: Extract from content by parsing tool call args pattern
+                            // Look for patterns like: "symbol": "NVDA" or '"symbol":"NVDA"'
+                            try {
+                                const content = c.content || '';
+                                // Try multiple patterns to find symbol
+                                const patterns = [
+                                    /"symbol"\s*:\s*"([A-Z]+)"/i,
+                                    /symbol["\s]*[:=]\s*["']?([A-Z]{1,5})["']?/i,
+                                    /get_company_fundamentals[^:]*:\s*\{[^}]*"symbol"\s*:\s*"([^"]+)"/i
+                                ];
+                                for (const pattern of patterns) {
+                                    const match = content.match(pattern);
+                                    if (match && match[1]) {
+                                        stocks.add(String(match[1]).toUpperCase());
+                                        break;
+                                    }
+                                }
+                            } catch (e) {
+                                // Ignore parsing errors
+                            }
                         }
                     }
                 });
@@ -5392,6 +5457,9 @@
                 
                 // Debug log
                 console.log('[Fundamental] Extracted stocks:', availableFundamentalStocks);
+                console.log('[Fundamental] Total conversations:', window.currentConversations?.length || 0);
+                console.log('[Fundamental] Fundamental Analyst tool entries:', 
+                    window.currentConversations?.filter(c => c.type === 'tool' && c.agent === 'FundamentalAnalyst').length || 0);
             }
         }
         

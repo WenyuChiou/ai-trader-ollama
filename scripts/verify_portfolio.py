@@ -8,8 +8,15 @@
 from __future__ import annotations
 import sys
 import json
+import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+
+# 设置UTF-8编码（Windows PowerShell）
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # 添加 backend 目录到路径
 ROOT = Path(__file__).resolve().parents[1]  # scripts/ -> backend/

@@ -938,18 +938,17 @@ def run_multi_analyst_discussion(
                     else:
                         print(f"   [DEBUG] Skipping duplicate recommended stock: {sym}")
                 
-                # 补充必须分析的symbols到tool_calls_list（如果还有预算）
-                # CRITICAL FIX: 计算剩余预算时，要考虑已经执行的tool_calls_count
-                remaining_budget = tool_budget - tool_calls_count
+                # CRITICAL FIX: 强制添加所有必须分析的symbols（不受工具预算限制）
+                # 基本面分析必须分析所有推荐股票+持仓，不受工具规范限制
                 print(f"   [DEBUG] Mandatory symbols to add: {mandatory_symbols}")
-                print(f"   [DEBUG] Remaining budget: {remaining_budget}, tool_calls_count: {tool_calls_count}, tool_budget: {tool_budget}")
+                print(f"   [DEBUG] Current tool_calls_count: {tool_calls_count}, tool_budget: {tool_budget}")
                 print(f"   [DEBUG] Current tool_calls_list length: {len(tool_calls_list)}")
                 
-                if mandatory_symbols and remaining_budget > 0:
-                    print(f"   [MANDATORY] Found {len(mandatory_symbols)} mandatory non-ETF symbols missing from LLM's tool calls, adding... (remaining budget: {remaining_budget})")
+                if mandatory_symbols:
+                    print(f"   [MANDATORY] Found {len(mandatory_symbols)} mandatory non-ETF symbols missing from LLM's tool calls, adding... (不受工具预算限制)")
                     added_count = 0
                     
-                    # 为所有必须分析的symbols添加get_company_fundamentals
+                    # 为所有必须分析的symbols添加get_company_fundamentals（不受预算限制）
                     for sym in mandatory_symbols:
                         # CRITICAL: 检查是否已经在tool_calls_list中（避免重复添加）
                         already_in_list = any(
@@ -961,23 +960,19 @@ def run_multi_analyst_discussion(
                             print(f"   [DEBUG] Skipping {sym} - already in tool_calls_list")
                             continue
                             
-                        if tool_calls_count + len(tool_calls_list) >= tool_budget:
-                            print(f"   [MANDATORY] Budget exhausted, stopped adding at {len(tool_calls_list)} tool calls")
-                            break
+                        # CRITICAL FIX: 不受工具预算限制，强制添加所有必须分析的股票
                         tool_calls_list.append({
                             "name": "get_company_fundamentals",
                             "args": {"symbol": sym},
-                            "why": f"MANDATORY: Get fundamental data for {sym} (non-ETF holding/recommended - ETFs excluded)"
+                            "why": f"MANDATORY: Get fundamental data for {sym} (non-ETF holding/recommended - ETFs excluded,不受工具预算限制)"
                         })
                         added_count += 1
-                        print(f"   [DEBUG] Added tool call for {sym}")
+                        print(f"   [MANDATORY] Added tool call for {sym} (不受预算限制)")
                     
                     if added_count > 0:
-                        print(f"   [MANDATORY] Added {added_count} mandatory tool calls (non-ETF holdings + non-ETF recommended stocks)")
+                        print(f"   [MANDATORY] Added {added_count} mandatory tool calls (non-ETF holdings + non-ETF recommended stocks,不受工具预算限制)")
                     else:
-                        print(f"   [WARN] No mandatory tool calls added (all symbols already in list or budget exhausted)")
-                elif mandatory_symbols:
-                    print(f"   [WARN] Cannot add mandatory symbols - budget exhausted (remaining: {remaining_budget})")
+                        print(f"   [DEBUG] No mandatory tool calls added (all symbols already in list)")
                 else:
                     print(f"   [DEBUG] No mandatory symbols to add")
             

@@ -4859,8 +4859,18 @@
                 
                 // CRITICAL FIX: Display analysts in fixed order, use first entry (most recent) instead of last
                 const analystOrder = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'RiskAnalyst', 'TraderAgent'];
+                console.log('[Conversations] Rendering analyst summaries, available agents:', Object.keys(analystSummaries));
+                console.log('[Conversations] DiscussionCoordinator in analystSummaries:', !!analystSummaries['DiscussionCoordinator']);
+                if (analystSummaries['DiscussionCoordinator']) {
+                    console.log('[Conversations] DiscussionCoordinator data:', {
+                        length: analystSummaries['DiscussionCoordinator'].length,
+                        summaryLength: analystSummaries['DiscussionCoordinator'][0]?.summary?.length || 0,
+                        summaryPreview: analystSummaries['DiscussionCoordinator'][0]?.summary?.substring(0, 200) || ''
+                    });
+                }
                 for (const agentName of analystOrder) {
                     if (analystSummaries[agentName] && analystSummaries[agentName].length > 0) {
+                        console.log(`[Conversations] Rendering ${agentName}, summary length:`, analystSummaries[agentName][0]?.summary?.length || 0);
                         // Use first entry (most recent, since we unshift/add at beginning)
                         const latestSummary = analystSummaries[agentName][0];
                         const agentIcon = getAgentIcon(agentName);

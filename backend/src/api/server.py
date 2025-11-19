@@ -516,6 +516,10 @@ async def fetch_conversations_api(
                 tool_category = entry.get("tool_category", tool_category_map.get(tool_name, "other"))
                 tool_result = entry.get("tool_result", {})
                 
+                # DEBUG: Log news tools
+                if tool_category == "news":
+                    print(f"[API] Found news tool: {tool_name}, agent: {entry.get('agent', 'Unknown')}")
+                
                 # CRITICAL FIX: 确保 tool_result 是可序列化的
                 if not isinstance(tool_result, (dict, list, str, int, float, bool, type(None))):
                     tool_result = {}
@@ -545,6 +549,10 @@ async def fetch_conversations_api(
                         "agent": str(entry.get("agent", "ToolSystem")),
                     }
                     
+                    # DEBUG: Log news tool entry structure
+                    if tool_category == "news":
+                        print(f"[API] Adding news tool entry: {tool_name}, result keys: {list(tool_result.keys())[:10] if isinstance(tool_result, dict) else 'not dict'}")
+                    
                     # 添加到对应分类
                     if tool_category in tool_results_by_category:
                         tool_results_by_category[tool_category].append(tool_entry)
@@ -554,6 +562,9 @@ async def fetch_conversations_api(
                     # 如果序列化失败，跳过这个工具条目
                     print(f"[WARN] 跳过工具条目（序列化失败）: {tool_error}")
                     continue
+        
+        # DEBUG: Log final news category count
+        print(f"[API] Final tool_results_by_category.news count: {len(tool_results_by_category['news'])}")
         
         # CRITICAL FIX: 确保所有数据都是可序列化的
         # 清理 limited_conversations 中的不可序列化数据

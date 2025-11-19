@@ -12053,10 +12053,20 @@
         function collectNewsData(conversations, toolResultsByCategory = null) {
             const newsData = [];
             
+            // DEBUG: Log what we received
+            console.log('[News] collectNewsData called with:', {
+                conversationsCount: conversations?.length || 0,
+                hasToolResultsByCategory: !!toolResultsByCategory,
+                newsCategoryExists: !!(toolResultsByCategory && toolResultsByCategory.news),
+                newsCategoryLength: toolResultsByCategory?.news?.length || 0,
+                newsCategoryType: Array.isArray(toolResultsByCategory?.news) ? 'array' : typeof toolResultsByCategory?.news
+            });
+            
             // CRITICAL FIX: 优先使用 tool_results_by_category.news（如果可用）
             if (toolResultsByCategory && toolResultsByCategory.news && Array.isArray(toolResultsByCategory.news)) {
                 console.log('[News] Using tool_results_by_category.news:', toolResultsByCategory.news.length, 'items');
                 for (const newsTool of toolResultsByCategory.news) {
+                    console.log('[News] Processing tool:', newsTool.tool_name, 'agent:', newsTool.agent);
                     const toolResult = newsTool.tool_result || {};
                     const toolName = newsTool.tool_name || '';
                     
@@ -12092,6 +12102,7 @@
                     }
                     
                     if (newsItems && Array.isArray(newsItems) && newsItems.length > 0) {
+                        console.log('[News] Found', newsItems.length, 'news items from', toolName);
                         for (const item of newsItems) {
                             if (item && (item.title || item.link || item.href)) {
                                 // 处理不同的字段名
@@ -12115,6 +12126,17 @@
                                 });
                             }
                         }
+                    } else {
+                        // DEBUG: Log why no news items were found
+                        console.warn('[News] No news items found for', toolName, {
+                            hasToolResult: !!toolResult,
+                            toolResultType: typeof toolResult,
+                            toolResultKeys: toolResult && typeof toolResult === 'object' ? Object.keys(toolResult).slice(0, 10) : [],
+                            hasArticles: !!(toolResult && toolResult.articles),
+                            hasHits: !!(toolResult && toolResult.hits),
+                            hasItems: !!(toolResult && toolResult.items),
+                            isArray: Array.isArray(toolResult)
+                        });
                     }
                 }
                 
@@ -12122,7 +12144,16 @@
                 if (newsData.length > 0) {
                     console.log('[News] Collected', newsData.length, 'news items from tool_results_by_category');
                     return newsData;
+                } else {
+                    console.warn('[News] No news data collected from tool_results_by_category.news');
                 }
+            } else {
+                console.warn('[News] tool_results_by_category.news is not available:', {
+                    hasToolResultsByCategory: !!toolResultsByCategory,
+                    newsCategoryExists: !!(toolResultsByCategory && toolResultsByCategory.news),
+                    newsCategoryType: toolResultsByCategory?.news ? typeof toolResultsByCategory.news : 'undefined',
+                    isArray: Array.isArray(toolResultsByCategory?.news)
+                });
             }
             
             // Fallback: 从 conversations 中解析（旧方法）

@@ -37,9 +37,9 @@ class Tool:
 
 class ToolBox:
     """
-    統一的工具呼叫介面：
-    - 對外只有 invoke(name, **kwargs)
-    - 內部針對特定工具做參數相容轉換（adapter），避免 LLM 給的鍵不被底層函數接受
+    Unified tool invocation interface:
+    - External API: only invoke(name, **kwargs)
+    - Internal: parameter compatibility conversion (adapter) for specific tools to avoid LLM-provided keys being rejected by underlying functions
     """
     def __init__(self):
         self._tools: Dict[str, Tool] = {}
@@ -49,8 +49,8 @@ class ToolBox:
         self.register(Tool("fear_greed", fetch_fear_greed, "Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)"))
         
         # crypto
-        # fetch_crypto_batch 和 get_crypto_price 是 LangChain @tool 装饰的函数，返回 StructuredTool
-        # 需要提取底层函数或使用适配器
+        # fetch_crypto_batch and get_crypto_price are LangChain @tool decorated functions that return StructuredTool
+        # Need to extract underlying function or use adapter
         self.register(Tool("fetch_crypto_batch", self._crypto_batch_adapter, "Fetch cryptocurrency OHLCV and indicators (symbols like BTC-USD, ETH-USD, SOL-USD)"))
         self.register(Tool("get_crypto_price", self._crypto_price_adapter, "Get current price and indicators for a single cryptocurrency"))
         
@@ -60,7 +60,7 @@ class ToolBox:
         # news / web primitives
         self.register(Tool("web_search", self._web_search_adapter, "DuckDuckGo search (whitelist domains)"))
         self.register(Tool("fetch_url", self._fetch_url_adapter, "Fetch & extract main content from a URL"))
-        # CRITICAL FIX: 移除 news_scan，只保留 plan_and_scan_news（功能更完整）
+        # CRITICAL FIX: Remove news_scan, keep only plan_and_scan_news (more complete functionality)
         # composite
         self.register(Tool("plan_and_scan_news", self._plan_and_scan_news_adapter, "LLM→queries→news_scan→(optional)fetch_url - Get market news with article content, summaries, and keywords"))
         
@@ -105,7 +105,7 @@ class ToolBox:
 
     def invoke(self, name: str, **kwargs) -> Dict[str, Any]:
         """
-        統一錯誤處理；各工具可在這裡進一步做跨工具的共通清洗
+        Unified error handling; tools can perform common cross-tool cleaning here
         """
         try:
             if name not in self._tools:
@@ -114,7 +114,7 @@ class ToolBox:
             res = fn(**kwargs)
             return {"ok": True, "result": res}
         except TypeError as te:
-            # 通常是參數不相容
+            # Usually parameter incompatibility
             return {
                 "ok": False,
                 "error": f"TypeError: {te}",
@@ -126,31 +126,31 @@ class ToolBox:
     # ---------- adapters ----------
     def _news_scan_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        把上層（LLM / driver）可能給的多種鍵，轉成底層 news_scan 的穩定介面：
-        目標函數： news_scan(keywords: List[str], max_articles: int = 12, recency_days: int = 10, domains: Optional[List[str]] = None)
+        Convert various keys that upper layer (LLM / driver) may provide into stable interface for underlying news_scan:
+        Target function: news_scan(keywords: List[str], max_articles: int = 12, recency_days: int = 10, domains: Optional[List[str]] = None)
 
-        相容鍵位：
-        - tickers: List[str]（會併入 keywords）
-        - queries: List[str]（會併入 keywords）
-        - symbols: List[str]（會併入 keywords）
+        Compatible keys:
+        - tickers: List[str] (will be merged into keywords)
+        - queries: List[str] (will be merged into keywords)
+        - symbols: List[str] (will be merged into keywords)
         - preferred_domains: List[str] -> domains
         - recency_days: int
         - max_articles: int
-        - days: int -> recency_days（兼容旧参数名）
-        - max_n: int -> max_articles（兼容旧参数名）
-        - fetch_body_top: int（目前不支持，忽略）
-        - top: int（目前不支持，忽略）
-        其他不認得的鍵一律忽略，避免 TypeError。
+        - days: int -> recency_days (compatible with old parameter name)
+        - max_n: int -> max_articles (compatible with old parameter name)
+        - fetch_body_top: int (currently not supported, ignored)
+        - top: int (currently not supported, ignored)
+        Other unrecognized keys are ignored to avoid TypeError.
         """
         kwords: List[str] = []
 
-        # 收集關鍵字來源
+        # Collect keyword sources
         for key in ("tickers", "queries", "symbols", "keywords"):
             val = kwargs.get(key)
             if isinstance(val, list):
                 kwords.extend([str(x) for x in val if isinstance(x, (str, int, float))])
 
-        # 去重 / 去空白
+        # Deduplicate / remove whitespace
         keywords = []
         seen = set()
         for kw in kwords:
@@ -159,13 +159,13 @@ class ToolBox:
                 keywords.append(s)
                 seen.add(s)
 
-        # 映射數值類參數（兼容新旧参数名）
-        # CRITICAL FIX: 默认改为2天（48小时），确保只获取最新新闻
+        # Map numeric parameters (compatible with old and new parameter names)
+        # CRITICAL FIX: Default changed to 2 days (48 hours) to ensure only latest news is fetched
         recency_days = _safe_int(
             kwargs.get("recency_days") or kwargs.get("days", 2),
             default=2
         )
-        # 强制限制为最多2天（48小时）
+        # Force limit to maximum 2 days (48 hours)
         recency_days = min(recency_days, 2)
         max_articles = _safe_int(
             kwargs.get("max_articles") or kwargs.get("max_n", 12),
@@ -173,12 +173,12 @@ class ToolBox:
         )
         domains = kwargs.get("preferred_domains") or kwargs.get("domains")
 
-        # 若完全沒 keyword，避免呼叫空查詢
+        # If no keywords at all, avoid calling empty query
         if not keywords:
-            # 退而求其次：若完全沒有 keyword，回傳空結果但 ok=True，避免打 API 做無意義查詢
+            # Fallback: If completely no keywords, return empty result but ok=True to avoid making API call for meaningless query
             return {"hits": [], "queries": [], "note": "news_scan skipped: empty keywords"}
 
-        # 呼叫底層 news_scan（使用新的接口）
+        # Call underlying news_scan (using new interface)
         return news_scan(
             keywords=keywords,
             max_articles=max_articles,
@@ -188,24 +188,24 @@ class ToolBox:
 
     def _vix_term_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：vix_term_structure() 不接受任何参数，忽略所有传入的参数。
+        Adapter: vix_term_structure() does not accept any parameters, ignore all passed parameters.
         """
-        # 忽略所有参数，直接调用函数
+        # Ignore all parameters, call function directly
         return vix_term_structure()
 
     def _vix_close_adapter(self, **kwargs) -> Any:
         """
-        适配器：get_vix_close 需要 start 和 end 参数。如果传入 recency_days，转换为日期范围。
+        Adapter: get_vix_close requires start and end parameters. If recency_days is passed, convert to date range.
         """
         from datetime import datetime, timedelta
         
-        # 如果有 start 和 end，直接使用
+        # If start and end are provided, use them directly
         if "start" in kwargs and "end" in kwargs:
             start = kwargs["start"]
             end = kwargs["end"]
             return get_vix_close(start=start, end=end)
         
-        # 如果只有 recency_days，计算日期范围
+        # If only recency_days is provided, calculate date range
         if "recency_days" in kwargs:
             recency_days = int(kwargs["recency_days"])
             end_date = datetime.now()
@@ -214,7 +214,7 @@ class ToolBox:
             end = end_date.strftime("%Y-%m-%d")
             return get_vix_close(start=start, end=end)
         
-        # 默认：最近 3 个月
+        # Default: last 3 months
         end_date = datetime.now()
         start_date = end_date - timedelta(days=90)
         start = start_date.strftime("%Y-%m-%d")
@@ -223,77 +223,77 @@ class ToolBox:
 
     def _fetch_url_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：fetch_url 只需要 url 参数。如果传入 tickers/queries，提示模型应该先调用 news_scan。
+        Adapter: fetch_url only requires url parameter. If tickers/queries are passed, suggest model should call news_scan first.
         """
-        # 如果提供了 url，直接使用
+        # If url is provided, use it directly
         if "url" in kwargs:
             url = kwargs["url"]
-            # fetch_url 返回 {"ok": True/False, "result": {...}} 或 {"ok": True/False, "error": ...} 格式
-            # toolbox.invoke 会再包装成 {"ok": True, "result": {...}}
-            # 所以如果 fetch_url 成功，返回 result 部分；如果失败，抛出异常让 toolbox.invoke 捕获
+            # fetch_url returns {"ok": True/False, "result": {...}} or {"ok": True/False, "error": ...} format
+            # toolbox.invoke will wrap it again into {"ok": True, "result": {...}}
+            # So if fetch_url succeeds, return result part; if fails, raise exception for toolbox.invoke to catch
             result = fetch_url(url=url)
             if isinstance(result, dict):
                 if result.get("ok") and "result" in result:
                     return result["result"]
                 elif "error" in result:
-                    # 如果 fetch_url 返回错误，抛出异常让 toolbox.invoke 的异常处理捕获
+                    # If fetch_url returns error, raise exception for toolbox.invoke's exception handling to catch
                     raise RuntimeError(result["error"])
             return result
         
-        # 如果只提供了 tickers/queries，说明模型可能想获取新闻 URL
-        # 这种情况下，应该调用 news_scan 而不是 fetch_url
+        # If only tickers/queries are provided, model may want to get news URLs
+        # In this case, should call news_scan instead of fetch_url
         if "tickers" in kwargs or "queries" in kwargs:
-            # 模型可能想获取新闻内容，但 fetch_url 需要具体的 URL
-            # 建议先调用 news_scan 获取 URL，再调用 fetch_url
-            # 抛出异常，toolbox.invoke 会捕获并正确处理
+            # Model may want to get news content, but fetch_url requires specific URL
+            # Suggest calling news_scan first to get URLs, then fetch_url
+            # Raise exception, toolbox.invoke will catch and handle properly
             raise ValueError("fetch_url requires 'url' parameter. Use news_scan first to get URLs, then fetch_url with specific URL.")
         
-        # 如果都没有，返回错误
+        # If neither is provided, return error
         raise ValueError("fetch_url requires 'url' parameter (string)")
     
     def _web_search_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：web_search 接受 query 或 keywords 参数
+        Adapter: web_search accepts query or keywords parameter
         """
-        # 支持 query 参数（转换为 keywords）
+        # Support query parameter (convert to keywords)
         if "query" in kwargs:
             kwargs["keywords"] = [kwargs.pop("query")]
-        # 如果 keywords 是字符串，转换为列表
+        # If keywords is a string, convert to list
         if "keywords" in kwargs and isinstance(kwargs["keywords"], str):
             kwargs["keywords"] = [kwargs["keywords"]]
-        # 如果既没有 query 也没有 keywords，返回错误
+        # If neither query nor keywords is provided, return error
         if "keywords" not in kwargs:
             raise ValueError("web_search requires 'query' or 'keywords' parameter")
         return search_web(**kwargs)
     
     def _crypto_batch_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：fetch_crypto_batch 是 LangChain StructuredTool，需要使用 .invoke()
+        Adapter: fetch_crypto_batch is a LangChain StructuredTool, need to use .invoke()
         """
-        # 如果 fetch_crypto_batch 是 StructuredTool，使用 .invoke()
+        # If fetch_crypto_batch is StructuredTool, use .invoke()
         if hasattr(fetch_crypto_batch, 'invoke'):
             return fetch_crypto_batch.invoke(kwargs)
-        # 否则直接调用
+        # Otherwise call directly
         return fetch_crypto_batch(**kwargs)
     
     def _crypto_price_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：get_crypto_price 是 LangChain StructuredTool，需要使用 .invoke()
+        Adapter: get_crypto_price is a LangChain StructuredTool, need to use .invoke()
         """
-        # 如果 get_crypto_price 是 StructuredTool，使用 .invoke()
+        # If get_crypto_price is StructuredTool, use .invoke()
         if hasattr(get_crypto_price, 'invoke'):
             return get_crypto_price.invoke(kwargs)
-        # 否则直接调用
+        # Otherwise call directly
         return get_crypto_price(**kwargs)
     
     # jin10 adapters removed - not needed
 
     def _plan_and_scan_news_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：plan_and_scan_news 需要 tickers 和 mview 参数。
-        CRITICAL FIX: 处理参数名映射（LLM可能使用错误的参数名）
+        Adapter: plan_and_scan_news requires tickers and mview parameters.
+        CRITICAL FIX: Handle parameter name mapping (LLM may use wrong parameter names)
         """
-        # CRITICAL FIX: 参数名映射 - 将LLM可能使用的错误参数名转换为正确参数名
+        # CRITICAL FIX: Parameter name mapping - convert wrong parameter names LLM may use to correct ones
         # symbols -> tickers
         if "symbols" in kwargs and "tickers" not in kwargs:
             kwargs["tickers"] = kwargs.pop("symbols")
@@ -307,42 +307,42 @@ class ToolBox:
         if "recency" in kwargs and "recency_days" not in kwargs:
             kwargs["recency_days"] = kwargs.pop("recency")
         
-        # 提取 tickers 参数（必需）
+        # Extract tickers parameter (required)
         tickers = kwargs.pop("tickers", None)
         if not tickers:
-            # 尝试从其他参数中提取
+            # Try to extract from other parameters
             tickers = kwargs.pop("stocks", None)
             if isinstance(tickers, str):
                 tickers = [tickers]
             elif not tickers or (isinstance(tickers, list) and len(tickers) == 0):
-                # 如果没有提供或为空列表，使用默认值（用于通用市场新闻搜索）
-                tickers = ["AAPL", "MSFT", "NVDA", "TSLA", "GOOGL"]  # 默认股票列表
+                # If not provided or empty list, use default (for general market news search)
+                tickers = ["AAPL", "MSFT", "NVDA", "TSLA", "GOOGL"]  # Default stock list
         
-        # 确保 tickers 是列表
+        # Ensure tickers is a list
         if isinstance(tickers, str):
             tickers = [tickers]
         elif not isinstance(tickers, list):
             tickers = list(tickers) if tickers else ["AAPL", "MSFT", "NVDA"]
         
-        # 处理 mview 参数
+        # Handle mview parameter
         mview = kwargs.pop("mview", {})
         if not mview or not isinstance(mview, dict):
-            # 创建最小化的 mview（至少包含基本结构）
+            # Create minimal mview (at least include basic structure)
             mview = {
                 "vix": kwargs.pop("vix", {}),
                 "stocks": kwargs.pop("stocks", {}),
             }
         
-        # CRITICAL FIX: 移除所有不支持的参数，只保留支持的参数
+        # CRITICAL FIX: Remove all unsupported parameters, keep only supported ones
         supported_params = {"preferred_domains", "recency_days", "max_articles", "fetch_body_top"}
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in supported_params}
         
-        # 调用函数，传入必需的参数和过滤后的可选参数
+        # Call function with required parameters and filtered optional parameters
         return plan_and_scan_news(tickers=tickers, mview=mview, **filtered_kwargs)
 
     def _economic_summary_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：get_economic_summary 不需要参数，返回字符串摘要
+        Adapter: get_economic_summary does not require parameters, returns string summary
         """
         try:
             result = get_economic_summary()
@@ -352,7 +352,7 @@ class ToolBox:
     
     def _labor_market_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：get_labor_market_data 不需要参数，返回字符串摘要
+        Adapter: get_labor_market_data does not require parameters, returns string summary
         """
         try:
             result = get_labor_market_data()
@@ -362,7 +362,7 @@ class ToolBox:
     
     def _treasury_yield_curve_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：get_treasury_yield_curve 不需要参数，返回字符串摘要
+        Adapter: get_treasury_yield_curve does not require parameters, returns string summary
         """
         try:
             result = get_treasury_yield_curve()
@@ -372,14 +372,14 @@ class ToolBox:
 
     def _fred_indicator_adapter(self, **kwargs) -> Dict[str, Any]:
         """
-        适配器：fetch_fred_indicator 需要 series_id 参数
-        如果 LLM 提供了其他关键词，尝试从中提取或映射到常见的 series_id
+        Adapter: fetch_fred_indicator requires series_id parameter
+        If LLM provides other keywords, try to extract or map to common series_id
         """
-        # 提取 series_id
+        # Extract series_id
         series_id = kwargs.get("series_id") or kwargs.get("indicator") or kwargs.get("series")
         
         if not series_id:
-            # 如果没有提供 series_id，尝试从关键词中推断
+            # If series_id is not provided, try to infer from keywords
             keywords = str(kwargs).lower()
             if "gdp" in keywords:
                 series_id = "GDP"
@@ -394,7 +394,7 @@ class ToolBox:
             else:
                 return {"ok": False, "error": "No series_id provided and unable to infer from keywords"}
         
-        # 提取 limit 参数（默认为1）
+        # Extract limit parameter (default is 1)
         limit = _safe_int(kwargs.get("limit", 1), default=1)
         
         try:

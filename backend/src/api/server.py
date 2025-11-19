@@ -1671,6 +1671,30 @@ async def system_init(force: bool = Query(False)):
             if old_backups_deleted > 0:
                 print(f"[INIT] Deleted {old_backups_deleted} old backup files during initialization")
         
+        # CRITICAL FIX: 清理 memory/ 文件夹内的所有文件（保留文件夹本身）
+        memory_dir = logs_dir / "memory"
+        if memory_dir.exists() and memory_dir.is_dir():
+            memory_files_deleted = 0
+            try:
+                # 递归遍历 memory/ 目录下的所有文件
+                for item in memory_dir.rglob("*"):
+                    if item.is_file():
+                        try:
+                            item.unlink()
+                            memory_files_deleted += 1
+                            # 记录相对路径
+                            relative_path = item.relative_to(logs_dir)
+                            deleted.append(f"memory: {relative_path}")
+                        except Exception as e:
+                            print(f"[INIT] Failed to delete memory file {item}: {e}")
+                
+                if memory_files_deleted > 0:
+                    print(f"[INIT] Deleted {memory_files_deleted} files from memory/ directory")
+                else:
+                    print(f"[INIT] No files found in memory/ directory to delete")
+            except Exception as e:
+                print(f"[INIT] Error cleaning memory/ directory: {e}")
+        
         return JSONResponse(
             status_code=200,
             content={

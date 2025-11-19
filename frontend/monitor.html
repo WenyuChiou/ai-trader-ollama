@@ -6458,27 +6458,52 @@
                     if (data.fear_greed !== undefined || (data.result && data.result.fear_greed !== undefined)) {
                         const fearGreed = data.fear_greed || (data.result && data.result.fear_greed) || {};
                         const fgValue = typeof fearGreed === 'object' ? (fearGreed.value || fearGreed.index || 0) : (fearGreed || 0);
-                        const fgLabel = typeof fearGreed === 'object' ? (fearGreed.label || fearGreed.classification || '') : '';
+                        let fgLabel = typeof fearGreed === 'object' ? (fearGreed.label || fearGreed.classification || '') : '';
                         
-                        // 根据值确定颜色
+                        // CRITICAL FIX: 使用標準分級（與後端一致）
+                        // 0-25: EXTREME FEAR, 26-45: FEAR, 46-55: NEUTRAL, 56-75: GREED, 76-100: EXTREME GREED
+                        if (fgValue >= 0 && !fgLabel) {
+                            if (fgValue <= 25) fgLabel = 'EXTREME FEAR';
+                            else if (fgValue <= 45) fgLabel = 'FEAR';
+                            else if (fgValue <= 55) fgLabel = 'NEUTRAL';
+                            else if (fgValue <= 75) fgLabel = 'GREED';
+                            else fgLabel = 'EXTREME GREED';
+                        }
+                        // 標準化現有label格式
+                        if (fgLabel) {
+                            const labelUpper = fgLabel.toUpperCase();
+                            if (labelUpper.includes('EXTREME FEAR') || (fgValue <= 25 && !labelUpper.includes('FEAR'))) {
+                                fgLabel = 'EXTREME FEAR';
+                            } else if (labelUpper.includes('FEAR') && !labelUpper.includes('EXTREME')) {
+                                fgLabel = 'FEAR';
+                            } else if (labelUpper.includes('NEUTRAL')) {
+                                fgLabel = 'NEUTRAL';
+                            } else if (labelUpper.includes('GREED') && !labelUpper.includes('EXTREME')) {
+                                fgLabel = 'GREED';
+                            } else if (labelUpper.includes('EXTREME GREED')) {
+                                fgLabel = 'EXTREME GREED';
+                            }
+                        }
+                        
+                        // CRITICAL FIX: 根據標準分級設置顏色
                         let fgColor = '#6b7280';
                         let fgDisplayLabel = fgLabel;
-                        if (fgValue > 0) {
-                            if (fgValue >= 75) {
-                                fgColor = '#ef4444';
-                                if (!fgDisplayLabel) fgDisplayLabel = 'Extreme Greed';
-                            } else if (fgValue >= 55) {
-                                fgColor = '#f59e0b';
-                                if (!fgDisplayLabel) fgDisplayLabel = 'Greed';
-                            } else if (fgValue >= 45) {
-                                fgColor = '#6b7280';
-                                if (!fgDisplayLabel) fgDisplayLabel = 'Neutral';
-                            } else if (fgValue >= 25) {
-                                fgColor = '#10b981';
-                                if (!fgDisplayLabel) fgDisplayLabel = 'Fear';
+                        if (fgValue >= 0) {
+                            if (fgValue <= 25) {
+                                fgColor = '#ef4444'; // EXTREME FEAR - 紅色
+                                if (!fgDisplayLabel) fgDisplayLabel = 'EXTREME FEAR';
+                            } else if (fgValue <= 45) {
+                                fgColor = '#f59e0b'; // FEAR - 橙色
+                                if (!fgDisplayLabel) fgDisplayLabel = 'FEAR';
+                            } else if (fgValue <= 55) {
+                                fgColor = '#6b7280'; // NEUTRAL - 灰色
+                                if (!fgDisplayLabel) fgDisplayLabel = 'NEUTRAL';
+                            } else if (fgValue <= 75) {
+                                fgColor = '#10b981'; // GREED - 綠色
+                                if (!fgDisplayLabel) fgDisplayLabel = 'GREED';
                             } else {
-                                fgColor = '#ef4444';
-                                if (!fgDisplayLabel) fgDisplayLabel = 'Extreme Fear';
+                                fgColor = '#ef4444'; // EXTREME GREED - 紅色
+                                if (!fgDisplayLabel) fgDisplayLabel = 'EXTREME GREED';
                             }
                         }
                         

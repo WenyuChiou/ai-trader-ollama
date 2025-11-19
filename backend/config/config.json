@@ -164,5 +164,19 @@
     "https://seekingalpha.com/market-news",
     "https://www.investing.com/news/",
     "https://www.benzinga.com/news"
-  ]
+  ],
+  "rag": {
+    "_comment": "RAG (Retrieval-Augmented Generation) system configuration",
+    "short_term_days": 7,
+    "medium_term_days": 30,
+    "long_term_days": 90,
+    "embedding_model": "nomic-embed-text",
+    "embedding_dimension": 384,
+    "use_ollama_embedding": true,
+    "fallback_embedding_model": "all-MiniLM-L6-v2",
+    "vector_search_top_k": 10,
+    "enable_semantic_search": true,
+    "enable_cache": true,
+    "cache_size": 100
+  }
 }

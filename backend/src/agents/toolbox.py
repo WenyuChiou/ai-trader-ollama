@@ -87,11 +87,14 @@ class ToolBox:
         
         # memory/RAG tools - for agents to access historical memories
         self.register(Tool("get_recent_memories", get_recent_memories, "Get recent trading memories (last N days) for context and learning from past decisions. Use this to understand what happened in previous trading cycles."))
-        self.register(Tool("search_memories_by_symbol", search_memories_by_symbol, "Search historical memories for a specific stock symbol to see past analysis and decisions. Useful for understanding how we've traded a stock before."))
+        self.register(Tool("search_memories_by_symbol", search_memories_by_symbol, "Search historical memories for a specific stock symbol to see past analysis and decisions. Supports both keyword and semantic search. Useful for understanding how we've traded a stock before."))
         self.register(Tool("search_memories_by_date_range", search_memories_by_date_range, "Search memories within a date range (start_date, end_date in YYYY-MM-DD format). Use this to review what happened during specific periods."))
         self.register(Tool("get_weekly_memory_summary", get_weekly_memory_summary, "Get weekly compressed memory summary (only Monday and weekend records preserved). Use this for longer-term context."))
         self.register(Tool("get_monthly_memory_summary", get_monthly_memory_summary, "Get monthly compressed memory summary. Use this for very long-term trends and patterns."))
-        self.register(Tool("search_similar_decisions", search_similar_decisions, "Search for similar trading decisions for a stock (past BUY/SELL actions). Use this to learn from past decisions when considering similar situations."))
+        self.register(Tool("search_similar_decisions", search_similar_decisions, "Search for similar trading decisions for a stock (past BUY/SELL actions). Supports semantic search to find similar situations. Use this to learn from past decisions when considering similar situations."))
+        # New semantic search tool
+        from src.tools.memory_tools import search_memories_by_semantic
+        self.register(Tool("search_memories_by_semantic", search_memories_by_semantic, "Semantic search for memories using natural language query. Use this to find memories related to specific concepts, market conditions, or trading patterns. Example: 'bearish market with high volatility' or 'successful NVDA trades'."))
 
     # ---------- public API ----------
     def register(self, tool: Tool) -> None:

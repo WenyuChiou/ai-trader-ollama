@@ -1,9 +1,11 @@
 # src/data/memory_manager.py
 """
-优化的 Memory 管理系统
+优化的 Memory 管理系统 - RAG优化版
 - 分层记忆：短期（每日）、中期（周）、长期（月）
-- 智能检索：基于日期、股票、决策类型
+- 长短记忆分离：短期完整存储，中期摘要，长期压缩
+- 智能检索：基于日期、股票、决策类型 + 语义搜索
 - 记忆压缩：自动摘要和归档
+- 向量化：支持语义搜索
 """
 from __future__ import annotations
 import json
@@ -12,17 +14,40 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, date, timedelta
 from collections import defaultdict
+import sys
+
+# 添加项目路径
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+try:
+    from src.utils.embedding_generator import EmbeddingGenerator
+    from src.utils.vector_store import VectorStore
+    from src.utils.memory_scorer import MemoryScorer
+    from src.utils.memory_relations import MemoryRelationAnalyzer
+    from src.utils.config_loader import load_config
+    RAG_AVAILABLE = True
+except ImportError:
+    RAG_AVAILABLE = False
+    EmbeddingGenerator = None
+    VectorStore = None
+    MemoryScorer = None
+    MemoryRelationAnalyzer = None
 
 
 class MemoryManager:
     """
-    优化的 Memory 管理器
+    优化的 Memory 管理器 - RAG增强版
     
     特性：
     1. 分层记忆存储（每日/每周/每月）
-    2. 智能检索（按日期、股票、决策类型）
-    3. 自动压缩（旧记忆压缩存储）
-    4. 记忆摘要（提取关键信息）
+    2. 长短记忆分离（短期完整，中期摘要，长期压缩）
+    3. 智能检索（关键词 + 语义搜索）
+    4. 自动压缩（旧记忆压缩存储）
+    5. 记忆摘要（提取关键信息）
+    6. 向量化支持（语义搜索）
+    7. 缓存机制（热点记忆缓存）
     """
     
     def __init__(self, root: str | Path = "data/logs"):
@@ -35,14 +60,151 @@ class MemoryManager:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         
+        # 加载配置
+        try:
+            config = load_config()
+            rag_config = config.get("rag", {})
+            self.short_term_days = rag_config.get("short_term_days", 7)
+            self.medium_term_days = rag_config.get("medium_term_days", 30)
+            self.long_term_days = rag_config.get("long_term_days", 90)
+            self.enable_semantic_search = rag_config.get("enable_semantic_search", True)
+            self.enable_cache = rag_config.get("enable_cache", True)
+            self.cache_size = rag_config.get("cache_size", 100)
+        except Exception:
+            self.short_term_days = 7
+            self.medium_term_days = 30
+            self.long_term_days = 90
+            self.enable_semantic_search = True
+            self.enable_cache = True
+            self.cache_size = 100
+        
         # 创建分层目录结构
-        self.daily_dir = self.root / "memory" / "daily"      # 每日记忆（最近30天）
-        self.weekly_dir = self.root / "memory" / "weekly"    # 每周摘要（压缩）
-        self.monthly_dir = self.root / "memory" / "monthly"  # 每月摘要（压缩）
+        self.daily_dir = self.root / "memory" / "daily"      # 每日记忆（短期：0-7天）
+        self.weekly_dir = self.root / "memory" / "weekly"    # 每周摘要（中期：8-30天）
+        self.monthly_dir = self.root / "memory" / "monthly"  # 每月摘要（长期：30+天）
         self.index_dir = self.root / "memory" / "index"      # 索引文件
+        self.vectors_dir = self.root / "memory" / "vectors"  # 向量存储
         
         for d in [self.daily_dir, self.weekly_dir, self.monthly_dir, self.index_dir]:
             d.mkdir(parents=True, exist_ok=True)
+        
+        # 初始化向量存储、embedding生成器、评分器和关联分析器
+        self.vector_store: Optional[VectorStore] = None
+        self.embedding_generator: Optional[EmbeddingGenerator] = None
+        self.memory_scorer: Optional[MemoryScorer] = None
+        self.relation_analyzer: Optional[MemoryRelationAnalyzer] = None
+        
+        if RAG_AVAILABLE:
+            # 初始化评分器
+            try:
+                self.memory_scorer = MemoryScorer()
+            except Exception as e:
+                print(f"[MEMORY WARN] Failed to initialize memory scorer: {e}")
+            
+            # 初始化关联分析器
+            try:
+                self.relation_analyzer = MemoryRelationAnalyzer(root=self.root)
+            except Exception as e:
+                print(f"[MEMORY WARN] Failed to initialize relation analyzer: {e}")
+        
+        if RAG_AVAILABLE and self.enable_semantic_search:
+            try:
+                config = load_config()
+                rag_config = config.get("rag", {})
+                embedding_dim = rag_config.get("embedding_dimension", 384)
+                use_ollama = rag_config.get("use_ollama_embedding", True)
+                
+                self.embedding_generator = EmbeddingGenerator(
+                    ollama_model=rag_config.get("embedding_model", "nomic-embed-text"),
+                    fallback_model=rag_config.get("fallback_embedding_model", "all-MiniLM-L6-v2"),
+                )
+                
+                self.vector_store = VectorStore(
+                    root=self.root,
+                    embedding_dim=embedding_dim,
+                )
+                print(f"[MEMORY] RAG system initialized (semantic search enabled)")
+            except Exception as e:
+                print(f"[MEMORY WARN] Failed to initialize RAG system: {e}")
+                self.vector_store = None
+                self.embedding_generator = None
+        
+        # 缓存（热点记忆）
+        self._memory_cache: Dict[str, Dict[str, Any]] = {}
+        self._cache_max_size = self.cache_size
+    
+    def _get_memory_age_days(self, date_str: str) -> int:
+        """获取记忆年龄（天数）"""
+        try:
+            memory_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            return (date.today() - memory_date).days
+        except Exception:
+            return 999  # 无法解析的日期视为很旧
+    
+    def _is_short_term(self, date_str: str) -> bool:
+        """判断是否为短期记忆"""
+        return self._get_memory_age_days(date_str) < self.short_term_days
+    
+    def _is_medium_term(self, date_str: str) -> bool:
+        """判断是否为中期记忆"""
+        age = self._get_memory_age_days(date_str)
+        return self.short_term_days <= age < self.medium_term_days
+    
+    def _is_long_term(self, date_str: str) -> bool:
+        """判断是否为长期记忆"""
+        return self._get_memory_age_days(date_str) >= self.medium_term_days
+    
+    def _extract_key_conversation_points(self, transcript: Any) -> List[str]:
+        """提取关键对话要点（用于中期记忆）"""
+        if not transcript:
+            return []
+        
+        # 如果transcript是字符串，尝试解析
+        if isinstance(transcript, str):
+            # 简单提取：每轮讨论的要点
+            # 实际应该用LLM提取，这里先用简单规则
+            lines = transcript.split("\n")
+            key_points = []
+            for line in lines:
+                if any(keyword in line.lower() for keyword in ["recommend", "suggest", "conclude", "decision", "stance"]):
+                    key_points.append(line.strip())
+            return key_points[:10]  # 最多10个要点
+        
+        # 如果transcript是列表或字典，提取关键信息
+        if isinstance(transcript, list):
+            return [str(item)[:200] for item in transcript[:10]]
+        
+        return []
+    
+    def _create_memory_summary_text(self, memory: Dict[str, Any]) -> str:
+        """创建记忆摘要文本（用于embedding）"""
+        parts = []
+        
+        # 日期和立场
+        date_str = memory.get("date", "")
+        stance = memory.get("discussion", {}).get("final_stance", "")
+        if stance:
+            parts.append(f"Market stance: {stance}")
+        
+        # 推荐股票
+        recommended = memory.get("market_analysis", {}).get("recommended_stocks", [])
+        if recommended:
+            parts.append(f"Recommended stocks: {', '.join(recommended[:5])}")
+        
+        # 决策摘要
+        decision = memory.get("decision", {})
+        action = decision.get("action", "")
+        buy_count = len(decision.get("buy_orders", []))
+        sell_count = len(decision.get("sell_orders", []))
+        if action:
+            parts.append(f"Action: {action} ({buy_count} buys, {sell_count} sells)")
+        
+        # 风险水平
+        risk_level = memory.get("risk_report", {}).get("overall_risk_level", "")
+        if risk_level:
+            parts.append(f"Risk level: {risk_level}")
+        
+        return ". ".join(parts)
     
     def save_daily_memory(
         self,
@@ -53,39 +215,118 @@ class MemoryManager:
         risk_report: Dict[str, Any],
         decision: Dict[str, Any],
         portfolio_snapshot: Dict[str, Any],
-        executed_trades: List[Dict[str, Any]] | None = None,  # 新增：成交明細（掛單時為空，成交後補充）
+        executed_trades: List[Dict[str, Any]] | None = None,
         *,
         compress_old: bool = True,
     ) -> None:
         """
-        保存每日记忆（优化版）
+        保存每日记忆（优化版 - 支持长短记忆分离）
         
         参数:
         - date: 日期 (YYYY-MM-DD)
-        - compress_old: 是否压缩30天前的记忆
+        - compress_old: 是否压缩旧记忆
         """
-        memory = {
-            "date": date,
-            "timestamp": datetime.now().isoformat(),
-            "metadata": {
-                "version": "1.0",
-                "compressed": False,
-            },
-            "market_view": self._compress_market_view(market_view),
-            "market_analysis": market_analysis,
-            "discussion": {
-                "final_stance": discussion.get("final_stance"),
-                "rounds": discussion.get("rounds"),
-                "transcript": discussion.get("transcript"),  # 完整对话历史
-                "tool_context": discussion.get("tool_context"),  # 工具调用历史
-                "actions": discussion.get("actions"),
-            },
-            "risk_report": risk_report,
-            "decision": decision,
-            "portfolio_snapshot": portfolio_snapshot,
-            "executed_trades": executed_trades or [],  # 成交明細（如果提供）
-            "executed_trades_count": len(executed_trades) if executed_trades else 0,
-        }
+        memory_age = self._get_memory_age_days(date)
+        
+        # 计算重要性分数（如果启用）
+        importance_score = None
+        if self.memory_scorer:
+            try:
+                temp_memory = {
+                    "date": date,
+                    "market_analysis": market_analysis,
+                    "discussion": discussion,
+                    "risk_report": risk_report,
+                    "decision": decision,
+                    "portfolio_snapshot": portfolio_snapshot,
+                    "executed_trades": executed_trades or [],
+                }
+                importance_score = self.memory_scorer.calculate_importance_score(temp_memory, date)
+            except Exception as e:
+                print(f"[MEMORY WARN] Failed to calculate importance score: {e}")
+        
+        # 根据记忆年龄和重要性分数决定存储策略
+        if memory_age < self.short_term_days:
+            # 短期记忆：完整存储
+            memory = {
+                "date": date,
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {
+                    "version": "2.0",
+                    "compressed": False,
+                    "memory_type": "short_term",
+                    "importance_score": importance_score,
+                },
+                "market_view": self._compress_market_view(market_view),
+                "market_analysis": market_analysis,
+                "discussion": {
+                    "final_stance": discussion.get("final_stance"),
+                    "rounds": discussion.get("rounds"),
+                    "transcript": discussion.get("transcript"),  # 完整对话历史
+                    "tool_context": discussion.get("tool_context"),  # 工具调用历史
+                    "actions": discussion.get("actions"),
+                },
+                "risk_report": risk_report,
+                "decision": decision,
+                "portfolio_snapshot": portfolio_snapshot,
+                "executed_trades": executed_trades or [],
+                "executed_trades_count": len(executed_trades) if executed_trades else 0,
+            }
+        elif memory_age < self.medium_term_days:
+            # 中期记忆：摘要存储（提取关键对话片段）
+            transcript = discussion.get("transcript")
+            key_points = self._extract_key_conversation_points(transcript)
+            
+            memory = {
+                "date": date,
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {
+                    "version": "2.0",
+                    "compressed": True,
+                    "memory_type": "medium_term",
+                    "importance_score": importance_score,
+                },
+                "market_view": self._compress_market_view(market_view),
+                "market_analysis": {
+                    "recommended_stocks": market_analysis.get("recommended_stocks", []),
+                    "summary": market_analysis.get("summary", ""),
+                },
+                "discussion": {
+                    "final_stance": discussion.get("final_stance"),
+                    "rounds": discussion.get("rounds"),
+                    "key_points": key_points,  # 关键对话片段
+                    "tool_summary": self._summarize_tools(discussion.get("tool_context")),
+                },
+                "risk_report": {
+                    "overall_risk_level": risk_report.get("overall_risk_level"),
+                },
+                "decision": {
+                    "action": decision.get("action"),
+                    "buy_orders": decision.get("buy_orders", []),
+                    "sell_orders": decision.get("sell_orders", []),
+                },
+                "portfolio_snapshot": portfolio_snapshot,
+                "executed_trades": executed_trades or [],
+                "executed_trades_count": len(executed_trades) if executed_trades else 0,
+            }
+        else:
+            # 长期记忆：高度压缩
+            memory = self._create_compressed_memory({
+                "date": date,
+                "market_view": market_view,
+                "market_analysis": market_analysis,
+                "discussion": discussion,
+                "risk_report": risk_report,
+                "decision": decision,
+                "portfolio_snapshot": portfolio_snapshot,
+                "executed_trades": executed_trades or [],
+            })
+            memory["metadata"] = {
+                "version": "2.0",
+                "compressed": True,
+                "memory_type": "long_term",
+                "importance_score": importance_score,
+            }
         
         # 保存每日记忆
         memory_file = self.daily_dir / f"{date}.json"
@@ -95,11 +336,75 @@ class MemoryManager:
         # 更新索引
         self._update_index(date, memory)
         
+        # 更新关联关系
+        if self.relation_analyzer:
+            try:
+                self.relation_analyzer.update_relations(memory)
+            except Exception as e:
+                print(f"[MEMORY WARN] Failed to update relations: {e}")
+        
+        # 生成并存储embedding（如果启用）
+        if self.vector_store and self.embedding_generator:
+            try:
+                summary_text = self._create_memory_summary_text(memory)
+                embedding = self.embedding_generator.generate_embedding(summary_text)
+                
+                # 提取元数据
+                decision = memory.get("decision", {})
+                buy_orders = decision.get("buy_orders", [])
+                sell_orders = decision.get("sell_orders", [])
+                
+                metadata = {
+                    "date": date,
+                    "stance": memory.get("discussion", {}).get("final_stance"),
+                    "stocks_involved": list(set([
+                        order.get("symbol")
+                        for order in buy_orders + sell_orders
+                        if order.get("symbol")
+                    ])),
+                    "recommended_stocks": memory.get("market_analysis", {}).get("recommended_stocks", []),
+                    "action": decision.get("action"),
+                    "risk_level": memory.get("risk_report", {}).get("overall_risk_level"),
+                }
+                
+                self.vector_store.add_vector(embedding, metadata, date_str=date)
+                self.vector_store.save()
+            except Exception as e:
+                print(f"[MEMORY WARN] Failed to generate embedding: {e}")
+        
+        # 更新缓存
+        if self.enable_cache:
+            self._update_cache(date, memory)
+        
         # 压缩旧记忆
         if compress_old:
             self._compress_old_memories()
         
-        print(f"[MEMORY] Saved daily memory for {date}")
+        print(f"[MEMORY] Saved daily memory for {date} (type: {memory.get('metadata', {}).get('memory_type', 'unknown')})")
+    
+    def _summarize_tools(self, tool_context: Any) -> Dict[str, Any]:
+        """总结工具调用"""
+        if not tool_context:
+            return {}
+        
+        if isinstance(tool_context, dict):
+            tools_used = tool_context.get("tools_used", [])
+            return {
+                "tools_count": len(tools_used),
+                "tools_list": tools_used[:10],  # 最多10个工具
+            }
+        
+        return {}
+    
+    def _update_cache(self, date: str, memory: Dict[str, Any]) -> None:
+        """更新缓存"""
+        # 如果缓存已满，删除最旧的
+        if len(self._memory_cache) >= self._cache_max_size:
+            # 删除最旧的（按日期）
+            oldest_date = min(self._memory_cache.keys())
+            del self._memory_cache[oldest_date]
+        
+        self._memory_cache[date] = memory
     
     def _compress_market_view(self, market_view: Dict[str, Any]) -> Dict[str, Any]:
         """压缩市场数据（只保留关键信息）"""
@@ -151,18 +456,21 @@ class MemoryManager:
             "recommended_stocks": memory.get("market_analysis", {}).get("recommended_stocks", []),
             "action": decision.get("action"),
             "risk_level": memory.get("risk_report", {}).get("overall_risk_level"),
+            "memory_type": memory.get("metadata", {}).get("memory_type", "unknown"),
         }
         
         # 保存索引
         with index_file.open("w", encoding="utf-8") as f:
             json.dump(index, f, ensure_ascii=False, indent=2)
     
-    def _compress_old_memories(self, days_threshold: int = 30) -> None:
+    def _compress_old_memories(self, days_threshold: Optional[int] = None) -> None:
         """
-        压缩30天前的记忆到 weekly/monthly 目录
+        压缩旧记忆到 weekly/monthly 目录
         周级别浓缩：只保留周一开始和周末的记录，其他天的记录删除
         """
-        # CRITICAL FIX: date.today() already returns a date object, no need to call .date()
+        if days_threshold is None:
+            days_threshold = self.medium_term_days
+        
         cutoff_date = date.today() - timedelta(days=days_threshold)
         
         # 按周分组记忆文件
@@ -172,7 +480,7 @@ class MemoryManager:
             try:
                 memory_date = datetime.strptime(memory_file.stem, "%Y-%m-%d").date()
                 
-                # 只处理30天前的记忆
+                # 只处理超过阈值的记忆
                 if memory_date < cutoff_date:
                     week_str = f"{memory_date.isocalendar()[0]}-W{memory_date.isocalendar()[1]:02d}"
                     weekly_groups[week_str].append((memory_file, memory_date))
@@ -305,13 +613,21 @@ class MemoryManager:
         }
     
     def load_daily_memory(self, date: str) -> Optional[Dict[str, Any]]:
-        """加载指定日期的记忆（优先从 daily，然后从 weekly）"""
+        """加载指定日期的记忆（优先从缓存，然后从 daily，最后从 weekly）"""
+        # 检查缓存
+        if self.enable_cache and date in self._memory_cache:
+            return self._memory_cache[date]
+        
         # 先尝试从 daily 目录加载
         daily_file = self.daily_dir / f"{date}.json"
         if daily_file.exists():
             try:
                 with daily_file.open("r", encoding="utf-8") as f:
-                    return json.load(f)
+                    memory = json.load(f)
+                    # 更新缓存
+                    if self.enable_cache:
+                        self._update_cache(date, memory)
+                    return memory
             except Exception as e:
                 print(f"[MEMORY ERROR] Failed to load {date}: {e}")
         
@@ -395,10 +711,13 @@ class MemoryManager:
         action: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        query_text: Optional[str] = None,  # 新增：语义搜索查询
         limit: int = 10,
+        use_semantic: bool = True,  # 是否使用语义搜索
+        include_related: bool = False,  # 是否包含关联记忆
     ) -> List[Dict[str, Any]]:
         """
-        智能搜索记忆
+        智能搜索记忆（混合检索：关键词 + 语义）
         
         参数:
         - symbol: 股票代码
@@ -406,11 +725,96 @@ class MemoryManager:
         - action: 交易动作（BUY/SELL/HOLD）
         - start_date: 开始日期
         - end_date: 结束日期
+        - query_text: 语义搜索查询文本
         - limit: 返回结果数量限制
+        - use_semantic: 是否使用语义搜索
         
         返回:
         - 匹配的记忆列表
         """
+        results = []
+        
+        # 如果启用语义搜索且有查询文本
+        if use_semantic and query_text and self.vector_store and self.embedding_generator:
+            try:
+                # 生成查询embedding
+                query_embedding = self.embedding_generator.generate_embedding(query_text)
+                
+                # 语义搜索
+                date_filter = None
+                if start_date and end_date:
+                    date_filter = (start_date, end_date)
+                
+                semantic_results = self.vector_store.search_similar(
+                    query_embedding=query_embedding,
+                    top_k=limit * 2,  # 获取更多结果用于融合
+                    date_filter=date_filter,
+                    symbol_filter=symbol,
+                )
+                
+                # 转换为记忆对象
+                for meta, similarity in semantic_results:
+                    date_str = meta.get("date")
+                    if date_str:
+                        memory = self.load_daily_memory(date_str)
+                        if memory:
+                            # 添加相似度分数
+                            memory["_similarity_score"] = similarity
+                            results.append(memory)
+            except Exception as e:
+                print(f"[MEMORY WARN] Semantic search failed: {e}")
+        
+        # 关键词搜索（如果语义搜索结果不足或未启用）
+        if len(results) < limit:
+            keyword_results = self._search_memories_keyword(
+                symbol=symbol,
+                stance=stance,
+                action=action,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit - len(results),
+            )
+            
+            # 合并结果（去重）
+            existing_dates = {r.get("date") for r in results}
+            for result in keyword_results:
+                if result.get("date") not in existing_dates:
+                    results.append(result)
+        
+        # 包含关联记忆（如果启用）
+        if include_related and self.relation_analyzer and results:
+            related_dates = set()
+            for result in results[:5]:  # 只对top 5结果查找关联
+                date_str = result.get("date")
+                if date_str:
+                    related = self.relation_analyzer.get_related_memories(date_str)
+                    related_dates.update(related)
+            
+            # 加载关联记忆
+            existing_dates = {r.get("date") for r in results}
+            for related_date in related_dates:
+                if related_date not in existing_dates:
+                    related_memory = self.load_daily_memory(related_date)
+                    if related_memory:
+                        related_memory["_is_related"] = True
+                        results.append(related_memory)
+        
+        # 按日期排序（最新的在前）
+        results.sort(key=lambda x: x.get("date", ""), reverse=True)
+        
+        return results[:limit]
+    
+    def _search_memories_keyword(
+        self,
+        *,
+        symbol: Optional[str] = None,
+        stance: Optional[str] = None,
+        action: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """关键词搜索（原有逻辑）"""
         index_file = self.index_dir / "daily_index.json"
         if not index_file.exists():
             return []
@@ -473,16 +877,23 @@ class MemoryManager:
             except Exception:
                 pass
         
-        return {
+        stats = {
             "daily_memories": daily_count,
             "weekly_archives": weekly_count,
             "total_indexed": total_indexed,
             "daily_size_mb": round(daily_size / 1024 / 1024, 2),
             "weekly_size_mb": round(weekly_size / 1024 / 1024, 2),
             "total_size_mb": round((daily_size + weekly_size) / 1024 / 1024, 2),
+            "cache_size": len(self._memory_cache),
         }
+        
+        # 添加向量存储统计
+        if self.vector_store:
+            vector_stats = self.vector_store.get_statistics()
+            stats["vector_store"] = vector_stats
+        
+        return stats
     
     def get_stock_history(self, symbol: str, days: int = 30) -> List[Dict[str, Any]]:
         """获取特定股票的交易历史"""
         return self.search_memories(symbol=symbol, limit=days)
-

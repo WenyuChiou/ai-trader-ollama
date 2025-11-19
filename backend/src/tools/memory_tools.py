@@ -1,7 +1,8 @@
 # src/tools/memory_tools.py
 """
-记忆检索工具 - 供Agent使用RAG功能
+记忆检索工具 - 供Agent使用RAG功能（增强版）
 让Agent可以主动查询历史记忆，用于决策参考
+支持关键词搜索和语义搜索
 """
 from __future__ import annotations
 from typing import List, Dict, Any, Optional
@@ -57,7 +58,7 @@ def get_recent_memories(days: int = 5, summary_only: bool = True) -> Dict[str, A
 
 def search_memories_by_symbol(symbol: str, days: int = 30) -> Dict[str, Any]:
     """
-    按股票代码检索记忆
+    按股票代码检索记忆（支持语义搜索）
     
     参数:
     - symbol: 股票代码（如 "NVDA", "AAPL"）
@@ -73,11 +74,14 @@ def search_memories_by_symbol(symbol: str, days: int = 30) -> Dict[str, Any]:
         end_date = date.today().isoformat()
         start_date = (date.today() - timedelta(days=days)).isoformat()
         
+        # 使用混合搜索（关键词 + 语义）
         memories = memory_manager.search_memories(
             symbol=symbol.upper(),
             start_date=start_date,
             end_date=end_date,
-            limit=20
+            query_text=f"trading decisions for {symbol.upper()} stock",  # 语义查询
+            limit=20,
+            use_semantic=True,
         )
         
         return {
@@ -222,7 +226,7 @@ def get_monthly_memory_summary(month_str: Optional[str] = None) -> Dict[str, Any
 
 def search_similar_decisions(symbol: str, action_type: Optional[str] = None) -> Dict[str, Any]:
     """
-    检索相似决策历史
+    检索相似决策历史（支持语义搜索）
     
     参数:
     - symbol: 股票代码
@@ -238,12 +242,17 @@ def search_similar_decisions(symbol: str, action_type: Optional[str] = None) -> 
         end_date = date.today().isoformat()
         start_date = (date.today() - timedelta(days=90)).isoformat()  # 搜索最近90天
         
+        # 构建语义查询
+        query_text = f"{action_type or 'trading'} decisions for {symbol.upper()}"
+        
         memories = memory_manager.search_memories(
             symbol=symbol.upper(),
             action=action_type,
             start_date=start_date,
             end_date=end_date,
-            limit=10
+            query_text=query_text,
+            limit=10,
+            use_semantic=True,
         )
         
         # 提取决策信息
@@ -262,7 +271,7 @@ def search_similar_decisions(symbol: str, action_type: Optional[str] = None) -> 
                         involved_symbols.append(order_symbol)
             
             if symbol.upper() in [s.upper() for s in involved_symbols]:
-                similar_decisions.append({
+                result = {
                     "date": memory.get("date"),
                     "stance": memory.get("discussion", {}).get("final_stance"),
                     "decision": {
@@ -271,7 +280,13 @@ def search_similar_decisions(symbol: str, action_type: Optional[str] = None) -> 
                         "sell_orders": [o for o in sell_orders if isinstance(o, dict) and o.get("symbol", "").upper() == symbol.upper()],
                     },
                     "portfolio_value": memory.get("portfolio_snapshot", {}).get("total_value"),
-                })
+                }
+                
+                # 添加相似度分数（如果有）
+                if "_similarity_score" in memory:
+                    result["similarity_score"] = memory["_similarity_score"]
+                
+                similar_decisions.append(result)
         
         return {
             "ok": True,
@@ -286,3 +301,35 @@ def search_similar_decisions(symbol: str, action_type: Optional[str] = None) -> 
             "error": str(e)
         }
 
+
+def search_memories_by_semantic(query: str, top_k: int = 10) -> Dict[str, Any]:
+    """
+    语义搜索记忆（新增工具）
+    
+    参数:
+    - query: 搜索查询文本（自然语言）
+    - top_k: 返回top k结果
+    
+    返回:
+    - {"ok": True, "memories": [...]} 或 {"ok": False, "error": "..."}
+    """
+    try:
+        memory_manager = _get_memory_manager()
+        
+        memories = memory_manager.search_memories(
+            query_text=query,
+            limit=top_k,
+            use_semantic=True,
+        )
+        
+        return {
+            "ok": True,
+            "memories": memories,
+            "count": len(memories),
+            "query": query
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": str(e)
+        }

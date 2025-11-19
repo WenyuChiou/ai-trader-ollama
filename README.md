@@ -56,13 +56,14 @@ AI-Trader Ollama is a **fully autonomous multi-agent trading system** that combi
 ### Core Philosophy
 
 1. **Multi-perspective Analysis**: Different agents analyze the market from their specialized viewpoints
-2. **Tool Diversity**: 27 tools provide comprehensive market coverage (21 market tools + 6 memory tools)
-3. **Tool Filtering & Validation**: System automatically filters invalid tool calls and enforces restrictions per analyst type
-4. **RAG Memory System**: Agents automatically retrieve historical memories before making decisions
-5. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
-6. **Risk-First Approach**: Every decision passes through risk analysis
-7. **Transparency**: All reasoning is logged and visible
-8. **Historical Learning**: Agents learn from past successes and failures
+2. **Tool Diversity**: 28 tools provide comprehensive market coverage (21 market tools + 7 memory/RAG tools)
+3. **RAG System**: Advanced memory system with semantic search, quality scoring, and relation analysis
+4. **Tool Filtering & Validation**: System automatically filters invalid tool calls and enforces restrictions per analyst type
+5. **RAG Memory System**: Agents automatically retrieve historical memories before making decisions
+6. **Autonomous Decision Making**: Agents discuss, debate, and reach consensus
+7. **Risk-First Approach**: Every decision passes through risk analysis
+8. **Transparency**: All reasoning is logged and visible
+9. **Historical Learning**: Agents learn from past successes and failures
 
 ---
 
@@ -903,11 +904,11 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 
 ---
 
-## 🛠️ Tool Suite (27 Tools)
+## 🛠️ Tool Suite (28 Tools)
 
-The system includes **27 advanced tools** organized into two categories:
+The system includes **28 advanced tools** organized into two categories:
 - **21 Market Analysis Tools**: Real-time data, technical indicators, fundamental data, news, and economic indicators
-- **6 Memory/RAG Tools**: Historical memory retrieval for learning from past trading decisions
+- **7 Memory/RAG Tools**: Historical memory retrieval with semantic search for learning from past trading decisions
 
 **Tool Usage Rules**:
 - **Tool Budget**: Shared across all analysts (default: 15 calls per cycle)
@@ -955,12 +956,31 @@ These tools allow agents to retrieve and learn from historical trading memories:
    - **Usage**: Learn from past BUY/SELL actions
    - **Parameters**: `symbol` (required), `action_type` (optional: "BUY", "SELL", "HOLD")
    - **Returns**: Similar historical decisions with outcomes
+   - **Features**: Supports semantic search to find similar situations
+
+7. **`search_memories_by_semantic`** (NEW)
+   - **Purpose**: Semantic search for memories using natural language query
+   - **Usage**: Find memories related to specific concepts, market conditions, or trading patterns
+   - **Parameters**: `query` (required, natural language), `top_k` (default: 10)
+   - **Returns**: Memories ranked by semantic similarity
+   - **Examples**: 
+     - "bearish market with high volatility"
+     - "successful NVDA trades"
+     - "decisions during market crash"
 
 **Memory System Features**:
 - ✅ **Automatic Memory Loading**: Recent memories (last 5 days) are automatically loaded at the start of each trading cycle
 - ✅ **Forced Memory Retrieval**: Market Analyst always calls `get_recent_memories` at the start (enforced by system)
+- ✅ **Short/Long-Term Memory Separation**: 
+  - Short-term (0-7 days): Full storage with complete transcripts
+  - Medium-term (8-30 days): Summary storage with key conversation points
+  - Long-term (30+ days): Compressed storage with core insights
+- ✅ **Semantic Search**: Vector-based similarity search using embeddings (Ollama or sentence-transformers)
+- ✅ **Hybrid Retrieval**: Combines keyword search (fast filtering) with semantic search (similarity matching)
+- ✅ **Memory Quality Scoring**: Importance scoring based on P&L, volume, information density, and time decay
+- ✅ **Memory Relations**: Automatic discovery of related memories (same stocks, similar conditions, similar decisions)
+- ✅ **Caching**: Hot memory cache for recent 7 days, query result cache, and vector cache
 - ✅ **Weekly Compression**: Old memories (>30 days) are compressed to weekly summaries (Monday + weekend only)
-- ✅ **Daily Preservation**: Recent memories (<30 days) are fully preserved for detailed analysis
 - ✅ **RAG Integration**: Agents use memories to avoid repeating mistakes and learn from successes
 
 ### 📊 Market Analysis Tools (21 Tools)

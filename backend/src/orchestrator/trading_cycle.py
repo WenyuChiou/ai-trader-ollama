@@ -702,11 +702,16 @@ def execute_daily_trade(
             # 標準化agent名稱
             agent_name_map = {
                 "market": "MarketAnalyst",
+                "marketanalyst": "MarketAnalyst",
                 "technical": "TechnicalAnalyst",
+                "technicalanalyst": "TechnicalAnalyst",
                 "fundamental": "FundamentalAnalyst",
+                "fundamentanalyst": "FundamentalAnalyst",
                 "sentiment": "SentimentAnalyst",
+                "sentimentanalyst": "SentimentAnalyst",  # CRITICAL FIX: 支持完整名称匹配
             }
-            agent_name = agent_name_map.get(analyst_name.lower(), analyst_name)
+            # CRITICAL FIX: 先尝试完整匹配，再尝试小写匹配
+            agent_name = agent_name_map.get(analyst_name, agent_name_map.get(analyst_name.lower(), analyst_name))
             
             # 格式化工具結果
             # 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
@@ -1750,7 +1755,8 @@ def execute_daily_trade(
                         placed_order["status"] = "FILLED"
                         placed_order["fill_price"] = current_price
                         placed_order["fill_reason"] = "Market order executed immediately at current price"
-                        placed_order["filled_at"] = datetime.now().isoformat()
+                        # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
+                        placed_order["filled_at"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
                         placed_order["fill_result"] = fill_result
                         
                         # CRITICAL: 手动从pending中移除并写入filled
@@ -1924,7 +1930,8 @@ def execute_daily_trade(
                         placed_order["status"] = "FILLED"
                         placed_order["fill_price"] = current_price
                         placed_order["fill_reason"] = "Market order executed immediately at current price"
-                        placed_order["filled_at"] = datetime.now().isoformat()
+                        # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
+                        placed_order["filled_at"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
                         placed_order["fill_result"] = fill_result
                         # 记录realized_pnl
                         if realized_pnl:

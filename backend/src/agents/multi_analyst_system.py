@@ -289,19 +289,19 @@ def run_multi_analyst_discussion(
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
                     
-                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
                     if tool_name == "news_scan":
-                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
                         tool_call = {
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容
                                 "tickers": tool_call.get("args", {}).get("tickers", []),
                                 "max_articles": tool_call.get("args", {}).get("max_articles", 10),
                                 "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
-                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                            "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
                         }
                         tool_name = "plan_and_scan_news"
                     
@@ -342,7 +342,8 @@ def run_multi_analyst_discussion(
                                     # ✅ news_scan: 返回 hits
                                     # ✅ plan_and_scan_news: 返回 hits 和 articles（推荐，有内容）
                                     # ✅ News tools: 返回 hits/articles（通过ToolBox）
-                                    if tool_name in ["news_scan", "plan_and_scan_news"]:
+                                    # CRITICAL FIX: news_scan 已移除，只检查 plan_and_scan_news
+                                    if tool_name == "plan_and_scan_news":
                                         actual_result = tool_result.get("result", tool_result)
                                         hits = actual_result.get("hits", [])
                                         articles = actual_result.get("articles", [])
@@ -480,7 +481,8 @@ def run_multi_analyst_discussion(
             for tc in tool_calls_list:
                 tool_name = tc.get("name", "")
                 # 移除新闻相关工具
-                if tool_name in ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]:
+                # CRITICAL FIX: news_scan 已移除，只检查 plan_and_scan_news
+                if tool_name in ["plan_and_scan_news", "web_search", "fetch_url"]:
                     removed_news_tools.append(tool_name)
                     print(f"   [FILTER] Removed news tool '{tool_name}' from Technical Analyst (news analysis is not part of technical analysis)")
                 else:
@@ -693,19 +695,19 @@ def run_multi_analyst_discussion(
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
                     
-                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
                     if tool_name == "news_scan":
-                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
                         tool_call = {
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容
                                 "tickers": tool_call.get("args", {}).get("tickers", []),
                                 "max_articles": tool_call.get("args", {}).get("max_articles", 10),
                                 "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
-                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                            "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
                         }
                         tool_name = "plan_and_scan_news"
                     
@@ -1046,19 +1048,19 @@ def run_multi_analyst_discussion(
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
                     
-                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
                     if tool_name == "news_scan":
-                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
                         tool_call = {
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容
                                 "tickers": tool_call.get("args", {}).get("tickers", []),
                                 "max_articles": tool_call.get("args", {}).get("max_articles", 10),
                                 "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
-                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                            "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
                         }
                         tool_name = "plan_and_scan_news"
                     
@@ -1145,7 +1147,8 @@ def run_multi_analyst_discussion(
             
             # CRITICAL FIX: 强制SentimentAnalyst调用新闻工具（最高优先级）
             # 无论LLM是否请求，都必须调用新闻工具
-            has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news"] for tc in tool_calls_list)
+            # CRITICAL FIX: news_scan 已移除，只检查 plan_and_scan_news
+            has_news_tool = any(tc.get("name") == "plan_and_scan_news" for tc in tool_calls_list)
             
             if not has_news_tool:
                 print(f"   [FORCE] Adding plan_and_scan_news to SentimentAnalyst (MANDATORY - news analysis is critical for sentiment)")
@@ -1193,19 +1196,19 @@ def run_multi_analyst_discussion(
                     else:
                         print(f"   [TOOL] Executing: {tool_name}")
                     
-                    # CRITICAL: 如果 agent 选择了 news_scan，自动转换为 plan_and_scan_news 以获取文章内容
+                    # CRITICAL FIX: news_scan 已移除，如果 agent 错误地选择了 news_scan，映射到 plan_and_scan_news
                     if tool_name == "news_scan":
-                        print(f"   [NEWS] Converting news_scan to plan_and_scan_news to fetch article content")
+                        print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
                         tool_call = {
                             "name": "plan_and_scan_news",
                             "args": {
                                 **tool_call.get("args", {}),
-                                "fetch_body_top": 10,  # 获取前10篇文章的内容（增加到10篇）
+                                "fetch_body_top": 10,  # 获取前10篇文章的内容
                                 "tickers": tool_call.get("args", {}).get("tickers", []),
                                 "max_articles": tool_call.get("args", {}).get("max_articles", 10),
                                 "recency_days": tool_call.get("args", {}).get("recency_days", 2)
                             },
-                            "why": tool_call.get("why", "") + " (converted to plan_and_scan_news to fetch article content)"
+                            "why": tool_call.get("why", "") + " (mapped to plan_and_scan_news - news_scan is deprecated)"
                         }
                         tool_name = "plan_and_scan_news"
                     
@@ -1512,9 +1515,10 @@ def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
     if all_scores:
         market_stats["avg_signal_score"] = sum(all_scores) / len(all_scores)
         # 找出信号分数最高的前5个
-        top_signals = sorted([(sym, stocks[sym].get("signal_score", 0)) for sym in symbols_list if stocks[sym].get("signal_score")], 
-                             key=lambda x: x[1], reverse=True)[:5]
-        market_stats["top_signals"] = [{"symbol": sym, "score": score} for sym, score in top_signals]
+        # CRITICAL FIX: 移除 signal_score 自动排序，由 agent 自行判断
+        # top_signals = sorted([(sym, stocks[sym].get("signal_score", 0)) for sym in symbols_list if stocks[sym].get("signal_score")], 
+        #                      key=lambda x: x[1], reverse=True)[:5]
+        # market_stats["top_signals"] = [{"symbol": sym, "score": score} for sym, score in top_signals]
     
     return {
         "stocks_count": len(stocks),
@@ -1728,7 +1732,8 @@ def _generate_analysis_from_tools(
 5. Contrarian signals"""
     
     # 检查工具结果中是否包含新闻数据（包括 plan_and_scan_news）
-    has_news_data = any(keyword in tool_results_text.lower() for keyword in ["news_scan", "plan_and_scan_news", "news", "articles", "excerpt"])
+    # CRITICAL FIX: news_scan 已移除
+    has_news_data = any(keyword in tool_results_text.lower() for keyword in ["plan_and_scan_news", "news", "articles", "excerpt"])
     
     # 构建新闻分析要求
     news_analysis_requirement = ""

@@ -213,9 +213,11 @@ def execute_daily_trade(
         print(f"[TRADING CYCLE] Stock symbols: {symbols}")
     else:
         print(f"[TRADING CYCLE] Stock symbols (first 10): {symbols[:10]} ... (and {len(symbols) - 10} more)")
-    # 传递所有股票的信号分数（按降序排列），不限制数量
-    signal_top = _top_by_signal(stocks, k=len(stocks))  # 使用全部股票
-    print(f"[TRADING CYCLE] Signal scores calculated for {len(signal_top)} stocks")
+    # CRITICAL FIX: 移除 signal_score 自动排序
+    # signal_score 现在由 agent 自行判断，不再自动计算和排序
+    # 仍然保留 signal_score 字段（在 market_tools.py 中计算），但不再用于自动筛选
+    signal_top = []  # 不再使用 signal_score 排序
+    print(f"[TRADING CYCLE] {len(stocks)} stocks available (signal_score judgment by agents, not auto-sorted)")
     
     # ---- (1c) Market Analyst：評估所有 universe 股票，生成推薦列表 ----
     # CRITICAL FIX: 使用 fallback 推荐（实际推荐会在 multi_analyst_system 中由 LLM 生成）
@@ -229,7 +231,8 @@ def execute_daily_trade(
         "vix_term": market_view.get("vix_term"),      # 如果你稍後在 market 層就算好也可帶入
         "fear_greed": market_view.get("fear_greed"),
         "news": None,
-        "signal_score_top": signal_top,
+        # CRITICAL FIX: signal_score_top 已移除，signal_score 由 agent 自行判断
+        # "signal_score_top": signal_top,  # 不再使用
         "stocks": stocks,
         "vix": market_view.get("vix"),
         "recommended_stocks": recommended_stocks_fallback,  # Fallback推荐（实际推荐会在 multi_analyst_system 中更新）
@@ -1461,18 +1464,11 @@ def execute_daily_trade(
         stocks_count = len(enriched_market.get("stocks", {}))
         print(f"[TRADING CYCLE] Debug: enriched_market has {recs_count} recommended_stocks, {stocks_count} stocks")
         if stocks_count > 0:
-            # Check signal scores (signal_score range is now 0-10, threshold is 3.0)
+            # CRITICAL FIX: 移除 signal_score 自动排序和筛选
+            # signal_score 现在由 agent 自行判断，不再自动计算和排序
             stocks = enriched_market.get("stocks", {})
-            high_signal_stocks = [s for s, d in stocks.items() if isinstance(d, dict) and float(d.get("signal_score", 0)) > 3.0]
-            print(f"[TRADING CYCLE] Debug: {len(high_signal_stocks)} stocks with signal_score > 3.0: {high_signal_stocks[:5]}")
-            # Also check top 10 by signal_score
-            sorted_stocks = sorted(
-                [(s, d) for s, d in stocks.items() if isinstance(d, dict)],
-                key=lambda x: float(x[1].get("signal_score", 0)),
-                reverse=True
-            )
-            top_10 = sorted_stocks[:10]
-            print(f"[TRADING CYCLE] Debug: Top 10 stocks by signal_score: {[(s, d.get('signal_score', 0)) for s, d in top_10]}")
+            stocks_count = len([s for s, d in stocks.items() if isinstance(d, dict)])
+            print(f"[TRADING CYCLE] Debug: {stocks_count} stocks available for agent analysis (signal_score judgment by agents)")
     
     # Process trading decisions (only if no existing pending orders, or in multi-day simulation)
     # CRITICAL FIX: 在实时模式下，额外检查今天是否已经有pending或filled订单
@@ -2455,7 +2451,8 @@ def execute_daily_trade(
         "rounds": convo.get("rounds") if isinstance(convo, dict) else 0,
         "conversations_count": conversations_count,  # CRITICAL FIX: 添加对话数量（从文件读取）
         "symbols": symbols,
-        "top_signals": signal_top,
+        # CRITICAL FIX: top_signals 已移除，signal_score 由 agent 自行判断
+        # "top_signals": signal_top,  # 不再使用
         "market_agent": market_view,  # 添加市场数据
         "market_analysis": market_analysis,  # 添加 Market Analyst 结果
         "last_prices": last_prices,  # 添加最新价格（用于计算仓位百分比）

@@ -481,8 +481,8 @@ async def fetch_conversations_api(
         
         # 工具分类映射
         tool_category_map = {
-            "news_scan": "news",
-            "get_news_scan": "news",  # CRITICAL FIX: 添加get_news_scan
+            # CRITICAL FIX: news_scan 已移除，只保留 plan_and_scan_news
+            "get_news_scan": "news",  # 兼容旧名称
             "plan_and_scan_news": "news",
             "web_search": "news",
             "fetch_url": "news",

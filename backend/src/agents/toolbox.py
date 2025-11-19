@@ -60,9 +60,9 @@ class ToolBox:
         # news / web primitives
         self.register(Tool("web_search", self._web_search_adapter, "DuckDuckGo search (whitelist domains)"))
         self.register(Tool("fetch_url", self._fetch_url_adapter, "Fetch & extract main content from a URL"))
-        self.register(Tool("news_scan", self._news_scan_adapter, "Compat adapter → news_scan(keywords, days, max_n, top)"))
+        # CRITICAL FIX: 移除 news_scan，只保留 plan_and_scan_news（功能更完整）
         # composite
-        self.register(Tool("plan_and_scan_news", self._plan_and_scan_news_adapter, "LLM→queries→news_scan→(optional)fetch_url"))
+        self.register(Tool("plan_and_scan_news", self._plan_and_scan_news_adapter, "LLM→queries→news_scan→(optional)fetch_url - Get market news with article content, summaries, and keywords"))
         
         # economic data (FRED API)
         self.register(Tool("get_economic_summary", self._economic_summary_adapter, "Get summary of key US economic indicators (GDP, unemployment, CPI, Fed funds rate, etc.) from FRED API"))

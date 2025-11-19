@@ -5,12 +5,8 @@ const API_CONFIG = {
     // Development environment (local)
     development: 'http://127.0.0.1:8000',
     
-    // Production environment (update this with your deployed backend URL)
-    // Examples:
-    // - Railway: 'https://your-app.railway.app'
-    // - Render: 'https://your-app.onrender.com'
-    // - Heroku: 'https://your-app.herokuapp.com'
-    // - Custom: 'https://api.yourdomain.com'
+    // Production environment (backend API URL)
+    // This URL is automatically used when accessing via GitHub Pages
     production: 'https://web-production-b42d6.up.railway.app',
     
     // Auto-detect environment

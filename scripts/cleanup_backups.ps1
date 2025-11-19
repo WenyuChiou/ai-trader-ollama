@@ -1,8 +1,12 @@
 # Cleanup Backup Files Script
-# Usage: powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1 [keep_days]
+# Usage: 
+#   powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1 [keep_days]
+#   powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1 -KeepDays 0  # 删除所有备份
+#   powershell -ExecutionPolicy Bypass -File .\scripts\cleanup_backups.ps1 -KeepDays 1  # 只保留今天
 
 param(
-    [int]$KeepDays = 7  # 保留最近N天的备份，默认7天
+    [int]$KeepDays = 7,  # 保留最近N天的备份，默认7天。设为0删除所有备份
+    [switch]$All = $false  # 如果设置，删除所有备份（忽略KeepDays）
 )
 
 Write-Host "================================================" -ForegroundColor Cyan
@@ -25,21 +29,33 @@ if ($backupFiles.Count -eq 0) {
 }
 
 Write-Host "Found $($backupFiles.Count) backup files" -ForegroundColor Yellow
-Write-Host "Keep days: $KeepDays" -ForegroundColor Yellow
-Write-Host ""
 
-# 计算截止日期
-$cutoffDate = (Get-Date).AddDays(-$KeepDays)
-
-# 分类文件
-$toKeep = @()
-$toDelete = @()
-
-foreach ($file in $backupFiles) {
-    if ($file.LastWriteTime -ge $cutoffDate) {
-        $toKeep += $file
-    } else {
-        $toDelete += $file
+# 如果设置了-All参数，删除所有备份
+if ($All) {
+    Write-Host "Mode: Delete ALL backups" -ForegroundColor Red
+    $toKeep = @()
+    $toDelete = $backupFiles
+} elseif ($KeepDays -eq 0) {
+    Write-Host "Mode: Delete ALL backups (KeepDays=0)" -ForegroundColor Red
+    $toKeep = @()
+    $toDelete = $backupFiles
+} else {
+    Write-Host "Mode: Keep backups from last $KeepDays days" -ForegroundColor Yellow
+    Write-Host ""
+    
+    # 计算截止日期
+    $cutoffDate = (Get-Date).AddDays(-$KeepDays)
+    
+    # 分类文件
+    $toKeep = @()
+    $toDelete = @()
+    
+    foreach ($file in $backupFiles) {
+        if ($file.LastWriteTime -ge $cutoffDate) {
+            $toKeep += $file
+        } else {
+            $toDelete += $file
+        }
     }
 }
 

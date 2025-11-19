@@ -5643,7 +5643,7 @@
                                 return `
                                     <div class="conversation-item" style="margin-bottom: 16px; padding: 16px; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.2);">
                                         <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                            <span class="conversation-agent" style="font-weight: 600; color: #22d3ee;">${agentIcon} ${agent}</span>
+                                            <span class="conversation-agent" style="font-weight: 600; color: #22d3ee;">${agentIcon} ${formatAgentName(agent)}</span>
                                             <span class="conversation-date" style="font-size: 12px; color: #6b7280;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
                                         </div>
                                         ${analysisText ? (() => {
@@ -6157,7 +6157,7 @@
                             return `
                                 <div class="conversation-item" style="${entry_type === 'tool' ? 'border-left-color: #f59e0b;' : ''}">
                                     <div class="conversation-header">
-                                        <span class="conversation-agent">${agentIcon} ${agent}${entry_type === 'tool' ? ' 🔧' : ''}</span>
+                                        <span class="conversation-agent">${agentIcon} ${formatAgentName(agent)}${entry_type === 'tool' ? ' 🔧' : ''}</span>
                                         <span class="conversation-date">${new Date(timestamp).toLocaleTimeString()}</span>
                                     </div>
                                     ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
@@ -6300,7 +6300,7 @@
                         return `
                             <div class="conversation-item">
                                 <div class="conversation-header">
-                                    <span class="conversation-agent">${agentIcon} ${agent}</span>
+                                    <span class="conversation-agent">${agentIcon} ${formatAgentName(agent)}</span>
                                     <span class="conversation-date">${date ? new Date(date).toLocaleString() : ''}</span>
                                 </div>
                                 ${round ? `<div class="conversation-meta">Round ${round}</div>` : ''}
@@ -7062,6 +7062,39 @@
                         
                         const agentIcon = getAgentIcon(agent);
                         
+                        // CRITICAL FIX: Format agent name for display (convert "MarketAnalyst" to "Market Analyst")
+                        function formatAgentName(agentName) {
+                            const nameMap = {
+                                'MarketAnalyst': 'Market Analyst',
+                                'TechnicalAnalyst': 'Technical Analyst',
+                                'FundamentalAnalyst': 'Fundamental Analyst',
+                                'SentimentAnalyst': 'Sentiment Analyst',
+                                'RiskAnalyst': 'Risk Analyst',
+                                'TraderAgent': 'Trader Agent',
+                                'DiscussionCoordinator': 'Discussion Coordinator',
+                                'DiscussionAgent': 'Discussion Agent',
+                                'MarketAgent': 'Market Agent'
+                            };
+                            
+                            // Check exact match first
+                            if (nameMap[agentName]) {
+                                return nameMap[agentName];
+                            }
+                            
+                            // Check partial match (case insensitive)
+                            const agentLower = agentName.toLowerCase();
+                            for (const [key, value] of Object.entries(nameMap)) {
+                                if (agentLower.includes(key.toLowerCase()) || key.toLowerCase().includes(agentLower)) {
+                                    return value;
+                                }
+                            }
+                            
+                            // If no match, try to add space before capital letters (e.g., "MarketAnalyst" -> "Market Analyst")
+                            return agentName.replace(/([a-z])([A-Z])/g, '$1 $2');
+                        }
+                        
+                        const displayAgentName = formatAgentName(agent);
+                        
                         // CRITICAL FIX: Display round information for tools (round 1-3)
                         let roundDisplay = '';
                         if (entry_type === 'tool' && round) {
@@ -7290,7 +7323,7 @@
                                 <div class="conversation-item" style="border-left-color: #f59e0b;">
                                     <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                            <span class="conversation-agent">${agentIcon} ${agent}</span>
+                                            <span class="conversation-agent">${agentIcon} ${displayAgentName}</span>
                                         </div>
                                         <span class="conversation-date" style="font-size: 11px; color: #94a3b8;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>
                                     </div>
@@ -7338,7 +7371,7 @@
                             <div class="conversation-item">
                                 <div class="conversation-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                        <span class="conversation-agent">${agentIcon} ${agent}</span>
+                                        <span class="conversation-agent">${agentIcon} ${displayAgentName}</span>
                                         ${toolsBadges}
                                     </div>
                                     <span class="conversation-date" style="font-size: 11px; color: #94a3b8;">${timestamp ? new Date(timestamp).toLocaleString() : ''}</span>

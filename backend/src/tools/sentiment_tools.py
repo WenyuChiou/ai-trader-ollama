@@ -445,7 +445,12 @@ def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
         parsed = _scrape_feargreedmeter(url)
         if parsed and parsed.get("value") is not None:
             fgi_value = parsed.get("value")
-            print(f"[FGI] Fetched from feargreedmeter.com (PRIORITY): value={fgi_value}, label={parsed.get('label', 'N/A')}")
+            fgi_label = parsed.get("label", "N/A")
+            # Only log if not called from multi_analyst_system (to avoid duplicate logs)
+            # The caller will log the result
+            # CRITICAL FIX: 确保返回的数据包含标准化的label
+            if not parsed.get("label") or parsed.get("label") != fgi_label:
+                parsed["label"] = fgi_label
             return parsed
 
     # A/B: CNN JSON 端點（備用）
@@ -457,7 +462,7 @@ def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
                 parsed = _parse_cnn_json(data)
                 if parsed:
                     fgi_value = parsed.get("value")
-                    print(f"[FGI] Fetched from CNN JSON (FALLBACK): value={fgi_value}, label={parsed.get('label', 'N/A')}")
+                    # Only log if not called from multi_analyst_system (to avoid duplicate logs)
                     return parsed
         except Exception as e:
             print(f"[FGI] CNN JSON endpoint failed: {e}")
@@ -467,7 +472,7 @@ def fetch_fear_greed(timeout: float = 8.0) -> Dict[str, Any]:
         parsed = _scrape_cnn_html(url)
         if parsed and parsed.get("value") is not None:
             fgi_value = parsed.get("value")
-            print(f"[FGI] Fetched from CNN HTML (FALLBACK): value={fgi_value}, label={parsed.get('label', 'N/A')}")
+            # Only log if not called from multi_analyst_system (to avoid duplicate logs)
             return parsed
 
     # 全部失敗 → stub

@@ -118,6 +118,18 @@ user: |
   - Include leveraged ETFs (TQQQ, SPXL, UPRO) if you identify strong bullish trends
   - Consider the full universe of stocks available in market_view - analyze all opportunities, not just a few
   
+  **⚠️ CRITICAL: Stock Symbol Validation Rules:**
+  - **ONLY use valid, real stock symbols** that exist in the market
+  - **Do NOT invent, modify, or create variations** of stock symbols
+  - **Common mistakes to avoid:**
+    * TQKK is INVALID - use TQQQ instead (3x Leveraged NASDAQ)
+    * TQQ, TQQQQ, TQK are all INVALID - only TQQQ is valid
+    * Do NOT add extra letters or change letters in valid symbols
+  - **If you want to recommend leveraged NASDAQ, use TQQQ (not TQKK, TQQ, or any other variation)**
+  - **If you want to recommend inverse NASDAQ, use SQQQ (not SQK, SQQ, or any other variation)**
+  - **When in doubt, use well-known stocks:** AAPL, MSFT, GOOGL, TSLA, NVDA, AMZN, META, etc.
+  - **Verify symbols from the market_view.symbols list** - only recommend symbols that appear in that list
+  
   **Trading Strategy - Long and Short Opportunities:**
   Based on your market analysis, you can recommend both LONG (buy) and SHORT (sell) positions. You have access to the following ETF tools - use them according to your analysis and judgment:
   
@@ -131,9 +143,16 @@ user: |
     * SOXS: 3x Inverse Semiconductor ETF
   
   **Available Leveraged ETFs** :
-    * TQQQ: 3x Leveraged NASDAQ
+    * TQQQ: 3x Leveraged NASDAQ (⚠️ CRITICAL: Use TQQQ, NOT TQKK or any other variation)
     * SPXL: 3x Leveraged S&P 500
     * UPRO: 3x Leveraged S&P 500
+  
+  **⚠️ CRITICAL: Stock Symbol Validation:**
+  - You MUST use ONLY valid, real stock symbols that exist in the market
+  - Do NOT invent or modify stock symbols (e.g., TQKK does not exist - use TQQQ instead)
+  - Do NOT create variations of symbols (e.g., TQKK, TQQ, TQQQQ are all invalid - only TQQQ is valid)
+  - Verify symbols exist before recommending them
+  - If unsure about a symbol, use well-known stocks like AAPL, MSFT, GOOGL, TSLA, NVDA, etc.
   
   **Key Points:**
   - Based on your market analysis (indices trends, sector rotation, market breadth), decide when to use these tools

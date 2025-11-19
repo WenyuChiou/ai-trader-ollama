@@ -368,7 +368,8 @@ The main configuration file controls trading parameters, universe selection, and
 | **Trading Behavior** |
 | `discussion_rounds` | Number of discussion rounds | `1-5` | `3` |
 | `discussion_auto_tools` | Enable automatic tool calls | `true`, `false` | `true` |
-| `discussion_tool_budget` | Max tool calls per cycle | Positive integer | `15` |
+| `discussion_tool_budget` | Max tool calls per cycle (Market/Technical/Sentiment only) | Positive integer | `15` |
+| `budget_allocation` | Custom budget allocation per analyst (fundamental excluded) | Object | `{"market": 3, "technical": 4, "sentiment": 4}` |
 | `max_orders_per_cycle` | Max orders per cycle | Positive integer | `20` |
 | `trade_cooldown_hours` | Hours before trading same symbol | Float | `24.0` |
 | **LLM Configuration** |
@@ -431,7 +432,8 @@ The main configuration file controls trading parameters, universe selection, and
 **Trading Behavior:**
 - `initial_cash`: Starting capital ($10,000 default)
 - `discussion_rounds`: Number of discussion rounds (3 default, each round includes all 4 analysts)
-- `discussion_tool_budget`: Max tool calls per cycle (15 default, shared across all analysts)
+- `discussion_tool_budget`: Max tool calls per cycle (15 default, shared across Market/Technical/Sentiment Analysts only)
+- `budget_allocation`: Optional custom budget allocation per analyst (e.g., `{"market": 3, "technical": 4, "sentiment": 4}`). Fundamental Analyst is automatically excluded as its tools are not subject to budget limits.
 - `max_orders_per_cycle`: Maximum orders per trading cycle (20 default, guideline for LLM)
 - `trade_cooldown_hours`: Hours to wait before trading same symbol again (24.0 default)
 
@@ -870,6 +872,8 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
   - **Without Holdings**: Non-ETF recommended stocks only
   - **ETFs and indices are excluded** (ETFs don't need fundamental analysis)
 - **Budget Priority**: All fundamental analysis tools execute without tool budget restrictions (ensures all recommended stocks and holdings are analyzed)
+- **Budget Allocation**: Tool budget is allocated among Market, Technical, and Sentiment Analysts only (Fundamental Analyst is excluded from budget allocation as its tools are not subject to budget limits)
+- **Custom Budget Allocation**: You can configure budget allocation per analyst in `config.json` under `budget_allocation` (fundamental will be automatically excluded)
 
 #### 4. **Sentiment Analyst** 😊
 - **Specialty**: Market psychology, news sentiment, fear/greed
@@ -911,7 +915,9 @@ The system includes **28 advanced tools** organized into two categories:
 - **7 Memory/RAG Tools**: Historical memory retrieval with semantic search for learning from past trading decisions
 
 **Tool Usage Rules**:
-- **Tool Budget**: Shared across all analysts (default: 15 calls per cycle)
+- **Tool Budget**: Shared across Market, Technical, and Sentiment Analysts (default: 15 calls per cycle)
+- **Fundamental Analyst**: Tools are NOT subject to budget limits (can analyze all recommended stocks and holdings without budget constraints)
+- **Budget Allocation**: Configurable in `config.json` via `budget_allocation` field (fundamental is automatically excluded)
 - **Tool Filtering**: System automatically filters invalid tool calls and enforces restrictions
 - **Tool Validation**: All tool calls are validated before execution (must have valid `name` field)
 - **News Tools**: `news_scan` has been removed. Use `plan_and_scan_news` instead (includes LLM-generated summaries and keywords)
@@ -1497,7 +1503,7 @@ T+0:10  → Multi-Agent Analysis (30-60 sec)
          ├── Round 1: All 4 analysts analyze independently
          │   ├── Market Analyst: Uses get_market_indices, get_sector_rotation, get_economic_summary
          │   ├── Technical Analyst: Uses get_advanced_indicators, get_support_resistance (NO news tools)
-         │   ├── Fundamental Analyst: Uses get_company_fundamentals, get_earnings_history (unlimited budget)
+         │   ├── Fundamental Analyst: Uses get_company_fundamentals, get_earnings_history (NOT subject to budget - analyzes all recommended stocks and holdings)
          │   └── Sentiment Analyst: Uses fear_greed, vix_term, plan_and_scan_news (mandatory)
          │
          ├── Round 2: Analysts refine analysis based on Round 1
@@ -1875,14 +1881,20 @@ Order Status:
 | **Trading Frequency** | Every 30 minutes | No (system-enforced) | Fixed at 30-minute intervals |
 | **Max Orders Per Cycle** | 20 | Yes | Maximum number of orders per trading cycle |
 | **Discussion Rounds** | 3 | Yes | Number of discussion rounds |
-| **Tool Budget** | 15 | Yes | Maximum tool calls per cycle |
+| **Tool Budget** | 15 | Yes | Maximum tool calls per cycle (Market/Technical/Sentiment only) |
+| **Budget Allocation** | `{"market": 3, "technical": 4, "sentiment": 4}` | Yes | Custom allocation per analyst (fundamental excluded) |
 
 **Configurable in `config.json`**:
 ```json
 {
   "max_orders_per_cycle": 20,        // Maximum orders per cycle (guideline for LLM)
   "discussion_rounds": 3,            // Number of discussion rounds
-  "discussion_tool_budget": 15       // Tool calls per cycle
+  "discussion_tool_budget": 15,      // Tool calls per cycle (Market/Technical/Sentiment only)
+  "budget_allocation": {             // Optional: Custom allocation (fundamental excluded)
+    "market": 3,
+    "technical": 4,
+    "sentiment": 4
+  }
 }
 ```
 
@@ -1897,7 +1909,9 @@ Order Status:
 **Discussion Rounds**:
 - **Number of Rounds**: 3 rounds per cycle (configurable)
 - **Participants**: All 4 analysts participate in each round
-- **Tool Budget**: 15 tool calls per cycle (configurable, shared across all analysts)
+- **Tool Budget**: 15 tool calls per cycle (configurable, shared across Market/Technical/Sentiment Analysts only)
+- **Fundamental Analyst**: Tools are NOT subject to budget limits (analyzes all recommended stocks and holdings)
+- **Budget Allocation**: Configurable via `budget_allocation` in `config.json` (fundamental automatically excluded)
 - **Round Structure**:
   - Round 1: Initial analysis, tool calls
   - Round 2: Refinement based on Round 1, additional tool calls if needed

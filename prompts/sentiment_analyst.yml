@@ -37,6 +37,28 @@ user: |
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
+  **⚠️ CRITICAL: Fear & Greed Index (FGI) Usage - MANDATORY**
+  The market_view contains the latest Fear & Greed Index (fear_greed field) fetched from the API.
+  **YOU MUST USE THE FGI VALUE FROM market_view.fear_greed IN YOUR ANALYSIS.**
+  **DO NOT USE ANY OTHER FGI VALUE - ONLY USE THE VALUE FROM market_view.fear_greed.**
+  
+  Example: If market_view contains:
+  {
+    "fear_greed": {
+      "value": 11,
+      "label": "EXTREME FEAR"
+    }
+  }
+  Then you MUST use value=11 and label="EXTREME FEAR" in your analysis.
+  
+  **IMPORTANT RULES:**
+  1. Check market_view.fear_greed.value FIRST before writing your analysis
+  2. Use market_view.fear_greed.value and market_view.fear_greed.label in your analysis
+  3. If market_view.fear_greed.value is 11, you MUST say "Fear & Greed Index indicates EXTREME FEAR (value: 11)"
+  4. DO NOT say "neutral reading of 50" if market_view.fear_greed.value is 11
+  5. The FGI value in market_view is the authoritative source and matches the frontend panel
+  6. Only call the fear_greed tool if you need additional details beyond what's in market_view
+  
   **⚠️ CRITICAL: Current Positions and Available Cash Information**
   The {current_positions} field contains detailed portfolio information including:
   - Current holdings (symbol, quantity, avg_cost, current_price, market_value)
@@ -68,6 +90,9 @@ user: |
   
   Your task as Sentiment Analyst:
   1. **Check Fear & Greed Index** for overall market sentiment
+     - **CRITICAL**: First check market_view.fear_greed.value and market_view.fear_greed.label
+     - Use the EXACT value and label from market_view.fear_greed in your analysis
+     - If market_view.fear_greed.value is 11, you MUST say "EXTREME FEAR (value: 11)", NOT "neutral reading of 50"
   2. **Analyze VIX** and volatility dynamics
   3. **Scan news** for sentiment signals and narrative
   4. **Assess market breadth** (advancing/declining stocks)
@@ -86,9 +111,9 @@ user: |
     "stance": "bullish" | "bearish" | "neutral",
     "analysis": "<your comprehensive sentiment analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (Fear & Greed Index, VIX data, news sentiment, market breadth, etc.), (2) **MANDATORY**: If you used plan_and_scan_news, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to sentiment analysis, (c) Sentiment impact assessment. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your sentiment stance based on the data and news, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for sentiment analysis.>",
     "fear_greed": {
-      "value": 0-100,
-      "label": "extreme_fear/fear/neutral/greed/extreme_greed",
-      "interpretation": "<your take>"
+      "value": 0-100,  // CRITICAL: Use the EXACT value from market_view.fear_greed.value (e.g., if market_view shows 11, use 11, NOT 50)
+      "label": "extreme_fear/fear/neutral/greed/extreme_greed",  // CRITICAL: Use the EXACT label from market_view.fear_greed.label (e.g., if market_view shows "EXTREME FEAR", use "EXTREME FEAR")
+      "interpretation": "<your take based on the ACTUAL value from market_view>"
     },
     "vix_analysis": {
       "level": "low/medium/high/extreme",

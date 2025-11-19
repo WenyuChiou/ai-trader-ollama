@@ -480,17 +480,43 @@ def execute_daily_trade(
     
     # CRITICAL FIX: 从 multi_analyst_system 的 Market Analyst LLM 输出中提取推荐股票
     # 优先使用 LLM 的推荐，如果没有则使用 fallback
+    # CRITICAL FIX: Filter out ETFs and invalid symbols from recommended stocks
+    from src.utils.etf_checker import is_etf
+    
     recommended_stocks_from_llm = []
     analyst_reports = convo.get("analyst_reports", {})
     market_analyst_report = analyst_reports.get("market", {})
     if market_analyst_report:
         # 尝试从 Market Analyst 的响应中提取 recommended_stocks
-        recommended_stocks_from_llm = market_analyst_report.get("recommended_stocks", [])
-        if recommended_stocks_from_llm:
-            print(f"[TRADING CYCLE] ✅ Using LLM recommended stocks from Market Analyst: {len(recommended_stocks_from_llm)} stocks")
-            print(f"[TRADING CYCLE]   Recommended stocks: {recommended_stocks_from_llm[:10]}...")
-            # 更新 enriched_market 中的推荐股票
-            enriched_market["recommended_stocks"] = recommended_stocks_from_llm
+        raw_recommended = market_analyst_report.get("recommended_stocks", [])
+        if raw_recommended:
+            # CRITICAL FIX: Filter out ETFs and invalid symbols
+            if isinstance(raw_recommended, str):
+                raw_recommended = [s.strip() for s in raw_recommended.split(",") if s.strip()]
+            elif not isinstance(raw_recommended, list):
+                raw_recommended = []
+            
+            filtered_recommended = []
+            for sym in raw_recommended:
+                sym_upper = str(sym).upper().strip()
+                # Skip empty or invalid format
+                if not sym_upper or len(sym_upper) > 10 or not sym_upper.replace(".", "").replace("-", "").isalnum():
+                    print(f"[TRADING CYCLE] ⚠️ Skipping invalid symbol format in recommended stocks: {sym}")
+                    continue
+                # Skip ETFs
+                if is_etf(sym_upper):
+                    print(f"[TRADING CYCLE] ⚠️ Skipping ETF in recommended stocks: {sym_upper}")
+                    continue
+                filtered_recommended.append(sym_upper)
+            
+            recommended_stocks_from_llm = filtered_recommended
+            if recommended_stocks_from_llm:
+                print(f"[TRADING CYCLE] ✅ Using LLM recommended stocks from Market Analyst: {len(recommended_stocks_from_llm)} stocks (filtered from {len(raw_recommended)} raw recommendations)")
+                print(f"[TRADING CYCLE]   Recommended stocks: {recommended_stocks_from_llm[:10]}...")
+                # 更新 enriched_market 中的推荐股票
+                enriched_market["recommended_stocks"] = recommended_stocks_from_llm
+            else:
+                print(f"[TRADING CYCLE] ⚠️ All recommended stocks were filtered out (ETFs/invalid), using fallback")
         else:
             print(f"[TRADING CYCLE] ⚠️  Market Analyst LLM did not provide recommended_stocks, using fallback")
     else:
@@ -697,9 +723,31 @@ def execute_daily_trade(
         
         # 寫入工具使用記錄（從tool_calls中提取）
         tool_calls = convo.get("tool_calls", [])
+        print(f"[TRADING CYCLE] Writing {len(tool_calls)} tool calls to discussion_actions.jsonl")
+        
+        # DEBUG: Log tool_calls structure for news tools
+        # CRITICAL FIX: Check both "tool" and "name" fields (some tool_calls may use "name")
+        news_tool_calls = []
+        for tc in tool_calls:
+            tool_name = tc.get("tool", "") or tc.get("name", "")
+            if tool_name.lower() in ["plan_and_scan_news", "news_scan", "get_news_scan"]:
+                news_tool_calls.append(tc)
+        
+        if news_tool_calls:
+            print(f"[TRADING CYCLE] [NEWS] Found {len(news_tool_calls)} news tool calls in convo.tool_calls")
+            for idx, tc in enumerate(news_tool_calls):
+                tool_name = tc.get("tool", "") or tc.get("name", "")
+                print(f"[TRADING CYCLE] [NEWS]   Tool call {idx}: analyst={tc.get('analyst')}, tool={tool_name}, has_result={bool(tc.get('result'))}")
+        else:
+            print(f"[TRADING CYCLE] [NEWS] ⚠️ No news tool calls found in {len(tool_calls)} tool calls")
+            # DEBUG: List all tool names (check both "tool" and "name" fields)
+            all_tool_names = [tc.get("tool", "") or tc.get("name", "") for tc in tool_calls]
+            print(f"[TRADING CYCLE] [NEWS]   All tool names: {', '.join(all_tool_names[:10])}{'...' if len(all_tool_names) > 10 else ''}")
+        
         for tool_call in tool_calls:
             analyst_name = tool_call.get("analyst", "Unknown")
-            tool_name = tool_call.get("tool", "")
+            # CRITICAL FIX: Check both "tool" and "name" fields (some tool_calls may use "name")
+            tool_name = tool_call.get("tool", "") or tool_call.get("name", "")
             tool_result = tool_call.get("result", {})
             
             # 標準化agent名稱
@@ -724,6 +772,14 @@ def execute_daily_trade(
                 while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
                     actual_result = actual_result["result"]
             
+            # CRITICAL FIX: 对于新闻工具，先保存完整的 articles 和 hits（在截断之前）
+            news_articles_backup = None
+            news_hits_backup = None
+            if tool_name in ["plan_and_scan_news", "news_scan"] and isinstance(actual_result, dict):
+                news_articles_backup = actual_result.get("articles", [])
+                news_hits_backup = actual_result.get("hits", [])
+                print(f"[TRADING CYCLE] [NEWS] Backed up news data before truncation: {len(news_articles_backup)} articles, {len(news_hits_backup)} hits")
+            
             if isinstance(actual_result, dict):
                 if "error" in actual_result:
                     result_text = f"Error: {actual_result.get('error', 'Unknown error')}"
@@ -734,26 +790,38 @@ def execute_daily_trade(
                     # 对于其他工具，限制在2000字符
                     max_length = 5000 if tool_name in ["news_scan", "plan_and_scan_news"] else 2000
                     if len(result_text) > max_length:
-                        # 对于新闻工具，尝试保留完整的 hits 数组（即使截断，也要确保 hits 数组是完整的）
-                        if tool_name in ["news_scan", "plan_and_scan_news"] and "hits" in actual_result:
-                            # 保留完整的 hits 数组，只截断其他部分
-                            hits_json = json.dumps(actual_result.get("hits", []), ensure_ascii=False, indent=2)
-                            queries_json = json.dumps(actual_result.get("queries", []), ensure_ascii=False)
-                            # 构建一个简化的结果，但保留完整的 hits
-                            simplified = {
-                                "hits": actual_result.get("hits", []),
-                                "queries": actual_result.get("queries", [])
-                            }
+                        # 对于新闻工具，尝试保留完整的 articles 和 hits 数组（即使截断，也要确保数组是完整的）
+                        if tool_name in ["news_scan", "plan_and_scan_news"]:
+                            # CRITICAL FIX: 优先保留 articles（包含内容），如果没有则保留 hits
+                            articles = actual_result.get("articles", [])
+                            hits = actual_result.get("hits", [])
+                            queries = actual_result.get("queries", [])
+                            
+                            # 构建一个简化的结果，但保留完整的 articles 和 hits
+                            simplified = {}
+                            if articles:
+                                simplified["articles"] = articles
+                            if hits:
+                                simplified["hits"] = hits
+                            if queries:
+                                simplified["queries"] = queries
+                            
                             result_text = json.dumps(simplified, ensure_ascii=False, indent=2)
-                            # 如果还是太长，至少保留前几个 hits
+                            # 如果还是太长，至少保留前几个 articles/hits
                             if len(result_text) > max_length:
-                                # 保留前 N 个 hits，确保 JSON 完整
-                                hits = actual_result.get("hits", [])
-                                max_hits = min(len(hits), 10)  # 最多保留10个新闻
-                                simplified["hits"] = hits[:max_hits]
+                                # 保留前 N 个 articles（优先）或 hits，确保 JSON 完整
+                                if articles:
+                                    max_items = min(len(articles), 10)  # 最多保留10篇文章
+                                    simplified["articles"] = articles[:max_items]
+                                    simplified["total_articles"] = len(articles)
+                                elif hits:
+                                    max_items = min(len(hits), 10)  # 最多保留10个hits
+                                    simplified["hits"] = hits[:max_items]
+                                    simplified["total_hits"] = len(hits)
+                                
                                 result_text = json.dumps(simplified, ensure_ascii=False, indent=2)
                                 if len(result_text) > max_length:
-                                    result_text = result_text[:max_length] + "\n... (truncated, showing first " + str(max_hits) + " hits)"
+                                    result_text = result_text[:max_length] + "\n... (truncated)"
                         else:
                             result_text = result_text[:max_length] + "\n... (truncated)"
             else:
@@ -777,7 +845,48 @@ def execute_daily_trade(
                 tool_category = "crypto"
             
             # CRITICAL FIX: 对于 get_company_fundamentals，确保 tool_result 包含 symbol（即使结果被截断）
+            # CRITICAL FIX: 对于新闻工具，确保保留完整的 articles 和 hits 数组（使用备份数据）
             tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
+            
+            # CRITICAL FIX: 对于新闻工具，使用备份的完整数据（即使 result_text 被截断）
+            if tool_name in ["plan_and_scan_news", "news_scan"]:
+                # CRITICAL FIX: Ensure tool_result_data is a dict (not nested structure)
+                # The frontend expects tool_result_data to directly contain articles/hits, not wrapped in {ok: true, result: {...}}
+                if not isinstance(tool_result_data, dict):
+                    tool_result_data = {}
+                
+                # 使用备份的完整 articles 和 hits（在截断之前保存的）
+                if news_articles_backup is not None:
+                    tool_result_data["articles"] = news_articles_backup
+                if news_hits_backup is not None:
+                    tool_result_data["hits"] = news_hits_backup
+                
+                # 如果备份不存在，尝试从 actual_result 中提取
+                if isinstance(actual_result, dict):
+                    if "articles" not in tool_result_data and "articles" in actual_result:
+                        articles_list = actual_result.get("articles", [])
+                        if isinstance(articles_list, list):
+                            tool_result_data["articles"] = articles_list
+                    if "hits" not in tool_result_data and "hits" in actual_result:
+                        hits_list = actual_result.get("hits", [])
+                        if isinstance(hits_list, list):
+                            tool_result_data["hits"] = hits_list
+                    # 保留其他重要字段
+                    for key in ["queries", "summary", "total_hits", "total_articles"]:
+                        if key in actual_result:
+                            tool_result_data[key] = actual_result.get(key)
+                
+                # CRITICAL FIX: Remove nested structure - frontend expects direct access to articles/hits
+                # Do NOT wrap in {ok: true, result: {...}} - frontend will handle it
+                articles_count = len(tool_result_data.get('articles', [])) if isinstance(tool_result_data.get('articles'), list) else 0
+                hits_count = len(tool_result_data.get('hits', [])) if isinstance(tool_result_data.get('hits'), list) else 0
+                print(f"[TRADING CYCLE] [NEWS] Preserved news data: {articles_count} articles, {hits_count} hits")
+                print(f"[TRADING CYCLE] [NEWS] tool_result_data structure: keys={list(tool_result_data.keys())[:10]}")
+                if tool_result_data.get("articles"):
+                    print(f"[TRADING CYCLE] [NEWS] articles is array: {isinstance(tool_result_data.get('articles'), list)}, length: {articles_count}")
+                if tool_result_data.get("hits"):
+                    print(f"[TRADING CYCLE] [NEWS] hits is array: {isinstance(tool_result_data.get('hits'), list)}, length: {hits_count}")
+            
             if tool_name == "get_company_fundamentals" and isinstance(actual_result, dict):
                 # 确保 symbol 字段存在（即使结果被截断，也要保留 symbol）
                 if "symbol" not in tool_result_data:
@@ -808,6 +917,28 @@ def execute_daily_trade(
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            
+            # DEBUG: Log news tool writes
+            if tool_category == "news":
+                print(f"[TRADING CYCLE] ✅ Wrote news tool entry: {tool_name}, agent: {agent_name}, category: {tool_category}")
+                if isinstance(tool_result_data, dict):
+                    # CRITICAL FIX: Check for nested structure
+                    actual_result = tool_result_data
+                    if tool_result_data.get("ok") and "result" in tool_result_data:
+                        actual_result = tool_result_data.get("result", {})
+                    elif not tool_result_data.get("ok"):
+                        actual_result = tool_result_data
+                    
+                    hits = actual_result.get("hits", []) if isinstance(actual_result, dict) else []
+                    articles = actual_result.get("articles", []) if isinstance(actual_result, dict) else []
+                    print(f"[TRADING CYCLE]   News data in entry: {len(hits) if isinstance(hits, list) else 0} hits, {len(articles) if isinstance(articles, list) else 0} articles")
+                    print(f"[TRADING CYCLE]   tool_result_data keys: {list(tool_result_data.keys())[:10]}")
+                    if isinstance(actual_result, dict):
+                        print(f"[TRADING CYCLE]   actual_result keys: {list(actual_result.keys())[:10]}")
+                        if articles and isinstance(articles, list) and len(articles) > 0:
+                            print(f"[TRADING CYCLE]   First article keys: {list(articles[0].keys())[:10] if isinstance(articles[0], dict) else 'not dict'}")
+                        elif hits and isinstance(hits, list) and len(hits) > 0:
+                            print(f"[TRADING CYCLE]   First hit keys: {list(hits[0].keys())[:10] if isinstance(hits[0], dict) else 'not dict'}")
         
     except Exception as e:
         print(f"[WARN] Failed to write conversations to discussion_actions.jsonl: {e}")
@@ -1286,6 +1417,10 @@ def execute_daily_trade(
             risk_content_parts.append(f"\n\nRecommendations: {recs_text}")
         
         risk_content = "".join(risk_content_parts)
+        # CRITICAL FIX: Extract tool calls from risk_report
+        tools_used = risk_report.get("tools_used", [])
+        tool_calls = risk_report.get("tool_calls", [])
+        
         risk_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "date": trade_date_str,
@@ -1295,9 +1430,63 @@ def execute_daily_trade(
             "type": "discussion",
             "stance": risk_level,  # 使用 risk_level 作为 stance
             "summary": risk_content,  # CRITICAL FIX: 移除500字符限制，允许完整summary显示
-            "tools_used": [],  # CRITICAL FIX: 确保 tools_used 被正确存储
+            "tools_used": tools_used,  # CRITICAL FIX: 从 risk_report 中提取 tools_used
             "risk_report": risk_report,  # CRITICAL: 添加完整的 risk_report 数据供前端使用
         }
+        
+        # CRITICAL FIX: Write tool calls to discussion_actions.jsonl (similar to other analysts)
+        if tool_calls:
+            print(f"[TRADING CYCLE] Writing {len(tool_calls)} RiskAnalyst tool calls to discussion_actions.jsonl")
+            for tool_call_data in tool_calls:
+                tool_name = tool_call_data.get("tool", "")
+                tool_result = tool_call_data.get("result", {})
+                
+                # Extract actual result (handle nested structure)
+                actual_result = tool_result
+                if isinstance(tool_result, dict):
+                    while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                        actual_result = actual_result["result"]
+                
+                # Format result text
+                if isinstance(actual_result, dict):
+                    if "error" in actual_result:
+                        result_text = f"Error: {actual_result.get('error', 'Unknown error')}"
+                    else:
+                        result_text = json.dumps(actual_result, ensure_ascii=False, indent=2)
+                        if len(result_text) > 2000:
+                            result_text = result_text[:2000] + "... (truncated)"
+                else:
+                    result_text = str(actual_result)
+                    if len(result_text) > 2000:
+                        result_text = result_text[:2000] + "... (truncated)"
+                
+                # Determine tool category
+                tool_category = "other"
+                if tool_name in ["vix_term", "vix_close", "fear_greed", "get_market_breadth"]:
+                    tool_category = "risk"
+                elif tool_name in ["get_market_indices", "get_sector_rotation", "get_correlation_matrix", "get_advanced_indicators", "get_support_resistance"]:
+                    tool_category = "market"
+                elif tool_name in ["get_company_fundamentals", "get_earnings_history", "get_financial_statements"]:
+                    tool_category = "fundamental"
+                
+                tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
+                
+                tool_entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    "date": trade_date_str,
+                    "agent": "RiskAnalyst",
+                    "round": 0,
+                    "content": f"Tool used: {tool_name}: {result_text}",
+                    "type": "tool",
+                    "tool_name": tool_name,
+                    "tool_category": tool_category,
+                    "tool_result": tool_result_data,
+                }
+                
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(tool_entry, ensure_ascii=False) + "\n")
+                
+                print(f"[TRADING CYCLE] ✅ Wrote RiskAnalyst tool entry: {tool_name}, category: {tool_category}")
         
         with convo_file.open("a", encoding="utf-8") as f:
             f.write(json.dumps(risk_entry, ensure_ascii=False) + "\n")

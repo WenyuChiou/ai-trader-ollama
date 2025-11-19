@@ -1,7 +1,7 @@
 {
   "2025-11-18": {
     "date": "2025-11-18",
-    "stance": "bearish",
+    "stance": "bullish",
     "stocks_involved": [],
     "recommended_stocks": [
       "GOOG",
@@ -26,6 +26,7 @@
       "KDP"
     ],
     "action": "HOLD",
-    "risk_level": "low"
+    "risk_level": "medium",
+    "memory_type": "short_term"
   }
 }

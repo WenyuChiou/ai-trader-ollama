@@ -69,13 +69,30 @@ def run_multi_analyst_discussion_parallel(
     shared_context.set_market_data(market_view)
     
     # Get market conditions and allocate budget
+    # CRITICAL FIX: Fetch market conditions from API (same as frontend panel)
     # Note: tool_calls will be available after sequential execution, but we need market_conditions before
-    # So we'll update it after execution
-    market_conditions = get_market_conditions(market_view)
-    budget_allocation = allocate_tool_budget(market_conditions, tool_budget)
+    # So we'll update it after execution with actual tool_calls
+    market_conditions = get_market_conditions(market_view, tool_calls=None)
     
-    print(f"[PARALLEL] Budget allocation: {budget_allocation}")
-    print(f"[PARALLEL] Market conditions: VIX={market_conditions.get('vix', 20):.2f}, "
+    # CRITICAL FIX: Load custom allocation from config.json if available
+    custom_allocation = None
+    try:
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.json"
+        if config_path.exists():
+            import json
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                budget_config = config.get("budget_allocation", {})
+                if budget_config:
+                    custom_allocation = budget_config
+                    print(f"[PARALLEL] Using custom budget allocation from config.json: {custom_allocation}")
+    except Exception as e:
+        print(f"[PARALLEL] Failed to load custom allocation from config.json: {e}, using default")
+    
+    budget_allocation = allocate_tool_budget(market_conditions, tool_budget, custom_allocation=custom_allocation)
+    
+    print(f"[PARALLEL] Budget allocation: {budget_allocation} (fundamental excluded - not subject to budget)")
+    print(f"[PARALLEL] Market conditions (from API): VIX={market_conditions.get('vix', 20):.2f}, "
           f"News={market_conditions.get('news_count', 0)}, "
           f"Volatility={market_conditions.get('volatility', 'normal')} ({market_conditions.get('vix_level', 'normal')})")
     
@@ -173,11 +190,63 @@ def run_multi_analyst_discussion_parallel(
         historical_memories=historical_memories,  # 传递历史记忆
     )
     
-    # CRITICAL FIX: Update market_conditions with news count from tool calls
+    # CRITICAL FIX: Update market_conditions with news count from tool calls (from API)
     tool_calls = result.get("tool_calls", [])
     if tool_calls:
-        market_conditions = get_market_conditions(market_view, tool_calls)
-        print(f"[PARALLEL] Updated market conditions: VIX={market_conditions.get('vix', 20):.2f}, "
+        print(f"[PARALLEL] Updating market conditions with {len(tool_calls)} tool calls...")
+        
+        # DEBUG: List all tool names to see what we have
+        all_tool_names = [tc.get("tool", "") or tc.get("name", "") for tc in tool_calls]
+        print(f"[PARALLEL]   All tool names: {', '.join(all_tool_names[:10])}{'...' if len(all_tool_names) > 10 else ''}")
+        
+        # Extract tool calls in the format expected by get_market_conditions
+        # tool_calls format: [{"analyst": "...", "tool": "...", "result": {...}}, ...]
+        formatted_tool_calls = []
+        news_tool_count = 0
+        for idx, tc in enumerate(tool_calls):
+            tool_name = tc.get("tool", "") or tc.get("name", "")
+            analyst_name = tc.get("analyst", "Unknown")
+            
+            # DEBUG: Log first few tool calls to see structure
+            if idx < 3:
+                print(f"[PARALLEL]   Tool call {idx}: analyst={analyst_name}, tool={tool_name}, keys={list(tc.keys())}")
+            
+            # DEBUG: Log all tool calls to see structure
+            if not tool_name:
+                print(f"[PARALLEL]   [WARN] Tool call {idx} missing name/tool field: {list(tc.keys())}")
+                continue
+            
+            if tool_name in ["plan_and_scan_news", "news_scan", "get_news_scan"]:
+                news_tool_count += 1
+                print(f"[PARALLEL]   [OK] Found news tool call: {tool_name}, analyst: {analyst_name}")
+                # DEBUG: Log news tool result structure
+                tool_result = tc.get("result", {})
+                if isinstance(tool_result, dict):
+                    print(f"[PARALLEL]     News tool result keys: {list(tool_result.keys())[:10]}")
+                    if "ok" in tool_result and "result" in tool_result:
+                        actual_result = tool_result.get("result", {})
+                        if isinstance(actual_result, dict):
+                            articles = actual_result.get("articles", [])
+                            hits = actual_result.get("hits", [])
+                            print(f"[PARALLEL]     News data: {len(articles) if isinstance(articles, list) else 0} articles, {len(hits) if isinstance(hits, list) else 0} hits")
+            
+            formatted_tool_calls.append({
+                "tool": tool_name,
+                "name": tool_name,  # Also support "name" field
+                "result": tc.get("result", {})
+            })
+        
+        if news_tool_count > 0:
+            print(f"[PARALLEL]   Total news tool calls found: {news_tool_count}")
+        else:
+            print(f"[PARALLEL]   [WARN] No news tool calls found in {len(tool_calls)} tool calls")
+            # DEBUG: Check if plan_and_scan_news exists in any form
+            plan_scan_variants = [name for name in all_tool_names if "plan" in name.lower() or "scan" in name.lower() or "news" in name.lower()]
+            if plan_scan_variants:
+                print(f"[PARALLEL]   [DEBUG] Found similar tool names: {plan_scan_variants}")
+        
+        market_conditions = get_market_conditions(market_view, formatted_tool_calls)
+        print(f"[PARALLEL] Updated market conditions (from API + tool calls): VIX={market_conditions.get('vix', 20):.2f}, "
               f"News={market_conditions.get('news_count', 0)}, "
               f"Volatility={market_conditions.get('volatility', 'normal')} (VIX={market_conditions.get('vix', 20):.2f})")
     

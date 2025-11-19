@@ -18,12 +18,26 @@ def get_company_fundamentals(symbol: str) -> Dict[str, Any]:
         Dict包含业绩、估值、财务指标
     """
     try:
-        ticker = yf.Ticker(symbol)
+        # CRITICAL FIX: Validate symbol format (basic check)
+        symbol_upper = symbol.upper().strip()
+        if not symbol_upper or len(symbol_upper) > 10:
+            return {"error": f"Invalid symbol format: {symbol}", "symbol": symbol}
+        
+        ticker = yf.Ticker(symbol_upper)
         info = ticker.info
         
+        # CRITICAL FIX: Check if ticker.info is valid (yfinance returns empty dict or None for invalid symbols)
+        if not info or not isinstance(info, dict) or len(info) == 0:
+            return {"error": f"Symbol not found or invalid: {symbol_upper}", "symbol": symbol_upper}
+        
+        # CRITICAL FIX: Check for yfinance error response (404 or "Not Found")
+        if "error" in info or info.get("quoteType") is None:
+            error_msg = info.get("error", {}).get("description", "Symbol not found") if isinstance(info.get("error"), dict) else "Symbol not found"
+            return {"error": f"Symbol not found: {symbol_upper} - {error_msg}", "symbol": symbol_upper}
+        
         result = {
-            "symbol": symbol,
-            "company_name": info.get("longName", "N/A"),
+            "symbol": symbol_upper,
+            "company_name": info.get("longName", info.get("shortName", "N/A")),
             "sector": info.get("sector", "N/A"),
             "industry": info.get("industry", "N/A"),
             "fundamentals": {}

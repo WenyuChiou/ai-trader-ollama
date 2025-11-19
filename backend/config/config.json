@@ -147,6 +147,12 @@
   "discussion_rounds": 3,
   "discussion_auto_tools": true,
   "discussion_tool_budget": 15,
+  "_comment_budget_allocation": "Tool budget allocation per analyst. Fundamental Analyst is excluded (not subject to budget). If not set, uses adaptive allocation based on market conditions.",
+  "budget_allocation": {
+    "market": 3,
+    "technical": 4,
+    "sentiment": 4
+  },
   "max_orders_per_cycle": 20,
   "trade_cooldown_hours": 24.0,
   "llm": {

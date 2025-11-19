@@ -12132,6 +12132,15 @@
                     const toolResult = newsTool.tool_result || {};
                     const toolName = newsTool.tool_name || '';
                     
+                    // DEBUG: Log tool_result structure
+                    console.log('[News] [DEBUG] tool_result structure:', {
+                        hasToolResult: !!toolResult,
+                        toolResultType: typeof toolResult,
+                        toolResultKeys: toolResult && typeof toolResult === 'object' ? Object.keys(toolResult).slice(0, 15) : [],
+                        hasOk: !!(toolResult && typeof toolResult === 'object' && toolResult.ok),
+                        hasResult: !!(toolResult && typeof toolResult === 'object' && toolResult.result),
+                    });
+                    
                     // CRITICAL FIX: 支持多种数据结构
                     // news_scan 返回 {hits: [...]}
                     // fetch_jin10_news 返回 {items: [...], count, source, fetched_at}
@@ -12139,12 +12148,38 @@
                     
                     // CRITICAL FIX: plan_and_scan_news 返回 {hits: [...], articles: [...]}
                     // 优先使用 articles（包含 summary 和 keywords）
-                    // 检查 toolResult 的结构：可能是 {ok: true, result: {...}} 或直接是 {...}
+                    // 检查 toolResult 的结构：
+                    // 1. 可能是 {ok: true, result: {...}} - 从 toolbox.invoke 返回的原始结构
+                    // 2. 可能是直接是 {...} - 从 discussion_actions.jsonl 读取的已处理结构（trading_cycle.py 已提取）
                     let actualResult = toolResult;
+                    
+                    // CRITICAL FIX: Check if toolResult has nested structure {ok: true, result: {...}}
                     if (toolResult && typeof toolResult === 'object' && toolResult.ok && toolResult.result) {
                         actualResult = toolResult.result;
                         console.log('[News] Extracted result from tool_result.ok structure');
+                    } else if (toolResult && typeof toolResult === 'object') {
+                        // CRITICAL FIX: If toolResult doesn't have ok/result, it might already be the actual result
+                        // Check if it directly has articles or hits
+                        if (toolResult.articles || toolResult.hits) {
+                            actualResult = toolResult;
+                            console.log('[News] toolResult already contains articles/hits directly (no nesting)');
+                        }
                     }
+                    
+                    // DEBUG: Log actualResult structure
+                    console.log('[News] [DEBUG] actualResult structure:', {
+                        hasActualResult: !!actualResult,
+                        actualResultType: typeof actualResult,
+                        actualResultKeys: actualResult && typeof actualResult === 'object' ? Object.keys(actualResult).slice(0, 15) : [],
+                        hasArticles: !!(actualResult && typeof actualResult === 'object' && actualResult.articles),
+                        hasHits: !!(actualResult && typeof actualResult === 'object' && actualResult.hits),
+                        articlesType: actualResult && typeof actualResult === 'object' && actualResult.articles ? typeof actualResult.articles : 'N/A',
+                        articlesIsArray: Array.isArray(actualResult && typeof actualResult === 'object' ? actualResult.articles : null),
+                        articlesLength: Array.isArray(actualResult && typeof actualResult === 'object' ? actualResult.articles : null) ? actualResult.articles.length : 0,
+                        hitsType: actualResult && typeof actualResult === 'object' && actualResult.hits ? typeof actualResult.hits : 'N/A',
+                        hitsIsArray: Array.isArray(actualResult && typeof actualResult === 'object' ? actualResult.hits : null),
+                        hitsLength: Array.isArray(actualResult && typeof actualResult === 'object' ? actualResult.hits : null) ? actualResult.hits.length : 0,
+                    });
                     
                     if (actualResult.articles && Array.isArray(actualResult.articles)) {
                         // plan_and_scan_news 格式（包含 LLM 生成的 summary 和 keywords）

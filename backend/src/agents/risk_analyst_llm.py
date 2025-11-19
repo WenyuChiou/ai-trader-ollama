@@ -136,9 +136,35 @@ def run_risk_analyst_llm(
         "tools_context": "",
     }
     
+    # CRITICAL FIX: Track tool calls for RiskAnalyst
+    tool_calls_used = []
+    tool_results_data = []
+    
     try:
         # 调用LLM
         response = agent.run(prompt_vars, expect_json=True)
+        
+        # CRITICAL FIX: Extract tool calls from response if available
+        if isinstance(response, dict):
+            tool_calls_list = response.get("tool_calls", [])
+            if tool_calls_list:
+                print(f"[RISK ANALYST] Found {len(tool_calls_list)} tool calls in response")
+                # Execute tools if use_tools is True
+                if use_tools:
+                    for tool_call in tool_calls_list:
+                        tool_name = tool_call.get("name", "")
+                        tool_args = tool_call.get("args", {})
+                        if tool_name:
+                            try:
+                                tool_result = toolbox.invoke(tool_name, **tool_args)
+                                tool_calls_used.append(tool_name)
+                                tool_results_data.append({
+                                    "tool": tool_name,
+                                    "result": tool_result
+                                })
+                                print(f"[RISK ANALYST] Executed tool: {tool_name}")
+                            except Exception as e:
+                                print(f"[RISK ANALYST] Failed to execute tool {tool_name}: {e}")
         
         # 尝试解析JSON响应
         try:
@@ -218,6 +244,11 @@ def run_risk_analyst_llm(
                             }
                 position_control["recommended_position_sizes"] = recommended_sizes
                 risk_report["position_control_report"] = position_control
+            
+            # CRITICAL FIX: Add tool calls information to risk_report
+            if tool_calls_used:
+                risk_report["tools_used"] = tool_calls_used
+                risk_report["tool_calls"] = tool_results_data
             
             return risk_report
             

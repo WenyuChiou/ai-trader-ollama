@@ -518,7 +518,28 @@ async def fetch_conversations_api(
                 
                 # DEBUG: Log news tools
                 if tool_category == "news":
-                    print(f"[API] Found news tool: {tool_name}, agent: {entry.get('agent', 'Unknown')}")
+                    print(f"[API] ✅ Found news tool: {tool_name}, agent: {entry.get('agent', 'Unknown')}")
+                    # DEBUG: Check if tool_result has news data
+                    if isinstance(tool_result, dict):
+                        # CRITICAL FIX: Check for nested structure {ok: true, result: {...}}
+                        actual_result = tool_result
+                        if tool_result.get("ok") and "result" in tool_result:
+                            actual_result = tool_result.get("result", {})
+                            print(f"[API]   Extracted result from tool_result.ok structure")
+                        
+                        if isinstance(actual_result, dict):
+                            hits = actual_result.get("hits", [])
+                            articles = actual_result.get("articles", [])
+                            print(f"[API]   News data: {len(hits) if isinstance(hits, list) else 0} hits, {len(articles) if isinstance(articles, list) else 0} articles")
+                            print(f"[API]   actual_result keys: {list(actual_result.keys())[:10]}")
+                            if articles and isinstance(articles, list) and len(articles) > 0:
+                                print(f"[API]   First article keys: {list(articles[0].keys())[:10] if isinstance(articles[0], dict) else 'not dict'}")
+                            elif hits and isinstance(hits, list) and len(hits) > 0:
+                                print(f"[API]   First hit keys: {list(hits[0].keys())[:10] if isinstance(hits[0], dict) else 'not dict'}")
+                        else:
+                            print(f"[API]   ⚠️ actual_result is not a dict: {type(actual_result)}")
+                    else:
+                        print(f"[API]   ⚠️ tool_result is not a dict: {type(tool_result)}")
                 
                 # CRITICAL FIX: 确保 tool_result 是可序列化的
                 if not isinstance(tool_result, (dict, list, str, int, float, bool, type(None))):
@@ -552,6 +573,30 @@ async def fetch_conversations_api(
                     # DEBUG: Log news tool entry structure
                     if tool_category == "news":
                         print(f"[API] Adding news tool entry: {tool_name}, result keys: {list(tool_result.keys())[:10] if isinstance(tool_result, dict) else 'not dict'}")
+                        # CRITICAL FIX: Ensure tool_result structure is correct for frontend parsing
+                        if isinstance(tool_result, dict):
+                            # Check if we need to extract from nested structure
+                            if tool_result.get("ok") and "result" in tool_result:
+                                # Keep the nested structure, frontend will extract it
+                                print(f"[API]   Tool result has nested structure: ok={tool_result.get('ok')}, has result={('result' in tool_result)}")
+                                # Extract actual_result for logging
+                                actual_result_for_log = tool_result.get("result", {})
+                                if isinstance(actual_result_for_log, dict):
+                                    articles_count = len(actual_result_for_log.get("articles", [])) if isinstance(actual_result_for_log.get("articles"), list) else 0
+                                    hits_count = len(actual_result_for_log.get("hits", [])) if isinstance(actual_result_for_log.get("hits"), list) else 0
+                                    print(f"[API]   Nested result contains: {articles_count} articles, {hits_count} hits")
+                            else:
+                                # Check if tool_result directly has articles/hits (from trading_cycle.py processing)
+                                actual_result = tool_result
+                                if isinstance(actual_result, dict):
+                                    has_articles = bool(actual_result.get("articles"))
+                                    has_hits = bool(actual_result.get("hits"))
+                                    articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
+                                    hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
+                                    print(f"[API]   Tool result structure: has_articles={has_articles} ({articles_count} items), has_hits={has_hits} ({hits_count} items)")
+                                    if not has_articles and not has_hits:
+                                        print(f"[API]   [WARN] News tool result has no articles or hits!")
+                                        print(f"[API]   [WARN] tool_result keys: {list(tool_result.keys())[:15]}")
                     
                     # 添加到对应分类
                     if tool_category in tool_results_by_category:

@@ -29,7 +29,7 @@
 - [Configuration](#-configuration)
 - [Data Storage & Records](#-data-storage--records)
 - [Multi-Agent Architecture](#-multi-agent-architecture)
-- [Tool Suite (29 Tools)](#-tool-suite-29-tools)
+- [Tool Suite (27 Tools)](#-tool-suite-27-tools)
 - [Trading Workflow](#-trading-workflow)
 - [API Endpoints](#-api-endpoints)
 - [Deployment](#-deployment)
@@ -1366,9 +1366,8 @@ External Data Sources:
 │   └── Federal Reserve data
 │
 ├── News & Sentiment
-│   ├── News APIs (news_scan, plan_and_scan_news)
-│   ├── Jin10 financial news
-│   ├── Fear & Greed Index (CNN)
+│   ├── News APIs (plan_and_scan_news - recommended, includes LLM-generated summaries)
+│   ├── Fear & Greed Index (CNN, standardized classification)
 │   └── VIX term structure (CBOE)
 │
 └── Fundamental Data
@@ -1470,10 +1469,10 @@ T+0:00  → Data Collection (5-10 sec)
               ▼
 T+0:10  → Multi-Agent Analysis (30-60 sec)
          ├── Round 1: All 4 analysts analyze independently
-         │   ├── Market Analyst: Uses get_market_indices, get_sector_rotation
-         │   ├── Technical Analyst: Uses get_advanced_indicators, get_support_resistance
-         │   ├── Fundamental Analyst: Uses get_company_fundamentals, get_earnings_history
-         │   └── Sentiment Analyst: Uses fear_greed, vix_term, news_scan
+         │   ├── Market Analyst: Uses get_market_indices, get_sector_rotation, get_economic_summary
+         │   ├── Technical Analyst: Uses get_advanced_indicators, get_support_resistance (NO news tools)
+         │   ├── Fundamental Analyst: Uses get_company_fundamentals, get_earnings_history (unlimited budget)
+         │   └── Sentiment Analyst: Uses fear_greed, vix_term, plan_and_scan_news (mandatory)
          │
          ├── Round 2: Analysts refine analysis based on Round 1
          │   └── Additional tool calls if needed

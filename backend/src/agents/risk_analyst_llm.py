@@ -154,6 +154,15 @@ def run_risk_analyst_llm(
                     for tool_call in tool_calls_list:
                         tool_name = tool_call.get("name", "")
                         tool_args = tool_call.get("args", {})
+                        
+                        # CRITICAL FIX: Map deprecated news_scan to plan_and_scan_news
+                        if tool_name == "news_scan":
+                            print(f"[RISK ANALYST] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
+                            tool_name = "plan_and_scan_news"
+                            # Update tool_args if needed
+                            if "keywords" in tool_args and "tickers" not in tool_args:
+                                tool_args["tickers"] = tool_args.pop("keywords", [])
+                        
                         if tool_name:
                             try:
                                 tool_result = toolbox.invoke(tool_name, **tool_args)

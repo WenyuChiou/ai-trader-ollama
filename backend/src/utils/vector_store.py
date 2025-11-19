@@ -98,11 +98,19 @@ class VectorStore:
         Returns:
         - Vector index
         """
-        if len(embedding) != self.embedding_dim:
-            raise ValueError(
-                f"Embedding dimension mismatch: expected {self.embedding_dim}, "
-                f"got {len(embedding)}"
-            )
+        # CRITICAL FIX: Handle dimension mismatch (e.g., config says 384 but Ollama returns 768)
+        embedding_dim = len(embedding)
+        if embedding_dim != self.embedding_dim:
+            print(f"[VECTOR STORE WARN] Embedding dimension mismatch: expected {self.embedding_dim}, got {embedding_dim}. Updating store dimension.")
+            # Update store dimension to match actual embedding
+            self.embedding_dim = embedding_dim
+            # If we have existing vectors with different dimension, we need to handle this
+            if len(self.vectors) > 0 and self.vectors.shape[1] != embedding_dim:
+                print(f"[VECTOR STORE WARN] Existing vectors have dimension {self.vectors.shape[1]}, new embedding has {embedding_dim}. Clearing old vectors.")
+                # Clear old vectors with mismatched dimension
+                self.vectors = np.array([])
+                self.metadata = []
+                self.date_to_index = {}
         
         # Check if already exists (based on date)
         date_key = date_str or metadata.get("date")

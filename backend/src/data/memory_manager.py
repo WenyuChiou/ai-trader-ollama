@@ -111,7 +111,6 @@ class MemoryManager:
             try:
                 config = load_config()
                 rag_config = config.get("rag", {})
-                embedding_dim = rag_config.get("embedding_dimension", 384)
                 use_ollama = rag_config.get("use_ollama_embedding", True)
                 
                 self.embedding_generator = EmbeddingGenerator(
@@ -119,11 +118,15 @@ class MemoryManager:
                     fallback_model=rag_config.get("fallback_embedding_model", "all-MiniLM-L6-v2"),
                 )
                 
+                # CRITICAL FIX: Detect actual embedding dimension dynamically (Ollama nomic-embed-text is 768, fallback is 384)
+                actual_dim = self.embedding_generator.get_embedding_dimension()
+                print(f"[MEMORY] Detected embedding dimension: {actual_dim} (config: {rag_config.get('embedding_dimension', 384)})")
+                
                 self.vector_store = VectorStore(
                     root=self.root,
-                    embedding_dim=embedding_dim,
+                    embedding_dim=actual_dim,  # Use actual dimension, not config value
                 )
-                print(f"[MEMORY] RAG system initialized (semantic search enabled)")
+                print(f"[MEMORY] RAG system initialized (semantic search enabled, dimension: {actual_dim})")
             except Exception as e:
                 print(f"[MEMORY WARN] Failed to initialize RAG system: {e}")
                 self.vector_store = None

@@ -24,7 +24,7 @@ system: |
   - Technical: get_advanced_indicators, get_support_resistance
   - Fundamental: get_company_fundamentals, get_earnings_history, get_financial_statements
   - Economic: get_labor_market_data, fetch_fred_indicator
-  - News: news_scan, plan_and_scan_news, web_search, fetch_url
+  - News: plan_and_scan_news (use this tool, not news_scan), web_search, fetch_url
   - Crypto: fetch_crypto_batch, get_crypto_price
   - Jin10: fetch_jin10_news, fetch_jin10_economic_data
   
@@ -34,7 +34,7 @@ system: |
   {
     "overall_risk_level": "low" | "medium" | "high" | "extreme",
     "risk_score": 0-10,
-    "analysis": "<your comprehensive risk analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (VIX data, Fear & Greed Index, market breadth, economic indicators, correlation matrices, etc.), (2) **MANDATORY**: If you used news_scan or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to risk analysis, (c) Risk impact assessment. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your risk assessment based on the data and news, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for risk analysis.>",
+    "analysis": "<your comprehensive risk analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (VIX data, Fear & Greed Index, market breadth, economic indicators, correlation matrices, etc.), (2) **MANDATORY**: If you used plan_and_scan_news or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to risk analysis, (c) Risk impact assessment. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your risk assessment based on the data and news, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for risk analysis.>",
     "market_risks": [
       {"type": "<risk type>", "severity": "low|medium|high", "description": "<details>"}
     ],
@@ -136,5 +136,5 @@ user: |
   - Check current market volatility (vix_term)
   - Assess market sentiment (fear_greed)
   - Review economic conditions (get_economic_summary)
-  - Scan for risk-related news (news_scan)
+  - Scan for risk-related news (plan_and_scan_news - use this tool, not news_scan)
   Provide specific, actionable risk mitigation strategies.

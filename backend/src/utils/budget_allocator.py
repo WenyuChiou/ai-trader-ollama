@@ -69,6 +69,9 @@ def allocate_tool_budget(
             allocation["technical"] = 4
         if "sentiment" not in allocation:
             allocation["sentiment"] = 4
+        # CRITICAL FIX: If custom allocation provided, use it as base but still allow adaptive adjustments
+        # Store original custom allocation for reference
+        original_allocation = allocation.copy()
     else:
         allocation = {
             "market": 3,      # Base: Market indices, sector rotation, breadth
@@ -76,6 +79,7 @@ def allocate_tool_budget(
             "sentiment": 4    # Base: VIX, Fear & Greed, news
             # CRITICAL: fundamental excluded - fundamental tools are not subject to budget
         }
+        original_allocation = None
     
     # Get market conditions
     vix_level = market_conditions.get("vix", 20)
@@ -84,54 +88,57 @@ def allocate_tool_budget(
     volatility = market_conditions.get("volatility", "normal")
     
     # CRITICAL FIX: Only adjust non-fundamental agents (fundamental is excluded from budget)
+    # CRITICAL FIX: If custom allocation provided, apply smaller adjustments (preserve user intent)
+    adjustment_factor = 0.5 if original_allocation else 1.0  # Reduce adjustments if custom allocation provided
+    
     # Adjust based on VIX level
     if vix_level > 25:
         # High volatility: Focus on technical and sentiment analysis
-        allocation["technical"] += 2
-        allocation["sentiment"] += 1
-        allocation["market"] -= 1
+        allocation["technical"] += int(2 * adjustment_factor)
+        allocation["sentiment"] += int(1 * adjustment_factor)
+        allocation["market"] -= int(1 * adjustment_factor)
     elif vix_level < 15:
         # Low volatility: Focus on market trends (fundamental excluded)
-        allocation["market"] += 1
-        allocation["technical"] -= 1
-        allocation["sentiment"] -= 1
+        allocation["market"] += int(1 * adjustment_factor)
+        allocation["technical"] -= int(1 * adjustment_factor)
+        allocation["sentiment"] -= int(1 * adjustment_factor)
     
     # Adjust based on news volume
     if news_count > 10:
         # High news volume: More sentiment analysis
-        allocation["sentiment"] += 2
-        allocation["market"] += 1
+        allocation["sentiment"] += int(2 * adjustment_factor)
+        allocation["market"] += int(1 * adjustment_factor)
         # Reduce from others if needed
         if allocation["technical"] > 3:
-            allocation["technical"] -= 1
+            allocation["technical"] -= int(1 * adjustment_factor)
     elif news_count < 3:
         # Low news volume: Less sentiment, more market/technical
-        allocation["sentiment"] -= 1
-        allocation["market"] += 1
+        allocation["sentiment"] -= int(1 * adjustment_factor)
+        allocation["market"] += int(1 * adjustment_factor)
     
     # Adjust based on earnings
     # Note: Earnings analysis is handled by Fundamental Analyst (not subject to budget)
     if earnings_count > 5:
         # Earnings season: More market analysis (fundamental excluded)
-        allocation["market"] += 1
+        allocation["market"] += int(1 * adjustment_factor)
         # Reduce from others if needed
         if allocation["technical"] > 3:
-            allocation["technical"] -= 1
+            allocation["technical"] -= int(1 * adjustment_factor)
         if allocation["sentiment"] > 3:
-            allocation["sentiment"] -= 1
+            allocation["sentiment"] -= int(1 * adjustment_factor)
     
     # Adjust based on volatility indicator
     if volatility == "high":
-        allocation["technical"] += 1
-        allocation["sentiment"] += 1
+        allocation["technical"] += int(1 * adjustment_factor)
+        allocation["sentiment"] += int(1 * adjustment_factor)
         if allocation["market"] > 2:
-            allocation["market"] -= 1
+            allocation["market"] -= int(1 * adjustment_factor)
     elif volatility == "low":
-        allocation["market"] += 1
+        allocation["market"] += int(1 * adjustment_factor)
         if allocation["technical"] > 3:
-            allocation["technical"] -= 1
+            allocation["technical"] -= int(1 * adjustment_factor)
         if allocation["sentiment"] > 3:
-            allocation["sentiment"] -= 1
+            allocation["sentiment"] -= int(1 * adjustment_factor)
     
     # CRITICAL FIX: Ensure minimum allocation (at least 1 tool per agent)
     # Note: fundamental is already excluded, so we only iterate over market, technical, sentiment

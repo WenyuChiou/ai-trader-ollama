@@ -5003,14 +5003,78 @@
                                             );
                                         }
                                         
-                                        // 顯示 Key Insights
+                                        // 顯示 Key Insights（带 agent 选择菜单）
                                         if (sections.keyInsights) {
-                                            html += formatCollapsibleSection(
-                                                '💡 Key Insights',
-                                                sections.keyInsights,
-                                                `${containerId}-insights`,
-                                                false
-                                            );
+                                            // 解析 Key Insights，提取每个分析师的报告
+                                            const insightsText = sections.keyInsights;
+                                            const agentReports = {};
+                                            const agentPatterns = [
+                                                /\*\s*Market\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Fundamental|Technical|Sentiment|$))/i,
+                                                /\*\s*Fundamental\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Technical|Sentiment|$))/i,
+                                                /\*\s*Technical\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Sentiment|$))/i,
+                                                /\*\s*Sentiment\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Technical|$))/i
+                                            ];
+                                            
+                                            const agentNames = ['Market Analyst', 'Fundamental Analyst', 'Technical Analyst', 'Sentiment Analyst'];
+                                            agentPatterns.forEach((pattern, index) => {
+                                                const match = insightsText.match(pattern);
+                                                if (match && match[1]) {
+                                                    agentReports[agentNames[index]] = match[1].trim();
+                                                }
+                                            });
+                                            
+                                            // 如果没有匹配到，尝试其他格式
+                                            if (Object.keys(agentReports).length === 0) {
+                                                const altPatterns = [
+                                                    /Market\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Fundamental|Technical|Sentiment|$)/i,
+                                                    /Fundamental\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Technical|Sentiment|$)/i,
+                                                    /Technical\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Sentiment|$)/i,
+                                                    /Sentiment\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Technical|$)/i
+                                                ];
+                                                altPatterns.forEach((pattern, index) => {
+                                                    const match = insightsText.match(pattern);
+                                                    if (match && match[1]) {
+                                                        agentReports[agentNames[index]] = match[1].trim();
+                                                    }
+                                                });
+                                            }
+                                            
+                                            // 如果有多个分析师的报告，添加下拉菜单
+                                            if (Object.keys(agentReports).length > 1) {
+                                                const menuId = `${containerId}-insights-menu`;
+                                                const contentId = `${containerId}-insights-content`;
+                                                html += `<div style="margin-bottom: 16px;">`;
+                                                html += `<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 6px; border-left: 3px solid #22d3ee;">`;
+                                                html += `<span style="font-size: 14px; font-weight: 600; color: #22d3ee;">💡 Key Insights</span>`;
+                                                html += `<select id="${menuId}" onchange="filterInsightsByAgent('${contentId}', '${menuId}', '${containerId}')" style="padding: 6px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; color: #22d3ee; font-size: 12px; font-weight: 500; cursor: pointer; margin-left: auto;">`;
+                                                html += `<option value="all">All Analysts</option>`;
+                                                Object.keys(agentReports).forEach(agentName => {
+                                                    html += `<option value="${agentName}">${agentName}</option>`;
+                                                });
+                                                html += `</select>`;
+                                                html += `</div>`;
+                                                html += `<div id="${contentId}" style="padding: 12px; background: rgba(15, 23, 42, 0.3); border-radius: 4px;">`;
+                                                
+                                                // 显示所有分析师的报告（默认）
+                                                Object.keys(agentReports).forEach(agentName => {
+                                                    const reportContent = escapeHtml(agentReports[agentName]);
+                                                    html += `<div class="insight-agent-report" data-agent="${agentName}" style="margin-bottom: 16px; padding: 12px; background: rgba(34, 211, 238, 0.05); border-radius: 4px; border-left: 2px solid #22d3ee;">`;
+                                                    html += `<div style="font-size: 12px; font-weight: 600; color: #22d3ee; margin-bottom: 8px;">${agentName}</div>`;
+                                                    html += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;">${reportContent}</div>`;
+                                                    html += `</div>`;
+                                                });
+                                                
+                                                html += `</div>`;
+                                                html += `</div>`;
+                                            } else {
+                                                // 如果只有一个或没有分析师的报告，使用原来的格式
+                                                html += formatCollapsibleSection(
+                                                    '💡 Key Insights',
+                                                    sections.keyInsights,
+                                                    `${containerId}-insights`,
+                                                    false
+                                                );
+                                            }
                                         }
                                         
                                         // 顯示 Consensus Areas
@@ -6137,7 +6201,7 @@
                                                 
                                                 // 顯示其他部分
                                                 if (sections.keyInsights) {
-                                                    structuredHtml += formatCollapsibleSection('💡 Key Insights', sections.keyInsights, `${containerId}-insights`, false);
+                                                    structuredHtml += formatKeyInsightsWithMenu(sections.keyInsights, containerId);
                                                 }
                                                 if (sections.consensusAreas) {
                                                     structuredHtml += formatCollapsibleSection('✅ Consensus Areas', sections.consensusAreas, `${containerId}-consensus`, false);
@@ -7319,7 +7383,7 @@
                                             
                                             // 顯示其他部分
                                             if (sections.keyInsights) {
-                                                structuredHtml += formatCollapsibleSection('💡 Key Insights', sections.keyInsights, `${containerId}-insights`, false);
+                                                structuredHtml += formatKeyInsightsWithMenu(sections.keyInsights, containerId);
                                             }
                                             if (sections.consensusAreas) {
                                                 structuredHtml += formatCollapsibleSection('✅ Consensus Areas', sections.consensusAreas, `${containerId}-consensus`, false);
@@ -9303,7 +9367,22 @@
         function parseCoordinatorSections(text) {
             if (!text) return null;
             
-            const cleanText = stripHtml(text);
+            let cleanText = stripHtml(text);
+            
+            // CRITICAL FIX: 删除开头的提示词，如 "Okay, let's synthesize..." 等
+            const promptPatterns = [
+                /^Okay,?\s+let'?s\s+synthesize[\s\S]*?based\s+on\s+the\s+provided\s+information\.?\s*/i,
+                /^Okay,?\s+let'?s\s+synthesize[\s\S]*?\.\s*/i,
+                /^Let'?s\s+synthesize[\s\S]*?based\s+on\s+the\s+provided\s+information\.?\s*/i,
+                /^Let'?s\s+synthesize[\s\S]*?\.\s*/i,
+                /^Based\s+on\s+the\s+provided\s+information[\s\S]*?\.\s*/i,
+                /^Okay[\s\S]*?information\.\s*/i
+            ];
+            
+            for (const pattern of promptPatterns) {
+                cleanText = cleanText.replace(pattern, '').trim();
+            }
+            
             const sections = {
                 intro: '',
                 consensusStance: '',
@@ -9627,6 +9706,101 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        // CRITICAL FIX: 处理 Key Insights 的 agent 选择菜单
+        function filterInsightsByAgent(contentId, menuId, containerId) {
+            const menu = document.getElementById(menuId);
+            const content = document.getElementById(contentId);
+            if (!menu || !content) return;
+            
+            const selectedAgent = menu.value;
+            const reports = content.querySelectorAll('.insight-agent-report');
+            
+            reports.forEach(report => {
+                if (selectedAgent === 'all' || report.dataset.agent === selectedAgent) {
+                    report.style.display = 'block';
+                } else {
+                    report.style.display = 'none';
+                }
+            });
+        }
+        
+        // CRITICAL FIX: 格式化 Key Insights，带 agent 选择菜单
+        function formatKeyInsightsWithMenu(insightsText, containerId) {
+            if (!insightsText || insightsText.trim().length === 0) return '';
+            
+            // 解析 Key Insights，提取每个分析师的报告
+            const agentReports = {};
+            const agentPatterns = [
+                /\*\s*Market\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Fundamental|Technical|Sentiment|$))/i,
+                /\*\s*Fundamental\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Technical|Sentiment|$))/i,
+                /\*\s*Technical\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Sentiment|$))/i,
+                /\*\s*Sentiment\s+Analyst\s*\([^)]+\)\s*([\s\S]*?)(?=\*\s*(?:Market|Fundamental|Technical|$))/i
+            ];
+            
+            const agentNames = ['Market Analyst', 'Fundamental Analyst', 'Technical Analyst', 'Sentiment Analyst'];
+            agentPatterns.forEach((pattern, index) => {
+                const match = insightsText.match(pattern);
+                if (match && match[1]) {
+                    agentReports[agentNames[index]] = match[1].trim();
+                }
+            });
+            
+            // 如果没有匹配到，尝试其他格式
+            if (Object.keys(agentReports).length === 0) {
+                const altPatterns = [
+                    /Market\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Fundamental|Technical|Sentiment|$)/i,
+                    /Fundamental\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Technical|Sentiment|$)/i,
+                    /Technical\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Sentiment|$)/i,
+                    /Sentiment\s+Analyst[\s\S]*?:\s*([\s\S]*?)(?=Market|Fundamental|Technical|$)/i
+                ];
+                altPatterns.forEach((pattern, index) => {
+                    const match = insightsText.match(pattern);
+                    if (match && match[1]) {
+                        agentReports[agentNames[index]] = match[1].trim();
+                    }
+                });
+            }
+            
+            // 如果有多个分析师的报告，添加下拉菜单
+            if (Object.keys(agentReports).length > 1) {
+                const menuId = `${containerId}-insights-menu`;
+                const contentId = `${containerId}-insights-content`;
+                let html = `<div style="margin-bottom: 12px; border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 6px; overflow: hidden;">`;
+                html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(34, 211, 238, 0.1);">`;
+                html += `<span style="font-size: 14px; font-weight: 600; color: #22d3ee;">💡 Key Insights</span>`;
+                html += `<select id="${menuId}" onchange="filterInsightsByAgent('${contentId}', '${menuId}', '${containerId}')" style="padding: 6px 12px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; color: #22d3ee; font-size: 12px; font-weight: 500; cursor: pointer;">`;
+                html += `<option value="all">All Analysts</option>`;
+                Object.keys(agentReports).forEach(agentName => {
+                    html += `<option value="${agentName}">${agentName}</option>`;
+                });
+                html += `</select>`;
+                html += `</div>`;
+                html += `<div id="${contentId}" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.3);">`;
+                
+                // 显示所有分析师的报告（默认）
+                Object.keys(agentReports).forEach(agentName => {
+                    const reportContent = escapeHtml(agentReports[agentName]);
+                    // 格式化加粗文本
+                    let formattedContent = reportContent.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
+                    formattedContent = formattedContent.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; color: #cbd5e1; line-height: 1.6;">• $1</div>');
+                    formattedContent = formattedContent.replace(/\n\n+/g, '<div style="height: 8px;"></div>');
+                    formattedContent = formattedContent.replace(/\n/g, '<br>');
+                    
+                    html += `<div class="insight-agent-report" data-agent="${agentName}" style="margin-bottom: 16px; padding: 12px; background: rgba(34, 211, 238, 0.05); border-radius: 4px; border-left: 2px solid #22d3ee;">`;
+                    html += `<div style="font-size: 12px; font-weight: 600; color: #22d3ee; margin-bottom: 8px;">${agentName}</div>`;
+                    html += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;">${formattedContent}</div>`;
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+                html += `</div>`;
+                return html;
+            } else {
+                // 如果只有一个或没有分析师的报告，使用原来的格式
+                return formatCollapsibleSection('💡 Key Insights', insightsText, `${containerId}-insights`, false);
+            }
         }
         
         // Format conversation content (especially for JSON risk reports)

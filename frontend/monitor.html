@@ -5323,27 +5323,60 @@
             if (window.currentConversations) {
                 window.currentConversations.forEach(c => {
                     if (c.type === 'tool' && c.agent === 'FundamentalAnalyst') {
-                        const toolInfo = parseToolInfo(c.content || '');
-                        if (toolInfo && toolInfo.name === 'get_company_fundamentals') {
-                            // Extract symbol from tool result
-                            if (toolInfo.result && toolInfo.result.symbol) {
-                                stocks.add(toolInfo.result.symbol.toUpperCase());
-                            }
-                            if (toolInfo.result && toolInfo.result.fundamentals) {
-                                const fund = toolInfo.result.fundamentals;
-                                if (fund.symbol) {
-                                    stocks.add(fund.symbol.toUpperCase());
+                        const toolName = c.tool_name || '';
+                        
+                        // CRITICAL FIX: Only process get_company_fundamentals tool
+                        if (toolName === 'get_company_fundamentals') {
+                            // Method 1: Extract from tool_result field (preferred)
+                            if (c.tool_result && typeof c.tool_result === 'object') {
+                                // Check for symbol in various locations
+                                const symbol = c.tool_result.symbol || 
+                                             c.tool_result.Symbol ||
+                                             (c.tool_result.fundamentals && c.tool_result.fundamentals.symbol) ||
+                                             (c.tool_result.fundamentals && c.tool_result.fundamentals.Symbol);
+                                if (symbol) {
+                                    stocks.add(String(symbol).toUpperCase());
                                 }
                             }
-                        }
-                        // Also check tool_result field
-                        if (c.tool_result && c.tool_result.symbol) {
-                            stocks.add(c.tool_result.symbol.toUpperCase());
-                        }
-                        if (c.tool_result && c.tool_result.fundamentals) {
-                            const fund = c.tool_result.fundamentals;
-                            if (fund.symbol) {
-                                stocks.add(fund.symbol.toUpperCase());
+                            
+                            // Method 2: Extract from content field (parseToolInfo)
+                            const toolInfo = parseToolInfo(c.content || '');
+                            if (toolInfo && toolInfo.name === 'get_company_fundamentals') {
+                                if (toolInfo.result && typeof toolInfo.result === 'object') {
+                                    const symbol = toolInfo.result.symbol || 
+                                                 toolInfo.result.Symbol ||
+                                                 (toolInfo.result.fundamentals && toolInfo.result.fundamentals.symbol) ||
+                                                 (toolInfo.result.fundamentals && toolInfo.result.fundamentals.Symbol);
+                                    if (symbol) {
+                                        stocks.add(String(symbol).toUpperCase());
+                                    }
+                                }
+                            }
+                            
+                            // Method 3: Extract from content string (parse JSON args)
+                            try {
+                                const content = c.content || '';
+                                // Try to find symbol in JSON: "Tool used: get_company_fundamentals: {...}"
+                                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                                if (jsonMatch) {
+                                    const parsed = JSON.parse(jsonMatch[0]);
+                                    // Recursively extract result
+                                    let resultData = parsed;
+                                    while (resultData && typeof resultData === 'object' && 'ok' in resultData && 'result' in resultData) {
+                                        resultData = resultData.result;
+                                    }
+                                    if (resultData && typeof resultData === 'object') {
+                                        const symbol = resultData.symbol || 
+                                                     resultData.Symbol ||
+                                                     (resultData.fundamentals && resultData.fundamentals.symbol) ||
+                                                     (resultData.fundamentals && resultData.fundamentals.Symbol);
+                                        if (symbol) {
+                                            stocks.add(String(symbol).toUpperCase());
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                // Ignore parsing errors
                             }
                         }
                     }
@@ -5356,6 +5389,9 @@
             if (select) {
                 select.innerHTML = '<option value="all">All Stocks</option>' + 
                     availableFundamentalStocks.map(s => `<option value="${s}">${s}</option>`).join('');
+                
+                // Debug log
+                console.log('[Fundamental] Extracted stocks:', availableFundamentalStocks);
             }
         }
         

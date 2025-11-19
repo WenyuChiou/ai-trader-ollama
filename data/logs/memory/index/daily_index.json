@@ -1038,6 +1038,35 @@
       "KDP"
     ],
     "action": "HOLD",
+    "risk_level": "medium"
+  },
+  "2025-11-17": {
+    "date": "2025-11-17",
+    "stance": "bullish",
+    "stocks_involved": [],
+    "recommended_stocks": [
+      "BKR",
+      "MAR",
+      "MNST",
+      "SH",
+      "SDS",
+      "DOG",
+      "CSCO",
+      "MU",
+      "GILD",
+      "VRTX",
+      "DDOG",
+      "IDXX",
+      "FANG",
+      "SPXU",
+      "SOXS",
+      "ORLY",
+      "SQQQ",
+      "AZN",
+      "SBUX",
+      "CTSH"
+    ],
+    "action": "HOLD",
     "risk_level": "low"
   }
 }

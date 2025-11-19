@@ -455,18 +455,45 @@ def plan_and_scan_news(
     只返回最新的新闻（基于 recency_days 参数，默认最多48小时）。
     """
     if preferred_domains is None:
-        # 从配置文件读取预设域名，如果配置文件中没有则使用代码默认值
+        # CRITICAL FIX: 优先从 news_html_sources 读取（完整URL），转换为域名
+        # 如果 news_html_sources 不存在，则使用 preferred_domains
         try:
             config = load_config()
-            preferred_domains = config.get("preferred_domains")
-            if preferred_domains and isinstance(preferred_domains, list):
-                # 过滤掉无效的域名格式（如包含http://的完整URL）
-                preferred_domains = [
-                    domain.strip() for domain in preferred_domains 
-                    if domain and isinstance(domain, str) and not domain.startswith("http")
-                ]
+            
+            # 优先读取 news_html_sources（完整URL列表）
+            news_html_sources = config.get("news_html_sources")
+            if news_html_sources and isinstance(news_html_sources, list):
+                # 将完整URL转换为域名
+                preferred_domains = []
+                for url in news_html_sources:
+                    if url and isinstance(url, str):
+                        url = url.strip()
+                        if url.startswith("http"):
+                            # 使用 extract_domain 提取域名
+                            domain = extract_domain(url)
+                            if domain:
+                                preferred_domains.append(domain)
+                                print(f"[NEWS] Converted URL to domain: {url} -> {domain}")
+                        elif url and not url.startswith("http"):
+                            # 如果已经是域名格式，直接使用
+                            preferred_domains.append(url)
+                
+                if preferred_domains:
+                    print(f"[NEWS] Using {len(preferred_domains)} domains from news_html_sources: {preferred_domains[:3]}...")
+            
+            # 如果 news_html_sources 不存在或为空，尝试读取 preferred_domains
+            if not preferred_domains:
+                preferred_domains = config.get("preferred_domains")
+                if preferred_domains and isinstance(preferred_domains, list):
+                    # 过滤掉无效的域名格式（如包含http://的完整URL）
+                    preferred_domains = [
+                        domain.strip() for domain in preferred_domains 
+                        if domain and isinstance(domain, str) and not domain.startswith("http")
+                    ]
+                    if preferred_domains:
+                        print(f"[NEWS] Using {len(preferred_domains)} domains from preferred_domains")
         except Exception as e:
-            print(f"[NEWS] Failed to load preferred_domains from config: {e}, using defaults")
+            print(f"[NEWS] Failed to load news_html_sources/preferred_domains from config: {e}, using defaults")
             preferred_domains = None
         
         # 如果配置文件读取失败或为空，使用代码默认值
@@ -479,6 +506,7 @@ def plan_and_scan_news(
                 # 其他可靠域名
                 "www.cboe.com", "www.cmegroup.com", "fred.stlouisfed.org", "home.treasury.gov",
             ]
+            print(f"[NEWS] Using default domains: {len(preferred_domains)} domains")
 
     queries = _choose_queries_llm(tickers, mview)
 
@@ -511,11 +539,61 @@ def plan_and_scan_news(
                 continue
             fr = fetch_url(url=url, timeout=10.0)
             if fr.get("ok"):
+                title = fr["result"].get("title", "")
+                source = fr["result"].get("source", "")
+                excerpt = (fr["result"].get("text") or "")[:800]
+                
+                # CRITICAL: 使用 LLM 生成摘要和关键字（如果有 LLM 可用）
+                summary = ""
+                keywords = []
+                if _HAS_LLM and excerpt:
+                    try:
+                        llm = get_llm()
+                        from langchain_core.messages import SystemMessage, HumanMessage
+                        
+                        # 生成摘要和关键字的 prompt
+                        summary_prompt = f"""Analyze the following news article excerpt and provide:
+1. A concise 1-2 sentence summary (in English)
+2. 3-5 key keywords/phrases (comma-separated)
+
+Article Title: {title}
+Article Excerpt: {excerpt[:600]}
+
+Format your response as:
+SUMMARY: [1-2 sentence summary]
+KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5]
+
+Be concise and focus on the most important information."""
+                        
+                        messages = [
+                            SystemMessage(content="You are a financial news analyst. Extract key information from news articles concisely."),
+                            HumanMessage(content=summary_prompt)
+                        ]
+                        
+                        response = llm.invoke(messages)
+                        response_text = str(response.content if hasattr(response, 'content') else response)
+                        
+                        # 解析响应
+                        if "SUMMARY:" in response_text:
+                            summary_part = response_text.split("SUMMARY:")[1].split("KEYWORDS:")[0].strip()
+                            summary = summary_part.split("\n")[0].strip()  # 取第一行
+                        
+                        if "KEYWORDS:" in response_text:
+                            keywords_part = response_text.split("KEYWORDS:")[1].strip()
+                            keywords = [k.strip() for k in keywords_part.split(",") if k.strip()][:5]  # 最多5个关键字
+                        
+                        print(f"[NEWS] Generated summary for article: {title[:50]}... (keywords: {len(keywords)})")
+                    except Exception as e:
+                        print(f"[NEWS] Failed to generate summary with LLM: {e}, using excerpt as fallback")
+                        summary = excerpt[:200] if excerpt else ""  # Fallback: 使用 excerpt 的前200字符
+                
                 articles.append({
                     "url": url,
-                    "title": fr["result"].get("title"),
-                    "source": fr["result"].get("source"),
-                    "excerpt": (fr["result"].get("text") or "")[:800],
+                    "title": title,
+                    "source": source,
+                    "excerpt": excerpt,
+                    "summary": summary,  # LLM 生成的摘要（1-2句）
+                    "keywords": keywords,  # LLM 提取的关键字（3-5个）
                 })
 
     return {"queries": queries, "hits": hits, "articles": articles}

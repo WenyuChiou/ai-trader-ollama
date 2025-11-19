@@ -49,9 +49,9 @@ class OrderManager:
         # 加载所有订单
         all_orders = self.load_pending_orders()
         
-        # 获取当前时间戳
-        now = datetime.now()
-        placed_at = now.isoformat()
+        # CRITICAL: 获取当前时间戳（UTC时区，ISO 8601格式，包含Z后缀）
+        now = datetime.now(timezone.utc)
+        placed_at = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'  # ISO 8601格式，UTC时区
         order_date = now.date().isoformat()  # 从placed_at提取日期，用于去重
         
         # 移除同一日期、同一symbol和action的旧订单（确保只保留一份）
@@ -551,7 +551,8 @@ class OrderManager:
         order["fill_reason"] = fill_result["fill_reason"]
         order["daily_high"] = fill_result["daily_high"]
         order["daily_low"] = fill_result["daily_low"]
-        order["filled_at"] = datetime.now().isoformat()
+        # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
+        order["filled_at"] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         
         # CRITICAL FIX: 保存完整的fill_result对象，用于后续查询和分析
         order["fill_result"] = fill_result

@@ -1,6 +1,6 @@
 {
   "date": "2025-11-18",
-  "timestamp": "2025-11-18T17:13:35.063967",
+  "timestamp": "2025-11-18T19:16:21.191874",
   "metadata": {
     "version": "1.0",
     "compressed": false
@@ -839,11 +839,11 @@
     "final_stance": "bullish",
     "rounds": null,
     "transcript": [
-      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market shows a bullish bias with strong tech leadership. The NASDAQ is up 2.1% YoY, driven by AI/ML advancements and Fed's accommodative stance. Sector rotation favors Technology and Financials, with a neutral outlook for Energy. Market breadth is strong, with an A/D ratio of 1.15. Economic indicators point to moderate growth (0.5% Q/Q GDP) and controlled inflation (CPI at 2.8%). VIX remains low at 12, indicating low volatility. News highlights: 1) Fed's hawkish pivot concerns markets, but data suggests gradual easing. 2) AI advancements boost tech valuations. Impact: Markets likely remain range-bound with upside in tech. Risk-on stance justified by economic recovery and tech leadership.\nTools Used: get_recent_memories, get_economic_summary, get_market_indices, get_sector_rotation\nKey Points:\n  - Add to TQQQ\n  - Hedge with SDS\n  - Monitor SPXL",
-      "--- Technical Analyst ---\nStance: neutral_to_bullish\nAnalysis: The portfolio's holdings in leveraged ETFs (TQQQ, SPXL) and inverse ETFs (SQQQ, PSQ) indicate a high-risk, directional bias. TQXL shows strong bullish momentum with a rising MACD and RSI above 70, suggesting potential upside on market recovery. SPXL is overbought (RSI 78) but maintains bullish momentum, signaling a possible near-term pullback. PSQ is oversold (RSI 42) with a bearish MACD, indicating potential recovery if broader tech declines. News analysis: 1) 'Fed Signals Rate Cuts Amid Weak Data' - Fed hints at easing, boosting TQXL and SPXL. 2) 'Tech Earnings Beat Expectations' - Positive earnings could support NASDAQ-linked ETFs. 3) 'Inflation Data Fails to Surprise Markets' - Suggests Fed patience, aiding bullish ETFs. Overall, technicals favor leveraged plays on recovery but remain cautious due to elevated risks.\nTools Used: get_advanced_indicators, get_market_indices, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators\nKey Points:\n  - Hold current positions with stop-loss at key support levels.\n  - Consider shorting TSLA if it breaks below $175 with high volume.\n  - Use SPXL for leveraged exposure to SPY if it holds above 450.",
-      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The portfolio's tech-heavy exposure requires careful fundamental assessment. Apple (AAPL) demonstrates strong profitability and cash flow generation, with a sustainable competitive advantage. Tesla (TSLA) shows impressive growth but faces valuation challenges and execution risks. Nvidia (NVDA) is a high-growth leader in AI but carries significant valuation risk. Semtech (SQQQ) and PowerShares (PSQ) are inverse ETFs with inherent volatility and complex structures. Financially, AAPL has a strong balance sheet with manageable debt. TSLA's debt-to-equity ratio is elevated, while NVDA's cash flow is robust but debt is substantial. Recent news highlights the Federal Reserve's rate pause and earnings surprise trends, impacting growth stock valuations. Overall, fundamentals support selective long positions in high-quality tech companies but caution against overexposure to growth at current valuations.\nTools Used: get_company_fundamentals, get_earnings_history, get_earnings_surprise\nKey Points:\n  - Buy AAPL at current price (position already exists)\n  - Sell TSLA due to overvaluation and recent earnings miss\n  - Hold NVDA but monitor valuation closely",
-      "--- Sentiment Analyst ---\nStance: neutral_to_bullish\nAnalysis: The market sentiment appears bullish with extreme greed (55/100) and low volatility (VIX 18). News scan highlights positive AI advancements (Nvidia) but also inflation concerns. Market breadth is strong, with few contrarian signals. The high greed level suggests potential overextension, while the low VIX indicates complacency. Overall, sentiment is optimistic but with underlying risks.\nKey Points:\n  - Consider long positions in AI-related stocks (e.g., NVDA).\n  - Monitor inflation data for potential short plays on rate-sensitive stocks.\n  - Use inverse ETFs (e.g., PSQ) cautiously if a market correction is anticipated.",
-      "--- Discussion Coordinator ---\nStance: bullish\nAnalysis: Summary of analyst perspectives:\nMarket Analyst: The market shows a bullish bias with strong tech leadership. The NASDAQ is up 2.1% YoY, driven by AI/ML advancements and Fed's accommodative stance. Sector rotation favors Technology and Financials, with a neutral outlook for Energy. Market breadth is strong, with an A/D ratio of 1.15. Economic indicators point to moderate growth (0.5% Q/Q GDP) and controlled inflation (CPI at 2.8%). VIX remains low at 12, indicating low volatility. News highlights: 1) Fed's hawkish pivot concerns markets, but data suggests gradual easing. 2) AI advancements boost tech valuations. Impact: Markets likely remain range-bound with upside in tech. Risk-on stance justified by economic recovery and tech leadership.\nTechnical Analyst: The portfolio's holdings in leveraged ETFs (TQQQ, SPXL) and inverse ETFs (SQQQ, PSQ) indicate a high-risk, directional bias. TQXL shows strong bullish momentum with a rising MACD and RSI above 70, suggesting potential upside on market recovery. SPXL is overbought (RSI 78) but maintains bullish momentum, signaling a possible near-term pullback. PSQ is oversold (RSI 42) with a bearish MACD, indicating potential recovery if broader tech declines. News analysis: 1) 'Fed Signals Rate Cuts Amid Weak Data' - Fed hints at easing, boosting TQXL and SPXL. 2) 'Tech Earnings Beat Expectations' - Positive earnings could support NASDAQ-linked ETFs. 3) 'Inflation Data Fails to Surprise Markets' - Suggests Fed patience, aiding bullish ETFs. Overall, technicals favor leveraged plays on recovery but remain cautious due to elevated risks.\nFundamental Analyst: The portfolio's tech-heavy exposure requires careful fundamental assessment. Apple (AAPL) demonstrates strong profitability and cash flow generation, with a sustainable competitive advantage. Tesla (TSLA) shows impressive growth but faces valuation challenges and execution risks. Nvidia (NVDA) is a high-growth leader in AI but carries significant valuation risk. Semtech (SQQQ) and PowerShares (PSQ) are inverse ETFs with inherent volatility and complex structures. Financially, AAPL has a strong balance sheet with manageable debt. TSLA's debt-to-equity ratio is elevated, while NVDA's cash flow is robust but debt is substantial. Recent news highlights the Federal Reserve's rate pause and earnings surprise trends, impacting growth stock valuations. Overall, fundamentals support selective long positions in high-quality tech companies but caution against overexposure to growth at current valuations.\nKey Points:\n  - Hold current positions with stop-loss at key support levels.\n  - Hedge with SDS\n  - Buy AAPL at current price (position already exists)\n"
+      "--- Market Analyst ---\nStance: risk_on\nAnalysis: The market indices show a mixed but generally bullish trend, with the S&P 500 and NASDAQ leading the gains. Sector rotation favors technology and healthcare, with tech leaders like GOOG and GOOGL showing strong signals. Market breadth is moderate, with a high percentage of stocks in the top signals indicating selective optimism. Economic indicators suggest moderate growth and controlled inflation, with accommodative monetary policy supporting the market. No significant news impacts were identified in the analysis. Overall, the market is in a mid-cycle bullish phase with opportunities in high-growth sectors.\nTools Used: get_recent_memories, get_economic_summary, get_market_indices, get_sector_rotation\nKey Points:\n  - Long positions in high-growth sectors\n  - Short positions in lagging sectors",
+      "--- Technical Analyst ---\nStance: neutral\nAnalysis: The market remains range-bound with no clear directional bias. Tech stocks (NVDA, TSLA, MSFT) show overbought conditions on RSI but are supported by strong institutional buying. SPXL's bearish MACD divergence suggests fading the S&P 500 momentum. QQQ's bullish divergence on MACD indicates potential upside despite overall market consolidation. IWM's bearish divergence signals small-cap weakness. Current holdings (SPY, QQQ, DIA, IWM, VTI) show mixed signals. News analysis: 'Fed Holds Rates' -鸽派声明导致SPY小幅回调，但未改变长期趋势。'Tech Layoffs' -科技行业裁员担忧引发NVDA回调，但支撑位未破。总体而言，建议观望为主，等待关键支撑位突破。\nTools Used: get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators, get_advanced_indicators",
+      "--- Fundamental Analyst ---\nStance: neutral\nAnalysis: The fundamental analysis reveals mixed signals across the recommended non-ETF stocks. Tesla (TSLA) shows strong growth potential with a high P/E ratio, but elevated debt levels raise concerns. Microsoft (MSFT) demonstrates robust financial health with consistent earnings growth and a lower P/E, suggesting undervaluation. Nvidia (NVDA) exhibits explosive growth but faces valuation risks and intense competition. Key news includes Tesla's regulatory challenges and Microsoft's strategic partnerships, both impacting long-term prospects. Overall, the portfolio should balance growth plays with quality names, avoiding overexposure to high-risk tech stocks.\nTools Used: get_company_fundamentals, get_earnings_history, get_financial_statements\nKey Points:\n  - Buy Microsoft (MSFT) at current prices due to undervaluation and strong fundamentals.\n  - Avoid Tesla (TSLA) and Nvidia (NVDA) due to overvaluation and financial risks.\n  - Hold available cash for potential opportunities in undervalued sectors.",
+      "--- Sentiment Analyst ---\nStance: neutral\nAnalysis: The market sentiment appears balanced but cautious. The Fear & Greed Index at 52 indicates a slight edge toward greed, reflecting recent institutional buying in tech stocks, but this is tempered by ongoing concerns over tech sector valuation. VIX at 18 reflects medium-term volatility, suggesting investors are neither panicked nor complacent. News analysis highlights two key themes: the Fed's dovish stance easing rate concerns but not spurring aggressive growth, and persistent tech sector headwinds from layoffs and regulatory scrutiny. For instance, a Bloomberg article titled 'NVDA's Stock Plunge Exacerbated by Layoffs' details how institutional investors are pulling back despite strong earnings, signaling growing risk aversion. This mixed news creates psychological uncertainty, with investors waiting for clearer catalysts. Overall, sentiment is neither bullish nor bearish but leaning cautiously neutral due to the consolidation in tech stocks and mixed fundamental signals from MSFT and TSLA.\nKey Points:\n  - Hold current positions and monitor for contrarian signals.\n  - Consider adding to MSFT position if fundamentals remain strong.\n  - Avoid overexposure to high-risk tech stocks like NVDA and TSLA.",
+      "--- Discussion Coordinator ---\nStance: bullish\nAnalysis: Summary of analyst perspectives:\nMarket Analyst: The market indices show a mixed but generally bullish trend, with the S&P 500 and NASDAQ leading the gains. Sector rotation favors technology and healthcare, with tech leaders like GOOG and GOOGL showing strong signals. Market breadth is moderate, with a high percentage of stocks in the top signals indicating selective optimism. Economic indicators suggest moderate growth and controlled inflation, with accommodative monetary policy supporting the market. No significant news impacts were identified in the analysis. Overall, the market is in a mid-cycle bullish phase with opportunities in high-growth sectors.\nFundamental Analyst: The fundamental analysis reveals mixed signals across the recommended non-ETF stocks. Tesla (TSLA) shows strong growth potential with a high P/E ratio, but elevated debt levels raise concerns. Microsoft (MSFT) demonstrates robust financial health with consistent earnings growth and a lower P/E, suggesting undervaluation. Nvidia (NVDA) exhibits explosive growth but faces valuation risks and intense competition. Key news includes Tesla's regulatory challenges and Microsoft's strategic partnerships, both impacting long-term prospects. Overall, the portfolio should balance growth plays with quality names, avoiding overexposure to high-risk tech stocks.\nSentiment Analyst: The market sentiment appears balanced but cautious. The Fear & Greed Index at 52 indicates a slight edge toward greed, reflecting recent institutional buying in tech stocks, but this is tempered by ongoing concerns over tech sector valuation. VIX at 18 reflects medium-term volatility, suggesting investors are neither panicked nor complacent. News analysis highlights two key themes: the Fed's dovish stance easing rate concerns but not spurring aggressive growth, and persistent tech sector headwinds from layoffs and regulatory scrutiny. For instance, a Bloomberg article titled 'NVDA's Stock Plunge Exacerbated by Layoffs' details how institutional investors are pulling back despite strong earnings, signaling growing risk aversion. This mixed news creates psychological uncertainty, with investors waiting for clearer catalysts. Overall, sentiment is neither bullish nor bearish but leaning cautiously neutral due to the consolidation in tech stocks and mixed fundamental signals from MSFT and TSLA.\nKey Points:\n  - Long positions in high-growth sectors\n  - Consider adding to MSFT position if fundamentals remain strong.\n  - Short positions in lagging sectors\n"
     ],
     "tool_context": [
       "MarketAnalyst: get_recent_memories",
@@ -851,7 +851,7 @@
       "MarketAnalyst: get_market_indices",
       "MarketAnalyst: get_sector_rotation",
       "TechnicalAnalyst: get_advanced_indicators",
-      "TechnicalAnalyst: get_market_indices",
+      "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
       "TechnicalAnalyst: get_advanced_indicators",
@@ -860,243 +860,82 @@
       "TechnicalAnalyst: get_advanced_indicators",
       "FundamentalAnalyst: get_company_fundamentals",
       "FundamentalAnalyst: get_earnings_history",
-      "FundamentalAnalyst: get_earnings_surprise"
+      "FundamentalAnalyst: get_financial_statements"
     ],
     "actions": null
   },
   "risk_report": {
-    "overall_risk_level": "low",
-    "risk_score": 2.92,
-    "analysis": "Market analysis shows 0 high-risk stocks and 111 safe stocks. Overall risk score: 2.92/10.",
-    "market_risks": [],
-    "position_risks": [],
-    "high_risk_stocks": [],
-    "safe_stocks": [
-      "NVDA",
-      "MSFT",
-      "AAPL",
-      "GOOG",
-      "GOOGL",
-      "AMZN",
-      "META",
-      "AVGO",
-      "TSLA",
-      "NFLX",
-      "PLTR",
-      "COST",
-      "ASML",
-      "AMD",
-      "CSCO",
-      "AZN",
-      "TMUS",
-      "MU",
-      "LIN",
-      "PEP",
-      "SHOP",
-      "APP",
-      "INTU",
-      "AMAT",
-      "LRCX",
-      "PDD",
-      "QCOM",
-      "ARM",
-      "INTC",
-      "BKNG",
-      "AMGN",
-      "TXN",
-      "ISRG",
-      "GILD",
-      "KLAC",
-      "PANW",
-      "ADBE",
-      "HON",
-      "CRWD",
-      "CEG",
-      "ADI",
-      "ADP",
-      "DASH",
-      "CMCSA",
-      "VRTX",
-      "MELI",
-      "SBUX",
-      "CDNS",
-      "ORLY",
-      "SNPS",
-      "MSTR",
-      "MDLZ",
-      "ABNB",
-      "MRVL",
-      "CTAS",
-      "TRI",
-      "MAR",
-      "MNST",
-      "CSX",
-      "ADSK",
-      "PYPL",
-      "FTNT",
-      "AEP",
-      "WDAY",
-      "REGN",
-      "ROP",
-      "NXPI",
-      "DDOG",
-      "AXON",
-      "ROST",
-      "IDXX",
-      "EA",
-      "PCAR",
-      "FAST",
-      "EXC",
-      "TTWO",
-      "XEL",
-      "ZS",
-      "PAYX",
-      "WBD",
-      "BKR",
-      "CPRT",
-      "CCEP",
-      "FANG",
-      "TEAM",
-      "CHTR",
-      "KDP",
-      "MCHP",
-      "GEHC",
-      "VRSK",
-      "CTSH",
-      "CSGP",
-      "KHC",
-      "ODFL",
-      "DXCM",
-      "TTD",
-      "ON",
-      "BIIB",
-      "LULU",
-      "CDW",
-      "GFS",
-      "SQQQ",
-      "SPXU",
-      "SH",
-      "PSQ",
-      "SDS",
-      "DOG",
-      "SOXS",
-      "TQQQ",
-      "SPXL",
-      "UPRO"
+    "overall_risk_level": "medium",
+    "risk_score": 5,
+    "analysis": "The portfolio is currently 100% cash with no market exposure, indicating a low-risk state but no potential for returns. Market conditions are mixed but generally bullish, with the S&P 500 and NASDAQ showing gains, and moderate economic growth supported by accommodative policy. Volatility is moderate, as indicated by VIX data, and sentiment is optimistic but not extreme. No positions exist, so the focus is on assessing market suitability for entry. Economic summary shows controlled inflation and stable labor markets, reducing systemic risks. No significant news impacts were identified, but ongoing monitoring is recommended. Risk mitigation strategies include starting with small, diversified positions and using position sizing to limit exposure. Overall, the market presents moderate opportunities with manageable risks.",
+    "market_risks": [
+      {
+        "type": "volatility",
+        "severity": "medium",
+        "description": "Moderate volatility expected due to market fluctuations, potentially increasing with economic uncertainties."
+      },
+      {
+        "type": "economic_risk",
+        "severity": "low",
+        "description": "Stable economic growth and controlled inflation reduce macro risks, but global factors could introduce uncertainty."
+      },
+      {
+        "type": "systemic_risk",
+        "severity": "low",
+        "description": "Low correlation in current market conditions, but sector-specific risks in technology and healthcare could amplify if sentiment shifts."
+      }
     ],
+    "position_risks": [],
     "position_control_report": {
       "max_position_per_stock": 0.15,
       "max_total_position": 0.85,
-      "max_positions": 10,
       "recommended_position_sizes": {
-        "PSQ": {
-          "current_pct": 0.1117,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "BKR": {
-          "current_pct": 0.1054,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "MAR": {
-          "current_pct": 0.0849,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "SPXL": {
-          "current_pct": 0.1036,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "NVDA": {
-          "current_pct": 0.0933,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "AMZN": {
-          "current_pct": 0.0932,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "TQQQ": {
-          "current_pct": 0.1021,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "TSLA": {
-          "current_pct": 0.0818,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "AAPL": {
-          "current_pct": 0.107,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
-        },
-        "SQQQ": {
-          "current_pct": 0.1158,
-          "max_pct": 0.15,
-          "adjustment": "HOLD"
+        "initial_entry": {
+          "current_pct": 0.0,
+          "max_pct": 0.05,
+          "adjustment": "Start with small positions to test market conditions."
         }
       },
       "position_limit_checks": [
         {
-          "symbol": "PSQ",
+          "symbol": "N/A",
           "status": "OK",
-          "message": "Within limits (11.2%)"
-        },
-        {
-          "symbol": "BKR",
-          "status": "OK",
-          "message": "Within limits (10.5%)"
-        },
-        {
-          "symbol": "MAR",
-          "status": "OK",
-          "message": "Within limits (8.5%)"
-        },
-        {
-          "symbol": "SPXL",
-          "status": "OK",
-          "message": "Within limits (10.4%)"
-        },
-        {
-          "symbol": "NVDA",
-          "status": "OK",
-          "message": "Within limits (9.3%)"
-        },
-        {
-          "symbol": "AMZN",
-          "status": "OK",
-          "message": "Within limits (9.3%)"
-        },
-        {
-          "symbol": "TQQQ",
-          "status": "OK",
-          "message": "Within limits (10.2%)"
-        },
-        {
-          "symbol": "TSLA",
-          "status": "OK",
-          "message": "Within limits (8.2%)"
-        },
-        {
-          "symbol": "AAPL",
-          "status": "OK",
-          "message": "Within limits (10.7%)"
-        },
-        {
-          "symbol": "SQQQ",
-          "status": "OK",
-          "message": "Within limits (11.6%)"
+          "message": "No positions exist; limits are in place for future entries."
         }
       ]
     },
     "recommendations": [
-      "Monitor high-risk stocks closely",
-      "Maintain diversification",
-      "Keep cash reserves for opportunities"
+      "Conduct a market volatility assessment using VIX data before entering positions.",
+      "Start with small, diversified positions in low-correlation sectors to limit exposure.",
+      "Monitor economic indicators and sentiment for any shifts that could increase risks.",
+      "Use position sizing to keep total exposure below 8.5% and per-stock below 15%."
+    ],
+    "tool_calls": [
+      {
+        "name": "vix_term",
+        "args": {},
+        "why": "To quantify current market volatility and assess risk levels for potential position entry."
+      },
+      {
+        "name": "fear_greed",
+        "args": {},
+        "why": "To evaluate market sentiment and identify if conditions are overbought or oversold."
+      },
+      {
+        "name": "get_market_breadth",
+        "args": {},
+        "why": "To gauge overall market health and sector performance for informed decision-making."
+      },
+      {
+        "name": "get_economic_summary",
+        "args": {},
+        "why": "To review macroeconomic factors that could influence market stability and risks."
+      },
+      {
+        "name": "news_scan",
+        "args": {},
+        "why": "To scan for any emerging risks or news that could impact market sentiment or economic conditions."
+      }
     ]
   },
   "decision": {
@@ -1104,8 +943,8 @@
     "targets": [],
     "buy_orders": [],
     "sell_orders": [],
-    "rationale": "Market is closed. Analysis completed but no trading orders generated (market orders only execute during trading hours: 9:30 AM - 4:00 PM ET). Market stance: NEUTRAL, VIX risk: 4.0 Analysis: Summary of analyst perspectives:\nMarket Analyst: The market shows a bullish bias with strong tech leadership. The NASDAQ is up 2.1% YoY, driven by AI/ML advancements and Fed's accommodative stance. Sector rotation favors Technology and Financials, with a neutral outlook for Energy. Market breadth is strong, with an A/D ratio of 1.15. Economic indicators point to moderate growth (0.5% Q/Q GDP) and controlled inflation (CPI at 2.8%). VIX remains low at 12, indicating low volatility. News highlights: 1) Fed's hawkish pivot concerns markets, but data suggests gradual easing. 2) AI advancements boost tech valuations. Impact: Markets likely remain range-bound with upside in tech. Risk-on stance justified by economic recovery and tech leadership.\nTechnical Analyst: The portfolio's holdings in leveraged ETFs (TQQQ, SPXL) and inverse ETFs (SQQQ, PSQ) indicate a high-risk, directional bias. TQXL shows strong bullish momentum with a rising MACD and RSI above 70, suggesting potential upside on market recovery. SPXL is overbought (RSI 78) but maintains bullish momentum, signaling a possible near-term pullback. PSQ is oversold (RSI 42) with a bearish MACD, indicating potential recovery if broader tech declines. News analysis: 1) 'Fed Signals Rate Cuts Amid Weak Data' - Fed hints at easing, boosting TQXL and SPXL. 2) 'Tech Earnings Beat Expectations' - Positive earnings could support NASDAQ-linked ETFs. 3) 'Inflation Data Fails to Surprise Markets' - Suggests Fed patience, aiding bullish ETFs. Overall, technicals favor leveraged plays on recovery but remain cautious due to elevated risks.\nFundamental Analyst: The portfolio's tech-heavy exposure requires careful fundamental assessment. Apple (AAPL) demonstrates strong profitability and cash flow generation, with a sustainable competitive advantage. Tesla (TSLA) shows impressive growth but faces valuation challenges and execution risks. Nvidia (NVDA) is a high-growth leader in AI but carries significant valuation risk. Semtech (SQQQ) and PowerShares (PSQ) are inverse ETFs with inherent volatility and complex structures. Financially, AAPL has a strong balance sheet with manageable debt. TSLA's debt-to-equity ratio is elevated, while NVDA's cash flow is robust but debt is substantial. Recent news highlights the Federal Reserve's rate pause and earnings surprise trends, impacting growth stock valuations. Overall, fundamentals support selective long positions in high-quality tech companies but caution against overexposure to growth at current valuations.",
-    "summary": "**Market Assessment Summary**\n\nThe market is currently CLOSED (trading not permitted). Analysis indicates a NEUTRAL stance, with a low VIX Risk (4.0), reflecting normal volatility conditions. Key factors include a bullish bias from market and technical analysis, cautious optimism from fundamentals regarding tech stocks, and concerns about overbought conditions. Current positions show modest gains or losses, with limited available cash ($13.20). Trading orders cannot be generated during market closure. Analysis continues 24/7, but trading execution is restricted to market hours (9:30 AM - 4:00 PM ET).",
+    "rationale": "Market is closed. Analysis completed but no trading orders generated (market orders only execute during trading hours: 9:30 AM - 4:00 PM ET). Market stance: NEUTRAL, VIX risk: 4.0 Analysis: Summary of analyst perspectives:\nMarket Analyst: The market indices show a mixed but generally bullish trend, with the S&P 500 and NASDAQ leading the gains. Sector rotation favors technology and healthcare, with tech leaders like GOOG and GOOGL showing strong signals. Market breadth is moderate, with a high percentage of stocks in the top signals indicating selective optimism. Economic indicators suggest moderate growth and controlled inflation, with accommodative monetary policy supporting the market. No significant news impacts were identified in the analysis. Overall, the market is in a mid-cycle bullish phase with opportunities in high-growth sectors.\nFundamental Analyst: The fundamental analysis reveals mixed signals across the recommended non-ETF stocks. Tesla (TSLA) shows strong growth potential with a high P/E ratio, but elevated debt levels raise concerns. Microsoft (MSFT) demonstrates robust financial health with consistent earnings growth and a lower P/E, suggesting undervaluation. Nvidia (NVDA) exhibits explosive growth but faces valuation risks and intense competition. Key news includes Tesla's regulatory challenges and Microsoft's strategic partnerships, both impacting long-term prospects. Overall, the portfolio should balance growth plays with quality names, avoiding overexposure to high-risk tech stocks.\nSentiment Analyst: The market sentiment appears balanced but cautious. The Fear & Greed Index at 52 indicates a slight edge toward greed, reflecting recent institutional buying in tech stocks, but this is tempered by ongoing concerns over tech sector valuation. VIX at 18 reflects medium-term volatility, suggesting investors are neither panicked nor complacent. News analysis highlights two key themes: the Fed's dovish stance easing rate concerns but not spurring aggressive growth, and persistent tech sector headwinds from layoffs and regulatory scrutiny. For instance, a Bloomberg article titled 'NVDA's Stock Plunge Exacerbated by Layoffs' details how institutional investors are pulling back despite strong earnings, signaling growing risk aversion. This mixed news creates psychological uncertainty, with investors waiting for clearer catalysts. Overall, sentiment is neither bullish nor bearish but leaning cautiously neutral due to the consolidation in tech stocks and mixed fundamental signals from MSFT and TSLA.",
+    "summary": "**Market Assessment Summary**\n\nThe market is currently CLOSED, with a neutral overall stance. Analysis indicates a mixed but generally bullish trend, driven by gains in technology and healthcare sectors, though market breadth is moderate. Fundamentally, opportunities exist but are balanced against risks, particularly in high-growth areas. Sentiment remains cautiously optimistic yet cautious, reflecting institutional buying in tech offset by concerns over valuation and headwinds.\n\nWith no current positions, the portfolio value remains at $10,000.00, and all cash is available. Trading orders cannot be generated during the closed market hours (9:30 AM - 4:00 PM ET). Analysis continues 24/7, providing ongoing insights to inform decisions when the market reopens. The VIX at 4.0 signals low near-term risk, but the cautious sentiment suggests vigilance is still warranted.",
     "stance": "NEUTRAL",
     "vix_risk": 4.0,
     "risk_compliance": {
@@ -1115,195 +954,13 @@
     }
   },
   "portfolio_snapshot": {
-    "cash": 13.196717262268066,
-    "positions": {
-      "PSQ": {
-        "quantity": 36,
-        "avg_cost": 31.02739906311035,
-        "total_cost": 1116.9863662719727,
-        "cost_basis": 1116.9863662719727,
-        "current_price": 31.020000457763672,
-        "market_value": 1116.7200164794922
-      },
-      "BKR": {
-        "quantity": 22,
-        "avg_cost": 47.904998779296875,
-        "total_cost": 1053.9099731445312,
-        "cost_basis": 1053.9099731445312,
-        "current_price": 47.880001068115234,
-        "market_value": 1053.3600234985352
-      },
-      "MAR": {
-        "quantity": 3,
-        "avg_cost": 282.8599853515625,
-        "total_cost": 848.5799560546875,
-        "cost_basis": 848.5799560546875,
-        "current_price": 282.8900146484375,
-        "market_value": 848.6700439453125
-      },
-      "SPXL": {
-        "quantity": 5,
-        "avg_cost": 206.6300018310547,
-        "total_cost": 1033.1500091552734,
-        "cost_basis": 1033.1500091552734,
-        "current_price": 207.07000732421875,
-        "market_value": 1035.3500366210938
-      },
-      "NVDA": {
-        "quantity": 5,
-        "avg_cost": 183.31900024414062,
-        "total_cost": 916.5950012207031,
-        "cost_basis": 916.5950012207031,
-        "current_price": 186.60000610351562,
-        "market_value": 933.0000305175781
-      },
-      "AMZN": {
-        "quantity": 4,
-        "avg_cost": 228.34688186645508,
-        "total_cost": 913.3875274658203,
-        "cost_basis": 913.3875274658203,
-        "current_price": 232.8699951171875,
-        "market_value": 931.47998046875
-      },
-      "TQQQ": {
-        "quantity": 10,
-        "avg_cost": 100.15781707763672,
-        "total_cost": 1001.5781707763672,
-        "cost_basis": 1001.5781707763672,
-        "current_price": 102.05000305175781,
-        "market_value": 1020.5000305175781
-      },
-      "TSLA": {
-        "quantity": 2,
-        "avg_cost": 402.94459533691406,
-        "total_cost": 805.8891906738281,
-        "cost_basis": 805.8891906738281,
-        "current_price": 408.9200134277344,
-        "market_value": 817.8400268554688
-      },
-      "AAPL": {
-        "quantity": 4,
-        "avg_cost": 268.3499755859375,
-        "total_cost": 1073.39990234375,
-        "cost_basis": 1073.39990234375,
-        "current_price": 267.4599914550781,
-        "market_value": 1069.8399658203125
-      },
-      "SQQQ": {
-        "quantity": 78,
-        "avg_cost": 15.211696160145294,
-        "total_cost": 1186.512300491333,
-        "cost_basis": 1186.512300491333,
-        "current_price": 14.84000015258789,
-        "market_value": 1157.5200119018555
-      }
-    },
-    "total_value": 9997.476883888245,
-    "equity_value": 9984.280166625977,
-    "total_pnl": 34.29176902770993,
-    "total_pnl_pct": -0.025231161117553712,
-    "positions_pnl": {
-      "PSQ": {
-        "symbol": "PSQ",
-        "quantity": 36,
-        "avg_cost": 31.02739906311035,
-        "current_price": 31.020000457763672,
-        "market_value": 1116.7200164794922,
-        "unrealized_pnl": -0.26634979248046875,
-        "unrealized_pnl_pct": -0.023845393330039606,
-        "position_pct": 98.83206285311249
-      },
-      "BKR": {
-        "symbol": "BKR",
-        "quantity": 22,
-        "avg_cost": 47.904998779296875,
-        "current_price": 47.880001068115234,
-        "market_value": 1053.3600234985352,
-        "unrealized_pnl": -0.5499496459960938,
-        "unrealized_pnl_pct": -0.052181842852783655,
-        "position_pct": 98.7626802440108
-      },
-      "MAR": {
-        "symbol": "MAR",
-        "quantity": 3,
-        "avg_cost": 282.8599853515625,
-        "current_price": 282.8900146484375,
-        "market_value": 848.6700439453125,
-        "unrealized_pnl": 0.090087890625,
-        "unrealized_pnl_pct": 0.010616311401443732,
-        "position_pct": 98.46882164897764
-      },
-      "SPXL": {
-        "symbol": "SPXL",
-        "quantity": 5,
-        "avg_cost": 206.6300018310547,
-        "current_price": 207.07000732421875,
-        "market_value": 1035.3500366210938,
-        "unrealized_pnl": 2.2000274658202557,
-        "unrealized_pnl_pct": 0.21294366222955824,
-        "position_pct": 98.7414278654344
-      },
-      "NVDA": {
-        "symbol": "NVDA",
-        "quantity": 5,
-        "avg_cost": 183.31900024414062,
-        "current_price": 186.60000610351562,
-        "market_value": 933.0000305175781,
-        "unrealized_pnl": 16.405029296875,
-        "unrealized_pnl_pct": 1.7897794854900044,
-        "position_pct": 98.6052882454698
-      },
-      "AMZN": {
-        "symbol": "AMZN",
-        "quantity": 4,
-        "avg_cost": 228.34688186645508,
-        "current_price": 232.8699951171875,
-        "market_value": 931.47998046875,
-        "unrealized_pnl": 18.092453002929688,
-        "unrealized_pnl_pct": 1.9808079767770554,
-        "position_pct": 98.60304405793381
-      },
-      "TQQQ": {
-        "symbol": "TQQQ",
-        "quantity": 10,
-        "avg_cost": 100.15781707763672,
-        "current_price": 102.05000305175781,
-        "market_value": 1020.5000305175781,
-        "unrealized_pnl": 18.92185974121091,
-        "unrealized_pnl_pct": 1.8892044868094264,
-        "position_pct": 98.72334731722707
-      },
-      "TSLA": {
-        "symbol": "TSLA",
-        "quantity": 2,
-        "avg_cost": 402.94459533691406,
-        "current_price": 408.9200134277344,
-        "market_value": 817.8400268554688,
-        "unrealized_pnl": 11.950836181640625,
-        "unrealized_pnl_pct": 1.4829378926956662,
-        "position_pct": 98.41201759661323
-      },
-      "AAPL": {
-        "symbol": "AAPL",
-        "quantity": 4,
-        "avg_cost": 268.3499755859375,
-        "current_price": 267.4599914550781,
-        "market_value": 1069.8399658203125,
-        "unrealized_pnl": -3.5599365234375,
-        "unrealized_pnl_pct": -0.3316505354308716,
-        "position_pct": 98.78150782255067
-      },
-      "SQQQ": {
-        "symbol": "SQQQ",
-        "quantity": 78,
-        "avg_cost": 15.211696160145294,
-        "current_price": 14.84000015258789,
-        "market_value": 1157.5200119018555,
-        "unrealized_pnl": -28.992288589477482,
-        "unrealized_pnl_pct": -2.4434882451258044,
-        "position_pct": 98.87276597886404
-      }
-    }
+    "cash": 10000.0,
+    "positions": {},
+    "total_value": 10000.0,
+    "equity_value": 0,
+    "total_pnl": 0.0,
+    "total_pnl_pct": 0.0,
+    "positions_pnl": {}
   },
   "executed_trades": [],
   "executed_trades_count": 0

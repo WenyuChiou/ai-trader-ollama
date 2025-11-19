@@ -484,7 +484,6 @@ async def fetch_conversations_api(
             "news_scan": "news",
             "get_news_scan": "news",  # CRITICAL FIX: 添加get_news_scan
             "plan_and_scan_news": "news",
-            "fetch_jin10_news": "news",
             "web_search": "news",
             "fetch_url": "news",
             "vix_term": "risk",
@@ -503,8 +502,6 @@ async def fetch_conversations_api(
             "get_labor_market_data": "economic",
             "get_treasury_yield_curve": "economic",
             "fetch_fred_indicator": "economic",
-            "fetch_jin10_economic_data": "economic",
-            "fetch_jin10_economic_calendar": "economic",
             "fetch_crypto_batch": "crypto",
             "get_crypto_price": "crypto",
         }

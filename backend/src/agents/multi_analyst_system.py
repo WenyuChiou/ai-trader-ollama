@@ -341,8 +341,8 @@ def run_multi_analyst_discussion(
                                     # 基于测试结果，以下工具都可用：
                                     # ✅ news_scan: 返回 hits
                                     # ✅ plan_and_scan_news: 返回 hits 和 articles（推荐，有内容）
-                                    # ✅ fetch_jin10_news: 返回 items（通过ToolBox）
-                                    if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"]:
+                                    # ✅ News tools: 返回 hits/articles（通过ToolBox）
+                                    if tool_name in ["news_scan", "plan_and_scan_news"]:
                                         actual_result = tool_result.get("result", tool_result)
                                         hits = actual_result.get("hits", [])
                                         articles = actual_result.get("articles", [])
@@ -480,7 +480,7 @@ def run_multi_analyst_discussion(
             for tc in tool_calls_list:
                 tool_name = tc.get("name", "")
                 # 移除新闻相关工具
-                if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news", "web_search", "fetch_url"]:
+                if tool_name in ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]:
                     removed_news_tools.append(tool_name)
                     print(f"   [FILTER] Removed news tool '{tool_name}' from Technical Analyst (news analysis is not part of technical analysis)")
                 else:
@@ -1108,7 +1108,7 @@ def run_multi_analyst_discussion(
                 ]
             # 即使agent请求了工具，也确保news_scan被包含（如果还没有）
             elif tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"] for tc in tool_calls_list)
+                has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news"] for tc in tool_calls_list)
                 if not has_news_tool and tool_calls_count + len(tool_calls_list) < tool_budget:
                     print(f"   [INFO] Adding plan_and_scan_news to tool calls (news analysis with content is important for sentiment)")
                     tool_calls_list.append({
@@ -1176,7 +1176,7 @@ def run_multi_analyst_discussion(
                                 print(f"   [MEMORY] ⚠️ Memory tool {tool_name} failed")
                         else:
                             # DEBUG: 对于新闻工具，显示更多信息
-                            if tool_name in ["plan_and_scan_news", "news_scan", "fetch_jin10_news"]:
+                            if tool_name in ["plan_and_scan_news", "news_scan"]:
                                 if isinstance(tool_result, dict):
                                     if tool_result.get("ok"):
                                         actual_result = tool_result.get("result", tool_result)
@@ -2010,7 +2010,7 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     # 基于实际测试结果：
     # ✅ news_scan: 可用（返回hits）
     # ✅ plan_and_scan_news: 可用（返回hits和articles，推荐使用）
-    # ✅ fetch_jin10_news: 可用（通过ToolBox，返回items）
+    # ✅ News tools: 可用（通过ToolBox，返回hits/articles）
     tool_name_mapping = {
         "get_news_scan": "plan_and_scan_news",  # LLM可能使用get_news_scan，映射到plan_and_scan_news（推荐，有内容）
         "get_news": "plan_and_scan_news",  # CRITICAL FIX: get_news不存在，映射到plan_and_scan_news
@@ -2050,8 +2050,8 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
             # 基于测试结果，以下工具都可用：
             # ✅ news_scan: 返回 hits
             # ✅ plan_and_scan_news: 返回 hits 和 articles（推荐，有内容）
-            # ✅ fetch_jin10_news: 返回 items（通过ToolBox）
-            if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news"]:
+            # ✅ News tools: 返回 hits/articles（通过ToolBox）
+            if tool_name in ["news_scan", "plan_and_scan_news"]:
                 actual_result = result.get("result", result)
                 hits = actual_result.get("hits", [])
                 articles = actual_result.get("articles", [])

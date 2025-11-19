@@ -760,7 +760,7 @@ def execute_daily_trade(
             
             # CRITICAL FIX: 根据工具类型分类（news, risk, market等）
             tool_category = "other"
-            if tool_name in ["news_scan", "plan_and_scan_news", "fetch_jin10_news", "web_search", "fetch_url"]:
+            if tool_name in ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]:
                 tool_category = "news"
             elif tool_name in ["vix_term", "vix_close", "fear_greed", "get_market_breadth"]:
                 tool_category = "risk"
@@ -768,7 +768,7 @@ def execute_daily_trade(
                 tool_category = "market"
             elif tool_name in ["get_company_fundamentals", "get_earnings_history", "get_financial_statements"]:
                 tool_category = "fundamental"
-            elif tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator", "fetch_jin10_economic_data", "fetch_jin10_economic_calendar"]:
+            elif tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator"]:
                 tool_category = "economic"
             elif tool_name in ["fetch_crypto_batch", "get_crypto_price"]:
                 tool_category = "crypto"

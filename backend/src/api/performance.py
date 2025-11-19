@@ -17,15 +17,13 @@ def _get_project_logs_dir() -> Path:
     
     # Try to find project root
     current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / "backend" / "src").exists():
-            project_root = parent.parent if (parent / "backend").exists() else parent
-            logs_dir = project_root / "data" / "logs"
-            if logs_dir.exists():
-                return logs_dir
-    
-    # Fallback: use relative path
-    return Path("data/logs")
+    # current is backend/src/api/performance.py
+    # We need to go up to project root (ai-trader-ollama/)
+    backend_dir = current.parent.parent.parent  # backend/
+    project_root = backend_dir.parent  # project root (ai-trader-ollama/)
+    logs_dir = project_root / "data" / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    return logs_dir
 
 
 def _load_equity_history(
@@ -37,19 +35,41 @@ def _load_equity_history(
     logs_dir = _get_project_logs_dir()
     equity_file = logs_dir / "equity_history.jsonl"
     
+    print(f"[Performance] Loading equity history from: {equity_file}")
+    print(f"[Performance] File exists: {equity_file.exists()}")
+    
     if not equity_file.exists():
+        print(f"[Performance] WARNING: equity_history.jsonl not found at {equity_file}")
         return []
     
     records = []
+    line_count = 0
+    skipped_count = 0
+    
     with equity_file.open("r", encoding="utf-8") as f:
-        for line in f:
+        for line_num, line in enumerate(f, 1):
+            line_count += 1
             if line.strip():
                 try:
                     record = json.loads(line.strip())
-                    record_date = record.get("date") or (record.get("timestamp", "").split("T")[0] if record.get("timestamp") else "")
+                    # CRITICAL FIX: 统一时间戳解析 - 支持UTC格式（Z后缀）和ISO 8601格式
+                    # Try multiple ways to get the date
+                    timestamp = record.get("timestamp", "")
+                    if timestamp:
+                        # 处理UTC格式（Z后缀）或ISO 8601格式（+00:00）
+                        if timestamp.endswith('Z'):
+                            record_date = timestamp.split("T")[0]
+                        elif '+' in timestamp or (len(timestamp) > 10 and '-' in timestamp[10:]):
+                            record_date = timestamp.split("T")[0] if "T" in timestamp else timestamp.split(" ")[0]
+                        else:
+                            record_date = timestamp.split("T")[0] if "T" in timestamp else timestamp.split(" ")[0]
+                    else:
+                        record_date = record.get("date", "")
                     
                     # Skip if no date found
                     if not record_date:
+                        skipped_count += 1
+                        print(f"[Performance] Skipping record {line_num}: no date found")
                         continue
                     
                     # Filter by date range (inclusive on both ends)
@@ -61,15 +81,27 @@ def _load_equity_history(
                     records.append(record)
                 except (json.JSONDecodeError, AttributeError, TypeError) as e:
                     # Skip malformed records
-                    print(f"[Performance] Skipping malformed equity record: {e}")
+                    skipped_count += 1
+                    print(f"[Performance] Skipping malformed equity record at line {line_num}: {e}")
                     continue
     
+    print(f"[Performance] Loaded {len(records)} records from {line_count} lines (skipped {skipped_count})")
+    
     # Sort by timestamp/date
-    records.sort(key=lambda x: x.get("timestamp") or x.get("date", ""))
+    try:
+        records.sort(key=lambda x: (x.get("timestamp") or x.get("date", "")))
+    except Exception as e:
+        print(f"[Performance] Warning: Failed to sort records: {e}")
     
     # Apply limit
     if limit:
         records = records[-limit:]
+    
+    # Debug: Show date range
+    if records:
+        first_date = records[0].get("date") or (records[0].get("timestamp", "").split("T")[0] if records[0].get("timestamp") else "N/A")
+        last_date = records[-1].get("date") or (records[-1].get("timestamp", "").split("T")[0] if records[-1].get("timestamp") else "N/A")
+        print(f"[Performance] Date range: {first_date} to {last_date}")
     
     return records
 
@@ -97,8 +129,19 @@ def _load_filled_orders(
                     if symbol and order.get("symbol") != symbol:
                         continue
                     
+                    # CRITICAL FIX: 统一时间戳解析 - 支持UTC格式（Z后缀）和ISO 8601格式
                     # Filter by date
-                    order_date = order.get("placed_at", "").split("T")[0] if order.get("placed_at") else order.get("date", "")
+                    placed_at = order.get("placed_at", "")
+                    if placed_at:
+                        # 处理UTC格式（Z后缀）或ISO 8601格式（+00:00）
+                        if placed_at.endswith('Z'):
+                            order_date = placed_at.split("T")[0]
+                        elif '+' in placed_at or '-' in placed_at[10:]:
+                            order_date = placed_at.split("T")[0] if "T" in placed_at else placed_at.split(" ")[0]
+                        else:
+                            order_date = placed_at.split("T")[0] if "T" in placed_at else placed_at.split(" ")[0]
+                    else:
+                        order_date = order.get("date", "")
                     
                     # Skip if no date found
                     if not order_date:
@@ -128,8 +171,46 @@ def _calculate_statistics(
 ) -> Dict[str, Any]:
     """Calculate performance statistics"""
     if not equity_history:
+        # CRITICAL FIX: If no equity history, try to get current portfolio value as fallback
+        # This allows the performance page to show at least current portfolio status
+        try:
+            from src.data.portfolio import Portfolio
+            from pathlib import Path
+            import json
+            
+            logs_dir = _get_project_logs_dir()
+            portfolio_file = logs_dir / "portfolio_state.json"
+            
+            if portfolio_file.exists():
+                with portfolio_file.open("r", encoding="utf-8") as f:
+                    portfolio_data = json.load(f)
+                    current_value = float(portfolio_data.get("total_value", 0.0))
+                    initial_value = float(portfolio_data.get("initial_value", 10000.0))
+                    
+                    # Return basic stats with current portfolio value
+                    return {
+                        "initial_value": initial_value,
+                        "current_value": current_value,
+                        "total_return": current_value - initial_value,
+                        "total_return_pct": ((current_value - initial_value) / initial_value * 100.0) if initial_value > 0 else 0.0,
+                        "annualized_return_pct": None,
+                        "max_drawdown": 0.0,
+                        "max_drawdown_pct": 0.0,
+                        "win_rate": 0.0,
+                        "total_trades": len(filled_orders),
+                        "winning_trades": 0,
+                        "losing_trades": 0,
+                        "total_realized_pnl": sum(float(o.get("realized_pnl", 0.0)) for o in filled_orders if o.get("action") == "SELL"),
+                        "avg_trade_return": 0.0,
+                        "sharpe_ratio": None,
+                        "trading_days": 1,
+                        "data_points": 0
+                    }
+        except Exception as e:
+            print(f"[Performance] Failed to get fallback portfolio data: {e}")
+        
         return {
-            "error": "No equity history data available"
+            "error": "No equity history data available. Please ensure equity recording is enabled and the system has been running for at least one trading cycle."
         }
     
     # Get initial and current values
@@ -266,8 +347,20 @@ def get_performance_statistics(
         if end_date is None:
             end_date = date.today().isoformat()
         
+        # CRITICAL FIX: Default to last 7 days only (not all historical data)
+        # Users must explicitly query for historical data using date range parameters
+        if start_date is None:
+            start_date = (date.today() - timedelta(days=7)).isoformat()
+        
         equity_history = _load_equity_history(start_date=start_date, end_date=end_date)
         filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
+        
+        # DEBUG: Log data availability
+        print(f"[Performance] Statistics request: start_date={start_date or 'ALL'}, end_date={end_date}, equity_records={len(equity_history)}, orders={len(filled_orders)}")
+        
+        # CRITICAL FIX: If no equity_history but we have portfolio_state.json, try to load it
+        if not equity_history:
+            print(f"[Performance] No equity history found, checking portfolio_state.json for fallback data")
         
         stats = _calculate_statistics(equity_history, filled_orders)
         
@@ -315,6 +408,11 @@ def get_trades_by_date(
         # If no end_date specified, default to today to include today's data
         if end_date is None:
             end_date = date.today().isoformat()
+        
+        # CRITICAL FIX: Default to last 7 days only (not all historical data)
+        # Users must explicitly query for historical data using date range parameters
+        if start_date is None:
+            start_date = (date.today() - timedelta(days=7)).isoformat()
         
         filled_orders = _load_filled_orders(start_date=start_date, end_date=end_date)
         
@@ -378,6 +476,11 @@ def get_symbol_analysis(
         # If no end_date specified, default to today to include today's data
         if end_date is None:
             end_date = date.today().isoformat()
+        
+        # CRITICAL FIX: Default to last 7 days only (not all historical data)
+        # Users must explicitly query for historical data using date range parameters
+        if start_date is None:
+            start_date = (date.today() - timedelta(days=7)).isoformat()
         
         if not symbol:
             # Get all symbols

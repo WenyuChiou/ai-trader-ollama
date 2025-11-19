@@ -2989,7 +2989,8 @@ python scripts/init_data.py
    - ✅ Cryptocurrency symbols (DOGE, BTC, ETH, etc.) automatically filtered from stock analysis
    - ✅ Prevents errors when crypto symbols are mistakenly included in stock recommendations
    - ✅ System focuses on traditional stocks and ETFs only
-11. **Timestamp Format Standardization**:
+
+12. **Timestamp Format Standardization**:
    - ✅ All timestamps use ISO 8601 format with millisecond precision: `YYYY-MM-DDTHH:MM:SS.sssZ`
    - ✅ Consistent UTC timezone with 'Z' suffix across all data files
    - ✅ Scripts available to fix existing timestamp formats: `backend/scripts/fix_timestamps.py` and `backend/scripts/fix_memory_timestamps.py`

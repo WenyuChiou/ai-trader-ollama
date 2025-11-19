@@ -7282,9 +7282,69 @@
                                 ${round ? `<div class="conversation-meta" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Round ${round}</div>` : ''}
                                 ${stanceHtml}
                                 ${analysisText ? (() => {
-                                    // CRITICAL FIX: 對於 Coordinator，先移除 HTML 標籤
+                                    // CRITICAL FIX: 對於 Coordinator，嘗試解析結構化部分
                                     const agentName = c.agent || c.agent_name || '';
                                     const isCoordinator = agentName && agentName.toLowerCase().includes('coordinator');
+                                    
+                                    if (isCoordinator) {
+                                        console.log('[Coordinator] Rendering in overview, attempting parse');
+                                        console.log('[Coordinator] Analysis text length:', analysisText.length);
+                                        console.log('[Coordinator] Analysis text preview:', analysisText.substring(0, 500));
+                                        const sections = parseCoordinatorSections(analysisText);
+                                        
+                                        if (sections) {
+                                            console.log('[Coordinator] Parse successful in overview');
+                                            // 使用結構化顯示
+                                            const containerId = `coordinator-overview-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                            let structuredHtml = `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">`;
+                                            structuredHtml += `<div id="${containerId}" style="padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 600px; overflow-y: auto; overflow-x: hidden;">`;
+                                            
+                                            // 顯示開頭介紹（如果有）
+                                            if (sections.intro) {
+                                                const introText = escapeHtml(sections.intro);
+                                                structuredHtml += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; margin-bottom: 16px; padding: 12px; background: rgba(34, 211, 238, 0.05); border-radius: 4px; border-left: 3px solid #22d3ee;">${introText}</div>`;
+                                            }
+                                            
+                                            // 顯示 Consensus Stance（始終展開）
+                                            if (sections.consensusStance) {
+                                                const stanceMatch = sections.consensusStance.match(/^([A-Z]+(?:\s+[A-Z]+)*)/);
+                                                const stanceValue = stanceMatch ? stanceMatch[1] : sections.consensusStance.substring(0, 50);
+                                                structuredHtml += formatCollapsibleSection(
+                                                    `🎯 Consensus Stance: ${stanceValue}`,
+                                                    sections.consensusStance,
+                                                    `${containerId}-stance`,
+                                                    true
+                                                );
+                                            }
+                                            
+                                            // 顯示其他部分
+                                            if (sections.keyInsights) {
+                                                structuredHtml += formatCollapsibleSection('💡 Key Insights', sections.keyInsights, `${containerId}-insights`, false);
+                                            }
+                                            if (sections.consensusAreas) {
+                                                structuredHtml += formatCollapsibleSection('✅ Consensus Areas', sections.consensusAreas, `${containerId}-consensus`, false);
+                                            }
+                                            if (sections.disagreements) {
+                                                structuredHtml += formatCollapsibleSection('⚡ Disagreements', sections.disagreements, `${containerId}-disagreements`, false);
+                                            }
+                                            if (sections.recommendedStocks) {
+                                                structuredHtml += formatCollapsibleSection('📈 Recommended Stocks', sections.recommendedStocks, `${containerId}-stocks`, false);
+                                            }
+                                            if (sections.finalSummary) {
+                                                structuredHtml += formatCollapsibleSection('📋 Final Summary', sections.finalSummary, `${containerId}-summary`, false);
+                                            }
+                                            if (sections.overall) {
+                                                structuredHtml += formatCollapsibleSection('📊 Overall', sections.overall, `${containerId}-overall`, false);
+                                            }
+                                            
+                                            structuredHtml += `</div></div>`;
+                                            return structuredHtml;
+                                        } else {
+                                            console.log('[Coordinator] Parse failed in overview, using fallback');
+                                        }
+                                    }
+                                    
+                                    // Fallback: 使用原始格式
                                     let processedText = isCoordinator ? stripHtml(analysisText) : analysisText;
                                     const displayText = processedText.includes('markdown-block') || processedText.includes('<table') ? processedText : escapeHtml(processedText);
                                     return `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import date, datetime, timedelta, time as dt_time
+from datetime import date, datetime, timedelta, time as dt_time, timezone
 import pandas as pd
 import yfinance as yf
 
@@ -86,11 +86,19 @@ class OrderManager:
         filtered_orders.append(order)
         
         # 保存到待处理订单文件（重写整个文件）
-        with self.pending_orders_file.open("w", encoding="utf-8") as f:
-            for o in filtered_orders:
-                f.write(json.dumps(o, ensure_ascii=False) + "\n")
-        
-        print(f"[ORDER PLACED] {action} {symbol} x{quantity} @ ${limit_price:.2f} (range: ${price_range['min']:.2f}-${price_range['max']:.2f}) [placed_at: {placed_at}]")
+        try:
+            # CRITICAL FIX: Ensure directory exists before writing
+            self.pending_orders_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.pending_orders_file.open("w", encoding="utf-8") as f:
+                for o in filtered_orders:
+                    f.write(json.dumps(o, ensure_ascii=False) + "\n")
+            print(f"[ORDER PLACED] ✅ {action} {symbol} x{quantity} @ ${limit_price:.2f} (range: ${price_range['min']:.2f}-${price_range['max']:.2f}) [placed_at: {placed_at}]")
+            print(f"[ORDER PLACED] ✅ Wrote to {self.pending_orders_file} (total orders: {len(filtered_orders)})")
+        except Exception as e:
+            print(f"[ORDER PLACED] ❌ ERROR: Failed to write to {self.pending_orders_file}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise  # Re-raise to let caller handle
         
         return order
     
@@ -570,19 +578,35 @@ class OrderManager:
             order["fill_result"]["proceeds"] = realized_pnl.get("proceeds", 0.0)
         
         # 保存到已成交文件
-        with self.filled_orders_file.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(order, ensure_ascii=False) + "\n")
+        try:
+            # CRITICAL FIX: Ensure directory exists before writing
+            self.filled_orders_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.filled_orders_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(order, ensure_ascii=False) + "\n")
+            print(f"[ORDER FILLED] ✅ Wrote {order.get('symbol')} {order.get('action')} order to {self.filled_orders_file}")
+        except Exception as e:
+            print(f"[ORDER FILLED] ❌ ERROR: Failed to write to {self.filled_orders_file}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise  # Re-raise to let caller handle
         
         # 从待处理订单中移除（重新写入文件，排除这个订单）
-        pending_orders = self.load_pending_orders()
-        updated_pending = [
-            o for o in pending_orders
-            if o.get("order_id") != order.get("order_id")
-        ]
-        
-        with self.pending_orders_file.open("w", encoding="utf-8") as f:
-            for o in updated_pending:
-                f.write(json.dumps(o, ensure_ascii=False) + "\n")
+        try:
+            pending_orders = self.load_pending_orders()
+            updated_pending = [
+                o for o in pending_orders
+                if o.get("order_id") != order.get("order_id")
+            ]
+            
+            # CRITICAL FIX: Ensure directory exists before writing
+            self.pending_orders_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.pending_orders_file.open("w", encoding="utf-8") as f:
+                for o in updated_pending:
+                    f.write(json.dumps(o, ensure_ascii=False) + "\n")
+            print(f"[ORDER FILLED] ✅ Removed {order.get('symbol')} {order.get('action')} order from pending (remaining: {len(updated_pending)})")
+        except Exception as e:
+            print(f"[ORDER FILLED] ⚠️ WARNING: Failed to remove from pending_orders.jsonl: {e}")
+            # Don't raise - order is already in filled_orders.jsonl, so this is not critical
     
     def cancel_orders(
         self,

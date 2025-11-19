@@ -111,12 +111,19 @@ def _load_filled_orders(
     end_date: Optional[str] = None,
     symbol: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    """Load filled orders from filled_orders.jsonl"""
+    """Load filled orders from filled_orders.jsonl and normalize them"""
     logs_dir = _get_project_logs_dir()
     filled_file = logs_dir / "filled_orders.jsonl"
     
     if not filled_file.exists():
         return []
+    
+    # CRITICAL FIX: Import order validator for normalization
+    try:
+        from src.data.order_validator import normalize_order
+    except ImportError:
+        # Fallback if validator not available
+        normalize_order = lambda x: x
     
     orders = []
     with filled_file.open("r", encoding="utf-8") as f:
@@ -124,6 +131,9 @@ def _load_filled_orders(
             if line.strip():
                 try:
                     order = json.loads(line.strip())
+                    
+                    # CRITICAL FIX: Normalize order data before processing
+                    order = normalize_order(order)
                     
                     # Filter by symbol
                     if symbol and order.get("symbol") != symbol:

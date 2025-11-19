@@ -1335,6 +1335,12 @@ async def get_recent_trades(limit: int = Query(10, ge=1, le=1000)):
         # Limit results
         trades = trades[:limit]
         
+        # DEBUG: Log trades data for troubleshooting
+        print(f"[API] /api/trades/recent: Returning {len(trades)} trades")
+        if trades:
+            sample = trades[0]
+            print(f"[API] Sample trade: symbol={sample.get('symbol')}, action={sample.get('action')}, status={sample.get('status')}, quantity={sample.get('quantity')}")
+        
         return JSONResponse(
             status_code=200,
             content={

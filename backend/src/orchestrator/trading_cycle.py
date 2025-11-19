@@ -306,7 +306,8 @@ def execute_daily_trade(
             print(f"[TRADING CYCLE] Portfolio state file not found, using default Portfolio()")
             portfolio = Portfolio()
     if trade_logger is None:
-        trade_logger = TradeLogger()
+        # CRITICAL FIX: Use project root data/logs directory explicitly (same as OrderManager)
+        trade_logger = TradeLogger(root=str(_get_project_logs_dir()))
 
     # ---- Latest closing price (used in multiple places) ----
     last_prices = {}
@@ -509,7 +510,7 @@ def execute_daily_trade(
             portfolio_value = portfolio.cash + portfolio.initial_value
     
     # CRITICAL: Use optimized parallel version as default (direct integration)
-    print("[TRADING CYCLE] ✅ Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
+    print("[TRADING CYCLE] [OK] Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
     # CRITICAL FIX: Pass historical_memories and rounds to discussion system
     convo = run_multi_analyst_discussion_parallel(
         market_view=market_view,  # Pass complete market_view
@@ -670,7 +671,9 @@ def execute_daily_trade(
                     elif line.startswith("Tools Used:"):
                         tools_str = line.replace("Tools Used:", "").strip()
                         if tools_str:
+                            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
                             tools_used = [t.strip() for t in tools_str.split(',') if t.strip()]
+                            tools_used = list(dict.fromkeys(tools_used))  # 去重但保持順序
                 
                 # If no analysis extracted, use the full transcript item (minus header)
                 if not analysis:
@@ -754,8 +757,20 @@ def execute_daily_trade(
                     }
                     analyst_name = analyst_name_map.get(analyst_key, analyst_key.title() + " Analyst")
                     
-                    # Extract tools used by this analyst from tool_calls
-                    tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst", "").lower() == analyst_key]
+                    # CRITICAL FIX: Extract only successfully used tools by this analyst from tool_calls
+                    # Only include tools that were actually executed and succeeded
+                    # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+                    tools_used = []
+                    for tc in all_tool_calls:
+                        if tc.get("analyst", "").lower() == analyst_key:
+                            tool_result = tc.get("result", {})
+                            # Only include successful tools
+                            if check_tool_success(tool_result):
+                                tool_name = tc.get("tool", "") or tc.get("name", "")
+                                if tool_name:
+                                    tools_used.append(tool_name)
+                    # 去重但保持順序（使用 dict.fromkeys 保持首次出現的順序）
+                    tools_used = list(dict.fromkeys(tools_used))
                     
                     # 确保有 analysis（summary）
                     analysis = report.get("analysis", "No analysis provided")
@@ -997,29 +1012,64 @@ def execute_daily_trade(
             print(f"[TRADING CYCLE] Skipped writing coordinator_summary (Coordinator already exists in discussion_history)")
         
         # 寫入工具使用記錄（從tool_calls中提取）
+        # CRITICAL FIX: Only record tools that were successfully used in the discussion rounds (1-3)
         tool_calls = convo.get("tool_calls", [])
-        print(f"[TRADING CYCLE] Writing {len(tool_calls)} tool calls to discussion_actions.jsonl")
+        
+        # CRITICAL FIX: Import check_tool_success to filter successful tools only
+        from src.agents.analysts.common import check_tool_success
+        
+        # CRITICAL FIX: Filter to only successful tools used in discussion rounds
+        successful_tool_calls = []
+        failed_tool_calls = []
+        for tc in tool_calls:
+            tool_result = tc.get("result", {})
+            if check_tool_success(tool_result):
+                successful_tool_calls.append(tc)
+            else:
+                failed_tool_calls.append(tc)
+        
+        print(f"[TRADING CYCLE] Writing {len(successful_tool_calls)} successful tool calls to discussion_actions.jsonl (filtered out {len(failed_tool_calls)} failed tools)")
         
         # DEBUG: Log tool_calls structure for news tools
         # CRITICAL FIX: Check both "tool" and "name" fields (some tool_calls may use "name")
         news_tool_calls = []
-        for tc in tool_calls:
+        for tc in successful_tool_calls:
             tool_name = tc.get("tool", "") or tc.get("name", "")
             if tool_name.lower() in ["plan_and_scan_news", "news_scan", "get_news_scan"]:
                 news_tool_calls.append(tc)
         
         if news_tool_calls:
-            print(f"[TRADING CYCLE] [NEWS] Found {len(news_tool_calls)} news tool calls in convo.tool_calls")
+            print(f"[TRADING CYCLE] [NEWS] Found {len(news_tool_calls)} successful news tool calls in convo.tool_calls")
             for idx, tc in enumerate(news_tool_calls):
                 tool_name = tc.get("tool", "") or tc.get("name", "")
                 print(f"[TRADING CYCLE] [NEWS]   Tool call {idx}: analyst={tc.get('analyst')}, tool={tool_name}, has_result={bool(tc.get('result'))}")
         else:
-            print(f"[TRADING CYCLE] [NEWS] ⚠️ No news tool calls found in {len(tool_calls)} tool calls")
+            print(f"[TRADING CYCLE] [NEWS] ⚠️ No successful news tool calls found in {len(successful_tool_calls)} tool calls")
             # DEBUG: List all tool names (check both "tool" and "name" fields)
-            all_tool_names = [tc.get("tool", "") or tc.get("name", "") for tc in tool_calls]
+            all_tool_names = [tc.get("tool", "") or tc.get("name", "") for tc in successful_tool_calls]
             print(f"[TRADING CYCLE] [NEWS]   All tool names: {', '.join(all_tool_names[:10])}{'...' if len(all_tool_names) > 10 else ''}")
         
-        for tool_call in tool_calls:
+        # CRITICAL FIX: Get actual round number from discussion_history or convo
+        # Try to extract round from discussion_history entries
+        discussion_history = convo.get("discussion_history", [])
+        tool_round_map = {}  # Map analyst -> round number
+        for entry in discussion_history:
+            analyst = entry.get("analyst", "")
+            round_num = entry.get("round", 0)
+            if analyst and round_num > 0:
+                # Normalize analyst name
+                analyst_lower = analyst.lower()
+                if "market" in analyst_lower:
+                    tool_round_map["MarketAnalyst"] = round_num
+                elif "technical" in analyst_lower:
+                    tool_round_map["TechnicalAnalyst"] = round_num
+                elif "fundamental" in analyst_lower:
+                    tool_round_map["FundamentalAnalyst"] = round_num
+                elif "sentiment" in analyst_lower:
+                    tool_round_map["SentimentAnalyst"] = round_num
+        
+        # CRITICAL FIX: Only write successful tools that were used in discussion rounds (1-3)
+        for tool_call in successful_tool_calls:
             analyst_name = tool_call.get("analyst", "Unknown")
             # CRITICAL FIX: Check both "tool" and "name" fields (some tool_calls may use "name")
             tool_name = tool_call.get("tool", "") or tool_call.get("name", "")
@@ -1185,11 +1235,17 @@ def execute_daily_trade(
                         except:
                             pass
             
+            # CRITICAL FIX: Get round number for this tool call
+            # Use the round from tool_round_map if available, otherwise default to 1 (first round)
+            tool_round = tool_round_map.get(agent_name, 1)
+            # Ensure round is between 1 and 3 (discussion rounds)
+            tool_round = max(1, min(3, tool_round))
+            
             entry = {
                 "timestamp": get_utc_timestamp(),
                 "date": trade_date_str,
                 "agent": agent_name,  # CRITICAL FIX: 使用调用工具的 agent 名称（MarketAnalyst, TechnicalAnalyst等），而不是 ToolSystem
-                "round": 0,
+                "round": tool_round,  # CRITICAL FIX: Use actual discussion round (1-3) instead of 0
                 "content": f"Tool used: {tool_name}: {result_text}",
                 "type": "tool",
                 "tool_name": tool_name,
@@ -2209,20 +2265,23 @@ def execute_daily_trade(
                     remaining_cash -= actual_cost
                     print(f"[CASH TRACKING] Order for {symbol}: actual_cost=${actual_cost:.2f}, remaining cash=${remaining_cash:.2f}, portfolio cash=${portfolio.cash:.2f}")
                     
+                    # CRITICAL: 市价单必须100%记录 - 使用多重保障机制
                     # 市价单：立即成交，不挂单
                     # 创建订单记录（标记为已成交）
-                    placed_order = order_manager.place_order(
-                        symbol=symbol,
-                        action="BUY",
-                        quantity=quantity,
-                        limit_price=current_price,  # 市价单：使用当前价格
-                        price_range={
+                    print(f"[MARKET ORDER] Creating order record for {symbol} (quantity={quantity}, price=${current_price:.2f})")
+                    
+                    # 准备订单数据（无论place_order是否成功，都需要这个数据）
+                    order_data = {
+                        "symbol": symbol,
+                        "action": "BUY",
+                        "quantity": quantity,
+                        "limit_price": current_price,
+                        "price_range": {
                             "min": current_price,
                             "max": current_price,
                         },
-                    )
+                    }
                     
-                    # 立即标记为已成交（市价单保证成交）
                     fill_result = {
                         "filled": True,
                         "fill_price": current_price,
@@ -2231,51 +2290,135 @@ def execute_daily_trade(
                         "daily_low": current_price,
                         "current_price": current_price,
                     }
-                    # CRITICAL: 确保订单标记为FILLED（市价单必须立即成交）
+                    
+                    placed_order = None
+                    order_recorded = False
+                    
+                    # 方法1: 尝试使用 OrderManager 的标准流程
                     try:
-                        order_manager.mark_order_filled(placed_order, fill_result)
-                        # 确保订单状态是FILLED（双重保险）
-                        placed_order["status"] = "FILLED"
-                    except Exception as e:
-                        # 如果mark_order_filled失败，手动设置状态为FILLED并移除pending
-                        print(f"[MARKET ORDER] WARNING: mark_order_filled failed for {symbol}, manually setting status to FILLED: {e}")
-                        placed_order["status"] = "FILLED"
-                        placed_order["fill_price"] = current_price
-                        placed_order["fill_reason"] = "Market order executed immediately at current price"
-                        # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
-                        placed_order["filled_at"] = get_utc_timestamp()
-                        placed_order["fill_result"] = fill_result
+                        placed_order = order_manager.place_order(
+                            symbol=order_data["symbol"],
+                            action=order_data["action"],
+                            quantity=order_data["quantity"],
+                            limit_price=order_data["limit_price"],
+                            price_range=order_data["price_range"],
+                        )
+                        print(f"[MARKET ORDER] ✅ Order created via OrderManager: {placed_order.get('order_id')}")
                         
-                        # CRITICAL: 手动从pending中移除并写入filled
+                        # 立即标记为已成交
                         try:
-                            # 1. 写入filled_orders.jsonl（使用order_manager的路径）
+                            print(f"[MARKET ORDER] Marking {symbol} order as FILLED (fill_price=${current_price:.2f})")
+                            order_manager.mark_order_filled(placed_order, fill_result)
+                            placed_order["status"] = "FILLED"
+                            order_recorded = True
+                            print(f"[MARKET ORDER] ✅ Successfully marked {symbol} order as FILLED via OrderManager")
+                        except Exception as e:
+                            print(f"[MARKET ORDER] ⚠️ WARNING: mark_order_filled failed, will use fallback: {e}")
+                            # 继续到备用方法
+                    except Exception as e:
+                        print(f"[MARKET ORDER] ⚠️ WARNING: place_order() failed, will use fallback: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # 继续到备用方法
+                    
+                    # 方法2: 备用机制 - 如果 OrderManager 失败，直接写入 filled_orders.jsonl
+                    if not order_recorded:
+                        print(f"[MARKET ORDER] Using fallback method to record {symbol} order")
+                        try:
+                            # 创建订单ID（如果place_order失败，手动创建）
+                            if not placed_order:
+                                # datetime already imported at top
+                                now = datetime.now(timezone.utc)
+                                order_id = f"{symbol}_BUY_{now.date().isoformat()}_{now.timestamp()}"
+                                placed_at = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                                
+                                placed_order = {
+                                    "order_id": order_id,
+                                    "symbol": symbol,
+                                    "action": "BUY",
+                                    "quantity": quantity,
+                                    "limit_price": current_price,
+                                    "price_range": order_data["price_range"],
+                                    "placed_at": placed_at,
+                                    "status": "FILLED",
+                                    "fill_price": current_price,
+                                    "filled_at": get_utc_timestamp(),
+                                    "fill_reason": "Market order executed immediately at current price",
+                                    "daily_high": current_price,
+                                    "daily_low": current_price,
+                                    "fill_result": fill_result,
+                                }
+                            
+                            # 确保目录存在
                             filled_file = order_manager.filled_orders_file
+                            filled_file.parent.mkdir(parents=True, exist_ok=True)
+                            
+                            # 直接写入 filled_orders.jsonl
                             with filled_file.open("a", encoding="utf-8") as f:
                                 f.write(json.dumps(placed_order, ensure_ascii=False) + "\n")
                             
-                            # 2. 从pending_orders.jsonl中移除（使用order_manager的路径）
-                            pending_file = order_manager.pending_orders_file
-                            if pending_file.exists():
-                                all_pending = []
-                                with pending_file.open("r", encoding="utf-8") as f:
-                                    for line in f:
-                                        if line.strip():
-                                            try:
-                                                o = json.loads(line)
-                                                if o.get("order_id") != placed_order.get("order_id"):
-                                                    all_pending.append(o)
-                                            except:
-                                                pass
-                                
-                                with pending_file.open("w", encoding="utf-8") as f:
-                                    for o in all_pending:
-                                        f.write(json.dumps(o, ensure_ascii=False) + "\n")
+                            order_recorded = True
+                            print(f"[MARKET ORDER] ✅ Fallback: Successfully wrote {symbol} order to {filled_file}")
                             
-                            print(f"[MARKET ORDER] Manually moved {symbol} order to filled_orders.jsonl and removed from pending")
+                            # 如果 pending_orders.jsonl 中有这个订单，移除它
+                            pending_file = order_manager.pending_orders_file
+                            if pending_file.exists() and placed_order.get("order_id"):
+                                try:
+                                    all_pending = []
+                                    with pending_file.open("r", encoding="utf-8") as f:
+                                        for line in f:
+                                            if line.strip():
+                                                try:
+                                                    o = json.loads(line)
+                                                    if o.get("order_id") != placed_order.get("order_id"):
+                                                        all_pending.append(o)
+                                                except:
+                                                    pass
+                                    
+                                    pending_file.parent.mkdir(parents=True, exist_ok=True)
+                                    with pending_file.open("w", encoding="utf-8") as f:
+                                        for o in all_pending:
+                                            f.write(json.dumps(o, ensure_ascii=False) + "\n")
+                                    print(f"[MARKET ORDER] ✅ Removed {symbol} order from pending (remaining: {len(all_pending)})")
+                                except Exception as e3:
+                                    print(f"[MARKET ORDER] ⚠️ WARNING: Failed to clean pending_orders.jsonl: {e3}")
                         except Exception as e2:
-                            print(f"[MARKET ORDER] ERROR: Failed to manually process order: {e2}")
+                            print(f"[MARKET ORDER] ❌ ERROR: Fallback method also failed: {e2}")
                             import traceback
                             traceback.print_exc()
+                    
+                    # 方法3: 最后保障 - 如果所有方法都失败，至少记录到 trades.jsonl
+                    if not order_recorded:
+                        print(f"[MARKET ORDER] ⚠️ CRITICAL: All order recording methods failed, logging to trades.jsonl as backup")
+                        try:
+                            trade_logger.log(
+                                symbol=symbol,
+                                action="BUY",
+                                price=current_price,
+                                quantity=quantity,
+                                amount=actual_cost,
+                                status="SUCCESS",  # 交易成功，只是订单记录失败
+                                reason=f"Order recorded via fallback (order_id: {placed_order.get('order_id') if placed_order else 'N/A'})",
+                            )
+                            print(f"[MARKET ORDER] ✅ Backup: Logged {symbol} trade to trades.jsonl")
+                        except Exception as e3:
+                            print(f"[MARKET ORDER] ❌ CRITICAL ERROR: Even backup logging failed: {e3}")
+                            # 最后的最后，至少打印到控制台
+                            print(f"[MARKET ORDER] ⚠️⚠️⚠️ CRITICAL: Order may be lost! {symbol} BUY x{quantity} @ ${current_price:.2f}")
+                    
+                    # 确保 placed_order 存在（用于后续代码）
+                    if not placed_order:
+                        # 创建最小订单对象
+                        # datetime already imported at top
+                        now = datetime.now(timezone.utc)
+                        placed_order = {
+                            "order_id": f"{symbol}_BUY_{now.date().isoformat()}_{now.timestamp()}",
+                            "symbol": symbol,
+                            "action": "BUY",
+                            "quantity": quantity,
+                            "limit_price": current_price,
+                            "status": "FILLED" if order_recorded else "UNKNOWN",
+                        }
                     
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的BUY订单
@@ -2294,6 +2437,11 @@ def execute_daily_trade(
                     print(f"[MARKET ORDER] BUY {symbol} x{quantity} @ ${current_price:.2f} (FILLED immediately, cost=${estimated_cost:.2f}, remaining_cash=${remaining_cash:.2f})")
                     
                 except Exception as e:
+                    # CRITICAL FIX: Print detailed error information
+                    print(f"[MARKET ORDER] ❌ ERROR: Order placement failed for {symbol}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    
                     execution_errors.append(f"BUY {symbol} order placement failed: {e}")
                     trade_logger.log(
                         symbol=symbol,
@@ -2380,23 +2528,23 @@ def execute_daily_trade(
                         execution_errors.append(f"SELL {symbol} skipped: insufficient shares (need {quantity}, have {available_qty})")
                         continue
                     
+                    # CRITICAL: 市价单必须100%记录 - 使用多重保障机制（SELL订单）
                     # 市价单：立即成交，不挂单
                     # 先执行交易以获取realized_pnl（在创建订单前）
                     realized_pnl = portfolio.sell(symbol, quantity, current_price)
                     
-                    # 交易成功后，创建订单记录（标记为已成交）
-                    placed_order = order_manager.place_order(
-                        symbol=symbol,
-                        action="SELL",
-                        quantity=quantity,
-                        limit_price=current_price,  # 市价单：使用当前价格
-                        price_range={
+                    # 准备订单数据
+                    order_data = {
+                        "symbol": symbol,
+                        "action": "SELL",
+                        "quantity": quantity,
+                        "limit_price": current_price,
+                        "price_range": {
                             "min": current_price,
                             "max": current_price,
                         },
-                    )
+                    }
                     
-                    # 立即标记为已成交（市价单保证成交）
                     fill_result = {
                         "filled": True,
                         "fill_price": current_price,
@@ -2405,58 +2553,146 @@ def execute_daily_trade(
                         "daily_low": current_price,
                         "current_price": current_price,
                     }
-                    # CRITICAL FIX: 传递realized_pnl给mark_order_filled，确保SELL订单正确记录已实现损益
-                    # CRITICAL: 确保订单标记为FILLED（市价单必须立即成交）
+                    
+                    placed_order = None
+                    order_recorded = False
+                    
+                    # 方法1: 尝试使用 OrderManager 的标准流程
                     try:
-                        order_manager.mark_order_filled(placed_order, fill_result, realized_pnl=realized_pnl)
-                        # 确保订单状态是FILLED（双重保险）
-                        placed_order["status"] = "FILLED"
-                    except Exception as e:
-                        # 如果mark_order_filled失败，手动设置状态为FILLED并移除pending
-                        print(f"[MARKET ORDER] WARNING: mark_order_filled failed for {symbol}, manually setting status to FILLED: {e}")
-                        placed_order["status"] = "FILLED"
-                        placed_order["fill_price"] = current_price
-                        placed_order["fill_reason"] = "Market order executed immediately at current price"
-                        # CRITICAL: 使用UTC时区，ISO 8601格式，包含Z后缀
-                        placed_order["filled_at"] = get_utc_timestamp()
-                        placed_order["fill_result"] = fill_result
-                        # 记录realized_pnl
-                        if realized_pnl:
-                            placed_order["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
-                            placed_order["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
-                            placed_order["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
-                            placed_order["proceeds"] = realized_pnl.get("proceeds", 0.0)
+                        placed_order = order_manager.place_order(
+                            symbol=order_data["symbol"],
+                            action=order_data["action"],
+                            quantity=order_data["quantity"],
+                            limit_price=order_data["limit_price"],
+                            price_range=order_data["price_range"],
+                        )
+                        print(f"[MARKET ORDER] ✅ SELL order created via OrderManager: {placed_order.get('order_id')}")
                         
-                        # CRITICAL: 手动从pending中移除并写入filled
+                        # 立即标记为已成交（包含realized_pnl）
                         try:
-                            # 1. 写入filled_orders.jsonl（使用order_manager的路径）
+                            print(f"[MARKET ORDER] Marking {symbol} SELL order as FILLED (fill_price=${current_price:.2f}, realized_pnl=${realized_pnl.get('realized_pnl', 0):.2f})")
+                            order_manager.mark_order_filled(placed_order, fill_result, realized_pnl=realized_pnl)
+                            placed_order["status"] = "FILLED"
+                            order_recorded = True
+                            print(f"[MARKET ORDER] ✅ Successfully marked {symbol} SELL order as FILLED via OrderManager")
+                        except Exception as e:
+                            print(f"[MARKET ORDER] ⚠️ WARNING: mark_order_filled failed for SELL, will use fallback: {e}")
+                            # 继续到备用方法
+                    except Exception as e:
+                        print(f"[MARKET ORDER] ⚠️ WARNING: place_order() failed for SELL, will use fallback: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # 继续到备用方法
+                    
+                    # 方法2: 备用机制 - 如果 OrderManager 失败，直接写入 filled_orders.jsonl
+                    if not order_recorded:
+                        print(f"[MARKET ORDER] Using fallback method to record {symbol} SELL order")
+                        try:
+                            # 创建订单ID（如果place_order失败，手动创建）
+                            if not placed_order:
+                                # datetime already imported at top
+                                now = datetime.now(timezone.utc)
+                                order_id = f"{symbol}_SELL_{now.date().isoformat()}_{now.timestamp()}"
+                                placed_at = now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+                                
+                                placed_order = {
+                                    "order_id": order_id,
+                                    "symbol": symbol,
+                                    "action": "SELL",
+                                    "quantity": quantity,
+                                    "limit_price": current_price,
+                                    "price_range": order_data["price_range"],
+                                    "placed_at": placed_at,
+                                    "status": "FILLED",
+                                    "fill_price": current_price,
+                                    "filled_at": get_utc_timestamp(),
+                                    "fill_reason": "Market order executed immediately at current price",
+                                    "daily_high": current_price,
+                                    "daily_low": current_price,
+                                    "fill_result": fill_result,
+                                }
+                            
+                            # 记录realized_pnl
+                            if realized_pnl:
+                                placed_order["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
+                                placed_order["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
+                                placed_order["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
+                                placed_order["proceeds"] = realized_pnl.get("proceeds", 0.0)
+                                placed_order["fill_result"]["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
+                                placed_order["fill_result"]["realized_pnl_pct"] = realized_pnl.get("realized_pnl_pct", 0.0)
+                                placed_order["fill_result"]["cost_basis"] = realized_pnl.get("cost_basis", 0.0)
+                                placed_order["fill_result"]["proceeds"] = realized_pnl.get("proceeds", 0.0)
+                            
+                            # 确保目录存在
                             filled_file = order_manager.filled_orders_file
+                            filled_file.parent.mkdir(parents=True, exist_ok=True)
+                            
+                            # 直接写入 filled_orders.jsonl
                             with filled_file.open("a", encoding="utf-8") as f:
                                 f.write(json.dumps(placed_order, ensure_ascii=False) + "\n")
                             
-                            # 2. 从pending_orders.jsonl中移除（使用order_manager的路径）
-                            pending_file = order_manager.pending_orders_file
-                            if pending_file.exists():
-                                all_pending = []
-                                with pending_file.open("r", encoding="utf-8") as f:
-                                    for line in f:
-                                        if line.strip():
-                                            try:
-                                                o = json.loads(line)
-                                                if o.get("order_id") != placed_order.get("order_id"):
-                                                    all_pending.append(o)
-                                            except:
-                                                pass
-                                
-                                with pending_file.open("w", encoding="utf-8") as f:
-                                    for o in all_pending:
-                                        f.write(json.dumps(o, ensure_ascii=False) + "\n")
+                            order_recorded = True
+                            print(f"[MARKET ORDER] ✅ Fallback: Successfully wrote {symbol} SELL order to {filled_file}")
                             
-                            print(f"[MARKET ORDER] Manually moved {symbol} order to filled_orders.jsonl and removed from pending")
+                            # 如果 pending_orders.jsonl 中有这个订单，移除它
+                            pending_file = order_manager.pending_orders_file
+                            if pending_file.exists() and placed_order.get("order_id"):
+                                try:
+                                    all_pending = []
+                                    with pending_file.open("r", encoding="utf-8") as f:
+                                        for line in f:
+                                            if line.strip():
+                                                try:
+                                                    o = json.loads(line)
+                                                    if o.get("order_id") != placed_order.get("order_id"):
+                                                        all_pending.append(o)
+                                                except:
+                                                    pass
+                                    
+                                    pending_file.parent.mkdir(parents=True, exist_ok=True)
+                                    with pending_file.open("w", encoding="utf-8") as f:
+                                        for o in all_pending:
+                                            f.write(json.dumps(o, ensure_ascii=False) + "\n")
+                                    print(f"[MARKET ORDER] ✅ Removed {symbol} SELL order from pending (remaining: {len(all_pending)})")
+                                except Exception as e3:
+                                    print(f"[MARKET ORDER] ⚠️ WARNING: Failed to clean pending_orders.jsonl: {e3}")
                         except Exception as e2:
-                            print(f"[MARKET ORDER] ERROR: Failed to manually process order: {e2}")
+                            print(f"[MARKET ORDER] ❌ ERROR: Fallback method also failed for SELL: {e2}")
                             import traceback
                             traceback.print_exc()
+                    
+                    # 方法3: 最后保障 - 如果所有方法都失败，至少记录到 trades.jsonl
+                    if not order_recorded:
+                        print(f"[MARKET ORDER] ⚠️ CRITICAL: All order recording methods failed for SELL, logging to trades.jsonl as backup")
+                        try:
+                            trade_logger.log(
+                                symbol=symbol,
+                                action="SELL",
+                                price=current_price,
+                                quantity=quantity,
+                                amount=current_price * quantity,
+                                status="SUCCESS",
+                                reason=f"Order recorded via fallback (order_id: {placed_order.get('order_id') if placed_order else 'N/A'}, realized_pnl: ${realized_pnl.get('realized_pnl', 0):.2f})",
+                            )
+                            print(f"[MARKET ORDER] ✅ Backup: Logged {symbol} SELL trade to trades.jsonl")
+                        except Exception as e3:
+                            print(f"[MARKET ORDER] ❌ CRITICAL ERROR: Even backup logging failed for SELL: {e3}")
+                            print(f"[MARKET ORDER] ⚠️⚠️⚠️ CRITICAL: SELL order may be lost! {symbol} SELL x{quantity} @ ${current_price:.2f}, realized_pnl=${realized_pnl.get('realized_pnl', 0):.2f}")
+                    
+                    # 确保 placed_order 存在（用于后续代码）
+                    if not placed_order:
+                        # datetime already imported at top
+                        now = datetime.now(timezone.utc)
+                        placed_order = {
+                            "order_id": f"{symbol}_SELL_{now.date().isoformat()}_{now.timestamp()}",
+                            "symbol": symbol,
+                            "action": "SELL",
+                            "quantity": quantity,
+                            "limit_price": current_price,
+                            "status": "FILLED" if order_recorded else "UNKNOWN",
+                        }
+                        if realized_pnl:
+                            placed_order["realized_pnl"] = realized_pnl.get("realized_pnl", 0.0)
                     
                     placed_orders.append(placed_order)
                     new_orders_count += 1  # 记录新创建的SELL订单

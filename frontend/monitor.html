@@ -4872,7 +4872,9 @@
                         html += `</div>`;
                         
                         if (toolsUsed.length > 0) {
-                            html += `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 10px; padding-left: 30px;">🔧 Tools: ${toolsUsed.join(', ')}</div>`;
+                            // CRITICAL FIX: 去重 tools_used，每種工具只顯示一次（即使針對不同公司）
+                            const uniqueTools = [...new Set(toolsUsed)];
+                            html += `<div style="font-size: 11px; color: #94a3b8; margin-bottom: 10px; padding-left: 30px;">🔧 Tools: ${uniqueTools.join(', ')}</div>`;
                         }
                         
                         if (summaryText) {
@@ -4882,22 +4884,112 @@
                                 if (extractedFromCoordinator.size > 0) {
                                     html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
                                 } else {
-                                    // Show coordinator summary with clean formatting
-                                    let escapedText = escapeHtml(summaryText);
-                                    escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<span style="color: #60a5fa; font-weight: 600;">$1</span>');
-                                    escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
-                                    escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
-                                    escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
-                                    escapedText = escapedText.replace(/\n/g, '<br>');
-                                    escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                    // CRITICAL FIX: 嘗試解析結構化部分
+                                    const sections = parseCoordinatorSections(summaryText);
                                     
-                                    const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                    html += `<div style="position: relative;">`;
-                                    html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
-                                    html += `<div style="text-align: center; margin-top: 10px;">`;
-                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
-                                    html += `</div>`;
-                                    html += `</div>`;
+                                    if (sections) {
+                                        // 使用結構化顯示
+                                        const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                        html += `<div style="position: relative;">`;
+                                        html += `<div id="${containerId}" style="padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 600px; overflow-y: auto; overflow-x: hidden;">`;
+                                        
+                                        // 顯示開頭介紹（如果有）
+                                        if (sections.intro) {
+                                            const introText = escapeHtml(sections.intro);
+                                            html += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; margin-bottom: 16px; padding: 12px; background: rgba(34, 211, 238, 0.05); border-radius: 4px; border-left: 3px solid #22d3ee;">${introText}</div>`;
+                                        }
+                                        
+                                        // 顯示 Consensus Stance（始終展開）
+                                        if (sections.consensusStance) {
+                                            html += formatCollapsibleSection(
+                                                `🎯 Consensus Stance: ${sections.consensusStance}`,
+                                                sections.consensusStance,
+                                                `${containerId}-stance`,
+                                                true
+                                            );
+                                        }
+                                        
+                                        // 顯示 Key Insights
+                                        if (sections.keyInsights) {
+                                            html += formatCollapsibleSection(
+                                                '💡 Key Insights',
+                                                sections.keyInsights,
+                                                `${containerId}-insights`,
+                                                false
+                                            );
+                                        }
+                                        
+                                        // 顯示 Consensus Areas
+                                        if (sections.consensusAreas) {
+                                            html += formatCollapsibleSection(
+                                                '✅ Consensus Areas',
+                                                sections.consensusAreas,
+                                                `${containerId}-consensus`,
+                                                false
+                                            );
+                                        }
+                                        
+                                        // 顯示 Disagreements
+                                        if (sections.disagreements) {
+                                            html += formatCollapsibleSection(
+                                                '⚡ Disagreements',
+                                                sections.disagreements,
+                                                `${containerId}-disagreements`,
+                                                false
+                                            );
+                                        }
+                                        
+                                        // 顯示 Recommended Stocks
+                                        if (sections.recommendedStocks) {
+                                            html += formatCollapsibleSection(
+                                                '📈 Recommended Stocks',
+                                                sections.recommendedStocks,
+                                                `${containerId}-stocks`,
+                                                false
+                                            );
+                                        }
+                                        
+                                        // 顯示 Final Summary
+                                        if (sections.finalSummary) {
+                                            html += formatCollapsibleSection(
+                                                '📋 Final Summary',
+                                                sections.finalSummary,
+                                                `${containerId}-summary`,
+                                                false
+                                            );
+                                        }
+                                        
+                                        // 顯示 Overall（如果有）
+                                        if (sections.overall) {
+                                            html += formatCollapsibleSection(
+                                                '📊 Overall',
+                                                sections.overall,
+                                                `${containerId}-overall`,
+                                                false
+                                            );
+                                        }
+                                        
+                                        html += `</div>`;
+                                        html += `</div>`;
+                                    } else {
+                                        // 如果無法解析結構，使用原始格式
+                                        let cleanText = stripHtml(summaryText);
+                                        let escapedText = escapeHtml(cleanText);
+                                        escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
+                                        escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
+                                        escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
+                                        escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
+                                        escapedText = escapedText.replace(/\n/g, '<br>');
+                                        escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                        
+                                        const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                        html += `<div style="position: relative;">`;
+                                        html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
+                                        html += `<div style="text-align: center; margin-top: 10px;">`;
+                                        html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
+                                        html += `</div>`;
+                                        html += `</div>`;
+                                    }
                                 }
                             } else if (agentName === 'TraderAgent' || agentName === 'RiskAnalyst') {
                                 // CRITICAL FIX: Special formatting for TraderAgent and RiskAnalyst
@@ -5099,42 +5191,120 @@
                         html += `</div>`;
                         
                         if (toolsUsed.length > 0) {
-                            html += `<div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px; padding-left: 24px;">🔧 ${toolsUsed.join(', ')}</div>`;
+                            // CRITICAL FIX: 去重 tools_used，每種工具只顯示一次（即使針對不同公司）
+                            const uniqueTools = [...new Set(toolsUsed)];
+                            html += `<div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px; padding-left: 24px;">🔧 ${uniqueTools.join(', ')}</div>`;
                         }
                         
                         if (summaryText) {
-                            // CRITICAL FIX: For DiscussionCoordinator, use clean and simple formatting
+                            // CRITICAL FIX: For DiscussionCoordinator, use structured sections with collapsible blocks
                             if (agentName === 'DiscussionCoordinator') {
-                                // Escape HTML first
-                                let escapedText = escapeHtml(summaryText);
+                                // CRITICAL FIX: 嘗試解析結構化部分
+                                const sections = parseCoordinatorSections(summaryText);
                                 
-                                // CRITICAL FIX: Clean and simple formatting - no complex parsing
-                                // Convert bold text (e.g., **Market Analyst**) to colored text
-                                escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<span style="color: #60a5fa; font-weight: 600;">$1</span>');
-                                
-                                // Convert numbered sections (e.g., "1. Consensus Stance") to clean headers
-                                escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
-                                
-                                // Convert bullet points to simple list items
-                                escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
-                                
-                                // Convert double newlines to spacing
-                                escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
-                                
-                                // Convert single newlines to breaks
-                                escapedText = escapedText.replace(/\n/g, '<br>');
-                                
-                                // Clean up any remaining formatting issues
-                                escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
-                                
-                                // Add clean container with scroll
-                                const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                html += `<div style="position: relative;">`;
-                                html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
-                                html += `<div style="text-align: center; margin-top: 10px;">`;
-                                html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
-                                html += `</div>`;
-                                html += `</div>`;
+                                if (sections) {
+                                    // 使用結構化顯示
+                                    const containerId = `coordinator-alt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                    html += `<div style="position: relative;">`;
+                                    html += `<div id="${containerId}" style="padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 600px; overflow-y: auto; overflow-x: hidden;">`;
+                                    
+                                    // 顯示開頭介紹（如果有）
+                                    if (sections.intro) {
+                                        const introText = escapeHtml(sections.intro);
+                                        html += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; margin-bottom: 16px; padding: 12px; background: rgba(34, 211, 238, 0.05); border-radius: 4px; border-left: 3px solid #22d3ee;">${introText}</div>`;
+                                    }
+                                    
+                                    // 顯示 Consensus Stance（始終展開）
+                                    if (sections.consensusStance) {
+                                        html += formatCollapsibleSection(
+                                            `🎯 Consensus Stance: ${sections.consensusStance}`,
+                                            sections.consensusStance,
+                                            `${containerId}-stance`,
+                                            true
+                                        );
+                                    }
+                                    
+                                    // 顯示 Key Insights
+                                    if (sections.keyInsights) {
+                                        html += formatCollapsibleSection(
+                                            '💡 Key Insights',
+                                            sections.keyInsights,
+                                            `${containerId}-insights`,
+                                            false
+                                        );
+                                    }
+                                    
+                                    // 顯示 Consensus Areas
+                                    if (sections.consensusAreas) {
+                                        html += formatCollapsibleSection(
+                                            '✅ Consensus Areas',
+                                            sections.consensusAreas,
+                                            `${containerId}-consensus`,
+                                            false
+                                        );
+                                    }
+                                    
+                                    // 顯示 Disagreements
+                                    if (sections.disagreements) {
+                                        html += formatCollapsibleSection(
+                                            '⚡ Disagreements',
+                                            sections.disagreements,
+                                            `${containerId}-disagreements`,
+                                            false
+                                        );
+                                    }
+                                    
+                                    // 顯示 Recommended Stocks
+                                    if (sections.recommendedStocks) {
+                                        html += formatCollapsibleSection(
+                                            '📈 Recommended Stocks',
+                                            sections.recommendedStocks,
+                                            `${containerId}-stocks`,
+                                            false
+                                        );
+                                    }
+                                    
+                                    // 顯示 Final Summary
+                                    if (sections.finalSummary) {
+                                        html += formatCollapsibleSection(
+                                            '📋 Final Summary',
+                                            sections.finalSummary,
+                                            `${containerId}-summary`,
+                                            false
+                                        );
+                                    }
+                                    
+                                    // 顯示 Overall（如果有）
+                                    if (sections.overall) {
+                                        html += formatCollapsibleSection(
+                                            '📊 Overall',
+                                            sections.overall,
+                                            `${containerId}-overall`,
+                                            false
+                                        );
+                                    }
+                                    
+                                    html += `</div>`;
+                                    html += `</div>`;
+                                } else {
+                                    // 如果無法解析結構，使用原始格式
+                                    let cleanText = stripHtml(summaryText);
+                                    let escapedText = escapeHtml(cleanText);
+                                    escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
+                                    escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
+                                    escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
+                                    escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
+                                    escapedText = escapedText.replace(/\n/g, '<br>');
+                                    escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                    
+                                    const containerId = `coordinator-alt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                    html += `<div style="position: relative;">`;
+                                    html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
+                                    html += `<div style="text-align: center; margin-top: 10px;">`;
+                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
+                                    html += `</div>`;
+                                    html += `</div>`;
+                                }
                             } else if (agentName === 'TraderAgent' || agentName === 'RiskAnalyst') {
                                 // CRITICAL FIX: Special formatting for TraderAgent and RiskAnalyst
                                 let displayText = summaryText;
@@ -5190,7 +5360,9 @@
                             html += `</div>`;
                             
                             if (toolsUsed.length > 0) {
-                                html += `<div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px; padding-left: 24px;">🔧 ${toolsUsed.join(', ')}</div>`;
+                                // CRITICAL FIX: 去重 tools_used，每種工具只顯示一次（即使針對不同公司）
+                                const uniqueTools = [...new Set(toolsUsed)];
+                                html += `<div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px; padding-left: 24px;">🔧 ${uniqueTools.join(', ')}</div>`;
                             }
                             
                             if (summaryText) {
@@ -5312,8 +5484,10 @@
                                         </div>
                                         ${analysisText ? (() => {
                                             const isCoordinator = agent && agent.toLowerCase().includes('coordinator');
-                                            const contentHtml = analysisText.includes('markdown-block') || analysisText.includes('<table') ? analysisText : escapeHtml(analysisText);
-                                            if (isCoordinator && analysisText.length > 500) {
+                                            // CRITICAL FIX: 對於 Coordinator，先移除 HTML 標籤再處理
+                                            let processedText = isCoordinator ? stripHtml(analysisText) : analysisText;
+                                            const contentHtml = processedText.includes('markdown-block') || processedText.includes('<table') ? processedText : escapeHtml(processedText);
+                                            if (isCoordinator && processedText.length > 500) {
                                                 // For long DiscussionCoordinator content, add collapsible container
                                                 const containerId = `conv-coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                                                 return `<div style="position: relative;">
@@ -5827,10 +6001,16 @@
                                     ${toolsSummaryHtml}
                                     ${entry_type === 'tool' && !toolsSummaryHtml ? (toolHtml + toolResultHtml) : ''}
                                     ${entry_type === 'tool' && toolsSummaryHtml ? toolResultHtml : ''}
-                                    ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
-                                        <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
-                                        <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${analysisText.includes('<table') || analysisText.includes('markdown-block') ? analysisText : escapeHtml(analysisText)}</div>
-                                    </div>` : ''}
+                                    ${analysisText ? (() => {
+                                        // CRITICAL FIX: 對於 Coordinator，先移除 HTML 標籤
+                                        const isCoordinator = agent && agent.toLowerCase().includes('coordinator');
+                                        let processedText = isCoordinator ? stripHtml(analysisText) : analysisText;
+                                        const displayText = processedText.includes('<table') || processedText.includes('markdown-block') ? processedText : escapeHtml(processedText);
+                                        return `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
+                                            <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
+                                            <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${displayText}</div>
+                                        </div>`;
+                                    })() : ''}
                                     ${entry_type === 'discussion' && !analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${formatConversationContent(content_text, entry_type, agent)}</div>` : ''}
                                 </div>
                             `;
@@ -6009,7 +6189,7 @@
             
             // Re-render conversations with filter
             if (window.currentConversations) {
-                renderConversationsOverview(window.currentConversations);
+                renderConversationsOverview(window.currentConversations, window.toolResultsByCategory || null);
             }
         }
         
@@ -6097,7 +6277,7 @@
         function filterTechnicalStocks(symbol) {
             currentStockFilter = symbol;
             if (window.currentConversations) {
-                renderConversationsOverview(window.currentConversations);
+                renderConversationsOverview(window.currentConversations, window.toolResultsByCategory || null);
             }
         }
         
@@ -6308,7 +6488,7 @@
         function filterFundamentalStocks(symbol) {
             currentStockFilter = symbol;
             if (window.currentConversations) {
-                renderConversationsOverview(window.currentConversations);
+                renderConversationsOverview(window.currentConversations, window.toolResultsByCategory || null);
             }
         }
         
@@ -6376,8 +6556,19 @@
             // Show all critical agents + top 3 from other agents
             const latestDiscussions = [...criticalDiscussions, ...otherDiscussions.slice(0, 3)];
             
-            // 获取工具记录（不限制数量）
-            const toolEntries = sortedConversations.filter(c => (c.type || 'discussion') === 'tool');
+            // CRITICAL FIX: 获取工具记录（不限制数量，包括所有 round 1-3 的工具）
+            // 只显示成功使用的工具（round 1-3），不显示 round 0 的旧工具记录
+            const toolEntries = sortedConversations.filter(c => {
+                const isTool = (c.type || 'discussion') === 'tool';
+                if (!isTool) return false;
+                // CRITICAL FIX: 只显示讨论轮次中的工具（round 1-3），不显示 round 0 的旧工具
+                const round = c.round || 0;
+                const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
+                // 显示 round 1-3 的工具，或者没有 round 字段的工具（向后兼容）
+                return roundNum >= 1 && roundNum <= 3 || roundNum === 0 && !c.hasOwnProperty('round');
+            });
+            
+            console.log(`[Filter] Found ${toolEntries.length} tool entries (round 1-3 or legacy)`);
             
             // 合并：最近三次讨论 + 所有工具记录
             let filteredConversations = [...latestDiscussions, ...toolEntries];
@@ -6419,6 +6610,63 @@
                     return isTool;
                 });
                 console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
+                
+                // CRITICAL FIX: If no tool entries found in conversations, try to get from tool_results_by_category
+                // Use the parameter passed to function, or fallback to global window variable
+                const availableToolResults = toolResultsByCategory || window.toolResultsByCategory || null;
+                if (filteredConversations.length === 0 && availableToolResults) {
+                    console.log(`[Filter] No tool entries in conversations, checking tool_results_by_category`);
+                    console.log(`[Filter] Available categories:`, Object.keys(availableToolResults));
+                    
+                    // Map agent names to tool categories
+                    const agentToCategoryMap = {
+                        'fundamentalanyst': 'fundamental',  // FundamentalAnalyst -> fundamental
+                        'technicalanalyst': 'market',  // TechnicalAnalyst -> market category
+                        'marketanalyst': 'market',  // MarketAnalyst -> market category
+                        'sentimentanalyst': 'news',  // SentimentAnalyst -> news category
+                        'riskanalyst': 'risk'  // RiskAnalyst -> risk category
+                    };
+                    
+                    const filterLower = currentAgentFilter.toLowerCase();
+                    const category = agentToCategoryMap[filterLower];
+                    
+                    console.log(`[Filter] Agent: ${currentAgentFilter}, Lower: ${filterLower}, Category: ${category}`);
+                    
+                    if (category && availableToolResults[category]) {
+                        console.log(`[Filter] Found ${availableToolResults[category].length} tools in category: ${category}`);
+                        
+                        // Filter tool results by agent name
+                        const categoryTools = availableToolResults[category].filter(toolEntry => {
+                            const toolAgent = (toolEntry.agent || '').toLowerCase();
+                            const matches = toolAgent.includes(filterLower) || filterLower.includes(toolAgent);
+                            if (!matches) {
+                                console.log(`[Filter] Tool entry agent mismatch: "${toolAgent}" vs "${filterLower}"`);
+                            }
+                            return matches;
+                        });
+                        
+                        console.log(`[Filter] Found ${categoryTools.length} tools matching agent: ${currentAgentFilter}`);
+                        
+                        if (categoryTools.length > 0) {
+                            // Convert tool_results_by_category entries to conversation format
+                            filteredConversations = categoryTools.map(toolEntry => ({
+                                type: 'tool',
+                                agent: toolEntry.agent || currentAgentFilter,
+                                tool_name: toolEntry.tool_name || '',
+                                tool_result: toolEntry.tool_result || {},
+                                timestamp: toolEntry.timestamp || '',
+                                content: `Tool used: ${toolEntry.tool_name || ''}: ${JSON.stringify(toolEntry.tool_result || {})}`
+                            }));
+                            console.log(`[Filter] Converted ${filteredConversations.length} tool entries from tool_results_by_category`);
+                        } else {
+                            console.log(`[Filter] No tools in category ${category} match agent ${currentAgentFilter}`);
+                        }
+                    } else {
+                        console.log(`[Filter] Category ${category} not found or empty in tool_results_by_category`);
+                    }
+                } else if (filteredConversations.length === 0) {
+                    console.log(`[Filter] No tool_results_by_category available (toolResultsByCategory=${!!toolResultsByCategory}, window.toolResultsByCategory=${!!window.toolResultsByCategory})`);
+                }
                 
                 // CRITICAL FIX: Filter by stock symbol for TechnicalAnalyst
                 if (currentAgentFilter === 'TechnicalAnalyst' && currentStockFilter !== 'all') {
@@ -6516,6 +6764,15 @@
                         
                         const agentIcon = getAgentIcon(agent);
                         
+                        // CRITICAL FIX: Display round information for tools (round 1-3)
+                        let roundDisplay = '';
+                        if (entry_type === 'tool' && round) {
+                            const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
+                            if (roundNum >= 1 && roundNum <= 3) {
+                                roundDisplay = `<span style="color: #8b5cf6; font-weight: 600; margin-left: 8px;">Round ${roundNum}</span>`;
+                            }
+                        }
+                        
                         // Parse tool information if it's a tool entry
                         let toolHtml = '';
                         let toolResultHtml = '';
@@ -6524,7 +6781,7 @@
                             // 尝试解析工具信息
                             toolInfo = parseToolInfo(content);
                             if (toolInfo) {
-                                toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolInfo.name)}</strong></div>`;
+                                toolHtml = `<div class="conversation-meta" style="color: #f59e0b; font-weight: 600;">🔧 Tool: <strong>${escapeHtml(toolInfo.name)}</strong>${roundDisplay}</div>`;
                                 if (toolInfo.result) {
                                     const tableHtml = formatToolResultAsTable(toolInfo.result, toolInfo.name);
                                     toolResultHtml = `<div class="conversation-tool-result" style="background: rgba(245, 158, 11, 0.1); padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 3px solid #f59e0b; font-size: 13px;">
@@ -6770,8 +7027,9 @@
                         }
                         
                         // 获取工具名称（如果有），每个工具分开显示
+                        // CRITICAL FIX: 去重 tools_used，每種工具只顯示一次（即使針對不同公司）
                         const toolsUsed = c.tools_used && Array.isArray(c.tools_used) && c.tools_used.length > 0 
-                            ? c.tools_used 
+                            ? [...new Set(c.tools_used)]  // 去重但保持順序
                             : [];
                         // 每个工具一个独立的badge，而不是用逗号连接
                         const toolsBadges = toolsUsed.map(tool => 
@@ -6789,9 +7047,16 @@
                                 </div>
                                 ${round ? `<div class="conversation-meta" style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Round ${round}</div>` : ''}
                                 ${stanceHtml}
-                                ${analysisText ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
-                                    <div style="color: #ffffff; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; font-weight: 400;">${analysisText.includes('markdown-block') || analysisText.includes('<table') ? analysisText : escapeHtml(analysisText)}</div>
-                                </div>` : (content && entry_type === 'discussion' ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${formatConversationContent(content, entry_type, agent)}</div>` : '')}
+                                ${analysisText ? (() => {
+                                    // CRITICAL FIX: 對於 Coordinator，先移除 HTML 標籤
+                                    const agentName = c.agent || c.agent_name || '';
+                                    const isCoordinator = agentName && agentName.toLowerCase().includes('coordinator');
+                                    let processedText = isCoordinator ? stripHtml(analysisText) : analysisText;
+                                    const displayText = processedText.includes('markdown-block') || processedText.includes('<table') ? processedText : escapeHtml(processedText);
+                                    return `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
+                                        <div style="color: #ffffff; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; font-weight: 400;">${displayText}</div>
+                                    </div>`;
+                                })() : (content && entry_type === 'discussion' ? `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 13px; line-height: 1.6; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;">${formatConversationContent(content, entry_type, agent)}</div>` : '')}
                             </div>`;
                     }).join('')}
                 </div>
@@ -8732,6 +8997,173 @@
         }
 
         // Escape HTML to prevent XSS
+        // CRITICAL FIX: 移除所有 HTML 標籤，只保留純文字
+        function stripHtml(html) {
+            if (!html) return '';
+            const tmp = document.createElement('DIV');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        }
+        
+        // CRITICAL FIX: 解析 DiscussionCoordinator 文本，提取結構化部分
+        function parseCoordinatorSections(text) {
+            if (!text) return null;
+            
+            const cleanText = stripHtml(text);
+            const sections = {
+                intro: '',
+                consensusStance: '',
+                keyInsights: '',
+                consensusAreas: '',
+                disagreements: '',
+                recommendedStocks: '',
+                finalSummary: '',
+                overall: ''
+            };
+            
+            // 提取 Consensus Stance（支持多種格式）
+            const stancePatterns = [
+                /(?:Consensus\s+Stance|Consensus|Stance)[\s:]*([A-Z]+(?:\s+[A-Z]+)*)/i,
+                /(?:Consensus\s+Stance)[\s:]*([A-Z]+(?:\s+[A-Z]+)*)/i
+            ];
+            for (const pattern of stancePatterns) {
+                const match = cleanText.match(pattern);
+                if (match) {
+                    sections.consensusStance = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 提取 Key Insights（改進正則表達式，更準確地匹配）
+            const keyInsightsPatterns = [
+                /(?:Key\s+Insights?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Consensus\s+Areas?|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall)|Consensus\s+Areas?|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
+                /Key\s+Insights?[\s:]*([\s\S]*?)(?=Consensus\s+Areas?|Disagreements?|Recommended|Final|Overall|$)/i
+            ];
+            for (const pattern of keyInsightsPatterns) {
+                const match = cleanText.match(pattern);
+                if (match && match[1].trim().length > 20) {
+                    sections.keyInsights = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 提取 Consensus Areas
+            const consensusAreasPatterns = [
+                /(?:Consensus\s+Areas?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall)|Disagreements?|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
+                /Consensus\s+Areas?[\s:]*([\s\S]*?)(?=Disagreements?|Recommended|Final|Overall|$)/i
+            ];
+            for (const pattern of consensusAreasPatterns) {
+                const match = cleanText.match(pattern);
+                if (match && match[1].trim().length > 20) {
+                    sections.consensusAreas = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 提取 Disagreements
+            const disagreementsPatterns = [
+                /(?:Disagreements?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Recommended\s+Stocks?|Final\s+Summary|Overall)|Recommended\s+Stocks?|Final\s+Summary|Overall|$)/i,
+                /Disagreements?[\s:]*([\s\S]*?)(?=Recommended|Final|Overall|$)/i
+            ];
+            for (const pattern of disagreementsPatterns) {
+                const match = cleanText.match(pattern);
+                if (match && match[1].trim().length > 20) {
+                    sections.disagreements = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 提取 Recommended Stocks
+            const recommendedPatterns = [
+                /(?:Recommended\s+Stocks?)[\s:]*([\s\S]*?)(?=\d+\.\s*(?:Final\s+Summary|Overall)|Final\s+Summary|Overall|$)/i,
+                /Recommended\s+Stocks?[\s:]*([\s\S]*?)(?=Final|Overall|$)/i
+            ];
+            for (const pattern of recommendedPatterns) {
+                const match = cleanText.match(pattern);
+                if (match && match[1].trim().length > 20) {
+                    sections.recommendedStocks = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 提取 Final Summary
+            const finalSummaryPatterns = [
+                /(?:Final\s+Summary)[\s:]*([\s\S]*?)(?=\d+\.\s*Overall|Overall|$)/i,
+                /Final\s+Summary[\s:]*([\s\S]*?)(?=Overall|$)/i
+            ];
+            for (const pattern of finalSummaryPatterns) {
+                const match = cleanText.match(pattern);
+                if (match && match[1].trim().length > 20) {
+                    sections.finalSummary = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 提取 Overall
+            const overallMatch = cleanText.match(/(?:Overall)[\s:]*([\s\S]*?)$/i);
+            if (overallMatch && overallMatch[1].trim().length > 20) {
+                sections.overall = overallMatch[1].trim();
+            }
+            
+            // 提取開頭介紹（在 Consensus Stance 或 Key Insights 之前）
+            const introPatterns = [
+                /^([\s\S]*?)(?=Consensus\s+Stance|Key\s+Insights)/i,
+                /^([\s\S]*?)(?=\d+\.\s*(?:Consensus|Key|Consensus\s+Areas))/i
+            ];
+            for (const pattern of introPatterns) {
+                const match = cleanText.match(pattern);
+                if (match && match[1].trim().length > 10) {
+                    sections.intro = match[1].trim();
+                    break;
+                }
+            }
+            
+            // 清理每個部分：移除多餘的空白和換行
+            Object.keys(sections).forEach(key => {
+                if (sections[key]) {
+                    sections[key] = sections[key].replace(/\n{3,}/g, '\n\n').trim();
+                }
+            });
+            
+            // 檢查是否有任何部分被提取（至少要有2個部分才算成功）
+            const extractedSections = Object.values(sections).filter(s => s && s.length > 0);
+            
+            return extractedSections.length >= 2 ? sections : null;
+        }
+        
+        // CRITICAL FIX: 格式化單個區塊為可折疊的 HTML
+        function formatCollapsibleSection(title, content, sectionId, defaultExpanded = false) {
+            if (!content || content.trim().length === 0) return '';
+            
+            const escapedContent = escapeHtml(content);
+            // 格式化加粗文本
+            let formattedContent = escapedContent.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
+            // 格式化編號列表
+            formattedContent = formattedContent.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 8px; margin-bottom: 4px;">$1. $2</div>');
+            // 格式化項目符號
+            formattedContent = formattedContent.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 16px; margin-bottom: 4px; color: #cbd5e1; line-height: 1.6;">• $1</div>');
+            // 格式化換行
+            formattedContent = formattedContent.replace(/\n\n+/g, '<div style="height: 8px;"></div>');
+            formattedContent = formattedContent.replace(/\n/g, '<br>');
+            
+            const isExpanded = defaultExpanded ? 'none' : '400px';
+            const buttonText = defaultExpanded ? '▲ Collapse' : '▼ Expand';
+            
+            return `
+                <div style="margin-bottom: 12px; border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 6px; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(34, 211, 238, 0.1); cursor: pointer;" onclick="(function(){const el=document.getElementById('${sectionId}');const btn=document.getElementById('${sectionId}-btn');if(el.style.maxHeight==='none'){el.style.maxHeight='400px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();">
+                        <span style="font-size: 14px; font-weight: 600; color: #22d3ee;">${title}</span>
+                        <span id="${sectionId}-btn" style="font-size: 11px; color: #22d3ee; user-select: none;">${buttonText}</span>
+                    </div>
+                    <div id="${sectionId}" style="max-height: ${isExpanded}; overflow: hidden; transition: max-height 0.3s ease;">
+                        <div style="padding: 12px 14px; font-size: 13px; color: #cbd5e1; line-height: 1.7; word-wrap: break-word; overflow-wrap: break-word;">
+                            ${formattedContent}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -11916,6 +12348,31 @@
             
             // DEBUG: Log input data
             console.log(`[renderExecutionDetails] Received ${trades?.length || 0} trades`);
+            if (trades && trades.length > 0) {
+                console.log(`[renderExecutionDetails] Sample trade:`, {
+                    symbol: trades[0].symbol,
+                    side: trades[0].side,
+                    action: trades[0].action,
+                    status: trades[0].status,
+                    quantity: trades[0].quantity,
+                    price: trades[0].price,
+                    fill_price: trades[0].fill_price,
+                    limit_price: trades[0].limit_price,
+                    placed_at: trades[0].placed_at,
+                    filled_at: trades[0].filled_at,
+                    timestamp: trades[0].timestamp,
+                    order_id: trades[0].order_id
+                });
+                console.log(`[renderExecutionDetails] All trades summary:`, trades.map(t => ({
+                    symbol: t.symbol,
+                    action: t.action,
+                    status: t.status,
+                    quantity: t.quantity,
+                    order_id: t.order_id
+                })));
+            } else {
+                console.log(`[renderExecutionDetails] No trades data received or empty array`);
+            }
             
             // CRITICAL FIX: Show all orders (not just today's) - users need to see all buy/sell orders
             // Filter to show all orders (no date restriction)
@@ -11924,23 +12381,43 @@
             // 保存所有交易数据用于分页
             executionAllTrades = todayTrades || [];
             
-            // 去重：使用 symbol|side|quantity|price 作为唯一键
+            // CRITICAL FIX: 改进去重逻辑 - 使用 order_id 作为主要去重键（如果存在）
+            // 如果没有 order_id，则使用 symbol|side|quantity|price 作为备用键
             const seen = new Set();
+            const seenByOrderId = new Set();
             const uniqueTrades = [];
             
             for (const trade of todayTrades) {
+                // 优先使用 order_id 去重
+                const orderId = trade.order_id;
+                if (orderId && seenByOrderId.has(orderId)) {
+                    console.log(`[renderExecutionDetails] Duplicate order_id skipped: ${orderId}`);
+                    continue;
+                }
+                
+                // 如果没有 order_id，使用 symbol|side|quantity|price 作为备用键
                 const sym = trade.symbol || '';
                 const side = (trade.side || trade.action || '').toUpperCase();
                 const qty = parseInt(trade.quantity || 0);
-                const price = parseFloat(trade.price || trade.fill_price || 0);
+                // CRITICAL FIX: 优先使用 fill_price（已成交订单），否则使用 limit_price（待处理订单）
+                const price = parseFloat(trade.fill_price || trade.price || trade.limit_price || 0);
                 const priceNormalized = Math.round(price * 100) / 100; // 保留2位小数
                 const key = `${sym}|${side}|${qty}|${priceNormalized}`;
                 
-                if (!seen.has(key)) {
+                if (orderId) {
+                    if (!seenByOrderId.has(orderId)) {
+                        seenByOrderId.add(orderId);
+                        uniqueTrades.push(trade);
+                    }
+                } else if (!seen.has(key)) {
                     seen.add(key);
                     uniqueTrades.push(trade);
+                } else {
+                    console.log(`[renderExecutionDetails] Duplicate trade skipped: ${key}`);
                 }
             }
+            
+            console.log(`[renderExecutionDetails] After deduplication: ${uniqueTrades.length} unique trades (from ${todayTrades.length} total)`);
             
             // 按状态分组：FILLED 和 PENDING（包括明日挂单）
             const filledTrades = uniqueTrades.filter(t => {

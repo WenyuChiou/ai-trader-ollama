@@ -226,8 +226,43 @@ def run_multi_analyst_discussion(
                     if prev_history:
                         prev_text = _format_discussion_history(prev_history)
                         previous_rounds_text += f"\n\n========== ROUND {prev_round} DISCUSSION ==========\n{prev_text}\n"
+            
+            # CRITICAL FIX: Include tool results from previous rounds so agents can use them when tools are skipped
+            # Note: all_tool_calls accumulates across rounds, so it already contains previous rounds' tools
+            if all_tool_calls:
+                # Group tool results by analyst and format them
+                prev_round_tools = []
+                tool_results_by_analyst = {}
+                
+                for tc in all_tool_calls:
+                    tool_name = tc.get("tool", "") or tc.get("name", "")
+                    tool_result = tc.get("result", {})
+                    analyst_name = tc.get("analyst", "Unknown")
+                    
+                    # Only include successful tool results
+                    if tool_name and tool_result:
+                        from src.agents.analysts.common import check_tool_success, format_tool_result
+                        if check_tool_success(tool_result):
+                            if analyst_name not in tool_results_by_analyst:
+                                tool_results_by_analyst[analyst_name] = []
+                            tool_summary = format_tool_result(tool_name, tool_result)
+                            tool_results_by_analyst[analyst_name].append(f"    • {tool_name}: {tool_summary}")
+                
+                # Format tool results by analyst
+                if tool_results_by_analyst:
+                    previous_rounds_text += f"\n\n========== PREVIOUS ROUNDS TOOL RESULTS ==========\n"
+                    previous_rounds_text += "The following tools were executed in previous rounds. You can reference these results in your analysis:\n\n"
+                    for analyst_name, tool_list in tool_results_by_analyst.items():
+                        previous_rounds_text += f"  {analyst_name}:\n"
+                        # Limit to 5 tools per analyst to avoid prompt bloat
+                        previous_rounds_text += "\n".join(tool_list[:5])
+                        if len(tool_list) > 5:
+                            previous_rounds_text += f"\n    ... and {len(tool_list) - 5} more tools"
+                        previous_rounds_text += "\n\n"
+                    previous_rounds_text += "**IMPORTANT**: When tools are skipped due to budget or deduplication, use the results above from previous rounds.\n"
+            
             if previous_rounds_text:
-                print(f"[ROUND {current_round}] Including previous rounds' discussion history")
+                print(f"[ROUND {current_round}] Including previous rounds' discussion history and tool results")
         else:
             previous_rounds_text = ""
         
@@ -259,7 +294,9 @@ def run_multi_analyst_discussion(
             analyst_reports["market"] = market_result
             
             # Add to discussion history
-            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst"]
+            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst" and tc.get("tool", "")]
+            tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
             discussion_history.append({
                 "analyst": "Market Analyst",
                 "stance": market_result.get("stance", "neutral"),
@@ -297,7 +334,9 @@ def run_multi_analyst_discussion(
             analyst_reports["technical"] = technical_result
             
             # Add to discussion history
-            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst"]
+            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst" and tc.get("tool", "")]
+            tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
             discussion_history.append({
                 "analyst": "Technical Analyst",
                 "stance": technical_result.get("stance", "neutral"),
@@ -339,7 +378,9 @@ def run_multi_analyst_discussion(
                 analyst_reports["fundamental"] = fundamental_result
                 
                 # Add to discussion history
-                tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst"]
+                # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+                tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst" and tc.get("tool", "")]
+                tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
                 discussion_history.append({
                     "analyst": "Fundamental Analyst",
                     "stance": fundamental_result.get("stance", "neutral"),
@@ -417,7 +458,9 @@ def run_multi_analyst_discussion(
             analyst_reports["sentiment"] = sentiment_result
             
             # Add to discussion history
-            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst"]
+            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+            tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst" and tc.get("tool", "")]
+            tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
             discussion_history.append({
                 "analyst": "Sentiment Analyst",
                 "stance": sentiment_result.get("stance", "neutral"),

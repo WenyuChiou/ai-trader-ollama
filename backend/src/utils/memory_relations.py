@@ -1,7 +1,7 @@
 # src/utils/memory_relations.py
 """
-记忆关联分析系统
-用于发现和存储记忆之间的关联关系
+Memory Relation Analysis System
+Used to discover and store relationships between memories
 """
 from __future__ import annotations
 from typing import Dict, Any, List, Set, Tuple
@@ -12,20 +12,20 @@ from pathlib import Path
 
 class MemoryRelationAnalyzer:
     """
-    记忆关联分析器
+    Memory Relation Analyzer
     
-    发现记忆之间的关联：
-    1. 相同股票的记忆关联
-    2. 相似市场条件的记忆关联
-    3. 相似决策模式的记忆关联
+    Discovers relationships between memories:
+    1. Same stock memories
+    2. Similar market condition memories
+    3. Similar decision pattern memories
     """
     
     def __init__(self, root: Path):
         """
-        初始化关联分析器
+        Initialize Relation Analyzer
         
-        参数:
-        - root: 存储根目录
+        Args:
+        - root: Storage root directory
         """
         self.root = Path(root)
         self.relations_file = self.root / "memory" / "index" / "memory_relations.json"
@@ -33,7 +33,7 @@ class MemoryRelationAnalyzer:
         self._load_relations()
     
     def _load_relations(self) -> None:
-        """加载关联关系"""
+        """Load relations"""
         if self.relations_file.exists():
             try:
                 with self.relations_file.open("r", encoding="utf-8") as f:
@@ -42,7 +42,7 @@ class MemoryRelationAnalyzer:
                 self.relations = {}
     
     def _save_relations(self) -> None:
-        """保存关联关系"""
+        """Save relations"""
         try:
             self.relations_file.parent.mkdir(parents=True, exist_ok=True)
             with self.relations_file.open("w", encoding="utf-8") as f:
@@ -52,13 +52,13 @@ class MemoryRelationAnalyzer:
     
     def analyze_memory_relations(self, memory: Dict[str, Any]) -> Dict[str, List[str]]:
         """
-        分析单个记忆的关联
+        Analyze relations for a single memory
         
-        参数:
-        - memory: 记忆字典
+        Args:
+        - memory: Memory dictionary
         
-        返回:
-        - 关联记忆的日期列表（按关联类型分组）
+        Returns:
+        - Dictionary of related memory dates grouped by relation type
         """
         date_str = memory.get("date", "")
         if not date_str:
@@ -70,7 +70,7 @@ class MemoryRelationAnalyzer:
             "similar_action": [],
         }
         
-        # 提取当前记忆的特征
+        # Extract current memory features
         decision = memory.get("decision", {})
         stocks = set(
             [order.get("symbol") for order in decision.get("buy_orders", []) if order.get("symbol")]
@@ -79,7 +79,7 @@ class MemoryRelationAnalyzer:
         stance = memory.get("discussion", {}).get("final_stance", "")
         action = decision.get("action", "")
         
-        # 查找关联记忆
+        # Find related memories
         for other_date, other_meta in self.relations.items():
             if other_date == date_str:
                 continue
@@ -88,15 +88,15 @@ class MemoryRelationAnalyzer:
             other_stance = other_meta.get("stance", "")
             other_action = other_meta.get("action", "")
             
-            # 相同股票
+            # Same stocks
             if stocks and other_stocks and stocks.intersection(other_stocks):
                 relations["same_stocks"].append(other_date)
             
-            # 相似立场
+            # Similar stance
             if stance and other_stance and stance == other_stance:
                 relations["similar_stance"].append(other_date)
             
-            # 相似动作
+            # Similar action
             if action and other_action and action == other_action:
                 relations["similar_action"].append(other_date)
         
@@ -104,16 +104,16 @@ class MemoryRelationAnalyzer:
     
     def update_relations(self, memory: Dict[str, Any]) -> None:
         """
-        更新关联关系
+        Update relations
         
-        参数:
-        - memory: 记忆字典
+        Args:
+        - memory: Memory dictionary
         """
         date_str = memory.get("date", "")
         if not date_str:
             return
         
-        # 提取记忆特征
+        # Extract memory features
         decision = memory.get("decision", {})
         buy_orders = decision.get("buy_orders", [])
         sell_orders = decision.get("sell_orders", [])
@@ -140,20 +140,19 @@ class MemoryRelationAnalyzer:
         relation_type: Optional[str] = None,
     ) -> List[str]:
         """
-        获取关联记忆
+        Get related memories
         
-        参数:
-        - date_str: 日期字符串
-        - relation_type: 关联类型（"same_stocks", "similar_stance", "similar_action"），None表示所有
+        Args:
+        - date_str: Date string
+        - relation_type: Relation type ("same_stocks", "similar_stance", "similar_action"), None for all
         
-        返回:
-        - 关联记忆的日期列表
+        Returns:
+        - List of related memory dates
         """
         if date_str not in self.relations:
             return []
         
-        # 分析关联（需要加载完整记忆，这里简化处理）
-        # 实际应该预先计算并存储
+        # Analyze relations (simplified - should pre-compute and store in production)
         related_dates = set()
         
         current_meta = self.relations[date_str]
@@ -184,8 +183,7 @@ class MemoryRelationAnalyzer:
         return list(related_dates)
     
     def remove_relation(self, date_str: str) -> None:
-        """删除关联关系"""
+        """Remove relation"""
         if date_str in self.relations:
             del self.relations[date_str]
             self._save_relations()
-

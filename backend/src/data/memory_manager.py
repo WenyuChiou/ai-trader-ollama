@@ -1,11 +1,11 @@
 # src/data/memory_manager.py
 """
-优化的 Memory 管理系统 - RAG优化版
-- 分层记忆：短期（每日）、中期（周）、长期（月）
-- 长短记忆分离：短期完整存储，中期摘要，长期压缩
-- 智能检索：基于日期、股票、决策类型 + 语义搜索
-- 记忆压缩：自动摘要和归档
-- 向量化：支持语义搜索
+Optimized Memory Management System - RAG Enhanced Version
+- Layered Memory: Short-term (daily), Medium-term (weekly), Long-term (monthly)
+- Short/Long-Term Memory Separation: Full storage for short-term, summary for medium-term, compressed for long-term
+- Intelligent Retrieval: Date, stock, decision type + semantic search
+- Memory Compression: Automatic summarization and archiving
+- Vectorization: Support for semantic search
 """
 from __future__ import annotations
 import json
@@ -16,7 +16,7 @@ from datetime import datetime, date, timedelta
 from collections import defaultdict
 import sys
 
-# 添加项目路径
+# Add project path
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -38,29 +38,29 @@ except ImportError:
 
 class MemoryManager:
     """
-    优化的 Memory 管理器 - RAG增强版
+    Optimized Memory Manager - RAG Enhanced Version
     
-    特性：
-    1. 分层记忆存储（每日/每周/每月）
-    2. 长短记忆分离（短期完整，中期摘要，长期压缩）
-    3. 智能检索（关键词 + 语义搜索）
-    4. 自动压缩（旧记忆压缩存储）
-    5. 记忆摘要（提取关键信息）
-    6. 向量化支持（语义搜索）
-    7. 缓存机制（热点记忆缓存）
+    Features:
+    1. Layered memory storage (daily/weekly/monthly)
+    2. Short/long-term memory separation (full for short-term, summary for medium-term, compressed for long-term)
+    3. Intelligent retrieval (keyword + semantic search)
+    4. Automatic compression (old memory compression and archiving)
+    5. Memory summarization (extract key information)
+    6. Vectorization support (semantic search)
+    7. Caching mechanism (hot memory cache)
     """
     
     def __init__(self, root: str | Path = "data/logs"):
         """
-        初始化 Memory Manager
+        Initialize Memory Manager
         
-        参数:
-        - root: 日志根目录
+        Args:
+        - root: Log root directory
         """
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         
-        # 加载配置
+        # Load configuration
         try:
             config = load_config()
             rag_config = config.get("rag", {})
@@ -78,30 +78,30 @@ class MemoryManager:
             self.enable_cache = True
             self.cache_size = 100
         
-        # 创建分层目录结构
-        self.daily_dir = self.root / "memory" / "daily"      # 每日记忆（短期：0-7天）
-        self.weekly_dir = self.root / "memory" / "weekly"    # 每周摘要（中期：8-30天）
-        self.monthly_dir = self.root / "memory" / "monthly"  # 每月摘要（长期：30+天）
-        self.index_dir = self.root / "memory" / "index"      # 索引文件
-        self.vectors_dir = self.root / "memory" / "vectors"  # 向量存储
+        # Create layered directory structure
+        self.daily_dir = self.root / "memory" / "daily"      # Daily memory (short-term: 0-7 days)
+        self.weekly_dir = self.root / "memory" / "weekly"    # Weekly summary (medium-term: 8-30 days)
+        self.monthly_dir = self.root / "memory" / "monthly"  # Monthly summary (long-term: 30+ days)
+        self.index_dir = self.root / "memory" / "index"      # Index files
+        self.vectors_dir = self.root / "memory" / "vectors"  # Vector storage
         
         for d in [self.daily_dir, self.weekly_dir, self.monthly_dir, self.index_dir]:
             d.mkdir(parents=True, exist_ok=True)
         
-        # 初始化向量存储、embedding生成器、评分器和关联分析器
+        # Initialize vector store, embedding generator, scorer, and relation analyzer
         self.vector_store: Optional[VectorStore] = None
         self.embedding_generator: Optional[EmbeddingGenerator] = None
         self.memory_scorer: Optional[MemoryScorer] = None
         self.relation_analyzer: Optional[MemoryRelationAnalyzer] = None
         
         if RAG_AVAILABLE:
-            # 初始化评分器
+            # Initialize scorer
             try:
                 self.memory_scorer = MemoryScorer()
             except Exception as e:
                 print(f"[MEMORY WARN] Failed to initialize memory scorer: {e}")
             
-            # 初始化关联分析器
+            # Initialize relation analyzer
             try:
                 self.relation_analyzer = MemoryRelationAnalyzer(root=self.root)
             except Exception as e:
@@ -129,69 +129,69 @@ class MemoryManager:
                 self.vector_store = None
                 self.embedding_generator = None
         
-        # 缓存（热点记忆）
+        # Cache (hot memories)
         self._memory_cache: Dict[str, Dict[str, Any]] = {}
         self._cache_max_size = self.cache_size
     
     def _get_memory_age_days(self, date_str: str) -> int:
-        """获取记忆年龄（天数）"""
+        """Get memory age in days"""
         try:
             memory_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             return (date.today() - memory_date).days
         except Exception:
-            return 999  # 无法解析的日期视为很旧
+            return 999  # Treat unparseable dates as very old
     
     def _is_short_term(self, date_str: str) -> bool:
-        """判断是否为短期记忆"""
+        """Check if memory is short-term"""
         return self._get_memory_age_days(date_str) < self.short_term_days
     
     def _is_medium_term(self, date_str: str) -> bool:
-        """判断是否为中期记忆"""
+        """Check if memory is medium-term"""
         age = self._get_memory_age_days(date_str)
         return self.short_term_days <= age < self.medium_term_days
     
     def _is_long_term(self, date_str: str) -> bool:
-        """判断是否为长期记忆"""
+        """Check if memory is long-term"""
         return self._get_memory_age_days(date_str) >= self.medium_term_days
     
     def _extract_key_conversation_points(self, transcript: Any) -> List[str]:
-        """提取关键对话要点（用于中期记忆）"""
+        """Extract key conversation points (for medium-term memory)"""
         if not transcript:
             return []
         
-        # 如果transcript是字符串，尝试解析
+        # If transcript is a string, try to parse
         if isinstance(transcript, str):
-            # 简单提取：每轮讨论的要点
-            # 实际应该用LLM提取，这里先用简单规则
+            # Simple extraction: key points from each discussion round
+            # Should use LLM extraction in production, using simple rules for now
             lines = transcript.split("\n")
             key_points = []
             for line in lines:
                 if any(keyword in line.lower() for keyword in ["recommend", "suggest", "conclude", "decision", "stance"]):
                     key_points.append(line.strip())
-            return key_points[:10]  # 最多10个要点
+            return key_points[:10]  # Max 10 points
         
-        # 如果transcript是列表或字典，提取关键信息
+        # If transcript is list or dict, extract key info
         if isinstance(transcript, list):
             return [str(item)[:200] for item in transcript[:10]]
         
         return []
     
     def _create_memory_summary_text(self, memory: Dict[str, Any]) -> str:
-        """创建记忆摘要文本（用于embedding）"""
+        """Create memory summary text (for embedding)"""
         parts = []
         
-        # 日期和立场
+        # Date and stance
         date_str = memory.get("date", "")
         stance = memory.get("discussion", {}).get("final_stance", "")
         if stance:
             parts.append(f"Market stance: {stance}")
         
-        # 推荐股票
+        # Recommended stocks
         recommended = memory.get("market_analysis", {}).get("recommended_stocks", [])
         if recommended:
             parts.append(f"Recommended stocks: {', '.join(recommended[:5])}")
         
-        # 决策摘要
+        # Decision summary
         decision = memory.get("decision", {})
         action = decision.get("action", "")
         buy_count = len(decision.get("buy_orders", []))
@@ -199,7 +199,7 @@ class MemoryManager:
         if action:
             parts.append(f"Action: {action} ({buy_count} buys, {sell_count} sells)")
         
-        # 风险水平
+        # Risk level
         risk_level = memory.get("risk_report", {}).get("overall_risk_level", "")
         if risk_level:
             parts.append(f"Risk level: {risk_level}")
@@ -220,15 +220,15 @@ class MemoryManager:
         compress_old: bool = True,
     ) -> None:
         """
-        保存每日记忆（优化版 - 支持长短记忆分离）
+        Save daily memory (optimized version - supports short/long-term memory separation)
         
-        参数:
-        - date: 日期 (YYYY-MM-DD)
-        - compress_old: 是否压缩旧记忆
+        Args:
+        - date: Date (YYYY-MM-DD)
+        - compress_old: Whether to compress old memories
         """
         memory_age = self._get_memory_age_days(date)
         
-        # 计算重要性分数（如果启用）
+        # Calculate importance score (if enabled)
         importance_score = None
         if self.memory_scorer:
             try:
@@ -245,9 +245,9 @@ class MemoryManager:
             except Exception as e:
                 print(f"[MEMORY WARN] Failed to calculate importance score: {e}")
         
-        # 根据记忆年龄和重要性分数决定存储策略
+        # Determine storage strategy based on memory age and importance score
         if memory_age < self.short_term_days:
-            # 短期记忆：完整存储
+            # Short-term memory: full storage
             memory = {
                 "date": date,
                 "timestamp": datetime.now().isoformat(),
@@ -262,8 +262,8 @@ class MemoryManager:
                 "discussion": {
                     "final_stance": discussion.get("final_stance"),
                     "rounds": discussion.get("rounds"),
-                    "transcript": discussion.get("transcript"),  # 完整对话历史
-                    "tool_context": discussion.get("tool_context"),  # 工具调用历史
+                    "transcript": discussion.get("transcript"),  # Full conversation history
+                    "tool_context": discussion.get("tool_context"),  # Tool call history
                     "actions": discussion.get("actions"),
                 },
                 "risk_report": risk_report,
@@ -273,7 +273,7 @@ class MemoryManager:
                 "executed_trades_count": len(executed_trades) if executed_trades else 0,
             }
         elif memory_age < self.medium_term_days:
-            # 中期记忆：摘要存储（提取关键对话片段）
+            # Medium-term memory: summary storage (extract key conversation snippets)
             transcript = discussion.get("transcript")
             key_points = self._extract_key_conversation_points(transcript)
             
@@ -294,7 +294,7 @@ class MemoryManager:
                 "discussion": {
                     "final_stance": discussion.get("final_stance"),
                     "rounds": discussion.get("rounds"),
-                    "key_points": key_points,  # 关键对话片段
+                    "key_points": key_points,  # Key conversation snippets
                     "tool_summary": self._summarize_tools(discussion.get("tool_context")),
                 },
                 "risk_report": {
@@ -310,7 +310,7 @@ class MemoryManager:
                 "executed_trades_count": len(executed_trades) if executed_trades else 0,
             }
         else:
-            # 长期记忆：高度压缩
+            # Long-term memory: highly compressed
             memory = self._create_compressed_memory({
                 "date": date,
                 "market_view": market_view,
@@ -328,28 +328,28 @@ class MemoryManager:
                 "importance_score": importance_score,
             }
         
-        # 保存每日记忆
+        # Save daily memory
         memory_file = self.daily_dir / f"{date}.json"
         with memory_file.open("w", encoding="utf-8") as f:
             json.dump(memory, f, ensure_ascii=False, indent=2)
         
-        # 更新索引
+        # Update index
         self._update_index(date, memory)
         
-        # 更新关联关系
+        # Update relations
         if self.relation_analyzer:
             try:
                 self.relation_analyzer.update_relations(memory)
             except Exception as e:
                 print(f"[MEMORY WARN] Failed to update relations: {e}")
         
-        # 生成并存储embedding（如果启用）
+        # Generate and store embedding (if enabled)
         if self.vector_store and self.embedding_generator:
             try:
                 summary_text = self._create_memory_summary_text(memory)
                 embedding = self.embedding_generator.generate_embedding(summary_text)
                 
-                # 提取元数据
+                # Extract metadata
                 decision = memory.get("decision", {})
                 buy_orders = decision.get("buy_orders", [])
                 sell_orders = decision.get("sell_orders", [])
@@ -372,18 +372,18 @@ class MemoryManager:
             except Exception as e:
                 print(f"[MEMORY WARN] Failed to generate embedding: {e}")
         
-        # 更新缓存
+        # Update cache
         if self.enable_cache:
             self._update_cache(date, memory)
         
-        # 压缩旧记忆
+        # Compress old memories
         if compress_old:
             self._compress_old_memories()
         
         print(f"[MEMORY] Saved daily memory for {date} (type: {memory.get('metadata', {}).get('memory_type', 'unknown')})")
     
     def _summarize_tools(self, tool_context: Any) -> Dict[str, Any]:
-        """总结工具调用"""
+        """Summarize tool calls"""
         if not tool_context:
             return {}
         
@@ -391,26 +391,26 @@ class MemoryManager:
             tools_used = tool_context.get("tools_used", [])
             return {
                 "tools_count": len(tools_used),
-                "tools_list": tools_used[:10],  # 最多10个工具
+                "tools_list": tools_used[:10],  # Max 10 tools
             }
         
         return {}
     
     def _update_cache(self, date: str, memory: Dict[str, Any]) -> None:
-        """更新缓存"""
-        # 如果缓存已满，删除最旧的
+        """Update cache"""
+        # If cache is full, remove oldest
         if len(self._memory_cache) >= self._cache_max_size:
-            # 删除最旧的（按日期）
+            # Remove oldest (by date)
             oldest_date = min(self._memory_cache.keys())
             del self._memory_cache[oldest_date]
         
         self._memory_cache[date] = memory
     
     def _compress_market_view(self, market_view: Dict[str, Any]) -> Dict[str, Any]:
-        """压缩市场数据（只保留关键信息）"""
+        """Compress market data (keep only key information)"""
         stocks = market_view.get("stocks", {})
         
-        # 只保留关键指标
+        # Keep only key indicators
         compressed_stocks = {}
         for symbol, data in stocks.items():
             if isinstance(data, dict):
@@ -428,10 +428,10 @@ class MemoryManager:
         }
     
     def _update_index(self, date: str, memory: Dict[str, Any]) -> None:
-        """更新索引文件（便于快速检索）"""
+        """Update index file (for fast retrieval)"""
         index_file = self.index_dir / "daily_index.json"
         
-        # 加载现有索引
+        # Load existing index
         index: Dict[str, Any] = {}
         if index_file.exists():
             try:
@@ -440,7 +440,7 @@ class MemoryManager:
             except Exception:
                 index = {}
         
-        # 提取关键信息建立索引
+        # Extract key information to build index
         decision = memory.get("decision", {})
         buy_orders = decision.get("buy_orders", [])
         sell_orders = decision.get("sell_orders", [])
@@ -459,7 +459,7 @@ class MemoryManager:
             "memory_type": memory.get("metadata", {}).get("memory_type", "unknown"),
         }
         
-        # 保存索引
+        # Save index
         with index_file.open("w", encoding="utf-8") as f:
             json.dump(index, f, ensure_ascii=False, indent=2)
     

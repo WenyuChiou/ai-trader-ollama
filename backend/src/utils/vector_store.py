@@ -1,7 +1,7 @@
 # src/utils/vector_store.py
 """
-向量存储系统 - 用于RAG系统的语义搜索
-使用numpy-based实现（轻量级，无需FAISS）
+Vector Store System for RAG Semantic Search
+Numpy-based implementation (lightweight, no FAISS required)
 """
 from __future__ import annotations
 from typing import List, Dict, Any, Optional, Tuple
@@ -15,33 +15,34 @@ import gzip
 
 class VectorStore:
     """
-    向量存储系统
-    使用numpy实现向量索引和相似度搜索
+    Vector Store System
+    
+    Uses numpy for vector indexing and similarity search
     """
     
     def __init__(self, root: Path, embedding_dim: int = 384):
         """
-        初始化向量存储
+        Initialize Vector Store
         
-        参数:
-        - root: 存储根目录
-        - embedding_dim: embedding维度
+        Args:
+        - root: Storage root directory
+        - embedding_dim: Embedding dimension
         """
         self.root = Path(root)
         self.embedding_dim = embedding_dim
         self.vectors_dir = self.root / "memory" / "vectors"
         self.vectors_dir.mkdir(parents=True, exist_ok=True)
         
-        # 内存中的向量和元数据
+        # In-memory vectors and metadata
         self.vectors: np.ndarray = np.array([])  # shape: (n, embedding_dim)
-        self.metadata: List[Dict[str, Any]] = []  # 每个向量对应的元数据
-        self.date_to_index: Dict[str, int] = {}  # 日期到索引的映射
+        self.metadata: List[Dict[str, Any]] = []  # Metadata for each vector
+        self.date_to_index: Dict[str, int] = {}  # Date to index mapping
         
-        # 加载现有向量
+        # Load existing vectors
         self._load_vectors()
     
     def _load_vectors(self) -> None:
-        """从磁盘加载向量"""
+        """Load vectors from disk"""
         vectors_file = self.vectors_dir / "vectors.npy"
         metadata_file = self.vectors_dir / "metadata.json"
         
@@ -51,7 +52,7 @@ class VectorStore:
                 with metadata_file.open("r", encoding="utf-8") as f:
                     self.metadata = json.load(f)
                 
-                # 重建日期索引
+                # Rebuild date index
                 for idx, meta in enumerate(self.metadata):
                     date_str = meta.get("date")
                     if date_str:
@@ -64,7 +65,7 @@ class VectorStore:
                 self.metadata = []
     
     def _save_vectors(self) -> None:
-        """保存向量到磁盘"""
+        """Save vectors to disk"""
         if len(self.vectors) == 0:
             return
         
@@ -87,15 +88,15 @@ class VectorStore:
         date_str: Optional[str] = None,
     ) -> int:
         """
-        添加向量
+        Add a vector
         
-        参数:
-        - embedding: embedding向量
-        - metadata: 元数据（包含date, symbol, stance等）
-        - date_str: 日期字符串（如果metadata中没有）
+        Args:
+        - embedding: Embedding vector
+        - metadata: Metadata (contains date, symbol, stance, etc.)
+        - date_str: Date string (if not in metadata)
         
-        返回:
-        - 向量索引
+        Returns:
+        - Vector index
         """
         if len(embedding) != self.embedding_dim:
             raise ValueError(
@@ -103,16 +104,16 @@ class VectorStore:
                 f"got {len(embedding)}"
             )
         
-        # 检查是否已存在（基于日期）
+        # Check if already exists (based on date)
         date_key = date_str or metadata.get("date")
         if date_key and date_key in self.date_to_index:
-            # 更新现有向量
+            # Update existing vector
             idx = self.date_to_index[date_key]
             self.vectors[idx] = np.array(embedding)
             self.metadata[idx] = metadata
             return idx
         
-        # 添加新向量
+        # Add new vector
         new_vector = np.array(embedding).reshape(1, -1)
         if len(self.vectors) == 0:
             self.vectors = new_vector
@@ -135,16 +136,16 @@ class VectorStore:
         symbol_filter: Optional[str] = None,
     ) -> List[Tuple[Dict[str, Any], float]]:
         """
-        搜索相似向量
+        Search for similar vectors
         
-        参数:
-        - query_embedding: 查询向量
-        - top_k: 返回top k结果
-        - date_filter: 日期范围过滤 (start_date, end_date)
-        - symbol_filter: 股票代码过滤
+        Args:
+        - query_embedding: Query vector
+        - top_k: Return top k results
+        - date_filter: Date range filter (start_date, end_date)
+        - symbol_filter: Stock symbol filter
         
-        返回:
-        - (metadata, similarity_score) 列表，按相似度降序排列
+        Returns:
+        - List of (metadata, similarity_score) tuples, sorted by similarity (descending)
         """
         if len(self.vectors) == 0:
             return []
@@ -155,27 +156,27 @@ class VectorStore:
                 f"got {len(query_embedding)}"
             )
         
-        # 计算余弦相似度
+        # Calculate cosine similarity
         query_vec = np.array(query_embedding).reshape(1, -1)
         
-        # 归一化向量（用于余弦相似度）
+        # Normalize vectors (for cosine similarity)
         query_norm = query_vec / (np.linalg.norm(query_vec, axis=1, keepdims=True) + 1e-8)
         vectors_norm = self.vectors / (np.linalg.norm(self.vectors, axis=1, keepdims=True) + 1e-8)
         
-        # 计算相似度
+        # Calculate similarity
         similarities = np.dot(vectors_norm, query_norm.T).flatten()
         
-        # 应用过滤
+        # Apply filters
         filtered_indices = []
         for idx, meta in enumerate(self.metadata):
-            # 日期过滤
+            # Date filter
             if date_filter:
                 meta_date = meta.get("date", "")
                 start_date, end_date = date_filter
                 if meta_date < start_date or meta_date > end_date:
                     continue
             
-            # 股票过滤
+            # Symbol filter
             if symbol_filter:
                 stocks = meta.get("stocks_involved", []) + meta.get("recommended_stocks", [])
                 if symbol_filter.upper() not in [s.upper() for s in stocks]:
@@ -183,7 +184,7 @@ class VectorStore:
             
             filtered_indices.append(idx)
         
-        # 获取top k结果
+        # Get top k results
         if not filtered_indices:
             return []
         
@@ -201,17 +202,17 @@ class VectorStore:
         return results
     
     def remove_by_date(self, date_str: str) -> bool:
-        """根据日期删除向量"""
+        """Remove vector by date"""
         if date_str not in self.date_to_index:
             return False
         
         idx = self.date_to_index[date_str]
         
-        # 删除向量和元数据
+        # Remove vector and metadata
         self.vectors = np.delete(self.vectors, idx, axis=0)
         self.metadata.pop(idx)
         
-        # 重建日期索引
+        # Rebuild date index
         self.date_to_index = {}
         for i, meta in enumerate(self.metadata):
             meta_date = meta.get("date")
@@ -221,7 +222,7 @@ class VectorStore:
         return True
     
     def get_statistics(self) -> Dict[str, Any]:
-        """获取统计信息"""
+        """Get statistics"""
         return {
             "total_vectors": len(self.vectors),
             "embedding_dimension": self.embedding_dim,
@@ -229,16 +230,15 @@ class VectorStore:
         }
     
     def _estimate_size(self) -> float:
-        """估算存储大小（MB）"""
+        """Estimate storage size (MB)"""
         if len(self.vectors) == 0:
             return 0.0
         
-        # 向量大小 + 元数据大小
+        # Vector size + metadata size
         vector_size = self.vectors.nbytes / 1024 / 1024
         metadata_size = len(json.dumps(self.metadata)) / 1024 / 1024
         return round(vector_size + metadata_size, 2)
     
     def save(self) -> None:
-        """保存向量存储"""
+        """Save vector store"""
         self._save_vectors()
-

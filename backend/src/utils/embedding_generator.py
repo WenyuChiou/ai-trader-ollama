@@ -1,7 +1,7 @@
 # src/utils/embedding_generator.py
 """
-Embedding生成器 - 用于RAG系统的向量化
-支持Ollama API和sentence-transformers两种方式
+Embedding Generator for RAG System Vectorization
+Supports Ollama API and sentence-transformers as fallback
 """
 from __future__ import annotations
 from typing import List, Optional
@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 
-# 添加项目路径
+# Add project path
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -29,8 +29,9 @@ except ImportError:
 
 class EmbeddingGenerator:
     """
-    Embedding生成器
-    优先使用Ollama API，如果不可用则fallback到sentence-transformers
+    Embedding Generator
+    
+    Priority: Ollama API, fallback to sentence-transformers if unavailable
     """
     
     def __init__(
@@ -40,21 +41,21 @@ class EmbeddingGenerator:
         fallback_model: str = "all-MiniLM-L6-v2",
     ):
         """
-        初始化Embedding生成器
+        Initialize Embedding Generator
         
-        参数:
-        - ollama_host: Ollama服务地址（默认从config读取）
-        - ollama_model: Ollama模型名称（默认使用deepseek-r1或nomic-embed-text）
-        - fallback_model: sentence-transformers模型名称
+        Args:
+        - ollama_host: Ollama service URL (default: read from config)
+        - ollama_model: Ollama model name (default: nomic-embed-text)
+        - fallback_model: sentence-transformers model name
         """
         self.ollama_host = ollama_host or self._get_ollama_host()
-        self.ollama_model = ollama_model or "nomic-embed-text"  # Ollama的embedding模型
+        self.ollama_model = ollama_model or "nomic-embed-text"  # Ollama embedding model
         self.fallback_model = fallback_model
         self._fallback_transformer = None
         self._use_ollama = self._check_ollama_available()
     
     def _get_ollama_host(self) -> str:
-        """从config获取Ollama host"""
+        """Get Ollama host from config"""
         try:
             from src.utils.config_loader import load_config
             config = load_config()
@@ -63,7 +64,7 @@ class EmbeddingGenerator:
             return "http://localhost:11434"
     
     def _check_ollama_available(self) -> bool:
-        """检查Ollama是否可用"""
+        """Check if Ollama is available"""
         if not requests:
             return False
         try:
@@ -73,7 +74,7 @@ class EmbeddingGenerator:
             return False
     
     def _get_fallback_transformer(self):
-        """获取fallback transformer（懒加载）"""
+        """Get fallback transformer (lazy loading)"""
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError(
                 "sentence-transformers not available. "
@@ -86,19 +87,19 @@ class EmbeddingGenerator:
     
     def generate_embedding(self, text: str) -> List[float]:
         """
-        生成单个文本的embedding
+        Generate embedding for a single text
         
-        参数:
-        - text: 输入文本
+        Args:
+        - text: Input text
         
-        返回:
-        - embedding向量（List[float]）
+        Returns:
+        - Embedding vector (List[float])
         """
         if not text or not text.strip():
-            # 返回零向量
-            return [0.0] * 384  # 默认维度
+            # Return zero vector
+            return [0.0] * 384  # Default dimension
         
-        # 尝试使用Ollama
+        # Try Ollama first
         if self._use_ollama:
             try:
                 return self._generate_with_ollama(text)
@@ -106,11 +107,11 @@ class EmbeddingGenerator:
                 print(f"[EMBEDDING WARN] Ollama failed: {e}, using fallback")
                 self._use_ollama = False
         
-        # Fallback到sentence-transformers
+        # Fallback to sentence-transformers
         return self._generate_with_transformer(text)
     
     def _generate_with_ollama(self, text: str) -> List[float]:
-        """使用Ollama API生成embedding"""
+        """Generate embedding using Ollama API"""
         if not requests:
             raise RuntimeError("requests library not available")
         
@@ -132,25 +133,25 @@ class EmbeddingGenerator:
         return data["embedding"]
     
     def _generate_with_transformer(self, text: str) -> List[float]:
-        """使用sentence-transformers生成embedding"""
+        """Generate embedding using sentence-transformers"""
         transformer = self._get_fallback_transformer()
         embedding = transformer.encode(text, convert_to_numpy=True)
         return embedding.tolist()
     
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         """
-        批量生成embeddings
+        Generate embeddings in batch
         
-        参数:
-        - texts: 文本列表
+        Args:
+        - texts: List of texts
         
-        返回:
-        - embedding向量列表
+        Returns:
+        - List of embedding vectors
         """
         if not texts:
             return []
         
-        # 尝试使用Ollama（批量）
+        # Try Ollama (batch)
         if self._use_ollama:
             try:
                 return self._generate_batch_with_ollama(texts)
@@ -158,30 +159,30 @@ class EmbeddingGenerator:
                 print(f"[EMBEDDING WARN] Ollama batch failed: {e}, using fallback")
                 self._use_ollama = False
         
-        # Fallback到sentence-transformers（支持批量）
+        # Fallback to sentence-transformers (supports batch)
         transformer = self._get_fallback_transformer()
         embeddings = transformer.encode(texts, convert_to_numpy=True, show_progress_bar=False)
         return embeddings.tolist()
     
     def _generate_batch_with_ollama(self, texts: List[str]) -> List[List[float]]:
-        """使用Ollama批量生成（逐个调用）"""
+        """Generate batch embeddings using Ollama (sequential calls)"""
         embeddings = []
         for text in texts:
             embeddings.append(self._generate_with_ollama(text))
         return embeddings
     
     def get_embedding_dimension(self) -> int:
-        """获取embedding维度"""
+        """Get embedding dimension"""
         if self._use_ollama:
-            # Ollama nomic-embed-text通常是768维
-            # 但为了兼容性，先测试一个样本
+            # Ollama nomic-embed-text is typically 768 dimensions
+            # But for compatibility, test with a sample first
             try:
                 test_embedding = self.generate_embedding("test")
                 return len(test_embedding)
             except Exception:
                 pass
         
-        # sentence-transformers all-MiniLM-L6-v2是384维
+        # sentence-transformers all-MiniLM-L6-v2 is 384 dimensions
         if SENTENCE_TRANSFORMERS_AVAILABLE:
             try:
                 transformer = self._get_fallback_transformer()
@@ -190,6 +191,5 @@ class EmbeddingGenerator:
             except Exception:
                 pass
         
-        # 默认维度
+        # Default dimension
         return 384
-

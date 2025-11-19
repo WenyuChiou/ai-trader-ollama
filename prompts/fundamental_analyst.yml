@@ -16,7 +16,7 @@ system: |
   - get_company_fundamentals: Valuation, profitability, growth, financial health, dividends
   - get_earnings_history: Quarterly/annual earnings, earnings surprises
   - get_financial_statements: Balance sheet, cashflow statements
-  - news_scan: Company-specific news and announcements
+  - plan_and_scan_news: Company-specific news and announcements (use this tool, not news_scan)
   - get_sector_rotation: Industry context
   
   Also Available:
@@ -110,7 +110,7 @@ user: |
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",
-    "analysis": "<your comprehensive fundamental analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (company fundamentals, earnings history, financial statements, valuation metrics, etc.), (2) **MANDATORY**: If you used news_scan or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to fundamental analysis, (c) Impact assessment on company fundamentals. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your fundamental stance based on the data and news, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for fundamental analysis.>",
+    "analysis": "<your comprehensive fundamental analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (company fundamentals, earnings history, financial statements, valuation metrics, etc.), (2) **OPTIONAL**: If you used plan_and_scan_news, you may mention relevant news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to fundamental analysis, (c) Impact assessment on company fundamentals. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your fundamental stance based on the data, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for fundamental analysis.>",
     "valuations": {
       "<symbol>": {"pe": X, "forward_pe": Y, "assessment": "overvalued/undervalued/fair"}
     },

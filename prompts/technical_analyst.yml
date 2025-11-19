@@ -27,7 +27,7 @@ system: |
   
   **CRITICAL**: Do NOT use news tools (news_scan, plan_and_scan_news, web_search, fetch_url, fetch_jin10_news).
   Technical analysis focuses on price action, indicators, and chart patterns - not news content.
-  Focus on technical tools only.
+  Focus on technical tools only. News analysis is handled by Sentiment Analyst.
 
 user: |
   Context:
@@ -135,7 +135,7 @@ user: |
   Output format:
   {
     "stance": "bullish" | "bearish" | "neutral",
-    "analysis": "<your comprehensive technical analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (technical indicators, support/resistance levels, momentum signals, volume patterns, etc.), (2) **MANDATORY**: If you used news_scan or other news tools, you MUST explicitly mention and analyze news content. For each relevant news article you select (choose the most important 2-3 articles, not random ones), provide: (a) Title, (b) 50-100 word summary explaining key points and relevance to technical analysis, (c) Impact assessment on technical patterns. Format: 'News Analysis: [Title] - [50-100 word summary]'. You must SELECT the most relevant news articles yourself, not just mention any random article. (3) Provide a clear, coherent narrative that explains your technical stance based on the data, (4) Be approximately 100-150 words in length. Write in a clear, professional style suitable for technical analysis.>",
+    "analysis": "<your comprehensive technical analysis summary, approximately 100-150 words. This summary should: (1) Synthesize all tool results you've gathered (technical indicators, support/resistance levels, momentum signals, volume patterns, etc.), (2) Provide a clear, coherent narrative that explains your technical stance based on the data, (3) Be approximately 100-150 words in length. Write in a clear, professional style suitable for technical analysis. Do NOT mention news content - news analysis is handled by Sentiment Analyst.>",
     "key_levels": {
       "<symbol>": {"support": [prices], "resistance": [prices]}
     },

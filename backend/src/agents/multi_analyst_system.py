@@ -462,6 +462,17 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = technical_result.get("tool_calls", [])
             
+            # CRITICAL FIX: Filter out news tools (Technical Analyst should not use news tools)
+            news_tools = ["news_scan", "plan_and_scan_news", "web_search", "fetch_url", "fetch_jin10_news"]
+            filtered_tool_calls = []
+            for tc in tool_calls_list:
+                tool_name = tc.get("name", "")
+                if tool_name in news_tools:
+                    print(f"   [FILTER] Removing news tool '{tool_name}' from Technical Analyst (news analysis is handled by Sentiment Analyst)")
+                else:
+                    filtered_tool_calls.append(tc)
+            tool_calls_list = filtered_tool_calls
+            
             # 如果tool_calls为空，打印警告
             if not tool_calls_list:
                 print(f"   [WARN] Parsed result has no tool_calls - LLM may not have followed instructions")
@@ -852,9 +863,18 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = fundamental_result.get("tool_calls", [])
             
+            # CRITICAL FIX: Filter out invalid tool calls (missing name field)
+            valid_tool_calls = []
+            for tc in tool_calls_list:
+                if isinstance(tc, dict) and tc.get("name"):
+                    valid_tool_calls.append(tc)
+                else:
+                    print(f"   [WARN] Skipping invalid tool call (missing name): {tc}")
+            tool_calls_list = valid_tool_calls
+            
             # 如果tool_calls为空，打印警告
             if not tool_calls_list:
-                print(f"   [WARN] Parsed result has no tool_calls - LLM may not have followed instructions")
+                print(f"   [WARN] Parsed result has no valid tool_calls - LLM may not have followed instructions")
             elif len(tool_calls_list) > 0:
                 # 检查是否是从单个tool_call包装的
                 if len(tool_calls_list) == 1 and isinstance(fundamental_response, dict) and "name" in fundamental_response:

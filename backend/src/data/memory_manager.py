@@ -598,7 +598,7 @@ class MemoryManager:
                 traceback.print_exc()
     
     def _create_compressed_memory(self, memory: Dict[str, Any]) -> Dict[str, Any]:
-        """创建压缩记忆（只保留关键信息）"""
+        """Create compressed memory (keep only key information)"""
         return {
             "date": memory.get("date"),
             "stance": memory.get("discussion", {}).get("final_stance"),
@@ -613,25 +613,25 @@ class MemoryManager:
         }
     
     def load_daily_memory(self, date: str) -> Optional[Dict[str, Any]]:
-        """加载指定日期的记忆（优先从缓存，然后从 daily，最后从 weekly）"""
-        # 检查缓存
+        """Load memory for specified date (priority: cache, then daily, finally weekly)"""
+        # Check cache
         if self.enable_cache and date in self._memory_cache:
             return self._memory_cache[date]
         
-        # 先尝试从 daily 目录加载
+        # Try loading from daily directory first
         daily_file = self.daily_dir / f"{date}.json"
         if daily_file.exists():
             try:
                 with daily_file.open("r", encoding="utf-8") as f:
                     memory = json.load(f)
-                    # 更新缓存
+                    # Update cache
                     if self.enable_cache:
                         self._update_cache(date, memory)
                     return memory
             except Exception as e:
                 print(f"[MEMORY ERROR] Failed to load {date}: {e}")
         
-        # 如果 daily 不存在，从 weekly 查找
+        # If daily doesn't exist, search in weekly
         try:
             memory_date = datetime.strptime(date, "%Y-%m-%d").date()
             week_str = f"{memory_date.isocalendar()[0]}-W{memory_date.isocalendar()[1]:02d}"
@@ -657,15 +657,15 @@ class MemoryManager:
         summary_only: bool = False,
     ) -> List[Dict[str, Any]]:
         """
-        加载最近几天的记忆
+        Load recent memories
         
-        参数:
-        - days: 加载最近几天
-        - end_date: 结束日期
-        - summary_only: 只返回摘要（不包含完整 transcript）
+        Args:
+        - days: Number of recent days to load
+        - end_date: End date
+        - summary_only: Return only summary (without full transcript)
         
-        返回:
-        - 记忆列表（按日期从新到旧）
+        Returns:
+        - List of memories (sorted by date, newest first)
         """
         if end_date is None:
             end_date = date.today().isoformat()
@@ -689,7 +689,7 @@ class MemoryManager:
         return memories
     
     def _get_memory_summary(self, memory: Dict[str, Any]) -> Dict[str, Any]:
-        """获取记忆摘要（用于 Agent 参考）"""
+        """Get memory summary (for Agent reference)"""
         return {
             "date": memory.get("date"),
             "stance": memory.get("discussion", {}).get("final_stance"),
@@ -711,60 +711,60 @@ class MemoryManager:
         action: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        query_text: Optional[str] = None,  # 新增：语义搜索查询
+        query_text: Optional[str] = None,  # NEW: Semantic search query
         limit: int = 10,
-        use_semantic: bool = True,  # 是否使用语义搜索
-        include_related: bool = False,  # 是否包含关联记忆
+        use_semantic: bool = True,  # Whether to use semantic search
+        include_related: bool = False,  # Whether to include related memories
     ) -> List[Dict[str, Any]]:
         """
-        智能搜索记忆（混合检索：关键词 + 语义）
+        Intelligent memory search (hybrid retrieval: keyword + semantic)
         
-        参数:
-        - symbol: 股票代码
-        - stance: 市场立场（bullish/neutral/bearish）
-        - action: 交易动作（BUY/SELL/HOLD）
-        - start_date: 开始日期
-        - end_date: 结束日期
-        - query_text: 语义搜索查询文本
-        - limit: 返回结果数量限制
-        - use_semantic: 是否使用语义搜索
+        Args:
+        - symbol: Stock symbol
+        - stance: Market stance (bullish/neutral/bearish)
+        - action: Trading action (BUY/SELL/HOLD)
+        - start_date: Start date
+        - end_date: End date
+        - query_text: Semantic search query text
+        - limit: Result limit
+        - use_semantic: Whether to use semantic search
         
-        返回:
-        - 匹配的记忆列表
+        Returns:
+        - List of matching memories
         """
         results = []
         
-        # 如果启用语义搜索且有查询文本
+        # If semantic search is enabled and query text provided
         if use_semantic and query_text and self.vector_store and self.embedding_generator:
             try:
-                # 生成查询embedding
+                # Generate query embedding
                 query_embedding = self.embedding_generator.generate_embedding(query_text)
                 
-                # 语义搜索
+                # Semantic search
                 date_filter = None
                 if start_date and end_date:
                     date_filter = (start_date, end_date)
                 
                 semantic_results = self.vector_store.search_similar(
                     query_embedding=query_embedding,
-                    top_k=limit * 2,  # 获取更多结果用于融合
+                    top_k=limit * 2,  # Get more results for fusion
                     date_filter=date_filter,
                     symbol_filter=symbol,
                 )
                 
-                # 转换为记忆对象
+                # Convert to memory objects
                 for meta, similarity in semantic_results:
                     date_str = meta.get("date")
                     if date_str:
                         memory = self.load_daily_memory(date_str)
                         if memory:
-                            # 添加相似度分数
+                            # Add similarity score
                             memory["_similarity_score"] = similarity
                             results.append(memory)
             except Exception as e:
                 print(f"[MEMORY WARN] Semantic search failed: {e}")
         
-        # 关键词搜索（如果语义搜索结果不足或未启用）
+        # Keyword search (if semantic results insufficient or not enabled)
         if len(results) < limit:
             keyword_results = self._search_memories_keyword(
                 symbol=symbol,
@@ -775,22 +775,22 @@ class MemoryManager:
                 limit=limit - len(results),
             )
             
-            # 合并结果（去重）
+            # Merge results (deduplicate)
             existing_dates = {r.get("date") for r in results}
             for result in keyword_results:
                 if result.get("date") not in existing_dates:
                     results.append(result)
         
-        # 包含关联记忆（如果启用）
+        # Include related memories (if enabled)
         if include_related and self.relation_analyzer and results:
             related_dates = set()
-            for result in results[:5]:  # 只对top 5结果查找关联
+            for result in results[:5]:  # Only search relations for top 5 results
                 date_str = result.get("date")
                 if date_str:
                     related = self.relation_analyzer.get_related_memories(date_str)
                     related_dates.update(related)
             
-            # 加载关联记忆
+            # Load related memories
             existing_dates = {r.get("date") for r in results}
             for related_date in related_dates:
                 if related_date not in existing_dates:
@@ -799,7 +799,7 @@ class MemoryManager:
                         related_memory["_is_related"] = True
                         results.append(related_memory)
         
-        # 按日期排序（最新的在前）
+        # Sort by date (newest first)
         results.sort(key=lambda x: x.get("date", ""), reverse=True)
         
         return results[:limit]
@@ -814,7 +814,7 @@ class MemoryManager:
         end_date: Optional[str] = None,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """关键词搜索（原有逻辑）"""
+        """Keyword search (original logic)"""
         index_file = self.index_dir / "daily_index.json"
         if not index_file.exists():
             return []
@@ -827,28 +827,28 @@ class MemoryManager:
         
         results = []
         for date_str, idx_data in index.items():
-            # 日期过滤
+            # Date filter
             if start_date and date_str < start_date:
                 continue
             if end_date and date_str > end_date:
                 continue
             
-            # 股票过滤
+            # Symbol filter
             if symbol:
                 stocks_involved = idx_data.get("stocks_involved", [])
                 recommended = idx_data.get("recommended_stocks", [])
                 if symbol not in stocks_involved and symbol not in recommended:
                     continue
             
-            # 立场过滤
+            # Stance filter
             if stance and idx_data.get("stance") != stance:
                 continue
             
-            # 动作过滤
+            # Action filter
             if action and idx_data.get("action") != action:
                 continue
             
-            # 加载完整记忆
+            # Load full memory
             memory = self.load_daily_memory(date_str)
             if memory:
                 results.append(memory)
@@ -859,14 +859,14 @@ class MemoryManager:
         return results
     
     def get_memory_statistics(self) -> Dict[str, Any]:
-        """获取记忆统计信息"""
+        """Get memory statistics"""
         daily_count = len(list(self.daily_dir.glob("*.json")))
         weekly_count = len(list(self.weekly_dir.glob("*.jsonl")))
         
         daily_size = sum(f.stat().st_size for f in self.daily_dir.glob("*.json"))
         weekly_size = sum(f.stat().st_size for f in self.weekly_dir.glob("*.jsonl"))
         
-        # 加载索引统计
+        # Load index statistics
         index_file = self.index_dir / "daily_index.json"
         total_indexed = 0
         if index_file.exists():
@@ -887,7 +887,7 @@ class MemoryManager:
             "cache_size": len(self._memory_cache),
         }
         
-        # 添加向量存储统计
+        # Add vector store statistics
         if self.vector_store:
             vector_stats = self.vector_store.get_statistics()
             stats["vector_store"] = vector_stats
@@ -895,5 +895,5 @@ class MemoryManager:
         return stats
     
     def get_stock_history(self, symbol: str, days: int = 30) -> List[Dict[str, Any]]:
-        """获取特定股票的交易历史"""
+        """Get trading history for a specific stock"""
         return self.search_memories(symbol=symbol, limit=days)

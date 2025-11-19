@@ -1474,6 +1474,8 @@ def execute_daily_trade(
                     tool_category = "market"
                 elif tool_name in ["get_company_fundamentals", "get_earnings_history", "get_financial_statements"]:
                     tool_category = "fundamental"
+                elif tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator"]:
+                    tool_category = "economic"
                 
                 tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
                 

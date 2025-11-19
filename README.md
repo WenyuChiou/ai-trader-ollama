@@ -957,7 +957,7 @@ These tools allow agents to retrieve and learn from historical trading memories:
 - ✅ **Daily Preservation**: Recent memories (<30 days) are fully preserved for detailed analysis
 - ✅ **RAG Integration**: Agents use memories to avoid repeating mistakes and learn from successes
 
-### 📊 Market Analysis Tools (23 Tools)
+### 📊 Market Analysis Tools (21 Tools)
 
 ### Sentiment & Risk (3 tools)
 - `vix_term`: VIX term structure

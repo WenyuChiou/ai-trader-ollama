@@ -4923,6 +4923,35 @@
                                 html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
                                 html += `</div>`;
                                 html += `</div>`;
+                            } else if (agentName === 'TraderAgent' || agentName === 'RiskAnalyst') {
+                                // CRITICAL FIX: Special formatting for TraderAgent and RiskAnalyst
+                                let displayText = summaryText;
+                                
+                                // For TraderAgent, extract Analysis section if present
+                                if (agentName === 'TraderAgent' && displayText.includes('Analysis:')) {
+                                    const analysisMatch = displayText.match(/Analysis:\s*([\s\S]+)$/i);
+                                    if (analysisMatch) {
+                                        displayText = analysisMatch[1].trim();
+                                    }
+                                }
+                                
+                                // Format text with better styling
+                                displayText = escapeHtml(displayText);
+                                
+                                // Convert bold text
+                                displayText = displayText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
+                                
+                                // Convert numbered sections
+                                displayText = displayText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 13px; font-weight: 600; color: #22d3ee; margin-top: 12px; margin-bottom: 6px;">$1. $2</div>');
+                                
+                                // Convert bullet points
+                                displayText = displayText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1;">• $1</div>');
+                                
+                                // Convert newlines
+                                displayText = displayText.replace(/\n\n+/g, '<div style="height: 10px;"></div>');
+                                displayText = displayText.replace(/\n/g, '<br>');
+                                
+                                html += `<div style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 12px; background: rgba(15, 23, 42, 0.3); border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${displayText}</div>`;
                             } else {
                                 html += `<div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 4px; padding-left: 24px;">${escapeHtml(summaryText)}</div>`;
                             }

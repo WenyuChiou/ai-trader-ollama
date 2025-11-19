@@ -29,7 +29,8 @@ if str(BACKEND_DIR / "src") not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR / "src"))
 
 from src.tools.news_tools import news_scan, plan_and_scan_news
-from src.tools.jin10_tools import fetch_jin10_news
+# fetch_jin10_news 是 @tool 装饰的函数，需要通过 ToolBox 调用
+from src.agents.toolbox import ToolBox
 
 
 def test_news_scan():
@@ -137,10 +138,9 @@ def test_fetch_jin10_news():
     print("="*60)
     
     try:
-        result = fetch_jin10_news(
-            max_items=10,
-            category="all"
-        )
+        # fetch_jin10_news 是 @tool 装饰的函数，需要通过 ToolBox 调用
+        toolbox = ToolBox()
+        result = toolbox.invoke("fetch_jin10_news", max_items=10, category="all")
         
         if result.get("ok"):
             items = result.get("items", [])

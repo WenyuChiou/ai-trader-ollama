@@ -894,11 +894,13 @@ Get-Content data\logs\memory\daily\2025-11-16.json | ConvertFrom-Json | ConvertT
 
 ---
 
-## 🛠️ Tool Suite (29 Tools)
+## 🛠️ Tool Suite (28 Tools)
 
-The system includes **29 advanced tools** organized into two categories:
-- **23 Market Analysis Tools**: Real-time data, technical indicators, fundamental data, news, and economic indicators
+The system includes **28 advanced tools** organized into two categories:
+- **22 Market Analysis Tools**: Real-time data, technical indicators, fundamental data, news, and economic indicators
 - **6 Memory/RAG Tools**: Historical memory retrieval for learning from past trading decisions
+
+**Note**: `news_scan` has been removed. Use `plan_and_scan_news` instead (includes LLM-generated summaries and keywords).
 
 ### 🧠 Memory/RAG Tools (6 Tools)
 

@@ -4403,7 +4403,7 @@
             // CRITICAL FIX: Also extract from conversations array (round = 0) for analysts
             // This ensures all analyst conversations are displayed, even if round = 0
             // Process conversations in reverse order to get the most recent entries first
-            const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator'];
+            const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'TraderAgent', 'RiskAnalyst'];
             const seenAnalysts = new Set(); // Track which analysts we've already processed (to avoid duplicates)
             
             // CRITICAL FIX: Process conversations in reverse order (newest first) to get the most recent analyst entries
@@ -4562,7 +4562,7 @@
             // This ensures we always show analyst summaries even if discussion_rounds_summaries is missing
             if (Object.keys(analystSummaries).length === 0) {
                 console.log('[Conversations] analystSummaries is empty, using fallback extraction');
-                const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst'];
+                const analystNames = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'TraderAgent', 'RiskAnalyst'];
                 const fallbackConversations = {};
                 
                 // Process conversations in reverse order (newest first)
@@ -4607,7 +4607,7 @@
                 html += `<h3 style="font-size: 16px; color: #22d3ee; margin-bottom: 16px; font-weight: 600;">📊 Analyst Summaries</h3>`;
                 
                 // CRITICAL FIX: Display analysts in fixed order, use first entry (most recent) instead of last
-                const analystOrder = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst'];
+                const analystOrder = ['MarketAnalyst', 'TechnicalAnalyst', 'FundamentalAnalyst', 'SentimentAnalyst', 'DiscussionCoordinator', 'RiskAnalyst', 'TraderAgent'];
                 for (const agentName of analystOrder) {
                     if (analystSummaries[agentName] && analystSummaries[agentName].length > 0) {
                         // Use first entry (most recent, since we unshift/add at beginning)

@@ -8825,6 +8825,9 @@
                     return 'success';
                 } else if (content.includes(':') && content.length < 50) {
                     return 'label';
+                } else if (content.length > 100) {
+                    // For long text (like full sentences), don't convert to blocks - just keep as plain text
+                    return 'plain';
                 } else {
                     return 'default';
                 }
@@ -8871,6 +8874,10 @@
                     case 'label':
                         // Remove the box styling - just show as plain text
                         blockHtml = `<span style="color: #22d3ee; font-weight: 600; font-size: 12px;">${escapeHtml(displayText)}</span>`;
+                        break;
+                    case 'plain':
+                        // For long text, keep original markdown bold format (don't convert)
+                        blockHtml = `**${escapeHtml(match.content)}**`;
                         break;
                     default:
                         // Remove the box styling - just show as plain text

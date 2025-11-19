@@ -4432,12 +4432,34 @@
                     if (!finalSummary || finalSummary.trim().length === 0) {
                         // Try alternative fields for TraderAgent and RiskAnalyst
                         if (agent === 'TraderAgent' || agent === 'RiskAnalyst') {
-                            finalSummary = conv.content || conv.message || conv.reasoning || conv.analysis || '';
-                            // For RiskAnalyst, also check risk_report
-                            if (!finalSummary && agent === 'RiskAnalyst' && conv.risk_report) {
-                                const riskReport = conv.risk_report;
-                                finalSummary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
+                            const contentText = conv.content || conv.message || conv.reasoning || conv.analysis || '';
+                            
+                            // CRITICAL FIX: For TraderAgent, extract "Analysis:" section from content
+                            if (agent === 'TraderAgent' && contentText) {
+                                const analysisMatch = contentText.match(/Analysis:\s*([\s\S]+)$/i);
+                                if (analysisMatch) {
+                                    finalSummary = analysisMatch[1].trim();
+                                } else {
+                                    // If no "Analysis:" section, use content as-is
+                                    finalSummary = contentText;
+                                }
+                            } else if (agent === 'RiskAnalyst') {
+                                // For RiskAnalyst, try content first
+                                finalSummary = contentText;
+                                // Also check risk_report
+                                if (!finalSummary && conv.risk_report) {
+                                    const riskReport = conv.risk_report;
+                                    finalSummary = riskReport.analysis || riskReport.summary || riskReport.recommendations?.join(', ') || '';
+                                }
+                            } else {
+                                finalSummary = contentText;
                             }
+                        }
+                    } else if (agent === 'TraderAgent' && summary && summary.includes('Stance:')) {
+                        // CRITICAL FIX: If summary contains "Stance:" format, extract Analysis part
+                        const analysisMatch = summary.match(/Analysis:\s*([\s\S]+)$/i);
+                        if (analysisMatch) {
+                            finalSummary = analysisMatch[1].trim();
                         }
                     }
                     

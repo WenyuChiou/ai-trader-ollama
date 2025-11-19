@@ -592,12 +592,28 @@ def execute_daily_trade(
                         stance = line.replace("Stance:", "").strip()
                     elif line.startswith("Analysis:"):
                         # Analysis may span multiple lines, collect until next section
+                        # CRITICAL FIX: Handle JSON format in analysis (e.g., Technical Analyst)
                         analysis_parts = [line.replace("Analysis:", "").strip()]
+                        brace_count = 0
+                        if '{' in analysis_parts[0]:
+                            brace_count = analysis_parts[0].count('{') - analysis_parts[0].count('}')
+                        
                         for j in range(i + 1, len(lines)):
                             next_line = lines[j].strip()
+                            # Stop at next section header
                             if next_line.startswith("Tools Used:") or next_line.startswith("Key Points:"):
                                 break
                             analysis_parts.append(next_line)
+                            # Track braces for JSON content
+                            if '{' in next_line or '}' in next_line:
+                                brace_count += next_line.count('{') - next_line.count('}')
+                                # If braces are balanced and we've collected content, we can stop
+                                if brace_count == 0 and len(analysis_parts) > 1:
+                                    # Check if next line is a section header
+                                    if j + 1 < len(lines):
+                                        peek_line = lines[j + 1].strip()
+                                        if peek_line.startswith("Tools Used:") or peek_line.startswith("Key Points:"):
+                                            break
                         analysis = '\n'.join(analysis_parts).strip()
                     elif line.startswith("Tools Used:"):
                         tools_str = line.replace("Tools Used:", "").strip()
@@ -671,6 +687,25 @@ def execute_daily_trade(
         for entry_data in discussion_history:
             analyst_name = entry_data.get("analyst", "Unknown")
             
+            # 標準化agent名稱（處理有空格和無空格的情況）
+            agent_name_map = {
+                "market": "MarketAnalyst",
+                "market analyst": "MarketAnalyst",
+                "technical": "TechnicalAnalyst",
+                "technical analyst": "TechnicalAnalyst",
+                "fundamental": "FundamentalAnalyst",
+                "fundamental analyst": "FundamentalAnalyst",
+                "sentiment": "SentimentAnalyst",
+                "sentiment analyst": "SentimentAnalyst",
+            }
+            # 先嘗試完整匹配，再嘗試小寫匹配
+            agent_name = agent_name_map.get(analyst_name, agent_name_map.get(analyst_name.lower(), analyst_name))
+            
+            # CRITICAL FIX: Skip if this analyst was already written from transcript
+            if agent_name in transcript_analysts_written:
+                print(f"[TRADING CYCLE] Skipped {agent_name} from discussion_history (already written from transcript)")
+                continue
+            
             # 检查是否是 Discussion Coordinator
             analyst_name_lower = analyst_name.lower().strip()
             is_coordinator = (analyst_name_lower in ["discussion coordinator", "discussioncoordinator", "coordinator"] or
@@ -707,20 +742,6 @@ def execute_daily_trade(
             analysis = entry_data.get("analysis", "No analysis provided")
             tools_used = entry_data.get("tools_used", [])
             
-            # 標準化agent名稱（處理有空格和無空格的情況）
-            agent_name_map = {
-                "market": "MarketAnalyst",
-                "market analyst": "MarketAnalyst",
-                "technical": "TechnicalAnalyst",
-                "technical analyst": "TechnicalAnalyst",
-                "fundamental": "FundamentalAnalyst",
-                "fundamental analyst": "FundamentalAnalyst",
-                "sentiment": "SentimentAnalyst",
-                "sentiment analyst": "SentimentAnalyst",
-            }
-            # 先嘗試完整匹配，再嘗試小寫匹配
-            agent_name = agent_name_map.get(analyst_name, agent_name_map.get(analyst_name.lower(), analyst_name))
-            
             entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                 "date": trade_date_str,
@@ -735,6 +756,7 @@ def execute_daily_trade(
             
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            print(f"[TRADING CYCLE] Wrote {agent_name} from discussion_history (stance: {stance})")
         
         # 寫入Coordinator統整結果（只寫一次，避免重複）
         # 如果 discussion_history 中已经有 Coordinator，就不再单独写入 coordinator_summary

@@ -1143,25 +1143,32 @@ def run_multi_analyst_discussion(
             # 执行工具调用（agent自主选择，不强制）
             tool_calls_list = sentiment_result.get("tool_calls", [])
             
+            # CRITICAL FIX: 强制SentimentAnalyst调用新闻工具（最高优先级）
+            # 无论LLM是否请求，都必须调用新闻工具
+            has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news"] for tc in tool_calls_list)
+            
+            if not has_news_tool:
+                print(f"   [FORCE] Adding plan_and_scan_news to SentimentAnalyst (MANDATORY - news analysis is critical for sentiment)")
+                # 如果预算不足，优先保证新闻工具，可以移除其他非关键工具
+                if tool_calls_count + len(tool_calls_list) >= tool_budget:
+                    print(f"   [FORCE] Budget tight, but news tool is mandatory - will execute anyway")
+                    # 即使预算紧张，也要添加新闻工具（系统会处理预算超限）
+                
+                # 强制添加新闻工具到列表开头（最高优先级）
+                tool_calls_list.insert(0, {
+                    "name": "plan_and_scan_news", 
+                    "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, 
+                    "why": "MANDATORY: News analysis with article content is critical for sentiment assessment (latest 48 hours, top 10 articles with content)"
+                })
+            
             # Fallback: Sentiment Analyst必须使用工具（情绪数据变化快，需要实时获取）
-            # CRITICAL: 确保news_scan被使用（新闻分析对情绪分析至关重要）
             if not tool_calls_list and use_tools and tool_calls_count < tool_budget:
                 print(f"   [WARN] No tools requested, using fallback tools (Sentiment analysis requires real-time data)")
                 tool_calls_list = [
+                    {"name": "plan_and_scan_news", "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, "why": "MANDATORY: Get latest market news with article content (last 48 hours, top 10 articles) for sentiment analysis"},
                     {"name": "fear_greed", "args": {}, "why": "Fallback: Get Fear & Greed Index"},
-                    {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"},
-                    {"name": "plan_and_scan_news", "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, "why": "Fallback: Get latest market news with article content (last 48 hours, top 10 articles) for sentiment analysis"}
+                    {"name": "vix_term", "args": {}, "why": "Fallback: Get VIX term structure"}
                 ]
-            # 即使agent请求了工具，也确保news_scan被包含（如果还没有）
-            elif tool_calls_list and use_tools and tool_calls_count < tool_budget:
-                has_news_tool = any(tc.get("name") in ["news_scan", "plan_and_scan_news"] for tc in tool_calls_list)
-                if not has_news_tool and tool_calls_count + len(tool_calls_list) < tool_budget:
-                    print(f"   [INFO] Adding plan_and_scan_news to tool calls (news analysis with content is important for sentiment)")
-                    tool_calls_list.append({
-                        "name": "plan_and_scan_news", 
-                        "args": {"tickers": [], "max_articles": 10, "recency_days": 2, "fetch_body_top": 10}, 
-                        "why": "Added: News analysis with article content is critical for sentiment assessment (latest 48 hours, top 10 articles with content)"
-                    })
             
             # 收集工具调用结果
             tool_results_summary = []

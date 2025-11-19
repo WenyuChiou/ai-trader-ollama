@@ -5162,6 +5162,36 @@
                             let toolHtml = '';
                             let toolResultHtml = '';
                             if (entry_type === 'tool') {
+                                // CRITICAL FIX: Skip tools that are already displayed in dedicated panels
+                                // Economic tools (get_economic_summary, get_labor_market_data, etc.) are shown in Economic Data panel
+                                // News tools (plan_and_scan_news) are shown in News panel
+                                const toolName = conv.tool_name || '';
+                                const skipTools = [
+                                    'get_economic_summary',
+                                    'get_labor_market_data',
+                                    'get_treasury_yield_curve',
+                                    'fetch_fred_indicator',
+                                    'plan_and_scan_news'
+                                ];
+                                
+                                // Check if this tool should be skipped (already displayed in dedicated panel)
+                                let shouldSkipTool = false;
+                                if (toolName && skipTools.includes(toolName)) {
+                                    shouldSkipTool = true;
+                                } else {
+                                    // Also check content_text for tool name
+                                    const toolInfo = parseToolInfo(content_text);
+                                    if (toolInfo && toolInfo.name && skipTools.includes(toolInfo.name)) {
+                                        shouldSkipTool = true;
+                                    }
+                                }
+                                
+                                if (shouldSkipTool) {
+                                    // Skip displaying this tool result in conversation list (already shown in dedicated panel)
+                                    // Return empty string to skip this conversation item
+                                    return '';
+                                }
+                                
                                 // 尝试解析工具信息
                                 const toolInfo = parseToolInfo(content_text);
                                 if (toolInfo) {

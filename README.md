@@ -826,6 +826,11 @@ curl -X POST "http://localhost:8000/api/system/init?force=true"
 - `tools_used`: List of tools called by the agent
 - `type`: Entry type (discussion, tool_call, decision, etc.)
 
+**Frontend Display**:
+- All 7 agents are displayed in the frontend with special styling for TraderAgent and RiskAnalyst
+- Content extraction: Frontend intelligently extracts content from `summary` field, falling back to `content` field or `risk_report` for RiskAnalyst
+- Discussion Coordinator: Automatically extracts individual analyst reports from the coordinator's summary and displays them separately
+
 ---
 
 ### Quick Data Access Commands
@@ -2946,6 +2951,8 @@ python scripts/init_data.py
    - ✅ Enhanced debugging logs for news tool execution
 5. **Fundamental Analysis Budget**:
    - ✅ Fundamental analysis tools (`get_company_fundamentals`) execute without tool budget restrictions
+   - ✅ Ensures all recommended stocks and holdings are analyzed regardless of budget
+   - ✅ Tools prioritized: Fundamental tools execute first, then other tools (subject to budget)
 
 6. **Frontend Display Enhancements**:
    - ✅ **All 7 Agents Displayed**: MarketAnalyst, TechnicalAnalyst, FundamentalAnalyst, SentimentAnalyst, DiscussionCoordinator, RiskAnalyst, TraderAgent
@@ -2957,9 +2964,8 @@ python scripts/init_data.py
      - Data refresh every 30 seconds (portfolio, trades, conversations)
      - Order status check every 10 seconds during trading hours
      - Equity chart update every 30 minutes
-   - ✅ Ensures all recommended stocks and holdings are analyzed regardless of budget
-   - ✅ Tools prioritized: Fundamental tools execute first, then other tools (subject to budget)
-6. **FGI (Fear & Greed Index)**:
+
+7. **FGI (Fear & Greed Index)**:
    - ✅ Standardized classification: 0-25 (EXTREME FEAR), 26-45 (FEAR), 46-55 (NEUTRAL), 56-75 (GREED), 76-100 (EXTREME GREED)
    - ✅ Data source priority: `feargreedmeter.com` (returns correct value 11)
 7. **Signal Score**:

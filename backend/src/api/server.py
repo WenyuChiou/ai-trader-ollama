@@ -709,6 +709,19 @@ async def fetch_conversations_api(
         # CRITICAL FIX: 打印错误到控制台以便调试
         print(f"[ERROR] /api/agents/conversations 错误: {e}")
         print(f"[ERROR] Traceback:\n{error_traceback}")
+        
+        # Log error to error logger
+        try:
+            from src.utils.error_logger import get_error_logger, ErrorLevel
+            error_logger = get_error_logger(root=str(_get_project_logs_dir()))
+            error_logger.error(
+                message="API endpoint error: /api/agents/conversations",
+                component="api_server",
+                exception=e,
+                context={"endpoint": "/api/agents/conversations", "limit": limit}
+            )
+        except Exception:
+            pass  # Ignore logging errors
         return JSONResponse(
             status_code=500,
             content={

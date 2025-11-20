@@ -1911,6 +1911,24 @@ def execute_daily_trade(
         error_trace = traceback.format_exc()
         print(f"[TRADING CYCLE] ❌ ERROR: Trader Agent failed with exception: {e}")
         print(f"[TRADING CYCLE] ❌ Traceback:\n{error_trace}")
+        
+        # Log error to error logger
+        try:
+            from src.utils.error_logger import get_error_logger, ErrorLevel
+            error_logger = get_error_logger(root=str(_get_project_logs_dir()))
+            error_logger.error(
+                message="Trader Agent failed during trading cycle",
+                component="trading_cycle",
+                exception=e,
+                context={
+                    "function": "execute_daily_trade",
+                    "market_open": is_market_open_for_simulation,
+                    "portfolio_value": portfolio.value(last_prices) if portfolio and last_prices else None,
+                }
+            )
+        except Exception as log_error:
+            print(f"[TRADING CYCLE] ⚠️  Failed to log error: {log_error}")
+        
         # CRITICAL: 即使 Trader Agent 失败，也要创建一个默认的 decision，确保流程继续
         print(f"[TRADING CYCLE] ⚠️  Creating fallback decision due to Trader Agent failure")
         decision = {
@@ -3122,6 +3140,18 @@ def execute_daily_trade(
                 print(f"[TRADING CYCLE] ⚠️  Failed to update portfolio_state.json with prices: {e}")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
+        # Log error to error logger
+        try:
+            from src.utils.error_logger import get_error_logger, ErrorLevel
+            error_logger = get_error_logger(root=str(_get_project_logs_dir()))
+            error_logger.error(
+                message="Failed to save memory/equity",
+                component="trading_cycle",
+                exception=e,
+                context={"function": "save_memory_equity"}
+            )
+        except Exception:
+            pass  # Ignore logging errors
         # 不影响主流程，继续执行
     
     # ---- 内存清理：交易循环结束后清理临时数据 ----

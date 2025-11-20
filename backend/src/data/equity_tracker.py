@@ -156,6 +156,18 @@ class EquityTracker:
                             print(f"[EQUITY] Recalculated values: equity=${current_equity:.2f}, total=${current_value:.2f} (updated {updated_count}/{len(symbols)} prices)")
                     except Exception as e:
                         print(f"[EQUITY WARNING] Failed to fetch batch prices: {e}")
+                        # Log error to error logger
+                        try:
+                            from src.utils.error_logger import get_error_logger, ErrorLevel
+                            error_logger = get_error_logger(root=str(self.root))
+                            error_logger.error(
+                                message="Failed to fetch batch prices for equity recording",
+                                component="equity_tracker",
+                                exception=e,
+                                context={"function": "record_daily_equity", "symbols_count": len(positions)}
+                            )
+                        except Exception:
+                            pass  # Ignore logging errors
                 else:
                     print(f"[EQUITY] Market is closed, skipping real-time price fetch (using provided prices)")
             except Exception as e:
@@ -220,6 +232,18 @@ class EquityTracker:
                                         current_equity = 0.0
                             except Exception as e:
                                 print(f"[EQUITY WARNING] Failed to read portfolio_state.json: {e}")
+                                # Log error to error logger
+                                try:
+                                    from src.utils.error_logger import get_error_logger, ErrorLevel
+                                    error_logger = get_error_logger(root=str(self.root))
+                                    error_logger.warning(
+                                        message="Failed to read portfolio_state.json",
+                                        component="equity_tracker",
+                                        exception=e,
+                                        context={"function": "record_daily_equity"}
+                                    )
+                                except Exception:
+                                    pass  # Ignore logging errors
                         
                         # 如果净值下降超过 50%，且当前是 10000.0，且之前有持仓，记录警告并跳过
                         # 或者如果净值突然回到初始值（10000），且之前有持仓，也跳过

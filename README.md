@@ -2625,6 +2625,8 @@ All automation scripts are located in `scripts/` directory and can be run from t
 | Script | Purpose | Usage | Notes |
 |--------|---------|-------|-------|
 | `backup_data.ps1` | Backup system data | `.\scripts\backup_data.ps1` | Creates timestamped backups |
+| `daily_backup.py` | Daily automated backup | `python backend/scripts/daily_backup.py` | Backs up critical files, auto-cleans old backups |
+| `setup_daily_backup.ps1` | Setup daily backup task | `.\scripts\setup_daily_backup.ps1` | Creates scheduled task for daily backups (admin required) |
 | `restore_portfolio.ps1` | Restore portfolio from backup | `.\scripts\restore_portfolio.ps1` | Select backup to restore |
 | `restore_from_equity_history.ps1` | Restore from equity history | `.\scripts\restore_from_equity_history.ps1` | Reconstructs portfolio state |
 | `cleanup_backups.ps1` | Cleanup old backup files | `.\scripts\cleanup_backups.ps1` | Removes backups >7 days old |
@@ -2686,7 +2688,27 @@ Select option `5` to set up all tasks at once, or choose individual tasks (1-4).
 # - Weekdays only (default: Yes)
 ```
 
-#### 2. Equity Recording (Every 30 Minutes)
+#### 2. Daily Backup (Recommended)
+- **Task Name**: `AITrader-DailyBackup`
+- **Schedule**: Daily at specified time (default: 23:00)
+- **Script**: `backend/scripts/daily_backup.py`
+- **Purpose**: Automatically backup critical data files (portfolio_state.json, equity_history.jsonl, memory, etc.)
+
+**Setup**:
+```powershell
+.\scripts\setup_daily_backup.ps1
+# Specify backup time (default: 23:00)
+# Creates scheduled task for automated daily backups
+```
+
+**Features**:
+- ✅ Backs up critical files: `portfolio_state.json`, `equity_history.jsonl`, `discussion_actions.jsonl`, `filled_orders.jsonl`, `pending_orders.jsonl`, `trades.jsonl`
+- ✅ Backs up `memory/` directory (daily/weekly/monthly snapshots)
+- ✅ Creates backup manifest with metadata
+- ✅ Auto-cleans old backups (keeps last 7 days)
+- ✅ Can be run manually: `python backend/scripts/daily_backup.py`
+
+#### 3. Equity Recording (Every 30 Minutes)
 - **Task Name**: `AITrader-EquityRecording`
 - **Schedule**: Every 30 minutes
 - **Purpose**: Record portfolio equity for historical tracking and charts
@@ -2700,7 +2722,7 @@ Select option `5` to set up all tasks at once, or choose individual tasks (1-4).
 
 **Note**: This task requires the API server to be running (`http://localhost:8000`).
 
-#### 3. Data Update (Every Hour)
+#### 4. Data Update (Every Hour)
 - **Task Name**: `AITrader-DataUpdate`
 - **Schedule**: Every hour
 - **Script**: `scripts/update_real_time_pnl.py`
@@ -2712,7 +2734,7 @@ Select option `5` to set up all tasks at once, or choose individual tasks (1-4).
 # Select option 3
 ```
 
-#### 4. Daily Report Generation
+#### 5. Daily Report Generation
 - **Task Name**: `AITrader-DailyReport`
 - **Schedule**: Daily at 6:00 PM (weekdays only)
 - **Script**: `backend/scripts/generate_daily_report.py`

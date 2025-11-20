@@ -1184,7 +1184,11 @@ async def options_record_equity():
 
 @app.post("/api/portfolio/record-equity")
 async def record_equity(equity_data: dict):
-    """记录净值到历史记录"""
+    """Record equity to history
+    
+    CRITICAL: Ensure positions_detail is included with current_price and market_value
+    If positions_detail is missing or incomplete, backend will fetch real-time prices
+    """
     try:
         from src.data.equity_tracker import EquityTracker
         from datetime import date
@@ -1192,17 +1196,46 @@ async def record_equity(equity_data: dict):
         logs_dir = _get_project_logs_dir()
         equity_tracker = EquityTracker(root=str(logs_dir))
         
-        # 提取日期（优先使用date字段，否则从timestamp提取）
+        # CRITICAL FIX: Ensure positions_detail is used if available (contains price info)
+        # If only positions (old format) is provided, use it but backend will fetch prices
+        if "positions_detail" in equity_data and equity_data["positions_detail"]:
+            # Use positions_detail if provided (contains current_price, market_value)
+            positions_detail = equity_data["positions_detail"]
+        elif "positions" in equity_data and equity_data["positions"]:
+            # Fallback to positions (old format), backend will fetch prices
+            positions_detail = equity_data["positions"]
+        else:
+            positions_detail = {}
+        
+        # Log positions detail status for debugging
+        positions_with_price = sum(
+            1 for pos in positions_detail.values()
+            if isinstance(pos, dict) and pos.get("current_price") is not None
+        )
+        print(f"[API] Record equity: positions={len(positions_detail)}, positions_with_price={positions_with_price}/{len(positions_detail)}")
+        
+        # Extract date (prioritize date field, otherwise extract from timestamp)
         date_str = equity_data.get("date")
         if not date_str and equity_data.get("timestamp"):
             date_str = equity_data["timestamp"].split("T")[0]
         if not date_str:
             date_str = date.today().isoformat()
         
-        # 记录净值
+        # CRITICAL FIX: Ensure portfolio_snapshot includes positions_detail with price information
+        # Build portfolio snapshot with processed positions_detail
+        portfolio_snapshot = {
+            "cash": equity_data.get("cash", 0),
+            "equity_value": equity_data.get("equity_value", 0),
+            "total_value": equity_data.get("total_value", equity_data.get("value", 0)),
+            "total_pnl": equity_data.get("total_pnl", 0),
+            "total_pnl_pct": equity_data.get("total_pnl_pct", 0),
+            "positions_detail": positions_detail,  # Use processed positions_detail (may need price fetching)
+        }
+        
+        # Record equity (backend will fetch prices if missing)
         equity_tracker.record_daily_equity(
             date_str=date_str,
-            portfolio_snapshot=equity_data,
+            portfolio_snapshot=portfolio_snapshot,
         )
         
         return JSONResponse(

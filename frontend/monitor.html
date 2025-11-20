@@ -13595,6 +13595,17 @@
                         nextEquityUpdateTime = calculateNextEquityUpdateTime();
                         updateNextEquityUpdateDisplay();
                         
+                        // CRITICAL FIX: Use positions_detail instead of positions to ensure price information is included
+                        // positions_detail contains complete information (current_price, market_value, etc.)
+                        // positions only contains quantity (old format)
+                        const positionsForRecord = portfolio.positions_detail || portfolio.positions || {};
+                        
+                        // Log positions detail status for debugging
+                        const positionsWithPrice = Object.values(positionsForRecord).filter(pos => 
+                            pos && typeof pos === 'object' && pos.current_price !== undefined
+                        ).length;
+                        console.log(`[Refresh] Recording equity: positions=${Object.keys(positionsForRecord).length}, positions_with_price=${positionsWithPrice}`);
+                        
                         const latestPoint = {
                             date: today,
                             timestamp: timestamp,
@@ -13604,7 +13615,8 @@
                             equity_value: portfolio.equity_value || 0,
                             total_pnl: portfolio.total_pnl || 0,
                             total_pnl_pct: portfolio.total_pnl_pct || 0,
-                            positions: portfolio.positions || {},
+                            positions: positionsForRecord,  // Use positions_detail (contains current_price, market_value)
+                            positions_detail: positionsForRecord,  // Explicitly include positions_detail for backend
                         };
                         
                         // 如果最后一条记录的时间戳相同或更早，替换它；否则添加新点

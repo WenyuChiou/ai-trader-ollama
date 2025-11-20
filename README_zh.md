@@ -541,6 +541,64 @@ technical_analyst:
 
 ## 💾 数据存储与记录
 
+### 📦 数据备份与恢复
+
+**⚠️ 重要提示：定期备份对长期自动交易至关重要！**
+
+系统提供全面的备份功能来保护您的交易数据：
+
+#### 快速备份设置
+
+**自动每日备份（推荐）**:
+```powershell
+# 以管理员身份运行以设置定时每日备份
+.\scripts\setup_daily_backup.ps1
+```
+
+**手动备份**:
+```powershell
+# 手动运行备份脚本
+python backend/scripts/daily_backup.py
+```
+
+#### 备份内容
+
+- ✅ `portfolio_state.json` - 当前持仓和现金余额
+- ✅ `equity_history.jsonl` - 净值历史（每30分钟）
+- ✅ `discussion_actions.jsonl` - Agent 对话和分析
+- ✅ `filled_orders.jsonl` - 已成交订单（含盈亏）
+- ✅ `pending_orders.jsonl` - 待处理订单
+- ✅ `trades.jsonl` - 所有交易记录
+- ✅ `memory/` 目录 - Agent 学习数据（每日/每周/每月快照）
+
+#### 备份功能
+
+- **自动清理**: 自动保留最近7天的备份
+- **备份清单**: 每个备份包含 `manifest.json` 元数据文件
+- **时间戳目录**: `data/backups/YYYYMMDD_HHMMSS/`
+- **定时任务**: 可配置为每天指定时间运行
+
+#### 从备份恢复
+
+**恢复持仓**:
+```powershell
+# 使用恢复脚本
+.\scripts\restore_portfolio.ps1
+
+# 或手动恢复
+$backupDir = "data\backups\20251120_174635"
+Copy-Item "$backupDir\portfolio_state.json" "data\logs\portfolio_state.json" -Force
+```
+
+**查看可用备份**:
+```powershell
+Get-ChildItem -Path "data\backups" -Directory | Sort-Object Name -Descending
+```
+
+**📖 详细指南**: 查看 [`docs/BACKUP_GUIDE.md`](docs/BACKUP_GUIDE.md) 获取完整的备份和恢复说明。
+
+---
+
 ### 📁 数据目录结构
 
 **所有代理生成的数据、对话、持仓和交易记录都存储在 `data/logs/` 目录中**（相对于项目根目录）。
@@ -576,6 +634,7 @@ data/logs/
 ├── pending_orders.jsonl          # 待处理订单（等待执行的待处理订单）
 ├── portfolio_state_backup_*.json  # 备份文件（初始化时的自动备份文件）
 ├── discussion_actions_backup_*.jsonl  # 备份文件（备份文件）
+├── error_log.jsonl                # 错误日志（系统错误记录）
 └── memory/
     ├── daily/                    # 每日快照（每日内存快照）
     │   └── YYYY-MM-DD.json
@@ -1776,6 +1835,83 @@ web: cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
 
 选择选项 `5` 一次性设置所有任务，或选择单个任务（1-4）。
 
+### 可用任务
+
+#### 1. 自动交易周期
+- **任务名称**: `AITrader-AutoTrading`
+- **计划**: 每天 9:30 AM（仅工作日）
+- **脚本**: `backend/scripts/run_daily_trading.py`
+- **目的**: 在市场交易时间内自动执行交易周期
+
+**自定义设置**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# 选择选项 1，然后指定：
+# - 交易时间（默认：09:30）
+# - 仅工作日（默认：是）
+```
+
+#### 2. 每日备份（推荐）
+- **任务名称**: `AITrader-DailyBackup`
+- **计划**: 每天指定时间（默认：23:00）
+- **脚本**: `backend/scripts/daily_backup.py`
+- **目的**: 自动备份关键数据文件（portfolio_state.json, equity_history.jsonl, memory 等）
+
+**设置**:
+```powershell
+.\scripts\setup_daily_backup.ps1
+# 指定备份时间（默认：23:00）
+# 创建定时任务以实现自动每日备份
+```
+
+**功能**:
+- ✅ 备份关键文件：`portfolio_state.json`, `equity_history.jsonl`, `discussion_actions.jsonl`, `filled_orders.jsonl`, `pending_orders.jsonl`, `trades.jsonl`
+- ✅ 备份 `memory/` 目录（每日/每周/每月快照）
+- ✅ 创建备份清单（manifest.json）
+- ✅ 自动清理旧备份（保留最近 7 天）
+- ✅ 可手动运行：`python backend/scripts/daily_backup.py`
+
+**📖 详细指南**: 查看 [`docs/BACKUP_GUIDE.md`](docs/BACKUP_GUIDE.md) 获取完整的备份和恢复说明。
+
+#### 3. 净值记录（每 30 分钟）
+- **任务名称**: `AITrader-EquityRecording`
+- **计划**: 每 30 分钟
+- **目的**: 记录投资组合净值用于历史跟踪和图表
+- **API**: 调用 `POST /api/portfolio/record-equity`
+
+**设置**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# 选择选项 2
+```
+
+**注意**: 此任务需要 API 服务器正在运行（`http://localhost:8000`）。
+
+#### 4. 数据更新（每小时）
+- **任务名称**: `AITrader-DataUpdate`
+- **计划**: 每小时
+- **脚本**: `scripts/update_real_time_pnl.py`
+- **目的**: 更新实时 P&L 计算和市场数据
+
+**设置**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# 选择选项 3
+```
+
+#### 5. 每日报告生成
+- **任务名称**: `AITrader-DailyReport`
+- **计划**: 每天 6:00 PM（仅工作日）
+- **脚本**: `backend/scripts/generate_daily_report.py`
+- **目的**: 生成每日性能报告
+
+**自定义设置**:
+```powershell
+.\scripts\setup_scheduled_tasks.ps1
+# 选择选项 4，然后指定：
+# - 报告时间（默认：18:00）
+```
+
 ---
 
 ## 🔔 API 连接监控
@@ -2309,6 +2445,23 @@ pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 | `discussion_actions.jsonl` | 代理对话 | `data/logs/discussion_actions.jsonl` |
 | `equity_history.jsonl` | 净值历史 | `data/logs/equity_history.jsonl` |
 | `filled_orders.jsonl` | 已完成订单 | `data/logs/filled_orders.jsonl` |
+| `error_log.jsonl` | 系统错误日志 | `data/logs/error_log.jsonl` |
+
+### 备份与错误日志
+
+**每日备份**:
+- **脚本**: `backend/scripts/daily_backup.py`
+- **设置**: `.\scripts\setup_daily_backup.ps1`（需要管理员权限）
+- **位置**: `data/backups/YYYYMMDD_HHMMSS/`
+- **自动清理**: 保留最近 7 天的备份
+
+**错误日志**:
+- **模块**: `backend/src/utils/error_logger.py`
+- **日志文件**: `data/logs/error_log.jsonl`
+- **功能**: 结构化日志记录，自动轮转（10MB），错误级别（DEBUG/INFO/WARNING/ERROR/CRITICAL）
+- **集成**: 自动记录交易循环、API 端点和数据操作中的错误
+
+**📖 详细指南**: 查看 [`docs/BACKUP_GUIDE.md`](docs/BACKUP_GUIDE.md) 获取完整的备份和恢复说明。
 
 ---
 

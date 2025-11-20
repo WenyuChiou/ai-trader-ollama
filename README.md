@@ -562,6 +562,64 @@ technical_analyst:
 
 ## 💾 Data Storage & Records
 
+### 📦 Data Backup & Recovery
+
+**⚠️ IMPORTANT: Regular backups are essential for long-term auto trading!**
+
+The system provides comprehensive backup functionality to protect your trading data:
+
+#### Quick Backup Setup
+
+**Automated Daily Backup (Recommended)**:
+```powershell
+# Run as administrator to setup scheduled daily backup
+.\scripts\setup_daily_backup.ps1
+```
+
+**Manual Backup**:
+```powershell
+# Run backup script manually
+python backend/scripts/daily_backup.py
+```
+
+#### What Gets Backed Up
+
+- ✅ `portfolio_state.json` - Current positions and cash balance
+- ✅ `equity_history.jsonl` - Net value history (every 30 minutes)
+- ✅ `discussion_actions.jsonl` - Agent conversations and analysis
+- ✅ `filled_orders.jsonl` - Completed trades with P&L
+- ✅ `pending_orders.jsonl` - Pending orders
+- ✅ `trades.jsonl` - All trade records
+- ✅ `memory/` directory - Agent learning data (daily/weekly/monthly snapshots)
+
+#### Backup Features
+
+- **Automatic Cleanup**: Keeps last 7 days of backups automatically
+- **Backup Manifest**: Each backup includes `manifest.json` with metadata
+- **Timestamped Directories**: `data/backups/YYYYMMDD_HHMMSS/`
+- **Scheduled Tasks**: Can be configured to run daily at specified time
+
+#### Restore from Backup
+
+**Restore Portfolio**:
+```powershell
+# Use restore script
+.\scripts\restore_portfolio.ps1
+
+# Or manually restore
+$backupDir = "data\backups\20251120_174635"
+Copy-Item "$backupDir\portfolio_state.json" "data\logs\portfolio_state.json" -Force
+```
+
+**View Available Backups**:
+```powershell
+Get-ChildItem -Path "data\backups" -Directory | Sort-Object Name -Descending
+```
+
+**📖 Detailed Guide**: See [`docs/BACKUP_GUIDE.md`](docs/BACKUP_GUIDE.md) for complete backup and restore instructions.
+
+---
+
 ### 📁 Data Directory Structure
 
 **All agent-generated data, conversations, positions, and trading records are stored in `data/logs/` directory** (relative to project root).
@@ -3446,6 +3504,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 | `docs/AGENTS.md` | Complete agent architecture |
 | `docs/TOOLS.md` | Detailed documentation for all 29 tools (23 market + 6 memory) |
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
+| `docs/BACKUP_GUIDE.md` | **Complete backup and restore guide** ⭐ |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
 | **[Key Test Files](docs/KEY_TEST_FILES.md)** | Critical test files and priority guide ⭐ |
 | **[Order Data Schema](docs/ORDER_DATA_SCHEMA.md)** | Standardized order data structure for performance analysis |

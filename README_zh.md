@@ -28,6 +28,7 @@
 
 - [系统概述](#-系统概述)
 - [快速开始](#-快速开始)
+- [后台运行和备份设置](#-快速开始后台运行和备份设置)
 - [历史性能分析](#-历史性能分析)
 - [计划任务与自动化](#-计划任务与自动化)
 - [API 连接监控](#-api-连接监控)
@@ -211,6 +212,20 @@ curl "http://localhost:8000/api/performance/symbol-analysis?symbol=NVDA"
 - 🌐 **API 服务器**：http://localhost:8000
 - 📊 **API 文档**：http://localhost:8000/docs
 - 🎨 **前端**：在浏览器中打开 `frontend/monitor.html`
+
+**下一步 - 设置后台运行和备份**：
+```powershell
+# 步骤 4: 设置后台运行（推荐用于长期使用）
+# 右键点击 scripts\start_api_task_admin.bat → 以管理员身份运行
+
+# 步骤 5: 设置每日备份（推荐用于数据安全）
+# 右键点击 scripts\setup_daily_backup_admin.bat → 以管理员身份运行
+```
+
+**📖 完整设置指南**: 查看 [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) 获取详细说明：
+- ✅ 后台运行设置（任务计划程序 / Windows 服务）
+- ✅ 每日备份配置
+- ✅ 验证和故障排除
 
 **可选：设置计划任务**：
 ```powershell

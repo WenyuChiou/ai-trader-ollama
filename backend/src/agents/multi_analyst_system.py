@@ -1084,7 +1084,7 @@ Now provide your comprehensive 100-150 word analysis:"""
                 cleaned_analysis = cleaned_analysis[:5000] + "... (truncated due to extreme length)"
             result_dict["analysis"] = cleaned_analysis
         else:
-            # 移除长度限制，允许完整分析（前端有滚动条处理长文本）
+            # Remove length limit, allow complete analysis (frontend has scrollbar for long text)
             analysis_str = str(analysis_response)
             if len(analysis_str) > 5000:
                 analysis_str = analysis_str[:5000] + "... (truncated due to extreme length)"
@@ -1092,7 +1092,7 @@ Now provide your comprehensive 100-150 word analysis:"""
         print(f"   [OK] Analysis generated from tool results ({len(result_dict['analysis'])} chars)")
     except Exception as e:
         print(f"   [WARN] Failed to generate analysis from tool results: {e}")
-        # 即使失败，也生成一个基于工具结果的描述性分析
+        # Even if failed, generate a descriptive analysis based on tool results
         tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
         if tool_results_summary:
             result_dict["analysis"] = f"Based on analysis using {', '.join(tools_used)}, the {analyst_type} perspective indicates: {tool_results_text[:500]}. Further detailed analysis is being processed."
@@ -1101,16 +1101,16 @@ Now provide your comprehensive 100-150 word analysis:"""
 
 
 def _format_tool_result(tool_name: str, tool_result: Dict[str, Any]) -> str:
-    """格式化工具结果用于反馈给LLM"""
+    """Format tool result for feedback to LLM"""
     if not tool_result or isinstance(tool_result, str):
         return str(tool_result)[:200] if tool_result else "No data"
     
     if isinstance(tool_result, dict):
-        # 提取关键信息
+        # Extract key information
         if "error" in tool_result:
             return f"Error: {tool_result.get('error', 'Unknown error')}"
         
-        # 根据工具类型提取关键数据
+        # Extract key data based on tool type
         if tool_name == "get_market_indices":
             indices = tool_result.get("indices", {})
             return f"S&P 500: {indices.get('sp500', {}).get('change_percent', 'N/A')}%, NASDAQ: {indices.get('nasdaq', {}).get('change_percent', 'N/A')}%"

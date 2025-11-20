@@ -3,10 +3,13 @@ data/
 backend/data/
 *.log
 *.jsonl
+# Exclude JSON files but keep essential config files
 *.json
 !package.json
 !package-lock.json
 !railway.json
+!backend/config/config.json
+!backend/config/agents.yaml
 
 # Exclude test files
 tests/

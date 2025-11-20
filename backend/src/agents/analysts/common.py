@@ -346,6 +346,7 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
         "get_news_scan": "plan_and_scan_news",
         "get_news": "plan_and_scan_news",
         "get_market_sentiment": "fear_greed",
+        "get_financial_health": "get_financial_statements",  # CRITICAL FIX: get_financial_health不存在，映射到get_financial_statements
         "get_volume_analysis": "get_advanced_indicators",
         "get_advanced_technical_data": "get_advanced_indicators",  # LLM may use incorrect name
         "get_market_indices_data": "get_market_indices",  # LLM may use incorrect name

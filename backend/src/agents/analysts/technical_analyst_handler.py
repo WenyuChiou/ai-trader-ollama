@@ -188,16 +188,32 @@ def run_technical_analyst(
                     elif not isinstance(recommended_stocks, list):
                         recommended_stocks = []
                     
-                    # CRITICAL FIX: Filter out cryptocurrencies from recommended stocks
-                    from src.utils.etf_checker import is_crypto
+                    # CRITICAL FIX: Filter out cryptocurrencies, ETFs, and validate against universe
+                    from src.utils.etf_checker import is_crypto, is_etf
                     filtered_recommended = []
+                    # Get universe symbols from market_summary for validation
+                    universe_symbols = set()
+                    if market_summary and isinstance(market_summary, dict):
+                        universe_symbols = set(s.upper() for s in market_summary.get("symbols", []))
+                    
                     for sym in recommended_stocks:
                         sym_upper = sym.upper() if sym else ""
+                        # Skip empty symbols
+                        if not sym_upper:
+                            continue
                         # Skip cryptocurrencies (DOGE, BTC, ETH, etc.)
-                        if sym_upper and is_crypto(sym_upper):
+                        if is_crypto(sym_upper):
                             print(f"   [MANDATORY] Skipping cryptocurrency in recommended stocks: {sym}")
                             continue
-                        if sym and sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
+                        # Skip ETFs
+                        if is_etf(sym_upper):
+                            print(f"   [MANDATORY] Skipping ETF in recommended stocks: {sym}")
+                            continue
+                        # CRITICAL FIX: Validate against universe (if available)
+                        if universe_symbols and sym_upper not in universe_symbols:
+                            print(f"   [MANDATORY] ⚠️ Skipping invalid symbol not in universe: {sym}")
+                            continue
+                        if sym_upper not in existing_symbols and sym_upper not in mandatory_symbols:
                             filtered_recommended.append(sym_upper)
                     
                     # OPTIMIZATION: Limit to top 3-5 recommended stocks to preserve budget
@@ -330,9 +346,9 @@ def run_technical_analyst(
                     if isinstance(pos_info, dict) and pos_info.get("quantity", 0) > 0:
                         priority_symbols.append(symbol)
             # CRITICAL FIX: Ensure major_indices is defined and not None before slicing
-            # major_indices is defined at line 261 in this fallback block, so it should always exist here
+            # major_indices is defined at line 294 in this fallback block, so it should always exist here
             # But add defensive check to prevent any edge cases
-            if 'major_indices' in locals() and major_indices and isinstance(major_indices, list):
+            if 'major_indices' in locals() and major_indices and isinstance(major_indices, list) and len(major_indices) >= 3:
                 priority_symbols.extend(major_indices[:3])  # SPY, QQQ, DIA
             else:
                 # Fallback: use hardcoded indices if major_indices is somehow not available

@@ -226,6 +226,11 @@ def run_fundamental_analyst(
                     elif not isinstance(recs, list):
                         recs = []
                     
+                    # Get universe symbols from market_summary for validation
+                    universe_symbols = set()
+                    if market_summary and isinstance(market_summary, dict):
+                        universe_symbols = set(s.upper() for s in market_summary.get("symbols", []))
+                    
                     for s in recs:
                         sym_upper = s.upper().strip()
                         if not sym_upper:
@@ -237,6 +242,10 @@ def run_fundamental_analyst(
                             # CRITICAL FIX: Filter out cryptocurrencies (DOGE, BTC, ETH, etc.)
                             if is_crypto(sym_upper):
                                 print(f"   [SKIP] Skipping cryptocurrency in recommended stocks: {sym_upper}")
+                                continue
+                            # CRITICAL FIX: Validate against universe (if available)
+                            if universe_symbols and sym_upper not in universe_symbols:
+                                print(f"   [SKIP] ⚠️ Skipping invalid symbol not in universe: {sym_upper}")
                                 continue
                             recommended_stocks.append(sym_upper)
             

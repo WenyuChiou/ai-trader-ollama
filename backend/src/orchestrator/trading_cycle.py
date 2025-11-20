@@ -504,6 +504,8 @@ def execute_daily_trade(
             
             filtered_recommended = []
             from src.utils.etf_checker import is_crypto
+            # CRITICAL FIX: Validate against universe symbols
+            universe_set = set(s.upper() for s in universe)
             for sym in raw_recommended:
                 sym_upper = str(sym).upper().strip()
                 # Skip empty or invalid format
@@ -514,6 +516,10 @@ def execute_daily_trade(
                     continue
                 # Skip ETFs
                 if is_etf(sym_upper):
+                    continue
+                # CRITICAL FIX: Validate against universe
+                if sym_upper not in universe_set:
+                    print(f"[TRADING CYCLE] ⚠️ Skipping invalid symbol not in universe: {sym_upper}")
                     continue
                 filtered_recommended.append(sym_upper)
             

@@ -1375,6 +1375,7 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         "get_news": "plan_and_scan_news",  # CRITICAL FIX: get_news不存在，映射到plan_and_scan_news
         "get_market_sentiment": "fear_greed",  # get_market_sentiment不存在，使用fear_greed代替
         "get_volume_analysis": "get_advanced_indicators",  # CRITICAL FIX: get_volume_analysis不存在，映射到get_advanced_indicators（包含volume分析）
+        "get_financial_health": "get_financial_statements",  # CRITICAL FIX: get_financial_health不存在，映射到get_financial_statements
         # 注意：news_scan已经在前面处理，会自动转换为plan_and_scan_news（带fetch_body_top）
     }
     

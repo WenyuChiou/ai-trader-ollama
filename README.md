@@ -3535,15 +3535,16 @@ All setup scripts are located in `scripts/` directory and can be run from the pr
 
 | Script | Purpose | Usage | Notes |
 |--------|---------|-------|-------|
-| `test_news_tools.py` | Test news tools independently | `python scripts/test_news_tools.py` | Does not overwrite trading records |
-| `verify_portfolio.py` | Verify portfolio consistency | `python scripts/verify_portfolio.py` | Read-only, safe to run |
-| `test_api_server.py` | Test API endpoints | `python scripts/test_api_server.py` | Requires API running |
-| `test_frontend_features.py` | Test frontend features | `python scripts/test_frontend_features.py` | Requires API running |
 | `test_trading_cycle_quick.py` | Quick trading cycle test (single round) | `python tests/integration/test_trading_cycle_quick.py` | Forces market OPEN, verifies order recording |
+| `test_agent_architecture.py` | Test agent system | `python tests/integration/test_agent_architecture.py` | Integration tests for agents |
+| `test_portfolio.py` | Test portfolio management | `python tests/integration/test_portfolio.py` | Portfolio and position tests |
+| `test_conversation_logging.py` | Test conversation logging | `python tests/integration/test_conversation_logging.py` | Conversation recording tests |
+| `test_pnl_tracking.py` | Test P&L tracking | `python tests/integration/test_pnl_tracking.py` | P&L calculation tests |
+| `test_discussion_coordinator.py` | Test Discussion Coordinator | `python tests/integration/test_discussion_coordinator.py` | Multi-round discussion tests |
 
-**Important**: Use independent test scripts (`test_news_tools.py`, `verify_portfolio.py`) for testing. Do NOT use `run_daily_trading.py` for testing as it will overwrite trading records.
+**Important**: Use pytest for running tests. Run all tests with `pytest tests/` or specific test files.
 
-See [Test Scripts Guide](docs/TEST_SCRIPTS_GUIDE.md) for detailed information.
+See [Test Documentation](tests/README.md) for detailed information.
 
 ### Configuration Files
 

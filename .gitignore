@@ -98,3 +98,8 @@ htmlcov/
 
 # Railway configuration (local)
 railway_config.json
+
+# Railway documentation (hidden from users)
+.railway/
+*RAILWAY*.md
+RAILWAY*.md

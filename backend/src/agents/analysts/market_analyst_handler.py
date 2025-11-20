@@ -256,7 +256,7 @@ def run_market_analyst(
                             if check_tool_success(tool_result):
                                 cache_key = get_tool_cache_key(tool_name, tool_call.get("args", {}))
                                 executed_tool_cache_keys.add(cache_key)  # CRITICAL FIX: Mark as executed
-                                all_tool_calls.append({"analyst": "MarketAnalyst", "tool": tool_name, "result": tool_result})
+                                all_tool_calls.append({"analyst": "MarketAnalyst", "tool": tool_name, "result": tool_result, "round": current_round})
                                 tool_calls_count += 1
                                 if tool_name in mandatory_tools:
                                     tool_result_cache[cache_key] = tool_result
@@ -290,7 +290,8 @@ def run_market_analyst(
                         all_tool_calls.append({
                             "analyst": "MarketAnalyst",
                             "tool": tool_name,
-                            "result": tool_result
+                            "result": tool_result,
+                            "round": current_round
                         })
                         tool_calls_count += 1
                     

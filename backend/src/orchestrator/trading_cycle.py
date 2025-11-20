@@ -1183,8 +1183,11 @@ def execute_daily_trade(
                             pass
             
             # CRITICAL FIX: Get round number for this tool call
-            # Use the round from tool_round_map if available, otherwise default to 1 (first round)
-            tool_round = tool_round_map.get(agent_name, 1)
+            # First try to get round from tool_call itself (if it was added when appending to all_tool_calls)
+            tool_round = tool_call.get("round", None)
+            # If not found in tool_call, use the round from tool_round_map (extracted from discussion_history)
+            if tool_round is None:
+                tool_round = tool_round_map.get(agent_name, 1)
             # Ensure round is between 1 and 3 (discussion rounds)
             tool_round = max(1, min(3, tool_round))
             

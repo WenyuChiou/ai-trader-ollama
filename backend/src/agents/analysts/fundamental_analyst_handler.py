@@ -397,7 +397,8 @@ def run_fundamental_analyst(
                             all_tool_calls.append({
                                 "analyst": "FundamentalAnalyst",
                                 "tool": tool_name,
-                                "result": {"ok": False, "error": f"Invalid symbol format: {symbol_arg}", "symbol": symbol_arg}
+                                "result": {"ok": False, "error": f"Invalid symbol format: {symbol_arg}", "symbol": symbol_arg},
+                                "round": current_round
                             })
                             continue
                 
@@ -413,7 +414,8 @@ def run_fundamental_analyst(
                         all_tool_calls.append({
                             "analyst": "FundamentalAnalyst",
                             "tool": tool_name,
-                            "result": tool_result
+                            "result": tool_result,
+                            "round": current_round
                         })
                         continue
                 

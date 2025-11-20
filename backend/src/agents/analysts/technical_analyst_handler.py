@@ -415,7 +415,8 @@ def run_technical_analyst(
                     all_tool_calls.append({
                         "analyst": "TechnicalAnalyst",
                         "tool": tool_name,
-                        "result": tool_result
+                        "result": tool_result,
+                        "round": current_round
                     })
                     tool_calls_count += 1
                     

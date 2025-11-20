@@ -280,7 +280,8 @@ def run_sentiment_analyst(
                     all_tool_calls.append({
                         "analyst": "SentimentAnalyst",
                         "tool": tool_name,
-                        "result": tool_result
+                        "result": tool_result,
+                        "round": current_round
                     })
                     tool_calls_count += 1
                     if not is_news_tool_priority:
@@ -345,7 +346,8 @@ def run_sentiment_analyst(
                     all_tool_calls.append({
                         "analyst": "SentimentAnalyst",
                         "tool": tool_name,
-                        "result": tool_result if tool_result else {"ok": False, "error": "Tool execution failed"}
+                        "result": tool_result if tool_result else {"ok": False, "error": "Tool execution failed"},
+                        "round": current_round
                     })
                     tool_calls_count += 1
                     if tool_result and isinstance(tool_result, dict):

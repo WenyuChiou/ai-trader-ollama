@@ -328,9 +328,9 @@ def run_multi_analyst_discussion(
             analyst_reports["technical"] = technical_result
             
             # Add to discussion history
-            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+            # CRITICAL FIX: Deduplicate tools_used, record each tool only once (even for different companies)
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "TechnicalAnalyst" and tc.get("tool", "")]
-            tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
+            tools_used_names = list(dict.fromkeys(tools_used_names))  # Deduplicate but maintain order
             discussion_history.append({
                 "analyst": "Technical Analyst",
                 "stance": technical_result.get("stance", "neutral"),
@@ -372,9 +372,9 @@ def run_multi_analyst_discussion(
                 analyst_reports["fundamental"] = fundamental_result
                 
                 # Add to discussion history
-                # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+                # CRITICAL FIX: Deduplicate tools_used, record each tool only once (even for different companies)
                 tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "FundamentalAnalyst" and tc.get("tool", "")]
-                tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
+                tools_used_names = list(dict.fromkeys(tools_used_names))  # Deduplicate but maintain order
                 discussion_history.append({
                     "analyst": "Fundamental Analyst",
                     "stance": fundamental_result.get("stance", "neutral"),
@@ -448,9 +448,9 @@ def run_multi_analyst_discussion(
             analyst_reports["sentiment"] = sentiment_result
             
             # Add to discussion history
-            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+            # CRITICAL FIX: Deduplicate tools_used, record each tool only once (even for different companies)
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "SentimentAnalyst" and tc.get("tool", "")]
-            tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
+            tools_used_names = list(dict.fromkeys(tools_used_names))  # Deduplicate but maintain order
             discussion_history.append({
                 "analyst": "Sentiment Analyst",
                 "stance": sentiment_result.get("stance", "neutral"),
@@ -591,7 +591,7 @@ def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
         return float(score)
     
     if isinstance(score, dict):
-        # 字典格式：{'NVDA': 8, 'MSFT': 7, ...}
+        # Dictionary format: {'NVDA': 8, 'MSFT': 7, ...}
         values = [v for v in score.values() if isinstance(v, (int, float))]
         if values:
             avg = sum(values) / len(values)
@@ -599,14 +599,14 @@ def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
         return 'N/A'
     
     if isinstance(score, list):
-        # 列表格式：[8, 7, 9, ...]
+        # List format: [8, 7, 9, ...]
         values = [v for v in score if isinstance(v, (int, float))]
         if values:
             avg = sum(values) / len(values)
             return round(avg, 1)
         return 'N/A'
     
-    # 其他格式，尝试转换为数字
+    # Other formats, try to convert to number
     try:
         return float(score)
     except:
@@ -664,7 +664,7 @@ def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
             for point in key_points[:3]:  # Max 3 key points
                 formatted.append(f"  - {point}")
         
-        formatted.append("")  # 空行分隔
+        formatted.append("")  # Empty line separator
     
     return "\n".join(formatted)
 
@@ -702,18 +702,18 @@ def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
         market_stats["negative_count"] = sum(1 for c in all_changes if c < 0)
     if all_scores:
         market_stats["avg_signal_score"] = sum(all_scores) / len(all_scores)
-        # 找出信号分数最高的前5个
-        # CRITICAL FIX: 移除 signal_score 自动排序，由 agent 自行判断
+        # Find top 5 signal scores
+        # CRITICAL FIX: Remove signal_score auto-sorting, let agent decide
         # top_signals = sorted([(sym, stocks[sym].get("signal_score", 0)) for sym in symbols_list if stocks[sym].get("signal_score")], 
         #                      key=lambda x: x[1], reverse=True)[:5]
         # market_stats["top_signals"] = [{"symbol": sym, "score": score} for sym, score in top_signals]
     
     return {
         "stocks_count": len(stocks),
-        "symbols": symbols_list,  # 所有symbols，用于news_scan等工具和agent了解完整universe
-        "sample_stocks": symbols_list[:10],  # 增加到10个作为样本
-        "sample_stocks_data": sample_stocks_data,  # 前10个股票的简要数据
-        "market_stats": market_stats,  # 整体市场统计
+        "symbols": symbols_list,  # All symbols, used for news_scan tools and agent understanding of full universe
+        "sample_stocks": symbols_list[:10],  # Increased to 10 as samples
+        "sample_stocks_data": sample_stocks_data,  # Brief data for first 10 stocks
+        "market_stats": market_stats,  # Overall market statistics
         "vix": market_view.get("vix"),
         "vix_term": market_view.get("vix_term"),
         "fear_greed": market_view.get("fear_greed"),
@@ -722,8 +722,8 @@ def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
-    """解析analyst的响应（可能是JSON dict或文本）"""
-    # 如果已经是dict，检查是否是完整的分析结果
+    """Parse analyst response (could be JSON dict or text)"""
+    # If already a dict, check if it's a complete analysis result
     if isinstance(response, dict):
         # CRITICAL FIX: Support @tool/params format for single tool_call
         # Check if it's a single tool_call object (name/args or @tool/params format)
@@ -780,9 +780,9 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             response["tool_calls"] = [response["tool_calls"]]
         return response
     
-    # 否则是string，尝试解析
+    # Otherwise it's a string, try to parse
     try:
-        # 尝试提取JSON
+        # Try to extract JSON
         if "```json" in response:
             json_start = response.find("```json") + 7
             json_end = response.find("```", json_start)
@@ -795,23 +795,23 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
             json_str = response
         
         parsed = json.loads(json_str)
-        # 确保所有必需的字段都有默认值
+        # Ensure all required fields have default values
         if not isinstance(parsed, dict):
             parsed = {}
         
-        # 设置默认值
+        # Set default values
         defaults = {
             "stance": parsed.get("stance", "neutral"),
             "analysis": parsed.get("analysis", str(response)[:300] if isinstance(response, str) else ""),
             "tool_calls": parsed.get("tool_calls", []),
-            "recommended_stocks": parsed.get("recommended_stocks", []),  # CRITICAL FIX: 保留推荐股票列表
+            "recommended_stocks": parsed.get("recommended_stocks", []),  # CRITICAL FIX: Preserve recommended stocks list
         }
         
-        # 如果tool_calls为空，尝试从analysis文本中提取工具名称
+        # If tool_calls is empty, try to extract tool names from analysis text
         if not defaults["tool_calls"] and isinstance(response, str):
-            # 尝试从文本中提取工具调用
+            # Try to extract tool calls from text
             import re
-            # 查找常见的工具名称模式
+            # Find common tool name patterns
             tool_patterns = [
                 r'get_market_indices', r'get_sector_rotation', r'get_market_breadth',
                 r'get_advanced_indicators', r'get_support_resistance',
@@ -829,16 +829,16 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
                         "why": f"Extracted from analysis text"
                     })
             if found_tools:
-                defaults["tool_calls"] = found_tools[:3]  # 最多3个
+                defaults["tool_calls"] = found_tools[:3]  # Max 3 tools
         
-        # 确保tool_calls是列表格式
+        # Ensure tool_calls is list format
         if defaults["tool_calls"] and not isinstance(defaults["tool_calls"], list):
             if isinstance(defaults["tool_calls"], dict):
                 defaults["tool_calls"] = [defaults["tool_calls"]]
             else:
                 defaults["tool_calls"] = []
         
-        # 验证tool_calls格式：每个tool_call必须有name字段
+        # Validate tool_calls format: each tool_call must have name field
         # CRITICAL FIX: Support @tool/params format (convert to name/args)
         # CRITICAL FIX: Handle tickers array for get_company_fundamentals (split into multiple calls)
         if defaults["tool_calls"]:
@@ -889,43 +889,43 @@ def _parse_analyst_response(response: str | Dict[str, Any]) -> Dict[str, Any]:
                                 continue  # Skip adding the original tc
                         validated_tool_calls.append(tc)
                 elif isinstance(tc, str):
-                    # 如果tool_calls是字符串列表，转换为dict格式
+                    # If tool_calls is a string list, convert to dict format
                     validated_tool_calls.append({"name": tc, "args": {}, "why": "Auto-converted"})
             defaults["tool_calls"] = validated_tool_calls
         
-        # CRITICAL FIX: 确保 recommended_stocks 字段被保留
+        # CRITICAL FIX: Ensure recommended_stocks field is preserved
         if "recommended_stocks" in parsed:
             defaults["recommended_stocks"] = parsed["recommended_stocks"]
         
-        # 根据analyst类型设置score字段
+        # Set score field based on analyst type
         if "market_score" not in parsed and "technical_score" not in parsed and "fundamental_score" not in parsed and "sentiment_score" not in parsed:
-            # 如果没有任何score字段，尝试从response中提取
+            # If no score field exists, try to extract from response
             if isinstance(response, str) and "score" in response.lower():
-                # 尝试提取数字
+                # Try to extract number
                 import re
                 score_match = re.search(r'score["\']?\s*:\s*(\d+(?:\.\d+)?)', response, re.IGNORECASE)
                 if score_match:
                     defaults["score"] = float(score_match.group(1))
                 else:
-                    defaults["score"] = 5.0  # 默认中性分数
+                    defaults["score"] = 5.0  # Default neutral score
             else:
                 defaults["score"] = 5.0
         
-        # 合并parsed和defaults，确保 recommended_stocks 被保留
+        # Merge parsed and defaults, ensure recommended_stocks is preserved
         result = {**defaults, **parsed}
-        # CRITICAL FIX: 确保 recommended_stocks 字段存在（优先使用parsed中的值）
+        # CRITICAL FIX: Ensure recommended_stocks field exists (prefer value from parsed)
         if "recommended_stocks" in parsed:
             result["recommended_stocks"] = parsed["recommended_stocks"]
         elif "recommended_stocks" not in result:
             result["recommended_stocks"] = []
         return result
     except Exception as e:
-        # Fallback: 返回文本响应
+        # Fallback: Return text response
         return {
             "stance": "neutral",
             "analysis": str(response)[:300] if isinstance(response, str) else "No analysis provided",
             "tool_calls": [],
-            "recommended_stocks": [],  # CRITICAL FIX: 确保 recommended_stocks 字段存在
+            "recommended_stocks": [],  # CRITICAL FIX: Ensure recommended_stocks field exists
             "score": 5.0,
             "error": f"Failed to parse JSON: {e}"
         }
@@ -940,31 +940,31 @@ def _generate_analysis_from_tools(
     all_tool_calls: List[Dict[str, Any]],
     analyst_name: str
 ) -> None:
-    """基于工具结果生成分析"""
-    # 如果已有完整的分析内容（至少 200 字符且不是占位文本），则不重新生成
-    # 注意：100-150字约等于 400-600 字符（中英文混合），200 字符作为最低阈值
+    """Generate analysis based on tool results"""
+    # If complete analysis content already exists (at least 200 chars and not placeholder text), don't regenerate
+    # Note: 100-150 words ≈ 400-600 chars (mixed Chinese/English), 200 chars as minimum threshold
     current_analysis = result_dict.get("analysis", "").strip()
     if current_analysis and not current_analysis.startswith("Requested tool:") and len(current_analysis) >= 200:
-        # 确保分析文本是完整的自然语言，而不是 JSON 或其他格式
+        # Ensure analysis text is complete natural language, not JSON or other format
         if not current_analysis.startswith("{") and not current_analysis.startswith("```"):
-            # 检查是否已经接近150字（约600字符）
+            # Check if already close to 150 words (≈600 chars)
             if len(current_analysis) >= 600:
-                return  # 已经有足够长的分析，不需要重新生成
+                return  # Already has sufficient analysis, no need to regenerate
     
-    # 如果没有工具结果，也不生成
+    # If no tool results, don't generate
     if not tool_results_summary:
-        # 如果没有工具结果但有工具调用，至少生成一个简单的说明
+        # If no tool results but tool calls exist, at least generate a simple description
         tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
         if tools_used:
             result_dict["analysis"] = f"Analyzed using tools: {', '.join(tools_used)}. Waiting for tool results to generate detailed analysis."
         return
     
-    # 强制生成完整的分析（即使已有简短的分析）
+    # Force generate complete analysis (even if brief analysis already exists)
     
     print(f"   🔄 Generating analysis based on tool results...")
     tool_results_text = "\n".join(tool_results_summary)
     
-    # 根据analyst类型定制prompt
+    # Customize prompt based on analyst type
     if analyst_type == "market":
         task_desc = """Analyze the market data above and provide:
 1. Market trend assessment (bullish/bearish/neutral)
@@ -994,11 +994,11 @@ def _generate_analysis_from_tools(
 4. News sentiment trends
 5. Contrarian signals"""
     
-    # 检查工具结果中是否包含新闻数据（包括 plan_and_scan_news）
-    # CRITICAL FIX: news_scan 已移除
+    # Check if tool results contain news data (including plan_and_scan_news)
+    # CRITICAL FIX: news_scan has been removed
     has_news_data = any(keyword in tool_results_text.lower() for keyword in ["plan_and_scan_news", "news", "articles", "excerpt"])
     
-    # 构建新闻分析要求
+    # Build news analysis requirement
     news_analysis_requirement = ""
     if has_news_data:
         news_analysis_requirement = """
@@ -1052,14 +1052,14 @@ Now provide your comprehensive 100-150 word analysis:"""
             expect_json=False
         )
         if isinstance(analysis_response, str):
-            # 清理响应：移除可能的 JSON 标记、前缀等
+            # Clean response: remove possible JSON markers, prefixes, etc.
             cleaned_analysis = analysis_response.strip()
-            # 移除 "Analysis:" 前缀
+            # Remove "Analysis:" prefix
             if cleaned_analysis.startswith("Analysis:"):
                 cleaned_analysis = cleaned_analysis[10:].strip()
-            # 移除 JSON 代码块标记
+            # Remove JSON code block markers
             cleaned_analysis = cleaned_analysis.replace("```json", "").replace("```", "").strip()
-            # 移除可能的 JSON 结构
+            # Remove possible JSON structure
             if cleaned_analysis.startswith("{") and cleaned_analysis.endswith("}"):
                 try:
                     import json
@@ -1071,15 +1071,15 @@ Now provide your comprehensive 100-150 word analysis:"""
                 except:
                     pass
             
-            # 确保分析文本足够长（至少 200 字符，约50字）
-            # 目标：100-150字约等于 400-600 字符
+            # Ensure analysis text is long enough (at least 200 chars, ≈50 words)
+            # Target: 100-150 words ≈ 400-600 chars
             if len(cleaned_analysis) < 200:
-                # 如果太短，添加基于工具结果的补充
+                # If too short, add supplement based on tool results
                 tools_used = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == analyst_name]
                 cleaned_analysis += f" Based on comprehensive analysis of {', '.join(tools_used)}, the {analyst_type} outlook is assessed with detailed insights from tool results."
             
-            # 移除长度限制，允许完整分析内容（前端有滚动条处理长文本）
-            # 只限制极端长度（超过5000字符）以避免内存问题
+            # Remove length limit, allow complete analysis content (frontend has scrollbar for long text)
+            # Only limit extreme length (>5000 chars) to avoid memory issues
             if len(cleaned_analysis) > 5000:
                 cleaned_analysis = cleaned_analysis[:5000] + "... (truncated due to extreme length)"
             result_dict["analysis"] = cleaned_analysis

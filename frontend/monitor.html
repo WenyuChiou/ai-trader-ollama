@@ -6707,9 +6707,7 @@
             // CRITICAL FIX: 获取工具记录（不限制数量，包括所有 round 1-3 的工具）
             // 只显示成功使用的工具（round 1-3），不显示 round 0 的旧工具记录
             const allToolEntries = sortedConversations.filter(c => (c.type || 'discussion') === 'tool');
-            console.log(`[Filter] Total tool entries before round filter: ${allToolEntries.length}`);
-            
-            // DEBUG: Check round distribution
+            // Debug: Log summary only (reduce console noise)
             const roundStats = {};
             const missingRoundTools = [];
             allToolEntries.forEach(c => {
@@ -6720,9 +6718,13 @@
                     roundStats[round] = (roundStats[round] || 0) + 1;
                 }
             });
-            console.log(`[Filter] Round distribution:`, roundStats);
+            
+            // Only log if there are issues or for summary
+            if (allToolEntries.length > 0 && Object.keys(roundStats).length > 0) {
+                console.log(`[Filter] Processing ${allToolEntries.length} tool entries, round distribution:`, roundStats);
+            }
             if (missingRoundTools.length > 0) {
-                console.log(`[Filter] Tools missing round field:`, missingRoundTools.slice(0, 5));
+                console.warn(`[Filter] ⚠️ ${missingRoundTools.length} tools missing round field:`, missingRoundTools.slice(0, 3));
             }
             
             const toolEntries = allToolEntries.filter(c => {
@@ -6731,13 +6733,12 @@
                 const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
                 // 显示 round 1-3 的工具，或者没有 round 字段的工具（向后兼容）
                 const shouldShow = roundNum >= 1 && roundNum <= 3 || roundNum === 0 && !c.hasOwnProperty('round');
-                if (!shouldShow && roundNum === 0) {
-                    console.log(`[Filter] Filtered out tool with round=0:`, c.agent, c.tool_name);
-                }
                 return shouldShow;
             });
             
-            console.log(`[Filter] Found ${toolEntries.length} tool entries (round 1-3 or legacy) after filtering`);
+            if (toolEntries.length !== allToolEntries.length && allToolEntries.length > 0) {
+                console.log(`[Filter] Filtered ${allToolEntries.length - toolEntries.length} tools (round=0), kept ${toolEntries.length} tools (round 1-3)`);
+            }
             
             // 合并：最近三次讨论 + 所有工具记录
             let filteredConversations = [...latestDiscussions, ...toolEntries];
@@ -6778,9 +6779,7 @@
                         );
                     }
                     
-                    if (!matches && (c.type || 'discussion') === 'tool') {
-                        console.log(`[Filter] Tool entry filtered out: agent="${agent}", filter="${filterLower}"`);
-                    }
+                    // Note: Filtering is working correctly, no need to log every filtered entry
                     return matches;
                 });
                 
@@ -6795,12 +6794,12 @@
                 if (!isSpecialAgent) {
                 filteredConversations = filteredConversations.filter(c => {
                     const isTool = (c.type || 'discussion') === 'tool';
-                    if (!isTool && currentAgentFilter !== 'all') {
-                        console.log(`[Filter] Non-tool entry filtered out: type="${c.type}", agent="${c.agent}"`);
-                    }
+                    // Note: Filtering is working correctly, no need to log every filtered entry
                     return isTool;
                 });
-                console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
+                if (beforeToolFilter !== filteredConversations.length) {
+                    console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
+                }
                 } else {
                     // For RiskAnalyst and TraderAgent, keep both discussion and tool entries
                     console.log(`[Filter] Special agent (${currentAgentFilter}): keeping both discussion and tool entries (${filteredConversations.length} total)`);
@@ -6827,10 +6826,10 @@
                     const filterLower = currentAgentFilter.toLowerCase();
                     const category = agentToCategoryMap[filterLower];
                     
-                    console.log(`[Filter] Agent: ${currentAgentFilter}, Lower: ${filterLower}, Category: ${category}`);
-                    
+                    // Debug: Log summary only
                     if (category && availableToolResults[category]) {
-                        console.log(`[Filter] Found ${availableToolResults[category].length} tools in category: ${category}`);
+                        const totalInCategory = availableToolResults[category].length;
+                        console.log(`[Filter] Agent: ${currentAgentFilter} → Category: ${category} (${totalInCategory} tools available)`);
                         
                         // Filter tool results by agent name (with improved matching)
                         const agentVariants = {
@@ -6870,18 +6869,17 @@
                             // CRITICAL FIX: For market category, require exact agent match
                             // Market category contains tools from both MarketAnalyst and TechnicalAnalyst
                             // TechnicalAnalyst should only see TechnicalAnalyst tools, not MarketAnalyst tools
-                            if (category === 'market' && !matches) {
-                                // Already filtered out by exact match above, but log for debugging
-                                console.log(`[Filter] Market category tool filtered out: agent "${toolAgent}" doesn't match "${filterLower}"`);
-                            }
-                            
-                            if (!matches) {
-                                console.log(`[Filter] Tool entry agent mismatch: "${toolAgent}" vs "${filterLower}"`);
-                            }
+                            // Note: Filtering is working correctly, no need to log every mismatch
                             return matches;
                         });
                         
-                        console.log(`[Filter] Found ${categoryTools.length} tools matching agent: ${currentAgentFilter}`);
+                        // Log summary: show how many tools matched (only if no matches found, or if matches found)
+                        if (categoryTools.length > 0) {
+                            console.log(`[Filter] ✅ Found ${categoryTools.length} tools for ${currentAgentFilter} in ${category} category`);
+                        } else if (availableToolResults[category].length > 0) {
+                            // Only log warning if there were tools but none matched
+                            console.warn(`[Filter] ⚠️ No tools found for ${currentAgentFilter} in ${category} category (filtered ${availableToolResults[category].length} total tools)`);
+                        }
                         
                         if (categoryTools.length > 0) {
                             // Convert tool_results_by_category entries to conversation format
@@ -6903,7 +6901,7 @@
                                 console.log(`[Filter] Converted ${filteredConversations.length} tool entries from tool_results_by_category`);
                             }
                         } else {
-                            console.log(`[Filter] No tools in category ${category} match agent ${currentAgentFilter}`);
+                            // Already logged above
                         }
                     } else {
                         console.log(`[Filter] Category ${category} not found or empty in tool_results_by_category`);

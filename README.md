@@ -211,6 +211,20 @@ This will:
 - 📊 **API Docs**: http://localhost:8000/docs
 - 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
 
+**Next Steps - Setup Background Running & Backup**:
+```powershell
+# Step 4: Setup background running (recommended for long-term use)
+# Right-click scripts\start_api_task_admin.bat → Run as administrator
+
+# Step 5: Setup daily backup (recommended for data safety)
+# Right-click scripts\setup_daily_backup_admin.bat → Run as administrator
+```
+
+**📖 Complete Setup Guide**: See [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) for detailed instructions on:
+- ✅ Background running setup (Task Scheduler / Windows Service)
+- ✅ Daily backup configuration
+- ✅ Verification and troubleshooting
+
 **Optional: Setup Scheduled Tasks**:
 ```powershell
 .\scripts\setup_scheduled_tasks.ps1
@@ -2999,6 +3013,67 @@ Register-ScheduledTask -TaskName "AITrader-ConnectionMonitor" -Action $Action -T
 
 ## 🚀 Running the System
 
+### 🎯 Quick Start: Background Running & Backup Setup
+
+**For first-time users, follow these steps in order:**
+
+#### Step 1: Setup Background Running (Backend API)
+
+**Method 1: Task Scheduler (Recommended - Easiest)**
+```powershell
+# Right-click and run as administrator:
+scripts\start_api_task_admin.bat
+
+# Follow prompts:
+# - Choose (I)nstall to install scheduled task
+# - Choose (S)tart to start immediately
+```
+
+**Features**:
+- ✅ Runs in background (closing CMD window won't stop it)
+- ✅ Auto-starts on Windows login
+- ✅ Auto-restarts on failure
+- ✅ No additional software needed
+
+**Verify**:
+```powershell
+# Check if running
+Get-ScheduledTaskInfo -TaskName "AITraderAPI"
+
+# Check API status
+.\scripts\check_api_status.ps1
+```
+
+#### Step 2: Setup Daily Backup
+
+```powershell
+# Right-click and run as administrator:
+scripts\setup_daily_backup_admin.bat
+
+# Follow prompts:
+# - Enter backup time (default: 23:00)
+# - Choose (Y)es to test backup
+```
+
+**Features**:
+- ✅ Automatic daily backup at specified time
+- ✅ Backs up all critical files and memory directory
+- ✅ Auto-cleans old backups (keeps last 7 days)
+- ✅ Creates backup manifest for verification
+
+**Verify**:
+```powershell
+# Check backup task
+Get-ScheduledTask -TaskName "AITrader-DailyBackup"
+
+# View backups
+Get-ChildItem -Path "data\backups" -Directory | Sort-Object Name -Descending
+```
+
+**📖 Detailed Guide**: See [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) for complete setup instructions.
+
+---
+
 ### Starting the API Server
 
 **Option A: Task Scheduler (Recommended for long-term running)**
@@ -3509,6 +3584,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 | `docs/AGENTS.md` | Complete agent architecture |
 | `docs/TOOLS.md` | Detailed documentation for all 29 tools (23 market + 6 memory) |
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
+| `docs/QUICK_SETUP_GUIDE.md` | **Quick setup guide for background running & backup** ⭐ |
 | `docs/BACKUP_GUIDE.md` | **Complete backup and restore guide** ⭐ |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
 | **[Key Test Files](docs/KEY_TEST_FILES.md)** | Critical test files and priority guide ⭐ |

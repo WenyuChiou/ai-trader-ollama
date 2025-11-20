@@ -2052,6 +2052,71 @@ Register-ScheduledTask -TaskName "AITrader-ConnectionMonitor" -Action $Action -T
 
 ## 🚀 运行系统
 
+### 🎯 快速开始：后台运行和备份设置
+
+**首次使用的用户，请按以下步骤操作：**
+
+#### 步骤 1: 设置后台运行（后端 API）
+
+**方法 1: 任务计划程序（推荐 - 最简单）**
+```powershell
+# 右键点击并以管理员身份运行：
+scripts\start_api_task_admin.bat
+
+# 按照提示操作：
+# - 选择 (I)nstall 安装定时任务
+# - 选择 (S)tart 立即启动
+```
+
+**功能**:
+- ✅ 后台运行（关闭 CMD 窗口不会停止）
+- ✅ Windows 登录时自动启动
+- ✅ 失败时自动重启
+- ✅ 无需安装额外软件
+
+**验证**:
+```powershell
+# 检查是否运行
+Get-ScheduledTaskInfo -TaskName "AITraderAPI"
+
+# 检查 API 状态
+.\scripts\check_api_status.ps1
+```
+
+#### 步骤 2: 设置每日备份
+
+```powershell
+# 右键点击并以管理员身份运行：
+scripts\setup_daily_backup_admin.bat
+
+# 按照提示操作：
+# - 输入备份时间（默认：23:00）
+# - 选择 (Y)es 测试备份
+```
+
+**功能**:
+- ✅ 每天指定时间自动备份
+- ✅ 备份所有关键文件和 memory 目录
+- ✅ 自动清理旧备份（保留最近 7 天）
+- ✅ 创建备份清单用于验证
+
+**验证**:
+```powershell
+# 检查备份任务
+Get-ScheduledTask -TaskName "AITrader-DailyBackup"
+
+# 查看备份
+Get-ChildItem -Path "data\backups" -Directory | Sort-Object Name -Descending
+```
+
+**📖 完整设置指南**: 查看 [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) 获取：
+- ✅ 逐步后台运行设置
+- ✅ 每日备份配置
+- ✅ 验证和故障排除
+- ✅ 管理命令
+
+---
+
 ### 启动 API 服务器
 
 **选项 A：任务计划程序（推荐用于长期运行）**
@@ -2275,6 +2340,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
 | `docs/AGENTS.md` | 完整代理架构 |
 | `docs/TOOLS.md` | 所有 29 个工具的详细文档（23 个市场 + 6 个内存） |
 | `docs/DATA_STORAGE_GUIDE.md` | 数据存储位置和格式 |
+| `docs/QUICK_SETUP_GUIDE.md` | **后台运行和备份快速设置指南** ⭐ |
 | `docs/BACKUP_GUIDE.md` | **完整的备份和恢复指南** ⭐ |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | 长期操作指南 |
 | **[关键测试文件](docs/KEY_TEST_FILES.md)** | 关键测试文件和优先级指南 ⭐ |

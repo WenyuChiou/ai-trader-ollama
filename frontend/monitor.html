@@ -10798,7 +10798,8 @@
                 // 调试：打印所有标签
                 console.log('[Chart] Generated labels:', labels);
                 
-                const values = equityData.map(item => item.value || item.total_value || item.equity || 0);
+                // CRITICAL FIX: 优先使用 total_value，然后是 value，最后是 equity_value
+                const values = equityData.map(item => item.total_value || item.value || item.equity_value || item.equity || 0);
                 
                 document.getElementById('chartDataPoints').textContent = `${values.length} data points`;
                 
@@ -11323,7 +11324,8 @@
                 return;
             }
 
-            const values = sorted.map(d => d.value);
+            // CRITICAL FIX: 优先使用 total_value，然后是 value，最后是 equity_value
+            const values = sorted.map(d => d.total_value || d.value || d.equity_value || 0);
             const minValue = Math.min(...values);
             const maxValue = Math.max(...values);
             const valueRange = maxValue - minValue || 1;
@@ -11336,7 +11338,9 @@
             
             sorted.forEach((point, i) => {
                 const x = padding.left + (i / (sorted.length - 1)) * chartWidth;
-                const y = padding.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+                // CRITICAL FIX: 优先使用 total_value，然后是 value，最后是 equity_value
+                const pointValue = point.total_value || point.value || point.equity_value || 0;
+                const y = padding.top + chartHeight - ((pointValue - minValue) / valueRange) * chartHeight;
                 
                 if (i === 0) {
                     pathData += ` L ${x} ${y}`;

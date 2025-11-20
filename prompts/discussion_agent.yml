@@ -30,10 +30,16 @@ user: |
   Based on the above information, synthesize all analyst perspectives and provide:
   
   1. **Consensus Stance**: Overall market stance (BULLISH/BEARISH/NEUTRAL) based on analyst agreement
-  2. **Key Insights**: Main points from each analyst
+  2. **Key Insights**: Main points from each analyst. You MUST include insights from ALL four analysts:
+     - * Market Analyst (Bullish/Bearish/Neutral) [their key insights]
+     - * Fundamental Analyst (Bullish/Bearish/Neutral) [their key insights]
+     - * Technical Analyst (Bullish/Bearish/Neutral) [their key insights]
+     - * Sentiment Analyst (Bullish/Bearish/Neutral) [their key insights]
   3. **Consensus Areas**: Where analysts agree
   4. **Disagreements**: Important differences and their implications
   5. **Recommended Stocks**: List of stocks recommended by multiple analysts or with strong consensus
   6. **Final Summary**: Comprehensive summary of the analysis
   
   Output your synthesis in natural language format (NOT JSON). Be clear, concise, and actionable.
+  
+  IMPORTANT: In the "Key Insights" section, you MUST include all four analysts (Market, Fundamental, Technical, Sentiment) even if some analysts have neutral or limited insights. Use the format "* Analyst Name (Stance) [insights]" for each analyst.

@@ -2457,7 +2457,7 @@ pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 
 **每日备份**:
 - **脚本**: `backend/scripts/daily_backup.py`
-- **设置**: `.\scripts\setup_daily_backup.ps1`（需要管理员权限）
+- **设置**: 右键点击 `scripts\setup_daily_backup_admin.bat` 并选择"以管理员身份运行"
 - **位置**: `data/backups/YYYYMMDD_HHMMSS/`
 - **自动清理**: 保留最近 7 天的备份
 

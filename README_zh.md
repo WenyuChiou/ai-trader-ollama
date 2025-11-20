@@ -2270,6 +2270,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
 | `docs/AGENTS.md` | 完整代理架构 |
 | `docs/TOOLS.md` | 所有 29 个工具的详细文档（23 个市场 + 6 个内存） |
 | `docs/DATA_STORAGE_GUIDE.md` | 数据存储位置和格式 |
+| `docs/BACKUP_GUIDE.md` | **完整的备份和恢复指南** ⭐ |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | 长期操作指南 |
 | **[关键测试文件](docs/KEY_TEST_FILES.md)** | 关键测试文件和优先级指南 ⭐ |
 | **[订单数据模式](docs/ORDER_DATA_SCHEMA.md)** | 用于性能分析的标准化订单数据结构 |

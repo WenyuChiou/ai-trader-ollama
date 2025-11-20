@@ -6706,17 +6706,38 @@
             
             // CRITICAL FIX: 获取工具记录（不限制数量，包括所有 round 1-3 的工具）
             // 只显示成功使用的工具（round 1-3），不显示 round 0 的旧工具记录
-            const toolEntries = sortedConversations.filter(c => {
-                const isTool = (c.type || 'discussion') === 'tool';
-                if (!isTool) return false;
+            const allToolEntries = sortedConversations.filter(c => (c.type || 'discussion') === 'tool');
+            console.log(`[Filter] Total tool entries before round filter: ${allToolEntries.length}`);
+            
+            // DEBUG: Check round distribution
+            const roundStats = {};
+            const missingRoundTools = [];
+            allToolEntries.forEach(c => {
+                const round = c.round;
+                if (round === undefined || round === null) {
+                    missingRoundTools.push({agent: c.agent, tool: c.tool_name});
+                } else {
+                    roundStats[round] = (roundStats[round] || 0) + 1;
+                }
+            });
+            console.log(`[Filter] Round distribution:`, roundStats);
+            if (missingRoundTools.length > 0) {
+                console.log(`[Filter] Tools missing round field:`, missingRoundTools.slice(0, 5));
+            }
+            
+            const toolEntries = allToolEntries.filter(c => {
                 // CRITICAL FIX: 只显示讨论轮次中的工具（round 1-3），不显示 round 0 的旧工具
                 const round = c.round || 0;
                 const roundNum = typeof round === 'string' ? parseInt(round) || 0 : round;
                 // 显示 round 1-3 的工具，或者没有 round 字段的工具（向后兼容）
-                return roundNum >= 1 && roundNum <= 3 || roundNum === 0 && !c.hasOwnProperty('round');
+                const shouldShow = roundNum >= 1 && roundNum <= 3 || roundNum === 0 && !c.hasOwnProperty('round');
+                if (!shouldShow && roundNum === 0) {
+                    console.log(`[Filter] Filtered out tool with round=0:`, c.agent, c.tool_name);
+                }
+                return shouldShow;
             });
             
-            console.log(`[Filter] Found ${toolEntries.length} tool entries (round 1-3 or legacy)`);
+            console.log(`[Filter] Found ${toolEntries.length} tool entries (round 1-3 or legacy) after filtering`);
             
             // 合并：最近三次讨论 + 所有工具记录
             let filteredConversations = [...latestDiscussions, ...toolEntries];

@@ -149,4 +149,68 @@ class TestPortfolio:
                 record = json.loads(lines[0])
                 assert record["date"] == "2025-01-01"
                 assert record["total_value"] == 10000.0
+    
+    def test_position_cost_calculation(self):
+        """Test position cost calculation"""
+        from src.data.portfolio import Portfolio, Position
+        
+        portfolio = Portfolio()
+        
+        # Test adding position with cost
+        position = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
+        portfolio._positions["NVDA"] = position
+        
+        assert portfolio._positions["NVDA"].total_cost == 5000.0
+        assert portfolio._positions["NVDA"].avg_cost == 500.0
+        
+        # Test cost calculation: avg_cost * quantity should equal total_cost
+        calculated_total = portfolio._positions["NVDA"].avg_cost * portfolio._positions["NVDA"].quantity
+        assert calculated_total == portfolio._positions["NVDA"].total_cost
+    
+    def test_position_weight_calculation(self):
+        """Test position weight calculation"""
+        from src.data.portfolio import Portfolio, Position
+        
+        portfolio = Portfolio()
+        portfolio.cash = 5000.0
+        portfolio._positions["NVDA"] = Position(symbol="NVDA", quantity=10, avg_cost=500.0, total_cost=5000.0)
+        portfolio._positions["MSFT"] = Position(symbol="MSFT", quantity=5, avg_cost=400.0, total_cost=2000.0)
+        
+        last_prices = {"NVDA": 510.0, "MSFT": 390.0}
+        total_value = portfolio.value(last_prices)  # 5000 + 5100 + 1950 = 12050
+        
+        # Calculate weights
+        nvda_value = 510.0 * 10  # 5100
+        msft_value = 390.0 * 5   # 1950
+        
+        nvda_weight = (nvda_value / total_value) * 100
+        msft_weight = (msft_value / total_value) * 100
+        
+        assert nvda_weight == pytest.approx(42.32, rel=0.01)  # 5100 / 12050 * 100
+        assert msft_weight == pytest.approx(16.18, rel=0.01)  # 1950 / 12050 * 100
+    
+    def test_position_limit_validation(self):
+        """Test position limit validation"""
+        from src.data.portfolio import Portfolio, Position
+        
+        portfolio = Portfolio()
+        portfolio.cash = 10000.0
+        
+        # Test position limit per stock (default: 15%)
+        # Add position that exceeds limit
+        position_value = 2000.0  # 20% of 10000
+        quantity = 10
+        avg_cost = 200.0
+        
+        portfolio._positions["TEST"] = Position(symbol="TEST", quantity=quantity, avg_cost=avg_cost, total_cost=position_value)
+        
+        last_prices = {"TEST": 200.0}
+        total_value = portfolio.value(last_prices)
+        position_weight = (position_value / total_value) * 100
+        
+        # Position weight should be calculated correctly
+        assert position_weight == pytest.approx(16.67, rel=0.01)  # 2000 / 12000 * 100
+        
+        # Note: Actual limit enforcement is done in trading logic, not in Portfolio class
+        # This test just verifies weight calculation is correct
 

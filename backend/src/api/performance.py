@@ -35,9 +35,6 @@ def _load_equity_history(
     logs_dir = _get_project_logs_dir()
     equity_file = logs_dir / "equity_history.jsonl"
     
-    print(f"[Performance] Loading equity history from: {equity_file}")
-    print(f"[Performance] File exists: {equity_file.exists()}")
-    
     if not equity_file.exists():
         print(f"[Performance] WARNING: equity_history.jsonl not found at {equity_file}")
         return []
@@ -69,7 +66,6 @@ def _load_equity_history(
                     # Skip if no date found
                     if not record_date:
                         skipped_count += 1
-                        print(f"[Performance] Skipping record {line_num}: no date found")
                         continue
                     
                     # Filter by date range (inclusive on both ends)
@@ -82,10 +78,7 @@ def _load_equity_history(
                 except (json.JSONDecodeError, AttributeError, TypeError) as e:
                     # Skip malformed records
                     skipped_count += 1
-                    print(f"[Performance] Skipping malformed equity record at line {line_num}: {e}")
                     continue
-    
-    print(f"[Performance] Loaded {len(records)} records from {line_count} lines (skipped {skipped_count})")
     
     # Sort by timestamp/date
     try:

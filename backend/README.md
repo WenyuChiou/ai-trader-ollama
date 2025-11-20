@@ -38,7 +38,11 @@ ollama pull llama3.1
 ### 3. Initialize Data
 
 ```bash
+# From project root directory
 python scripts/init_data.py
+
+# Or from backend directory
+python ../scripts/init_data.py
 ```
 
 This will create:
@@ -114,11 +118,10 @@ backend/
 │   ├── trader_agent.yml
 │   └── market_analyst.yml
 ├── scripts/               # Utility scripts
-│   ├── init_data.py              # Data initialization
 │   ├── start_api_background.ps1  # Start API
 │   ├── restart_api.ps1          # Restart API
 │   ├── clear_test_data.py       # Clear test data
-│   └── simulate_october_history.py  # October simulation
+│   └── simulate_october_history.py  # October simulation (Note: main script is in ../scripts/)
 ├── data/                  # Data directory (.gitignore)
 │   └── logs/              # Log files
 ├── tests/                 # Test suite

@@ -78,10 +78,6 @@ def run_market_analyst(
         
         market_response = market_analyst.run(market_prompt_vars, expect_json=True)
         
-        if isinstance(market_response, dict):
-            print(f"   [DEBUG] LLM Response (dict): {str(market_response)[:200]}...")
-        else:
-            print(f"   [DEBUG] LLM Response (str, first 300 chars): {str(market_response)[:300]}...")
         
         market_result = parse_analyst_response(market_response)
         

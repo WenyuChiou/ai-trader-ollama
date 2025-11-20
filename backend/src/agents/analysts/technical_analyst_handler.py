@@ -392,7 +392,6 @@ def run_technical_analyst(
                     print(f"   [TOOL] Executing: {tool_name}")
                 
                 if tool_name == "news_scan":
-                    print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
                     tool_call = {
                         "name": "plan_and_scan_news",
                         "args": {

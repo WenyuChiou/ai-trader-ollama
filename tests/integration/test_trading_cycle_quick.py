@@ -322,7 +322,188 @@ def main():
         print_unicode("[FAILED] Test failed! Order recording has issues")
         return False
 
+def test_order_status_transition():
+    """Test order status transition from PENDING to FILLED"""
+    print_unicode("")
+    print_unicode("=" * 80)
+    print_unicode("Test: Order Status Transition (PENDING → FILLED)")
+    print_unicode("=" * 80)
+    
+    logs_dir = _get_project_logs_dir()
+    order_manager = OrderManager(root=str(logs_dir))
+    
+    # Load pending orders
+    pending_orders = order_manager.load_pending_orders()
+    
+    if not pending_orders:
+        print_unicode("ℹ️ No pending orders found - skipping status transition test")
+        return True
+    
+    print_unicode(f"Found {len(pending_orders)} pending orders")
+    
+    # Check order status fields
+    success = True
+    for order in pending_orders:
+        order_id = order.get("order_id", "N/A")
+        status = order.get("status", "N/A")
+        
+        if status != "PENDING":
+            print_unicode(f"⚠️ Order {order_id} has status '{status}' instead of 'PENDING'")
+            success = False
+        else:
+            print_unicode(f"✅ Order {order_id} has correct PENDING status")
+        
+        # Check that PENDING orders don't have filled_at
+        if "filled_at" in order and order.get("filled_at"):
+            print_unicode(f"⚠️ Order {order_id} is PENDING but has filled_at timestamp")
+            success = False
+    
+    # Check filled orders for proper status
+    filled_file = order_manager.filled_orders_file
+    if filled_file.exists():
+        filled_orders = []
+        with filled_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        order = json.loads(line)
+                        filled_orders.append(order)
+                    except:
+                        pass
+        
+        for order in filled_orders[-10:]:  # Check last 10 filled orders
+            order_id = order.get("order_id", "N/A")
+            status = order.get("status", "N/A")
+            
+            if status != "FILLED":
+                print_unicode(f"⚠️ Order {order_id} in filled_orders.jsonl has status '{status}' instead of 'FILLED'")
+                success = False
+            else:
+                print_unicode(f"✅ Order {order_id} has correct FILLED status")
+            
+            # Check that FILLED orders have filled_at
+            if "filled_at" not in order or not order.get("filled_at"):
+                print_unicode(f"⚠️ Order {order_id} is FILLED but missing filled_at timestamp")
+                success = False
+    
+    if success:
+        print_unicode("✅ Order status transition test passed")
+    else:
+        print_unicode("⚠️ Order status transition test found issues")
+    
+    return success
+
+def test_order_deduplication():
+    """Test that orders are not duplicated"""
+    print_unicode("")
+    print_unicode("=" * 80)
+    print_unicode("Test: Order Deduplication")
+    print_unicode("=" * 80)
+    
+    logs_dir = _get_project_logs_dir()
+    order_manager = OrderManager(root=str(logs_dir))
+    
+    # Load all orders
+    pending_orders = order_manager.load_pending_orders()
+    
+    filled_file = order_manager.filled_orders_file
+    filled_orders = []
+    if filled_file.exists():
+        with filled_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        order = json.loads(line)
+                        filled_orders.append(order)
+                    except:
+                        pass
+    
+    # Check for duplicate order_ids
+    all_order_ids = []
+    duplicates = []
+    
+    for order in pending_orders:
+        order_id = order.get("order_id")
+        if order_id:
+            if order_id in all_order_ids:
+                duplicates.append(order_id)
+            all_order_ids.append(order_id)
+    
+    for order in filled_orders:
+        order_id = order.get("order_id")
+        if order_id:
+            if order_id in all_order_ids:
+                duplicates.append(order_id)
+            all_order_ids.append(order_id)
+    
+    if duplicates:
+        print_unicode(f"⚠️ Found {len(set(duplicates))} duplicate order IDs: {', '.join(set(duplicates)[:5])}")
+        return False
+    else:
+        print_unicode(f"✅ No duplicate order IDs found (checked {len(all_order_ids)} orders)")
+        return True
+
+def test_order_completeness():
+    """Test that all orders have required fields"""
+    print_unicode("")
+    print_unicode("=" * 80)
+    print_unicode("Test: Order Completeness (All Required Fields)")
+    print_unicode("=" * 80)
+    
+    logs_dir = _get_project_logs_dir()
+    order_manager = OrderManager(root=str(logs_dir))
+    
+    # Required fields for all orders
+    required_fields = ["order_id", "symbol", "action", "quantity", "status", "placed_at"]
+    
+    success = True
+    
+    # Check pending orders
+    pending_orders = order_manager.load_pending_orders()
+    for order in pending_orders:
+        order_id = order.get("order_id", "N/A")
+        missing_fields = [f for f in required_fields if f not in order or not order.get(f)]
+        if missing_fields:
+            print_unicode(f"⚠️ Pending order {order_id} missing fields: {', '.join(missing_fields)}")
+            success = False
+    
+    # Check filled orders
+    filled_file = order_manager.filled_orders_file
+    if filled_file.exists():
+        with filled_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        order = json.loads(line)
+                        order_id = order.get("order_id", "N/A")
+                        missing_fields = [f for f in required_fields if f not in order or not order.get(f)]
+                        filled_fields = ["fill_price", "filled_at"]
+                        missing_filled = [f for f in filled_fields if f not in order or not order.get(f)]
+                        
+                        if missing_fields:
+                            print_unicode(f"⚠️ Filled order {order_id} missing required fields: {', '.join(missing_fields)}")
+                            success = False
+                        if missing_filled:
+                            print_unicode(f"⚠️ Filled order {order_id} missing filled fields: {', '.join(missing_filled)}")
+                            success = False
+                    except:
+                        pass
+    
+    if success:
+        print_unicode("✅ All orders have required fields")
+    else:
+        print_unicode("⚠️ Some orders are missing required fields")
+    
+    return success
+
 if __name__ == "__main__":
     success = main()
+    
+    # Run additional tests
+    if success:
+        success = test_order_status_transition() and success
+        success = test_order_deduplication() and success
+        success = test_order_completeness() and success
+    
     sys.exit(0 if success else 1)
 

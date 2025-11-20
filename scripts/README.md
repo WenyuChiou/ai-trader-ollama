@@ -35,36 +35,26 @@ scripts/
 - `upload_data_to_railway.py` - Upload data to Railway
 - `run_cycle_and_upload_to_railway.py` - Run cycle and upload
 
-### Monitoring & Verification
-- `verify_system_status.py` - Overall system health check
-- `check_system_features.py` - Feature verification
-- `check_system_pipeline.py` - Pipeline integrity check
-- `check_market_now.py` - Market status check
-- `check_api_endpoints.py` - API endpoint tests
-- `diagnose_no_trades.py` - Trading diagnosis
-- `verify_market_and_tools.py` - Tool verification
-
 ### Data Management
 - `init_data.py` - Initialize data directories
-- `cleanup_old_memory.py` - Cleanup old memory files
 - `cleanup_old_memory.ps1` - Cleanup old memory (PowerShell)
 - `check_duplicates.py` - Check for duplicate records
 - `update_real_time_pnl.py` - Update real-time P&L
 - `backup_data.ps1` - Backup system data
+- `record_equity_auto.py` - Record equity automatically
 
 ### Reporting
 - `generate_daily_report.py` - Generate daily reports
 - `generate_static_report.py` - Generate static reports
 - `run_trading_cycle_and_update_report.py` - Run cycle and update report
 - `analyze_risk_report.py` - Analyze risk reports
-- `show_discussion_rounds.py` - Show discussion rounds
 
 ### Utilities
 - `get_share_link.ps1` - Get share link
 - `start_frontend_share.ps1` - Start frontend sharing
 - `test_github_pages.ps1` - Test GitHub Pages
 - `run_daily_trading.py` - Run daily trading
-- `check_pending_orders.py` - Check pending orders
+- `simulate_october_history.py` - Simulate October historical trading
 
 ### Batch Wrappers
 - `api_service_wrapper.bat` - API service wrapper
@@ -96,9 +86,6 @@ Most scripts can be run directly from the project root:
 
 # Start services
 .\scripts\start_api_task_scheduler.ps1
-
-# Check status
-.\scripts\verify_system_status.py
 
 # Backup data
 .\scripts\backup_data.ps1

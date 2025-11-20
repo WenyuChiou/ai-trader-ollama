@@ -64,13 +64,10 @@ def run_sentiment_analyst(
             if isinstance(fgi_in_summary, dict):
                 fgi_val = fgi_in_summary.get("value")
                 fgi_lbl = fgi_in_summary.get("label", "N/A")
-                print(f"   [FGI] [DEBUG] market_summary.fear_greed before LLM: value={fgi_val}, label={fgi_lbl}")
                 if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
                     expected_val = fgi_data_from_api.get("value")
                     if fgi_val != expected_val:
                         print(f"   [FGI] [ERROR] market_summary has wrong FGI! Expected={expected_val}, Got={fgi_val}")
-                    else:
-                        print(f"   [FGI] [OK] market_summary.fear_greed matches pre-fetched value: {fgi_val}")
         
         # Add explicit FGI value reminder to prompt
         fgi_reminder = ""
@@ -79,7 +76,6 @@ def run_sentiment_analyst(
             fgi_lbl = market_summary["fear_greed"].get("label", "N/A")
             if fgi_val is not None:
                 fgi_reminder = f"\n\n**⚠️ REMINDER: The Fear & Greed Index in market_view is value={fgi_val}, label={fgi_lbl}. YOU MUST USE THIS EXACT VALUE ({fgi_val}) IN YOUR ANALYSIS, NOT ANY OTHER VALUE.**\n"
-                print(f"   [FGI] [PROMPT] Added FGI reminder: value={fgi_val}, label={fgi_lbl}")
         
         # CRITICAL FIX: Check budget before LLM call - if exhausted in Round 2/3, disable tools
         remaining_budget = tool_budget - tool_calls_count
@@ -248,7 +244,6 @@ def run_sentiment_analyst(
                     print(f"   [TOOL] Executing: {tool_name}")
                 
                 if tool_name == "news_scan":
-                    print(f"   [NEWS] Mapping news_scan to plan_and_scan_news (news_scan is deprecated)")
                     tool_call = {
                         "name": "plan_and_scan_news",
                         "args": {
@@ -265,7 +260,6 @@ def run_sentiment_analyst(
                 
                 # If fear_greed tool is requested, use pre-fetched API value
                 if tool_name == "fear_greed" and fgi_data_from_api and fgi_data_from_api.get("value") is not None:
-                    print(f"   [FGI] ✅ Using pre-fetched FGI from API (same as frontend panel): value={fgi_data_from_api.get('value')}, label={fgi_data_from_api.get('label', 'N/A')}")
                     tool_result = {
                         "ok": True,
                         "result": fgi_data_from_api
@@ -273,16 +267,6 @@ def run_sentiment_analyst(
                 else:
                     tool_result = execute_tool(toolbox, tool_call, market_summary)
                     if tool_name == "plan_and_scan_news":
-                        print(f"   [NEWS] [DEBUG] plan_and_scan_news execution result: ok={tool_result.get('ok') if isinstance(tool_result, dict) else 'N/A'}, type={type(tool_result)}")
-                        if isinstance(tool_result, dict):
-                            if tool_result.get("ok"):
-                                actual_result = tool_result.get("result", {})
-                                if isinstance(actual_result, dict):
-                                    articles = actual_result.get("articles", [])
-                                    hits = actual_result.get("hits", [])
-                                    print(f"   [NEWS] [DEBUG] plan_and_scan_news result: {len(articles) if isinstance(articles, list) else 0} articles, {len(hits) if isinstance(hits, list) else 0} hits")
-                            else:
-                                print(f"   [NEWS] [DEBUG] plan_and_scan_news failed: {tool_result.get('error', 'Unknown error')}")
                 
                 if check_tool_success(tool_result):
                     cache_key = get_tool_cache_key(tool_name, tool_args)
@@ -334,7 +318,6 @@ def run_sentiment_analyst(
                                     hits_count = len(actual_result.get("hits", [])) if isinstance(actual_result.get("hits"), list) else 0
                                     articles_count = len(actual_result.get("articles", [])) if isinstance(actual_result.get("articles"), list) else 0
                                     print(f"   [OK] Tool {tool_name} executed successfully - {hits_count} hits, {articles_count} articles")
-                                    print(f"   [DEBUG] News tool result added to all_tool_calls: analyst=SentimentAnalyst, tool={tool_name}, hits={hits_count}, articles={articles_count}")
                                 else:
                                     print(f"   [WARN] Tool {tool_name} execution failed: {tool_result.get('error', 'Unknown error')}")
                             else:

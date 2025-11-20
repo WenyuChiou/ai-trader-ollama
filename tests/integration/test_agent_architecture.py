@@ -99,4 +99,59 @@ class TestAgentArchitecture:
                     prompt_data = yaml.safe_load(f)
                     assert prompt_data is not None
                     assert "system" in prompt_data or "instructions" in prompt_data
+    
+    def test_discussion_coordinator_prompt(self):
+        """Test that discussion coordinator prompt includes all four analysts"""
+        from pathlib import Path
+        import yaml
+        
+        prompts_dir = Path(__file__).parent.parent.parent / "prompts"
+        prompt_path = prompts_dir / "discussion_agent.yml"
+        
+        if prompt_path.exists():
+            with open(prompt_path, 'r', encoding='utf-8') as f:
+                prompt_data = yaml.safe_load(f)
+                assert prompt_data is not None
+                user_prompt = prompt_data.get("user", "")
+                
+                # Check that prompt requires all four analysts
+                assert "Market Analyst" in user_prompt or "Market" in user_prompt
+                assert "Technical Analyst" in user_prompt or "Technical" in user_prompt
+                assert "Fundamental Analyst" in user_prompt or "Fundamental" in user_prompt
+                assert "Sentiment Analyst" in user_prompt or "Sentiment" in user_prompt
+                assert "MUST include" in user_prompt or "must include" in user_prompt
+    
+    def test_multi_round_discussion_structure(self, sample_market_data):
+        """Test multi-round discussion structure"""
+        from src.agents.multi_analyst_system import run_multi_analyst_discussion
+        
+        # Test with rounds parameter
+        result = run_multi_analyst_discussion(
+            market_view=sample_market_data,
+            use_tools=False,
+            tool_budget=0,
+            rounds=2  # Test multi-round capability
+        )
+        
+        assert isinstance(result, dict)
+        assert "final_stance" in result
+        assert "analyst_reports" in result
+        assert "coordinator_summary" in result or "discussion_history" in result
+    
+    def test_tool_budget_tracking(self, sample_market_data):
+        """Test that tool budget is tracked correctly"""
+        from src.agents.multi_analyst_system import run_multi_analyst_discussion
+        
+        # Test with limited tool budget
+        result = run_multi_analyst_discussion(
+            market_view=sample_market_data,
+            use_tools=True,
+            tool_budget=5,  # Small budget
+            rounds=1
+        )
+        
+        assert isinstance(result, dict)
+        # Check that tool budget is respected (if tools were used)
+        if "tool_calls_count" in result:
+            assert result["tool_calls_count"] <= 5
 

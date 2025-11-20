@@ -272,7 +272,6 @@ class OllamaClient:
         # 一次性呼叫 + 空回覆/載入狀態的穩健重試
         for attempt in (1, 2):
             try:
-                print(f"[DEBUG] Sending to model: {model} ({len(system)} chars)")
                 ai = self.chat.invoke(msgs)
                 content = (ai.content if isinstance(ai, AIMessage) else str(ai or "")).strip()
                 if content:

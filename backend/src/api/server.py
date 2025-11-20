@@ -338,11 +338,6 @@ async def fetch_conversations_api(
             discussion_entries = [e for e in all_entries if e.get("type") == "discussion"]
             tool_entries = [e for e in all_entries if e.get("type") == "tool"]
             
-            # DEBUG: Log tool entries found
-            print(f"[API] Found {len(discussion_entries)} discussion entries, {len(tool_entries)} tool entries")
-            if tool_entries:
-                sample_tool = tool_entries[0]
-                print(f"[API] Sample tool entry: agent={sample_tool.get('agent')}, type={sample_tool.get('type')}, tool_name={sample_tool.get('tool_name')}")
             
             # CRITICAL FIX: Include ALL discussion entries (they are important for frontend display)
             # Then add tool entries up to the limit
@@ -757,12 +752,9 @@ async def get_portfolio_real_time():
             is_market_open_now = is_market_open(None)  # 传入None直接获取美东时间
             today_is_trading_day = is_trading_day(date.today())
             
-            print(f"[API] Market status: open={is_market_open_now}, trading_day={today_is_trading_day}")
-            
             try:
                 # 策略1: 如果市场开盘，优先使用实时价格
                 if is_market_open_now:
-                    print(f"[API] Market is OPEN - using real-time prices for {len(positions)} positions")
                     for symbol in positions:
                         try:
                             ticker = yf.Ticker(symbol)
@@ -786,16 +778,11 @@ async def get_portfolio_real_time():
                                         "unrealized_pnl_pct": ((price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0,
                                     }
                                     positions_pnl[symbol] = portfolio.get_position_pnl(symbol, price)
-                                    print(f"[API] ✅ Real-time price for {symbol}: ${price:.2f}")
                                     continue
                         except Exception as e:
-                            print(f"[API] ⚠️  Failed to get real-time price for {symbol}: {e}, will try close price")
+                            pass  # Will try close price
                 
                 # 策略2: 市场关闭或非交易日 - 使用收盘价（多层fallback确保总能获取到价格）
-                # CRITICAL FIX: Only print CLOSED message if market is actually closed
-                if not is_market_open_now:
-                    market_status = "CLOSED (trading day)" if today_is_trading_day else "CLOSED (non-trading day)"
-                    print(f"[API] Market is {market_status} - using latest close prices for {len(positions)} positions")
                 
                 # CRITICAL FIX: 优先使用 yfinance 直接获取最新收盘价（更可靠）
                 # 这样可以确保获取到今天的收盘价（如果市场已收盘）或最近一个交易日的收盘价

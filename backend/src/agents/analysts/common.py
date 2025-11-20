@@ -365,7 +365,6 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
     # Check if tool exists in toolbox
     if tool_name not in toolbox.list():
         print(f"   [WARN] Tool {tool_name} not found in toolbox")
-        print(f"   [INFO] Available tools: {', '.join(sorted(toolbox.list())[:10])}...")
         return {"ok": False, "error": f"Tool {tool_name} not available"}
     
     # CRITICAL FIX: web_search must have query or keywords parameter
@@ -386,7 +385,6 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
         # If fetch_body_top is not set, default to fetching top 10 articles' content
         if "fetch_body_top" not in tool_args or tool_args.get("fetch_body_top", 0) == 0:
             tool_args["fetch_body_top"] = 10
-            print(f"   [INFO] Auto-set fetch_body_top=10 for plan_and_scan_news to get article content")
         
         # If mview is not provided, create from market_summary
         if "mview" not in tool_args and market_summary:
@@ -394,11 +392,9 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
                 "vix": market_summary.get("vix", {}),
                 "stocks": market_summary.get("stocks", {}),
             }
-            print(f"   [INFO] Auto-added mview parameter to plan_and_scan_news from market_summary")
         elif "mview" not in tool_args:
             # If no market_summary, create empty mview
             tool_args["mview"] = {"vix": {}, "stocks": {}}
-            print(f"   [INFO] Auto-added empty mview parameter to plan_and_scan_news")
     
     # CRITICAL FIX: fear_greed tool does not accept index or crypto parameters, remove them
     if tool_name == "fear_greed":
@@ -424,7 +420,6 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
         if not tool_args.get("symbols") and market_summary and market_summary.get("symbols"):
             # Use full universe symbols (not sample_stocks)
             tool_args["symbols"] = market_summary["symbols"]
-            print(f"   [INFO] Auto-added {len(market_summary['symbols'])} symbols to get_market_breadth (full universe)")
     
     # CRITICAL FIX: Check tools that require symbol parameter
     symbol_required_tools = ["get_advanced_indicators", "get_support_resistance", "get_company_fundamentals", 
@@ -437,7 +432,6 @@ def execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: Di
                 # Use first sample stock as default symbol
                 default_symbol = market_summary["sample_stocks"][0]
                 tool_args["symbol"] = default_symbol
-                print(f"   [INFO] Auto-added symbol={default_symbol} to {tool_name}")
             else:
                 # If no available symbol, return error
                 return {"ok": False, "error": "symbol is required"}

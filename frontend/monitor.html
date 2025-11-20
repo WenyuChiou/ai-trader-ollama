@@ -25,7 +25,7 @@
             min-height: 100vh;
             padding: 0 20px 20px 20px;
             color: #ffffff; /* Dark background with white text - high contrast */
-            font-size: 14px;
+            font-size: 16px; /* Increased from 14px for better readability */
             line-height: 1.6;
             letter-spacing: -0.01em;
             transition: background 0.3s ease, color 0.3s ease;
@@ -161,8 +161,8 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 14px;
-            color: #6b7280;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #9ca3af; /* Improved contrast from #6b7280 */
         }
 
         .status-dot {
@@ -189,7 +189,7 @@
             gap: 6px;
             padding: 4px 10px;
             border-radius: 12px;
-            font-size: 12px;
+            font-size: 13px; /* Increased from 12px for better readability */
             font-weight: 500;
             margin-left: 8px;
             vertical-align: middle;
@@ -276,21 +276,21 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 14px;
-            color: #94a3b8;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #cbd5e1; /* Improved contrast from #94a3b8 */
             cursor: pointer;
         }
 
         .refresh-btn {
-            padding: 8px 14px;
+            padding: 10px 16px; /* Increased from 8px 14px for better clickability */
             background: linear-gradient(135deg, #06b6d4, #0891b2);
             color: white;
             border: 1px solid #22d3ee;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px; /* Increased from 13px */
             transition: all .2s ease;
-            box-shadow: 0 0 10px rgba(34, 211, 238, 0.3);
+            box-shadow: 0 2px 8px rgba(34, 211, 238, 0.4), 0 0 10px rgba(34, 211, 238, 0.3); /* Enhanced shadow */
         }
 
         .refresh-btn:hover:not(:disabled) { 
@@ -305,8 +305,8 @@
         }
 
         .last-update {
-            font-size: 12px;
-            color: #64748b;
+            font-size: 13px; /* Increased from 12px for better readability */
+            color: #94a3b8; /* Improved contrast from #64748b */
         }
 
         /* Quick Navigation */
@@ -371,22 +371,22 @@
         .card {
             background: rgba(15, 23, 42, 0.6);
             border-radius: 16px;
-            padding: 20px;
+            padding: 24px; /* Increased from 20px for better spacing */
             border: 1px solid rgba(34, 211, 238, 0.3);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(34, 211, 238, 0.1); /* Enhanced shadow */
             transition: all .15s ease;
             backdrop-filter: blur(10px);
         }
 
         .card:hover { 
             transform: translateY(-2px); 
-            box-shadow: 0 8px 30px rgba(34, 211, 238, 0.4);
+            box-shadow: 0 8px 30px rgba(34, 211, 238, 0.4), 0 4px 12px rgba(34, 211, 238, 0.2); /* Enhanced hover shadow */
             border-color: rgba(34, 211, 238, 0.6);
         }
 
         .card-label {
-            font-size: 14px;
-            color: #94a3b8;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #cbd5e1; /* Improved contrast from #94a3b8 */
             margin-bottom: 8px;
             font-weight: 500;
         }
@@ -400,8 +400,8 @@
         }
 
         .card-subtitle {
-            font-size: 12px;
-            color: #64748b;
+            font-size: 13px; /* Increased from 12px for better readability */
+            color: #94a3b8; /* Improved contrast from #64748b */
         }
 
         .card-percent {
@@ -413,7 +413,7 @@
         /* Value coloring for total asset */
         .value-positive { color: #10b981; }
         .value-negative { color: #ef4444; }
-        .value-subpercent { font-size: 14px; margin-top: 6px; font-weight: 600; }
+        .value-subpercent { font-size: 15px; margin-top: 6px; font-weight: 600; } /* Increased from 14px */
 
         .card.pnl.positive .card-value,
         .card.pnl.positive .card-percent {
@@ -505,8 +505,8 @@
         }
 
         .position-count {
-            font-size: 14px;
-            color: #94a3b8;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #cbd5e1; /* Improved contrast from #94a3b8 */
             background: rgba(30, 41, 59, 0.8);
             padding: 4px 12px;
             border-radius: 12px;
@@ -527,9 +527,9 @@
         }
 
         th {
-            padding: 12px 16px;
+            padding: 14px 18px; /* Increased from 12px 16px for better spacing */
             text-align: left;
-            font-size: 12px;
+            font-size: 14px; /* Increased from 12px - table headers should be readable */
             font-weight: 600;
             color: #22d3ee;
             text-transform: uppercase;
@@ -544,8 +544,8 @@
         td {
             padding: 14px 16px;
             border-bottom: 1px solid rgba(34, 211, 238, 0.1);
-            font-size: 14px;
-            color: #cbd5e1;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #e2e8f0; /* Improved contrast from #cbd5e1 */
         }
 
         td:last-child {
@@ -711,8 +711,8 @@
         }
         
         .empty-state-description {
-            font-size: 14px;
-            color: #6b7280;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #9ca3af; /* Improved contrast from #6b7280 */
             margin-bottom: 24px;
             line-height: 1.6;
         }
@@ -810,8 +810,8 @@
         }
 
         .status-item-label {
-            font-size: 12px;
-            color: #94a3b8;
+            font-size: 13px; /* Increased from 12px for better readability */
+            color: #cbd5e1; /* Improved contrast from #94a3b8 */
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -843,8 +843,8 @@
         }
 
         .endpoints-list h4 {
-            font-size: 14px;
-            color: #6b7280;
+            font-size: 15px; /* Increased from 14px for better readability */
+            color: #9ca3af; /* Improved contrast from #6b7280 */
             margin-bottom: 12px;
         }
 
@@ -970,7 +970,7 @@
         }
 
         .conversation-agent {
-            font-size: 12px;
+            font-size: 13px; /* Increased from 12px for better readability */
             font-weight: 600;
             color: #22d3ee;
             background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(34, 211, 238, 0.1));
@@ -1054,7 +1054,7 @@
         .trade-sell { color:#ef4444; font-weight:600; }
         .trade-profit { color:#10b981; font-weight:600; }
         .trade-loss { color:#ef4444; font-weight:600; }
-        .status-pill { display:inline-block; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:500; }
+        .status-pill { display:inline-block; padding:4px 10px; border-radius:12px; font-size:13px; font-weight:500; } /* Increased from 12px */
         .status-pill.status-filled { background:#d1fae5; color:#065f46; }
         .status-pill.status-pending { background:#fef3c7; color:#92400e; }
         .status-pill.status-other { background:#f3f4f6; color:#6b7280; }
@@ -1062,7 +1062,7 @@
         /* Pie chart */
         .pie-container { width:100%; height:320px; display:flex; align-items:center; justify-content:center; }
         .legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
-        .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; }
+        .legend-item { display:flex; align-items:center; gap:8px; font-size:13px; } /* Increased from 12px */
         .legend-color { width:10px; height:10px; border-radius:50%; display:inline-block; }
 
         /* Footer */
@@ -1080,8 +1080,8 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 15px;
-            font-size: 12px;
-            color: #6b7280;
+            font-size: 13px; /* Increased from 12px for better readability */
+            color: #9ca3af; /* Improved contrast from #6b7280 */
         }
 
         .api-url {
@@ -1116,7 +1116,7 @@
         }
 
         .hint {
-            font-size: 12px;
+            font-size: 13px; /* Increased from 12px for better readability */
             color: #9ca3af;
         }
 
@@ -1240,7 +1240,7 @@
             }
 
             table {
-                font-size: 12px;
+                font-size: 14px; /* Increased from 12px - table text should be readable */
             }
 
             th, td {
@@ -1286,7 +1286,7 @@
                     <input type="checkbox" id="autoRefresh" checked>
                     <span>Auto Refresh (30s)</span>
                 </label>
-                <span style="color: #94a3b8; font-size: 12px; margin-left: 12px;">
+                <span style="color: #cbd5e1; font-size: 13px; margin-left: 12px;">
                     🔄 Auto Trade: <span id="autoTradeStatus">Detecting...</span>
                 </span>
                 <button class="refresh-btn" id="startTradeBtn" onclick="startTradingCycle()">
@@ -1354,25 +1354,25 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <h2>📈 Total Asset Value Over Time</h2>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-size: 12px; color: #94a3b8;" id="nextEquityUpdateTime">Next update: Calculating...</span>
+                            <span style="font-size: 13px; color: #cbd5e1;" id="nextEquityUpdateTime">Next update: Calculating...</span>
                             <div id="equityUpdateNotification" style="display: none;"></div>
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px;">
                         <!-- Time Range Selector -->
                         <div style="display: flex; gap: 5px; align-items: center;">
-                            <button id="timeRangeDay" onclick="setTimeRange('day')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Day</button>
-                            <button id="timeRangeWeek" onclick="setTimeRange('week')" class="time-range-btn active" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.4); border: 1px solid rgba(34, 211, 238, 0.7); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px; font-weight: 600;">Week</button>
-                            <button id="timeRangeMonth" onclick="setTimeRange('month')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Month</button>
-                            <button id="timeRangeCustom" onclick="setTimeRange('custom')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px;">Custom</button>
+                            <button id="timeRangeDay" onclick="setTimeRange('day')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 13px;">Day</button>
+                            <button id="timeRangeWeek" onclick="setTimeRange('week')" class="time-range-btn active" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.4); border: 1px solid rgba(34, 211, 238, 0.7); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 13px; font-weight: 600;">Week</button>
+                            <button id="timeRangeMonth" onclick="setTimeRange('month')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 13px;">Month</button>
+                            <button id="timeRangeCustom" onclick="setTimeRange('custom')" class="time-range-btn" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 13px;">Custom</button>
                         </div>
                         <!-- Custom Date Range (shown when custom is selected) -->
                         <div id="customDateRange" style="display: none; gap: 5px; align-items: center;">
-                            <input type="date" id="startDateInput" onchange="updateCustomDateRange()" style="padding: 6px; border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 12px;">
-                            <span style="color: #6b7280;">to</span>
-                            <input type="date" id="endDateInput" onchange="updateCustomDateRange()" style="padding: 6px; border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 12px;">
+                            <input type="date" id="startDateInput" onchange="updateCustomDateRange()" style="padding: 6px; border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 13px;">
+                            <span style="color: #9ca3af; font-size: 13px;">to</span>
+                            <input type="date" id="endDateInput" onchange="updateCustomDateRange()" style="padding: 6px; border: 1px solid rgba(34, 211, 238, 0.5); border-radius: 6px; background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 13px;">
                         </div>
-                        <button onclick="toggleChartScale()" style="padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; font-size: 12px;">
+                        <button onclick="toggleChartScale()" style="padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; font-size: 13px;">
                             <span id="chartScaleBtn">Linear Scale</span>
                         </button>
                         <span style="font-size: 13px; color: #6b7280;" id="chartDataPoints">0 data points</span>
@@ -1433,39 +1433,39 @@
                         </h2>
                         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                             <span class="position-count" id="convCount">—</span>
-                            <button id="showNewsBtn" onclick="showNewsModal()" style="padding: 6px 12px; background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; border-radius: 6px; color: #6366f1; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                            <button id="showNewsBtn" onclick="showNewsModal()" style="padding: 6px 12px; background: rgba(99, 102, 241, 0.2); border: 1px solid #6366f1; border-radius: 6px; color: #6366f1; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                                 📰 Show News
                             </button>
                         </div>
                     </div>
                     <!-- Agent Tool Results Filter Buttons -->
                     <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; padding: 0 4px;">
-                        <button class="agent-filter-btn active" data-agent="all" onclick="filterAgentTools('all')" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                        <button class="agent-filter-btn active" data-agent="all" onclick="filterAgentTools('all')" style="padding: 6px 12px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 6px; color: #22d3ee; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                             📋 All
                         </button>
-                        <button class="agent-filter-btn" data-agent="TechnicalAnalyst" onclick="filterAgentTools('TechnicalAnalyst')" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                        <button class="agent-filter-btn" data-agent="TechnicalAnalyst" onclick="filterAgentTools('TechnicalAnalyst')" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                             🔬 Technical
                         </button>
                         <div id="stockFilterContainer" style="display: none; margin-left: 8px;">
-                            <select id="stockFilterSelect" onchange="filterTechnicalStocks(this.value)" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; font-size: 12px; font-weight: 500; cursor: pointer;">
+                            <select id="stockFilterSelect" onchange="filterTechnicalStocks(this.value)" style="padding: 6px 12px; background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; border-radius: 6px; color: #8b5cf6; font-size: 13px; font-weight: 500; cursor: pointer;">
                                 <option value="all">All Stocks</option>
                             </select>
                         </div>
-                        <button class="agent-filter-btn" data-agent="FundamentalAnalyst" onclick="filterAgentTools('FundamentalAnalyst')" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                        <button class="agent-filter-btn" data-agent="FundamentalAnalyst" onclick="filterAgentTools('FundamentalAnalyst')" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                             📑 Fundamental
                         </button>
                         <div id="fundamentalStockFilterContainer" style="display: none; margin-left: 8px;">
-                            <select id="fundamentalStockFilterSelect" onchange="filterFundamentalStocks(this.value)" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; font-size: 12px; font-weight: 500; cursor: pointer;">
+                            <select id="fundamentalStockFilterSelect" onchange="filterFundamentalStocks(this.value)" style="padding: 6px 12px; background: rgba(236, 72, 153, 0.2); border: 1px solid #ec4899; border-radius: 6px; color: #ec4899; font-size: 13px; font-weight: 500; cursor: pointer;">
                                 <option value="all">All Stocks</option>
                             </select>
                         </div>
-                        <button class="agent-filter-btn" data-agent="MarketAnalyst" onclick="filterAgentTools('MarketAnalyst')" style="padding: 6px 12px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                        <button class="agent-filter-btn" data-agent="MarketAnalyst" onclick="filterAgentTools('MarketAnalyst')" style="padding: 6px 12px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; border-radius: 6px; color: #3b82f6; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                             📈 Market
                         </button>
-                        <button class="agent-filter-btn" data-agent="SentimentAnalyst" onclick="filterAgentTools('SentimentAnalyst')" style="padding: 6px 12px; background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; border-radius: 6px; color: #fbbf24; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                        <button class="agent-filter-btn" data-agent="SentimentAnalyst" onclick="filterAgentTools('SentimentAnalyst')" style="padding: 6px 12px; background: rgba(251, 191, 36, 0.2); border: 1px solid #fbbf24; border-radius: 6px; color: #fbbf24; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                             😊 Sentiment
                         </button>
-                        <button class="agent-filter-btn" data-agent="RiskAnalyst" onclick="filterAgentTools('RiskAnalyst')" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">
+                        <button class="agent-filter-btn" data-agent="RiskAnalyst" onclick="filterAgentTools('RiskAnalyst')" style="padding: 6px 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s;">
                             ⚠️ Risk
                         </button>
                     </div>
@@ -1485,7 +1485,7 @@
                     <div id="economicDataContent" style="padding: 16px;">
                         <div style="text-align: center; color: #94a3b8; padding: 40px;">
                             <p>No economic data available yet.</p>
-                            <p style="font-size: 12px; margin-top: 8px;">Economic data will appear here after agents fetch FRED indicators.</p>
+                            <p style="font-size: 13px; margin-top: 8px; color: #cbd5e1;">Economic data will appear here after agents fetch FRED indicators.</p>
                             <p style="font-size: 11px; margin-top: 6px; color: #64748b;">Data will be automatically categorized into Labor Market and Economic Indicators.</p>
                         </div>
                     </div>
@@ -1500,9 +1500,9 @@
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span class="position-count" id="executionCount">0 trades</span>
                             <div id="executionPagination" style="display: none; gap: 8px; align-items: center;">
-                                <button id="executionPrevPage" onclick="changeExecutionPage(-1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">← Prev</button>
-                                <span id="executionPageInfo" style="font-size: 12px; color: #94a3b8;">Page 1</span>
-                                <button id="executionNextPage" onclick="changeExecutionPage(1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">Next →</button>
+                                <button id="executionPrevPage" onclick="changeExecutionPage(-1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 13px;">← Prev</button>
+                                <span id="executionPageInfo" style="font-size: 13px; color: #cbd5e1;">Page 1</span>
+                                <button id="executionNextPage" onclick="changeExecutionPage(1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 13px;">Next →</button>
                             </div>
                         </div>
                     </div>
@@ -1570,9 +1570,9 @@
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span class="position-count" id="tradesCount">0 trades</span>
                             <div id="tradesPagination" style="display: none; gap: 8px; align-items: center;">
-                                <button id="tradesPrevPage" onclick="changeTradesPage(-1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">← Prev</button>
-                                <span id="tradesPageInfo" style="font-size: 12px; color: #94a3b8;">Page 1</span>
-                                <button id="tradesNextPage" onclick="changeTradesPage(1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 12px;">Next →</button>
+                                <button id="tradesPrevPage" onclick="changeTradesPage(-1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 13px;">← Prev</button>
+                                <span id="tradesPageInfo" style="font-size: 13px; color: #cbd5e1;">Page 1</span>
+                                <button id="tradesNextPage" onclick="changeTradesPage(1)" style="padding: 4px 8px; background: rgba(34, 211, 238, 0.2); border: 1px solid #22d3ee; border-radius: 4px; color: #22d3ee; cursor: pointer; font-size: 13px;">Next →</button>
                             </div>
                         </div>
                     </div>
@@ -1881,10 +1881,8 @@
                 }
                 
                 const accessType = isGitHubPages ? 'GitHub Pages' : 'shared website';
-                console.log(`[Read-Only Mode] Enabled: ${accessType} access detected. Trading controls disabled.`);
             } else {
                 window.READ_ONLY_MODE = false;
-                console.log('[Full Control Mode] Enabled: Localhost access detected. All controls available.');
             }
             
             // CRITICAL FIX: 启动净值更新倒计时
@@ -1982,7 +1980,6 @@
                 }
             } catch (err) {
                 // If check fails, continue with normal display (fallback)
-                console.debug('[Equity Update] Failed to check market status:', err.message);
             }
             
             // Market is open, show next update time with progress indicator
@@ -2747,7 +2744,6 @@
                 }
             }
             
-            console.log(`[Order Status] Updated (today only): ${pending.length} pending, ${filled.length} filled (from ${todayTrades.length} today's trades, ${uniqueTrades.length} unique)`);
         }
 
         // Update conversation status indicator
@@ -2810,17 +2806,6 @@
                         // If backend returns positions (old format), convert to positions_detail
                         data.positions_detail = data.positions;
                     }
-                    
-                    // Debug: Print portfolio data
-                    console.log('[Frontend] Portfolio data received:', {
-                        cash: data.cash,
-                        total_value: data.total_value,
-                        equity_value: data.equity_value,
-                        positions_count: Object.keys(data.positions || {}).length,
-                        positions_detail_count: Object.keys(data.positions_detail || {}).length,
-                        has_positions: Object.keys(data.positions || {}).length > 0,
-                        positions_keys: Object.keys(data.positions || {}).slice(0, 5)
-                    });
 
                     return data;
                 } catch (fetchErr) {
@@ -2845,7 +2830,6 @@
             try {
                 const marketOpen = await isMarketOpen(true, true); // Use cache, silent mode
                 if (!marketOpen) {
-                    console.log('[Equity Record] Market is closed, skipping equity recording (will resume at next market open)');
                     return; // Market closed, do not record
                 }
             } catch (err) {
@@ -2869,7 +2853,6 @@
 
                 const result = await response.json();
                 if (result.ok) {
-                    console.log('[Equity Record] Successfully recorded to backend');
                 } else {
                     throw new Error(result.error || 'Unknown error');
                 }
@@ -2934,7 +2917,6 @@
                     // If error is connection reset or timeout, server may be processing request, use debug level
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
-                        console.debug('Failed to fetch equity history (server may be busy):', err.message);
                     } else {
                         console.warn('Failed to fetch equity history:', err.message);
                     }
@@ -2972,7 +2954,6 @@
                     // If error is connection reset or timeout, server may be processing request, use debug level
                     const isConnectionError = err.message && (err.message.includes('reset') || err.message.includes('timeout') || err.message.includes('aborted'));
                     if (isConnectionError) {
-                        console.debug('Failed to fetch backend status (server may be busy):', err.message);
                     } else {
                         console.warn('Failed to fetch backend status:', err.message);
                     }
@@ -2997,12 +2978,10 @@
         
         function setManualTradeExecuted() {
             localStorage.setItem('hasManualTradeExecuted', 'true');
-            console.log('[Auto Trade] Manual trade executed flag set - auto-trade can now start');
         }
         
         function clearManualTradeFlag() {
             localStorage.removeItem('hasManualTradeExecuted');
-            console.log('[Auto Trade] Manual trade flag cleared (after initialization)');
         }
         
         // Fallback function to estimate market status using client-side time
@@ -3070,7 +3049,6 @@
                 
                 // DEBUG: Log market status for troubleshooting (only if not silent)
                 if (!silent && j.eastern_time) {
-                    console.debug(`[Market Status] API returned: open=${isOpen}, eastern_time=${j.eastern_time}, local_time=${j.local_time || 'N/A'}`);
                 }
                 return !!isOpen;
             } catch (e) { 
@@ -3083,7 +3061,6 @@
                     if (e.name === 'AbortError' || e.name === 'TimeoutError' || e.message?.includes('timeout')) {
                         // During initialization or heavy operations, backend may be busy - this is expected
                         // Use fallback silently
-                        console.debug('[Market Status] Request timed out (backend may be busy), using time-based fallback.');
                     } else {
                         console.warn('[Market Status] Failed to check market status:', e);
                     }
@@ -3177,13 +3154,11 @@
                 }
                 
                 // Stop all ongoing operations
-                console.log('[Init] Stopping all ongoing operations...');
                 
                 // Stop auto-trading timer
                 if (tradeCheckTimer) {
                     clearInterval(tradeCheckTimer);
                     tradeCheckTimer = null;
-                    console.log('[Init] Stopped auto-trade timer');
                 }
                 
                 // Reset status flags
@@ -3206,7 +3181,6 @@
                 }
                 
                 // Execute initialization
-                console.log('[Init] Calling API to initialize system...');
                 // CRITICAL: Warn user before initializing (this will DELETE all data)
                 const confirmed = confirm(
                     'WARNING: This will DELETE ALL trading data, orders, and portfolio positions!\n\n' +
@@ -3215,13 +3189,10 @@
                     'Are you sure you want to continue?'
                 );
                 if (!confirmed) {
-                    console.log('[System Init] Cancelled by user');
                     return;
                 }
                 
-                console.log('[Init] Sending POST request to:', `${getApiBase()}/api/system/init?force=true`);
                 const r = await fetch(`${getApiBase()}/api/system/init?force=true`, { method: 'POST' });
-                console.log('[Init] Response status:', r.status, r.statusText);
                 
                 if (!r.ok) {
                     const errorText = await r.text();
@@ -3231,7 +3202,6 @@
                 }
                 
                 const data = await r.json();
-                console.log('[Init] Response data:', data);
                 
                 if (r.ok && data.ok) {
                     let message = '✅ System initialized successfully!\n\nAll history has been cleared and portfolio reset to $10,000.';
@@ -3258,7 +3228,6 @@
                     alert(message);
                     
                     // CRITICAL FIX: Clear all cached data to ensure correct empty state after initialization
-                    console.log('[Init] Clearing all cached data...');
                     window.currentPortfolio = null;
                     window.currentConversations = [];
                     window.toolResultsByCategory = null;
@@ -3275,10 +3244,8 @@
                     equityHistory = [];
                     lastEquityChartUpdate = 0;
                     nextEquityUpdateTime = null;
-                    console.log('[Init] Cleared equity history data');
                     
                     // CRITICAL FIX: Reset UI state
-                    console.log('[Init] Resetting UI state...');
                     // Reset order state
                     const pendingEl = document.getElementById('pendingOrders');
                     const filledEl = document.getElementById('filledOrders');
@@ -3302,11 +3269,9 @@
                     // CRITICAL FIX: Clear and re-render equity chart
                     if (typeof renderEquityChart !== 'undefined') {
                         await renderEquityChart();
-                        console.log('[Init] Equity chart cleared and re-rendered');
                     }
                     
                     // Refresh data (force refresh, do not use cache)
-                    console.log('[Init] Refreshing data...');
                     await refreshData(true);
                     
                     // Update auto-trading state - stop auto-trading after initialization, wait for user to manually trigger first trade
@@ -3317,7 +3282,6 @@
                     // CRITICAL FIX: Clear manual trade flag after initialization
                     clearManualTradeFlag();
                     
-                    console.log('[Init] System initialization completed. First trade must be manual.');
                 } else {
                     alert('❌ Initialization failed: ' + (data.error || 'Unknown error'));
                 }
@@ -3347,7 +3311,6 @@
             
             // Prevent duplicate execution: if last trade is still executing, skip this one
             if (isTradingExecuting) {
-                console.log('[Trade Cycle] Previous trade cycle still executing, skipping...');
                 const btn = document.getElementById('startTradeBtn');
                 if (btn) {
                     btn.textContent = '⏳ Already Running...';
@@ -3370,7 +3333,6 @@
                         (t.status || '').toUpperCase() === 'PENDING'
                     );
                     if (pendingOrders.length > 0) {
-                        console.log(`[Trade Cycle] Warning: ${pendingOrders.length} pending orders exist. New orders may replace existing ones for the same symbol/action/date.`);
                         // Can choose to show warning or continue execution
                     }
                 }
@@ -3389,9 +3351,7 @@
                 const isOpen = await isMarketOpen();
                 marketStatus = isOpen ? 'open' : 'closed';
                 if (isOpen) {
-                    console.log('[Trade Cycle] Market is open, executing live trading (Scenario 1-2 style)...');
                 } else {
-                    console.log('[Trade Cycle] Market is closed, running analysis only (no trading)...');
                 }
             } catch (e) {
                 console.warn('[Trade Cycle] Failed to check market status, proceeding anyway:', e);
@@ -3426,9 +3386,7 @@
             try {
                 // Display different messages based on market status
                 if (marketStatus === 'closed') {
-                    console.log('[Trade Cycle] Market is closed, executing analysis only (no trading)...');
                 } else {
-                    console.log('[Trade Cycle] Market is open, executing trading cycle...');
                 }
                 const response = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
                     method: 'POST',
@@ -3457,31 +3415,25 @@
                     // CRITICAL FIX: Determine market status based on message (more accurate)
                     if (isPlanning || message.toLowerCase().includes('market closed') || message.toLowerCase().includes('analysis completed')) {
                         marketStatus = 'closed';
-                        console.log(`[Trade Cycle] Analysis completed: ${orderCount} orders, ${convCount} conversations. ${message}`);
                     } else {
                         marketStatus = 'open';
                         // Check if orders were generated
                         if (orderCount === 0) {
                             console.warn(`[Trade Cycle] ⚠️ Trading completed but no orders generated. ${message || 'This may indicate neutral market conditions or all positions already at target levels.'}`);
                         } else {
-                            console.log(`[Trade Cycle] Trading completed: ${orderCount} orders, ${convCount} conversations. ${message}`);
                         }
                     }
                     
                     // Refresh data (force refresh to ensure latest data)
                     // Note: Skip health check to avoid showing connection error during execution
-                    console.log('[Trade Cycle] Refreshing data after trade execution...');
                     await refreshData(false, true);  // skipHealthCheck = true
-                    console.log('[Trade Cycle] Data refresh completed');
                     
                     // CRITICAL FIX: 强制刷新市场状态（清除缓存，重新获取）
                     // 因为 trading cycle 运行后，市场状态可能已经更新
-                    console.log('[Trade Cycle] Force refreshing market status after trade execution...');
                     marketStatusCache = { value: null, timestamp: 0, ttl: 0 };  // 清除缓存
                     try {
                         const currentMarketStatus = await isMarketOpen(false, false);  // 不使用缓存，强制重新获取
                         updateMarketStatus(currentMarketStatus);
-                        console.log(`[Trade Cycle] Market status updated: ${currentMarketStatus ? 'OPEN' : 'CLOSED'}`);
                     } catch (e) {
                         console.warn('[Trade Cycle] Failed to refresh market status:', e);
                     }
@@ -3507,7 +3459,6 @@
                             try {
                                 await refreshData(false, true);
                             } catch (e) {
-                                console.debug('[Trade Cycle] Refresh after 429 failed:', e.message);
                             }
                         }, 2000);
                     } else {
@@ -3539,12 +3490,10 @@
                         }, 5000);
                     }
                     // Even if timeout, try to refresh data (server may have completed processing)
-                    console.log('[Trade Cycle] Attempting to refresh data despite timeout...');
                     try {
                         await refreshData(false, true);
                         updateConnectionStatus(true);
                     } catch (refreshErr) {
-                        console.debug('[Trade Cycle] Refresh after timeout failed:', refreshErr.message);
                     }
                 } else {
                     console.error('[Trade Cycle] Exception:', e);
@@ -3569,7 +3518,6 @@
                 // Update conversation status back to Idle (agent status indicator)
                 updateConversationStatus(false);
                 // Resume auto-refresh after trading cycle completes
-                console.log('[Trade Cycle] Trading cycle completed, auto-refresh will resume');
                 
                 // Restore button state (based on actual market status)
                 if (btn) {
@@ -3633,7 +3581,6 @@
                 
                 // If trading intent exists, execute trading cycle
                 if (hasTradeIntent) {
-                    console.log('[Trade Check] Trading intent detected, executing trading cycle...');
                     lastCheckedConvoCount = currentConvoCount;
                     
                     const r = await fetch(`${getApiBase()}/api/trading/execute-trade`, { 
@@ -3647,7 +3594,6 @@
                     
                     if (r.ok && data.ok) {
                         const orderCount = data.result?.placed_orders || 0;
-                        console.log(`[Trade Check] Trade execution successful: ${orderCount} orders`);
                         // Refresh data
                         await refreshData(false);
                     } else {
@@ -3672,9 +3618,7 @@
                 // Only restore future times (if time has passed, set to null)
                 if (storedTime > Date.now()) {
                     nextAutoTradeTime = storedTime;
-                    console.log('[Auto Trade] Restored nextAutoTradeTime from localStorage:', new Date(nextAutoTradeTime).toLocaleString());
                 } else {
-                    console.log('[Auto Trade] Stored nextAutoTradeTime has passed, clearing');
                     localStorage.removeItem('nextAutoTradeTime');
                 }
             }
@@ -3699,7 +3643,6 @@
         function startAutoTrade() {
             // Prevent auto-trade in read-only mode
             if (window.READ_ONLY_MODE) {
-                console.log('[Auto Trade] Read-only mode: Auto-trade disabled');
                 updateAutoTradeStatus('Read-Only Mode (Disabled)');
                 if (nextTradeCountdownTimer) {
                     clearInterval(nextTradeCountdownTimer);
@@ -3712,7 +3655,6 @@
             
             // CRITICAL FIX: If timer already exists, only update countdown display, do not reset time
             if (tradeCheckTimer) {
-                console.log('[Auto Trade] Timer already exists, updating countdown only');
                 // 如果 nextAutoTradeTime 存在，确保倒计时正在运行
                 if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
                     if (!nextTradeCountdownTimer) {
@@ -3736,23 +3678,19 @@
             async function smartAutoTrade() {
                 if (smartAutoTradeBusy) {
                     // Skip if a previous run is still in progress
-                    console.log('[Auto Trade] Previous smartAutoTrade still running, skipping...');
                     return;
                 }
                 smartAutoTradeBusy = true;
                 try {
                     // Use cache for auto-trade checks to reduce API load
                     const isOpen = await isMarketOpen(true, true);
-                    console.log(`[Auto Trade] Market status check: ${isOpen ? 'OPEN' : 'CLOSED'}`);
                     
                     if (isOpen) {
                         // Trading hours: execute trade cycle
-                        console.log('[Auto Trade] Market is open, executing trade cycle...');
                         updateAutoTradeStatus('Trading Hours Running');
                         try {
                             // CRITICAL FIX: Pass isManualTrigger=false for auto-trade
                             await executeTradeCycle(false);
-                            console.log('[Auto Trade] Trade cycle completed successfully');
                             // Update next execution time after successful execution
                             const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
                             nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
@@ -3764,7 +3702,6 @@
                         }
                     } else {
                         // Non-trading hours: stop auto-trade (only manual trigger allowed)
-                        console.log('[Auto Trade] Market is closed, stopping auto-trade (manual only)');
                         updateAutoTradeStatus('Market Closed - Manual Only');
                         // Stop the timer when market is closed
                         stopAutoTrade();
@@ -3777,7 +3714,6 @@
                 }
                 finally {
                     smartAutoTradeBusy = false;
-                    console.log('[Auto Trade] smartAutoTrade completed, busy flag reset');
                 }
             }
             
@@ -3787,27 +3723,22 @@
                 try {
                     // Use cache for startup check
                     const isOpen = await isMarketOpen(true, true);
-                    console.log(`[Auto Trade] Startup check: Market is ${isOpen ? 'OPEN' : 'CLOSED'}`);
                     if (isOpen) {
                         // Trading hours: execute trade cycle every 30 minutes
                         const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
                         // CRITICAL: Clear any existing timer first to prevent duplicates
                         if (tradeCheckTimer) {
-                            console.log('[Auto Trade] Clearing existing timer before starting new one');
                             clearInterval(tradeCheckTimer);
                             tradeCheckTimer = null;
                         }
                         // CRITICAL FIX: Double-check timer is cleared before starting new one
                         if (!tradeCheckTimer && !isTradingExecuting) {
                             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
-                            console.log(`[Auto Trade] Auto trading started (every ${TRADING_INTERVAL / 60000} minutes)`);
-                            console.log(`[Auto Trade] - Market is open: Auto-trade enabled`);
                             
                             // Set next execution time
                             // CRITICAL FIX: 如果已经有保存的时间，使用保存的时间；否则根据情况设置
                             if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
                                 // 使用已保存的时间（页面刷新后恢复）
-                                console.log('[Auto Trade] Using restored nextAutoTradeTime:', new Date(nextAutoTradeTime).toLocaleString());
                                 updateAutoTradeStatus('Active');
                                 startNextTradeCountdown();
                             } else if (hasManualTradeExecuted()) {
@@ -3817,10 +3748,8 @@
                                     // 只有在没有有效时间时才设置新时间
                                     nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
                                     saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
-                                    console.log('[Auto Trade] First manual trade already executed, auto-trade will run after 30 minutes');
                                 } else {
                                     // 时间仍然有效，使用现有时间
-                                    console.log('[Auto Trade] Using existing nextAutoTradeTime:', new Date(nextAutoTradeTime).toLocaleString());
                                 }
                                 updateAutoTradeStatus('Active');
                                 startNextTradeCountdown();
@@ -3832,15 +3761,12 @@
                                     nextAutoTradeTime = null;
                                     saveNextAutoTradeTime(); // CRITICAL FIX: Clear localStorage
                                 }
-                                console.log('[Auto Trade] First manual trade not yet executed, waiting for manual trigger...');
                                 updateAutoTradeStatus('Waiting for First Manual Trade');
                             }
                         } else {
-                            console.log('[Auto Trade] Timer already exists or trade executing, skipping start');
                         }
                     } else {
                         // Market is closed: do not start auto-trade
-                        console.log('[Auto Trade] Market is closed, auto-trade disabled (manual only)');
                         updateAutoTradeStatus('Market Closed - Manual Only');
                         // CRITICAL: Ensure timer is cleared if market is closed
                         if (tradeCheckTimer) {
@@ -5134,26 +5060,26 @@
                                         html += `</div>`;
                                 } else {
                                     // If structured parsing failed, check if we extracted individual reports
-                                    if (extractedFromCoordinator.size > 0) {
-                                        html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
-                                    } else {
+                                if (extractedFromCoordinator.size > 0) {
+                                    html += `<div style="font-size: 12px; color: #94a3b8; font-style: italic;">Individual analyst reports extracted and displayed separately above.</div>`;
+                                } else {
                                         // 如果無法解析結構，使用原始格式
                                         let cleanText = stripHtml(summaryText);
                                         let escapedText = escapeHtml(cleanText);
                                         escapedText = escapedText.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #60a5fa;">$1</strong>');
-                                        escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
-                                        escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
-                                        escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
-                                        escapedText = escapedText.replace(/\n/g, '<br>');
-                                        escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
-                                        
-                                        const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                        html += `<div style="position: relative;">`;
-                                        html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
-                                        html += `<div style="text-align: center; margin-top: 10px;">`;
-                                        html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
-                                        html += `</div>`;
-                                        html += `</div>`;
+                                    escapedText = escapedText.replace(/^(\d+)\.\s+([^\n]+)/gm, '<div style="font-size: 14px; font-weight: 600; color: #22d3ee; margin-top: 16px; margin-bottom: 10px;">$1. $2</div>');
+                                    escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
+                                    escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
+                                    escapedText = escapedText.replace(/\n/g, '<br>');
+                                    escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                    
+                                    const containerId = `coordinator-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                                    html += `<div style="position: relative;">`;
+                                    html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
+                                    html += `<div style="text-align: center; margin-top: 10px;">`;
+                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
+                                    html += `</div>`;
+                                    html += `</div>`;
                                     }
                                 }
                             } else if (agentName === 'TraderAgent' || agentName === 'RiskAnalyst') {
@@ -5460,15 +5386,15 @@
                                     escapedText = escapedText.replace(/^\*\s+(.+)$/gm, '<div style="margin-left: 20px; margin-bottom: 6px; color: #cbd5e1; line-height: 1.7;">• $1</div>');
                                     escapedText = escapedText.replace(/\n\n+/g, '<div style="height: 12px;"></div>');
                                     escapedText = escapedText.replace(/\n/g, '<br>');
-                                    escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
-                                    
+                                escapedText = escapedText.replace(/<br>\s*<br>/g, '<div style="height: 8px;"></div>');
+                                
                                     const containerId = `coordinator-alt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                    html += `<div style="position: relative;">`;
-                                    html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
-                                    html += `<div style="text-align: center; margin-top: 10px;">`;
-                                    html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
-                                    html += `</div>`;
-                                    html += `</div>`;
+                                html += `<div style="position: relative;">`;
+                                html += `<div id="${containerId}" style="font-size: 13px; color: #cbd5e1; line-height: 1.7; padding: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; max-height: 500px; overflow-y: auto; overflow-x: hidden; word-wrap: break-word; overflow-wrap: break-word;">${escapedText}</div>`;
+                                html += `<div style="text-align: center; margin-top: 10px;">`;
+                                html += `<button onclick="(function(){const el=document.getElementById('${containerId}');const btn=event.target;if(el.style.maxHeight==='none'){el.style.maxHeight='500px';btn.textContent='▼ Expand';}else{el.style.maxHeight='none';btn.textContent='▲ Collapse';}})();" style="font-size: 11px; color: #22d3ee; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 4px; padding: 6px 16px; cursor: pointer; transition: all 0.2s;">▼ Expand</button>`;
+                                html += `</div>`;
+                                html += `</div>`;
                                 }
                             } else if (agentName === 'TraderAgent' || agentName === 'RiskAnalyst') {
                                 // CRITICAL FIX: Special formatting for TraderAgent and RiskAnalyst
@@ -6229,7 +6155,7 @@
                                         let processedText = isCoordinator ? stripHtml(analysisText) : analysisText;
                                         const displayText = processedText.includes('<table') || processedText.includes('markdown-block') ? processedText : escapeHtml(processedText);
                                         return `<div class="conversation-content" style="margin-top: 8px; padding: 12px; background: rgba(34, 211, 238, 0.1); border-radius: 8px; border-left: 3px solid #22d3ee; font-size: 13px; line-height: 1.8; max-height: none; overflow: visible; word-wrap: break-word; overflow-wrap: break-word;">
-                                            <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
+                                        <strong style="color: #22d3ee; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">💬 Analysis:</strong>
                                             <div style="color: #cbd5e1; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">${displayText}</div>
                                         </div>`;
                                     })() : ''}
@@ -6846,14 +6772,14 @@
                 // If filtering for specific agent, show only tool results (except for special agents)
                 const beforeToolFilter = filteredConversations.length;
                 if (!isSpecialAgent) {
-                    filteredConversations = filteredConversations.filter(c => {
-                        const isTool = (c.type || 'discussion') === 'tool';
-                        if (!isTool && currentAgentFilter !== 'all') {
-                            console.log(`[Filter] Non-tool entry filtered out: type="${c.type}", agent="${c.agent}"`);
-                        }
-                        return isTool;
-                    });
-                    console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
+                filteredConversations = filteredConversations.filter(c => {
+                    const isTool = (c.type || 'discussion') === 'tool';
+                    if (!isTool && currentAgentFilter !== 'all') {
+                        console.log(`[Filter] Non-tool entry filtered out: type="${c.type}", agent="${c.agent}"`);
+                    }
+                    return isTool;
+                });
+                console.log(`[Filter] After tool filter: ${filteredConversations.length} tool entries (was ${beforeToolFilter} total)`);
                 } else {
                     // For RiskAnalyst and TraderAgent, keep both discussion and tool entries
                     console.log(`[Filter] Special agent (${currentAgentFilter}): keeping both discussion and tool entries (${filteredConversations.length} total)`);
@@ -12996,33 +12922,6 @@
             const nextBtn = document.getElementById('executionNextPage');
             if (!tbody) return;
             
-            // DEBUG: Log input data
-            console.log(`[renderExecutionDetails] Received ${trades?.length || 0} trades`);
-            if (trades && trades.length > 0) {
-                console.log(`[renderExecutionDetails] Sample trade:`, {
-                    symbol: trades[0].symbol,
-                    side: trades[0].side,
-                    action: trades[0].action,
-                    status: trades[0].status,
-                    quantity: trades[0].quantity,
-                    price: trades[0].price,
-                    fill_price: trades[0].fill_price,
-                    limit_price: trades[0].limit_price,
-                    placed_at: trades[0].placed_at,
-                    filled_at: trades[0].filled_at,
-                    timestamp: trades[0].timestamp,
-                    order_id: trades[0].order_id
-                });
-                console.log(`[renderExecutionDetails] All trades summary:`, trades.map(t => ({
-                    symbol: t.symbol,
-                    action: t.action,
-                    status: t.status,
-                    quantity: t.quantity,
-                    order_id: t.order_id
-                })));
-            } else {
-                console.log(`[renderExecutionDetails] No trades data received or empty array`);
-            }
             
             // CRITICAL FIX: Show all orders (not just today's) - users need to see all buy/sell orders
             // Filter to show all orders (no date restriction)
@@ -13041,7 +12940,6 @@
                 // 优先使用 order_id 去重
                 const orderId = trade.order_id;
                 if (orderId && seenByOrderId.has(orderId)) {
-                    console.log(`[renderExecutionDetails] Duplicate order_id skipped: ${orderId}`);
                     continue;
                 }
                 
@@ -13392,15 +13290,9 @@
                         portfolio = portfolioValue;
                     } else if (portfolioValue?.error) {
                         // Only log when truly failed (don't log during non-trading hours)
-                        if (isMarketOpen) {
-                            console.debug('[Refresh] Portfolio fetch returned error:', portfolioValue.error);
-                        }
                     }
                 } else if (results[0].status === 'rejected') {
                     // Promise 被拒绝
-                    if (isMarketOpen) {
-                        console.debug('[Refresh] Portfolio fetch rejected:', results[0].reason);
-                    }
                 }
                 
                 let history = results[1].status === 'fulfilled' ? results[1].value : [];
@@ -13409,8 +13301,6 @@
                 const convData = results[4].status === 'fulfilled' ? results[4].value : { conversations: [], total: 0, has_more: false, tool_results_by_category: {}, discussion_rounds_summaries: {} };
                 const tradesData = results[5].status === 'fulfilled' ? results[5].value : [];
                 
-                // DEBUG: Log trades data for troubleshooting
-                console.log(`[Refresh] Trades fetched: ${tradesData?.length || 0} orders`);
                 if (tradesData && tradesData.length > 0) {
                     const filled = tradesData.filter(t => (t.status || '').toUpperCase() === 'FILLED').length;
                     const pending = tradesData.filter(t => (t.status || '').toUpperCase() === 'PENDING').length;
@@ -14425,31 +14315,11 @@
         function collectNewsData(conversations, toolResultsByCategory = null) {
             const newsData = [];
             
-            // DEBUG: Log what we received
-            console.log('[News] collectNewsData called with:', {
-                conversationsCount: conversations?.length || 0,
-                hasToolResultsByCategory: !!toolResultsByCategory,
-                newsCategoryExists: !!(toolResultsByCategory && toolResultsByCategory.news),
-                newsCategoryLength: toolResultsByCategory?.news?.length || 0,
-                newsCategoryType: Array.isArray(toolResultsByCategory?.news) ? 'array' : typeof toolResultsByCategory?.news
-            });
-            
             // CRITICAL FIX: 优先使用 tool_results_by_category.news（如果可用）
             if (toolResultsByCategory && toolResultsByCategory.news && Array.isArray(toolResultsByCategory.news)) {
-                console.log('[News] Using tool_results_by_category.news:', toolResultsByCategory.news.length, 'items');
                 for (const newsTool of toolResultsByCategory.news) {
-                    console.log('[News] Processing tool:', newsTool.tool_name, 'agent:', newsTool.agent);
                     const toolResult = newsTool.tool_result || {};
                     const toolName = newsTool.tool_name || '';
-                    
-                    // DEBUG: Log tool_result structure
-                    console.log('[News] [DEBUG] tool_result structure:', {
-                        hasToolResult: !!toolResult,
-                        toolResultType: typeof toolResult,
-                        toolResultKeys: toolResult && typeof toolResult === 'object' ? Object.keys(toolResult).slice(0, 15) : [],
-                        hasOk: !!(toolResult && typeof toolResult === 'object' && toolResult.ok),
-                        hasResult: !!(toolResult && typeof toolResult === 'object' && toolResult.result),
-                    });
                     
                     // CRITICAL FIX: 支持多种数据结构
                     // news_scan 返回 {hits: [...]}
@@ -14564,7 +14434,6 @@
                 
                 // 如果从 tool_results_by_category 收集到数据，直接返回（不需要去重，因为已经是结构化的）
                 if (newsData.length > 0) {
-                    console.log('[News] Collected', newsData.length, 'news items from tool_results_by_category');
                     return newsData;
                 } else {
                     console.warn('[News] No news data collected from tool_results_by_category.news');

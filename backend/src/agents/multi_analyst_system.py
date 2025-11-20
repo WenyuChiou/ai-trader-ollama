@@ -186,9 +186,6 @@ def run_multi_analyst_discussion(
     # Limit history length to avoid memory accumulation: keep only recent N rounds (each round = 4 analysts = 4 entries)
     discussion_history = []
     
-    print("\n" + "="*80)
-    print(f"[MULTI-ANALYST] Multi-Analyst discussion system started (rounds={rounds})")
-    print("="*80)
     
     # CRITICAL FIX: Multi-round discussion loop
     # Round 1: Initial analysis
@@ -212,9 +209,6 @@ def run_multi_analyst_discussion(
     executed_tool_cache_keys: set = set()
     
     for current_round in range(1, rounds + 1):
-        print(f"\n{'='*80}")
-        print(f"[ROUND {current_round}/{rounds}] Starting discussion round {current_round}")
-        print(f"{'='*80}")
         
         # For rounds > 1, include previous rounds' discussion history
         if current_round > 1:
@@ -426,13 +420,9 @@ def run_multi_analyst_discussion(
             if fgi_data_from_api and fgi_data_from_api.get("value") is not None:
                 fgi_value = fgi_data_from_api.get("value")
                 fgi_label = fgi_data_from_api.get("label", "N/A")
-                print(f"   [FGI] [OK] Pre-fetched FGI from API (same as frontend panel): value={fgi_value}, label={fgi_label}")
                 market_summary["fear_greed"] = fgi_data_from_api
-                print(f"   [FGI] [OK] Updated market_summary.fear_greed: value={fgi_value}, label={fgi_label}")
-            else:
-                print(f"   [FGI] ⚠️ Failed to pre-fetch FGI from API, will use tool call if requested")
         except Exception as e:
-            print(f"   [FGI] ⚠️ Error pre-fetching FGI from API: {e}, will use tool call if requested")
+            pass  # Will use tool call if requested
         
         try:
             sentiment_analyst: BaseAgent = fac.create("sentiment_analyst")
@@ -523,8 +513,6 @@ def run_multi_analyst_discussion(
             print(f"   [OK] Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
             summary_text = coordinator_summary.get('summary', '')
             if summary_text and len(summary_text.strip()) > 0:
-                summary_preview = summary_text[:150]
-                print(f"   [SUMMARY] Summary: {summary_preview}...")
             else:
                 print(f"   [WARN] Summary: Empty (using fallback)")
                 # If summary is empty, use fallback
@@ -532,7 +520,6 @@ def run_multi_analyst_discussion(
                 coordinator_summary["summary"] = fallback.get("summary", "Coordinator synthesized all analyst perspectives.")
                 coordinator_summary["stance"] = fallback.get("stance", coordinator_summary.get("stance", "neutral"))
                 coordinator_summary["key_points"] = fallback.get("key_points", coordinator_summary.get("key_points", []))
-                print(f"   [SUMMARY] Summary (fallback): {coordinator_summary['summary'][:150]}...")
     except Exception as e:
         print(f"   [ERROR] Discussion Coordinator error: {e}")
         coordinator_summary = None
@@ -1284,7 +1271,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     # 确保 tool_args 是字典类型
     if not isinstance(tool_args, dict):
         tool_args = {}
-        print(f"   [INFO] Tool args was not a dict, resetting to empty dict")
     
     # 检查需要 symbol 的工具，如果没有提供则从 market_summary 中提取
     symbol_required_tools = ["get_advanced_indicators", "get_support_resistance", "get_company_fundamentals", 
@@ -1297,7 +1283,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
                 # 使用第一个样本股票作为默认 symbol
                 default_symbol = market_summary["sample_stocks"][0]
                 tool_args["symbol"] = default_symbol
-                print(f"   [INFO] Auto-added symbol={default_symbol} to {tool_name}")
             else:
                 # 如果没有可用的 symbol，返回错误
                 return {"ok": False, "error": "symbol is required"}
@@ -1307,7 +1292,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         if not tool_args.get("symbols") and market_summary and market_summary.get("symbols"):
             # 使用完整的 universe symbols（不是 sample_stocks）
             tool_args["symbols"] = market_summary["symbols"]
-            print(f"   [INFO] Auto-added {len(market_summary['symbols'])} symbols to get_market_breadth (full universe)")
     
     # CRITICAL FIX: fear_greed 工具不接受 index 或 crypto 参数，移除它们
     if tool_name == "fear_greed":
@@ -1346,7 +1330,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         # 如果没有设置 fetch_body_top，默认获取前10篇文章的内容
         if "fetch_body_top" not in tool_args or tool_args.get("fetch_body_top", 0) == 0:
             tool_args["fetch_body_top"] = 10
-            print(f"   [INFO] Auto-set fetch_body_top=10 for plan_and_scan_news to get article content")
         
         # 如果没有提供 mview，从 market_summary 创建
         if "mview" not in tool_args and market_summary:
@@ -1354,18 +1337,14 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
                 "vix": market_summary.get("vix", {}),
                 "stocks": market_summary.get("stocks", {}),
             }
-            print(f"   [INFO] Auto-added mview parameter to plan_and_scan_news from market_summary")
         elif "mview" not in tool_args:
             # 如果没有 market_summary，创建空的 mview
             tool_args["mview"] = {"vix": {}, "stocks": {}}
-            print(f"   [INFO] Auto-added empty mview parameter to plan_and_scan_news")
     
     # CRITICAL FIX: 如果 agent 请求了 news_scan，建议改用 plan_and_scan_news 以获取文章内容
     # 但为了兼容性，仍然支持 news_scan
     if tool_name == "news_scan":
         # 如果可能，建议改用 plan_and_scan_news
-        if "fetch_body_top" not in tool_args:
-            print(f"   [INFO] news_scan only returns titles. Consider using plan_and_scan_news with fetch_body_top for article content.")
     
     # 处理 news_scan 工具：确保有 keywords
     if tool_name == "news_scan":
@@ -1389,7 +1368,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
             if not keywords:
                 keywords = ["market", "AI", "tariff", "stocks", "economy"]
             tool_args["keywords"] = keywords
-            print(f"   [INFO] Auto-added keywords={keywords} to news_scan")
     
     # CRITICAL FIX: 工具名称映射 - 将LLM可能使用的错误工具名映射到正确的工具名
     # 基于实际测试结果：
@@ -1406,7 +1384,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     
     if tool_name in tool_name_mapping:
         mapped_name = tool_name_mapping[tool_name]
-        print(f"   [INFO] Mapping tool name '{tool_name}' -> '{mapped_name}' (correct tool name)")
         tool_name = mapped_name
         tool_call["name"] = mapped_name  # Update the tool_call dict as well
         
@@ -1428,7 +1405,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     # 检查工具是否存在
     if tool_name not in toolbox.list():
         print(f"   [WARN] Tool {tool_name} not found in toolbox")
-        print(f"   [INFO] Available tools: {', '.join(sorted(toolbox.list()))}")
         return {"ok": False, "error": f"Tool {tool_name} not available"}
     
     # CRITICAL FIX: 对于 plan_and_scan_news，确保参数正确（即使没有映射，也要清理参数）
@@ -1436,21 +1412,15 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         # 参数名映射
         if "symbols" in tool_args and "tickers" not in tool_args:
             tool_args["tickers"] = tool_args.pop("symbols")
-            print(f"   [INFO] Mapped parameter 'symbols' -> 'tickers'")
         if "count" in tool_args and "max_articles" not in tool_args:
             tool_args["max_articles"] = tool_args.pop("count")
-            print(f"   [INFO] Mapped parameter 'count' -> 'max_articles'")
         if "days" in tool_args and "recency_days" not in tool_args:
             tool_args["recency_days"] = tool_args.pop("days")
-            print(f"   [INFO] Mapped parameter 'days' -> 'recency_days'")
         if "recency" in tool_args and "recency_days" not in tool_args:
             tool_args["recency_days"] = tool_args.pop("recency")
-            print(f"   [INFO] Mapped parameter 'recency' -> 'recency_days'")
         # 移除不支持的参数
         supported_params = {"tickers", "mview", "preferred_domains", "recency_days", "max_articles", "fetch_body_top"}
         unsupported = [k for k in tool_args.keys() if k not in supported_params]
-        if unsupported:
-            print(f"   [INFO] Removing unsupported parameters: {unsupported}")
             tool_args = {k: v for k, v in tool_args.items() if k in supported_params}
     
     try:
@@ -1479,11 +1449,8 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
                 articles = actual_result.get("articles", [])
                 items = actual_result.get("items", [])
                 total_data = len(hits) + len(articles) + len(items)
-                if total_data > 0:
-                    print(f"   [OK] Tool {tool_name} returned news data (hits={len(hits)}, articles={len(articles)}, items={len(items)})")
-                else:
+                if total_data == 0:
                     print(f"   [WARN] Tool {tool_name} returned no news data (hits={len(hits)}, articles={len(articles)}, items={len(items)})")
-                    print(f"   [INFO] This may be normal if no recent news found for the given keywords/tickers")
         return result
     except Exception as e:
         print(f"   [ERROR] Tool {tool_name} failed: {e}")
@@ -1861,15 +1828,28 @@ def _run_discussion_coordinator(
     else:
         historical_memories_formatted = ""
     
+    # Prepare tools information for coordinator (for context, not for execution)
+    tools_info = ""
+    if toolbox and use_tools:
+        available_tools = toolbox.list()
+        tools_info = f"\n\n**Available Tools (for reference only - analysts have already used tools):**\n"
+        tools_info += f"Total tools available: {len(available_tools)}\n"
+        tools_info += f"Tools used by analysts: {', '.join(set([tool for report in analyst_reports.values() if 'error' not in report for tool in report.get('tools_used', [])]))}\n"
+        tools_info += f"Remaining tool budget: {tool_budget}\n"
+    
     # Use YAML prompt via coordinator.run() with template variables
     prompt_vars = {
         "previous_discussion": discussion_text,
         "analyst_reports_summary": analyst_reports_summary,
         "market_summary": market_summary,
         "historical_memories": historical_memories_formatted,
+        "tools_info": tools_info,  # Add tools info for context
     }
     
     try:
+        # Log coordinator execution
+        if toolbox and use_tools:
+        
         # Use coordinator's YAML prompt template (loaded from prompts/discussion_agent.yml)
         text_response = coordinator.run(
             prompt_vars,

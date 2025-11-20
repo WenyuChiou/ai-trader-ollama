@@ -54,7 +54,6 @@ def _default_universe() -> List[str]:
                 if "universe" in config_data and isinstance(config_data["universe"], list):
                     symbols = config_data["universe"]
                     if symbols and len(symbols) > 0:
-                        print(f"[UNIVERSE] Loaded {len(symbols)} symbols from config.json")
                         return symbols
         
         # Also try to load from universe.json (if exists)
@@ -69,11 +68,9 @@ def _default_universe() -> List[str]:
                         if key in universe_data and isinstance(universe_data[key], list):
                             symbols = universe_data[key]
                             if symbols and len(symbols) > 0:
-                                print(f"[UNIVERSE] Loaded {len(symbols)} symbols from {universe_file.name}")
                                 return symbols
                 elif isinstance(universe_data, list):
                     if len(universe_data) > 0:
-                        print(f"[UNIVERSE] Loaded {len(universe_data)} symbols from {universe_file.name}")
                         return universe_data
     except Exception as e:
         print(f"[UNIVERSE WARN] Failed to load universe from config: {e}")
@@ -154,21 +151,14 @@ def execute_daily_trade(
     config_rounds = config.get("discussion_rounds", 3)
     if rounds == 3:  # Using default value, use config value instead
         rounds = config_rounds
-        print(f"[TRADING CYCLE] Using rounds from config.json: {rounds}")
-    else:
-        print(f"[TRADING CYCLE] Using explicitly provided rounds: {rounds} (config has {config_rounds})")
-    
     # CRITICAL FIX: Load auto_tools from config.json
     config_auto_tools = config.get("discussion_auto_tools", True)
     if auto_tools == True:  # Using default value, use config value instead
         auto_tools = config_auto_tools
-        print(f"[TRADING CYCLE] Using auto_tools from config.json: {auto_tools}")
-    
     # CRITICAL FIX: Load tool_budget from config.json
     config_tool_budget = config.get("discussion_tool_budget", config.get("tool_budget", 15))
     if tool_budget == 8:  # Using default value, use config value instead
         tool_budget = config_tool_budget
-        print(f"[TRADING CYCLE] Using tool_budget from config.json: {tool_budget}")
     
     if universe is None:
         universe = _default_universe()
@@ -201,14 +191,6 @@ def execute_daily_trade(
         end_dt = datetime.fromisoformat(market_data_end.split('T')[0]) if isinstance(market_data_end, str) else market_data_end
         start_dt = end_dt - timedelta(days=7)
         start = start_dt.isoformat().split('T')[0] if isinstance(start_dt, datetime) else str(start_dt)
-        print(f"[TRADING CYCLE] Single-day query detected, extended start to 7 days before: {start} -> {market_data_end}")
-    
-    print(f"[TRADING CYCLE] Fetching market data: start={start}, end={market_data_end}")
-    print(f"[TRADING CYCLE] Universe size: {len(universe)} symbols (processing ALL symbols)")
-    if len(universe) <= 20:
-        print(f"[TRADING CYCLE] Universe symbols: {universe}")
-    else:
-        print(f"[TRADING CYCLE] Universe symbols (first 10): {universe[:10]} ... (and {len(universe) - 10} more)")
     
     try:
         market_view: Dict[str, Any] = fetch_market_batch.invoke({
@@ -217,16 +199,11 @@ def execute_daily_trade(
             "end": market_data_end,
         })
         stocks_count = len(market_view.get('stocks', {}))
-        print(f"[TRADING CYCLE] Market data fetched successfully: {stocks_count} stocks")
         if stocks_count < len(universe):
-            print(f"[TRADING CYCLE] ⚠️  WARNING: Fetched {stocks_count} stocks but universe has {len(universe)} symbols")
             # Show which stocks were not fetched
             fetched_symbols = set(market_view.get('stocks', {}).keys())
             missing_symbols = [s for s in universe if s not in fetched_symbols]
-            if missing_symbols:
-                print(f"[TRADING CYCLE] ⚠️  Missing symbols (first 10): {missing_symbols[:10]}")
     except Exception as e:
-        print(f"[TRADING CYCLE] Failed to fetch market data: {e}")
         # If fetch fails, return error message
         raise Exception(f"Failed to fetch market data: {e}")
     # market_view typical structure:
@@ -238,16 +215,10 @@ def execute_daily_trade(
     # ---- (1b) Lightweight enriched data for discussion layer ----
     stocks = market_view.get("stocks") or {}
     symbols = list(stocks.keys())
-    print(f"[TRADING CYCLE] Stocks available for analysis: {len(symbols)} symbols (ALL symbols will be analyzed)")
-    if len(symbols) <= 20:
-        print(f"[TRADING CYCLE] Stock symbols: {symbols}")
-    else:
-        print(f"[TRADING CYCLE] Stock symbols (first 10): {symbols[:10]} ... (and {len(symbols) - 10} more)")
     # CRITICAL FIX: Remove signal_score auto-sorting
     # signal_score is now judged by agents themselves, no longer auto-calculated and sorted
     # Still keep signal_score field (calculated in market_tools.py), but no longer used for auto-filtering
     signal_top = []  # No longer using signal_score sorting
-    print(f"[TRADING CYCLE] {len(stocks)} stocks available (signal_score judgment by agents, not auto-sorted)")
     
     # ---- (1c) Market Analyst: Evaluate all universe stocks, generate recommendation list ----
     # CRITICAL FIX: Use fallback recommendations (actual recommendations will be generated by LLM in multi_analyst_system)
@@ -298,12 +269,9 @@ def execute_daily_trade(
                                 avg_cost=avg_cost,
                                 total_cost=total_cost,
                             )
-                print(f"[TRADING CYCLE] Loaded portfolio from state: cash=${portfolio.cash:.2f}, positions={len(portfolio._positions)}")
             except Exception as e:
-                print(f"[TRADING CYCLE] Warning: Failed to load portfolio state: {e}, using default Portfolio()")
                 portfolio = Portfolio()
         else:
-            print(f"[TRADING CYCLE] Portfolio state file not found, using default Portfolio()")
             portfolio = Portfolio()
     if trade_logger is None:
         # CRITICAL FIX: Use project root data/logs directory explicitly (same as OrderManager)
@@ -354,10 +322,6 @@ def execute_daily_trade(
         )
         if historical_memories:
             print(f"[MEMORY] ✅ Loaded {len(historical_memories)} historical memories for context")
-            # Show memory date range
-            if len(historical_memories) > 0:
-                dates = [m.get("date", "N/A") for m in historical_memories]
-                print(f"[MEMORY] 📅 Memory dates: {', '.join(dates)}")
         else:
             print(f"[MEMORY] ⚠️ No historical memories found (agents should use memory tools to retrieve past decisions)")
     except Exception as e:
@@ -415,7 +379,6 @@ def execute_daily_trade(
     }
     
     if pending_orders or filled_orders:
-        print(f"[TRADING CYCLE] Order status for {order_date}: {len(pending_orders)} pending, {len(filled_orders)} filled")
     
     # ---- (3) Multi-Analyst discussion layer ----
     # Run multiple specialized analysts: Market, Technical, Fundamental, Sentiment
@@ -443,12 +406,10 @@ def execute_daily_trade(
     # LLM 可以自主决定如何使用现金，但不能超过实际可用的现金
     if position_limit_mode == "auto" or min_cash_reserve_ratio is None:
         preliminary_available_cash = portfolio.cash if portfolio else 0.0
-        print(f"[TRADING CYCLE] Cash reserve DISABLED (auto mode) - all cash available: ${preliminary_available_cash:.2f} (LLM autonomous, but limited to actual cash)")
     else:
         MIN_CASH_RESERVE_RATIO = float(min_cash_reserve_ratio)
         required_cash_reserve = preliminary_portfolio_value * MIN_CASH_RESERVE_RATIO
         preliminary_available_cash = max(0, portfolio.cash - required_cash_reserve) if portfolio else 0.0
-        print(f"[TRADING CYCLE] Cash reserve ENABLED (configured mode): reserve={MIN_CASH_RESERVE_RATIO:.1%}, available=${preliminary_available_cash:.2f}")
     
     # CRITICAL FIX: Use version with four independent Analysts, ensure each analyst has tool calls and summary
     # Get current position information (for analyst analysis)
@@ -510,7 +471,6 @@ def execute_daily_trade(
             portfolio_value = portfolio.cash + portfolio.initial_value
     
     # CRITICAL: Use optimized parallel version as default (direct integration)
-    print("[TRADING CYCLE] [OK] Using OPTIMIZED agent discussion system (ToolCoordinator + SharedContext + BudgetAllocator)")
     # CRITICAL FIX: Pass historical_memories and rounds to discussion system
     convo = run_multi_analyst_discussion_parallel(
         market_view=market_view,  # Pass complete market_view
@@ -550,22 +510,17 @@ def execute_daily_trade(
                 sym_upper = str(sym).upper().strip()
                 # Skip empty or invalid format
                 if not sym_upper or len(sym_upper) > 10 or not sym_upper.replace(".", "").replace("-", "").isalnum():
-                    print(f"[TRADING CYCLE] ⚠️ Skipping invalid symbol format in recommended stocks: {sym}")
                     continue
                 # Skip cryptocurrencies (DOGE, BTC, ETH, etc.)
                 if is_crypto(sym_upper):
-                    print(f"[TRADING CYCLE] ⚠️ Skipping cryptocurrency in recommended stocks: {sym_upper}")
                     continue
                 # Skip ETFs
                 if is_etf(sym_upper):
-                    print(f"[TRADING CYCLE] ⚠️ Skipping ETF in recommended stocks: {sym_upper}")
                     continue
                 filtered_recommended.append(sym_upper)
             
             recommended_stocks_from_llm = filtered_recommended
             if recommended_stocks_from_llm:
-                print(f"[TRADING CYCLE] ✅ Using LLM recommended stocks from Market Analyst: {len(recommended_stocks_from_llm)} stocks (filtered from {len(raw_recommended)} raw recommendations)")
-                print(f"[TRADING CYCLE]   Recommended stocks: {recommended_stocks_from_llm[:10]}...")
                 # Update recommended stocks in enriched_market
                 enriched_market["recommended_stocks"] = recommended_stocks_from_llm
             else:
@@ -697,9 +652,6 @@ def execute_daily_trade(
                     
                     with convo_file.open("a", encoding="utf-8") as f:
                         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                    print(f"[TRADING CYCLE] Wrote {agent_name} from transcript (stance: {stance})")
-                else:
-                    print(f"[TRADING CYCLE] Skipped {agent_name} from transcript (already written from discussion_history)")
         
         # CRITICAL FIX: Ensure extraction of four analyst results from discussion_history
         # If discussion_history is empty, try to build from analyst_reports
@@ -739,9 +691,8 @@ def execute_daily_trade(
                     
                     if market_updated:
                         convo_file.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
-                        print(f"[TRADING CYCLE] Updated MarketAnalyst entry with recommended_stocks: {market_recommended_stocks}")
-            except Exception as e:
-                print(f"[TRADING CYCLE] Warning: Failed to update MarketAnalyst entry with recommended_stocks: {e}")
+                except Exception as e:
+                    pass  # Failed to update MarketAnalyst entry
         
         # 如果 discussion_history 为空，从 analyst_reports 构建
         if not discussion_history:
@@ -879,13 +830,11 @@ def execute_daily_trade(
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-            print(f"[TRADING CYCLE] Wrote Coordinator from discussion_history (stance: {stance}, round: {coordinator_entry.get('round', 0)})")
         
         # Process analyst entries (already grouped and normalized)
         for agent_name, entry_data in agent_entries.items():
             # CRITICAL FIX: Skip if this analyst was already written from transcript
             if agent_name in transcript_analysts_written:
-                print(f"[TRADING CYCLE] Skipped {agent_name} from discussion_history (already written from transcript)")
                 continue
             
             stance = entry_data.get("stance", "neutral")
@@ -895,7 +844,6 @@ def execute_daily_trade(
             
             # CRITICAL FIX: Skip if analysis is too short or placeholder (e.g., "Waiting for tool results")
             if not analysis or len(analysis.strip()) < 50 or "waiting for tool results" in analysis.lower():
-                print(f"[TRADING CYCLE] Skipped {agent_name} from discussion_history (analysis too short or placeholder: {analysis[:50]}...)")
                 continue
             
             # CRITICAL FIX: If MarketAnalyst and no recommended_stocks in entry_data, try to get from analyst_reports
@@ -925,7 +873,6 @@ def execute_daily_trade(
             
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-            print(f"[TRADING CYCLE] ✅ Wrote {agent_name} from discussion_history (stance: {stance}, round: {round_num}, analysis_len: {len(analysis)})")
             transcript_analysts_written.add(agent_name)  # CRITICAL FIX: Mark as written to avoid duplicates
         
         # CRITICAL FIX: Ensure all required analysts are written (final check)
@@ -967,21 +914,12 @@ def execute_daily_trade(
                         
                         with convo_file.open("a", encoding="utf-8") as f:
                             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                        print(f"[TRADING CYCLE] ✅ Wrote {agent_name} from analyst_reports (fallback, stance: {stance})")
                         transcript_analysts_written.add(agent_name)
-                    else:
-                        print(f"[TRADING CYCLE] ⚠️ Skipped {agent_name} from analyst_reports (no valid analysis)")
-                else:
-                    print(f"[TRADING CYCLE] ⚠️ {agent_name} not found in analyst_reports")
         
         # CRITICAL FIX: Final verification - ensure all required analysts were written
         written_analysts = list(transcript_analysts_written)
         missing_analysts = [agent for agent in required_analysts.keys() if agent not in written_analysts]
         if missing_analysts:
-            print(f"[TRADING CYCLE] ⚠️ WARNING: Missing analysts after all write attempts: {missing_analysts}")
-            print(f"[TRADING CYCLE] Written analysts: {written_analysts}")
-        else:
-            print(f"[TRADING CYCLE] ✅ All required analysts written successfully: {written_analysts}")
         
         # 寫入Coordinator統整結果（只寫一次，避免重複）
         # 如果 discussion_history 中已经有 Coordinator，就不再单独写入 coordinator_summary
@@ -1007,7 +945,6 @@ def execute_daily_trade(
                 }
                 with convo_file.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-                print(f"[TRADING CYCLE] Wrote Coordinator from coordinator_summary (stance: {stance})")
         elif coordinator_summary and coordinator_found_in_history:
             print(f"[TRADING CYCLE] Skipped writing coordinator_summary (Coordinator already exists in discussion_history)")
         

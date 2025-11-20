@@ -78,6 +78,7 @@ AI-Trader Ollama is a **complete trading platform** that provides both backend t
   - Optimized mandatory tool logic (limits to top 5 recommended stocks)
   - Early budget checks skip tool execution when budget exhausted
   - **Result**: 30-40% faster execution (from ~10 minutes to ~6-7 minutes per trading cycle)
+  - **Long-term Performance**: Tail-based file reading (99% memory reduction), log rotation (50MB threshold), caching layer (80-90% read reduction), performance monitoring
 
 ### Core Philosophy
 
@@ -2642,6 +2643,12 @@ All automation scripts are located in `scripts/` directory and can be run from t
 | Script | Purpose | Usage | Notes |
 |--------|---------|-------|-------|
 | `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax before deployment, checks 10 main Python files |
+| `test_performance_optimization.py` | Test performance optimizations | `python scripts/test_performance_optimization.py` | Tests log rotation, performance monitoring, and tail-based reading |
+| `test_api_tool_response.py` | Test API tool response | `python scripts/test_api_tool_response.py` | Verifies API returns tools correctly with round fields |
+| `test_tool_display_with_memory.py` | Test tool display with memory | `python scripts/test_tool_display_with_memory.py` | Tests if tools are correctly displayed when memory mechanism is active |
+| `check_tool_rounds.py` | Check tool round distribution | `python scripts/check_tool_rounds.py` | Analyzes round field distribution in discussion_actions.jsonl |
+| `check_tool_rounds_simple.py` | Quick check tool rounds | `python scripts/check_tool_rounds_simple.py` | Simplified version for quick debugging |
+| `analyze_old_records.py` | Analyze old tool records | `python scripts/analyze_old_records.py` | Analyzes distribution of old vs new tool call records |
 
 **Note**: All PowerShell scripts use UTF-8 encoding and support Windows PowerShell 5.1+ and PowerShell Core 7+. Some scripts require administrator privileges (indicated in Requirements column).
 

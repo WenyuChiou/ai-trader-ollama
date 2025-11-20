@@ -79,6 +79,7 @@ AI-Trader Ollama 是一个**完整的交易平台**，同时提供后端交易�
   - 优化的强制工具逻辑（限制为前 5 个推荐股票）
   - 预算耗尽时早期检查跳过工具执行
   - **结果**：执行速度提升 30-40%（从每交易周期约 10 分钟降至约 6-7 分钟）
+  - **长期性能优化**：尾部文件读取（内存减少 99%）、日志轮转（50MB 阈值）、缓存层（读取减少 80-90%）、性能监控
 
 ### 核心理念
 
@@ -1745,6 +1746,18 @@ web: cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
 
 **注意**：所有 PowerShell 脚本使用 UTF-8 编码，支持 Windows PowerShell 5.1+ 和 PowerShell Core 7+。某些脚本需要管理员权限（在"要求"列中注明）。
 
+#### 开发与代码质量脚本
+
+| 脚本 | 目的 | 用法 | 说明 |
+|--------|---------|-------|-------|
+| `check_syntax.py` | 检查所有主要文件的 Python 语法 | `python scripts/check_syntax.py` | 部署前验证语法，检查 10 个主要 Python 文件 |
+| `test_performance_optimization.py` | 测试性能优化 | `python scripts/test_performance_optimization.py` | 测试日志轮转、性能监控和尾部读取 |
+| `test_api_tool_response.py` | 测试 API 工具响应 | `python scripts/test_api_tool_response.py` | 验证 API 是否正确返回带 round 字段的工具 |
+| `test_tool_display_with_memory.py` | 测试内存机制下的工具显示 | `python scripts/test_tool_display_with_memory.py` | 测试启用内存机制时工具是否正确显示 |
+| `check_tool_rounds.py` | 检查工具轮次分布 | `python scripts/check_tool_rounds.py` | 分析 discussion_actions.jsonl 中的 round 字段分布 |
+| `check_tool_rounds_simple.py` | 快速检查工具轮次 | `python scripts/check_tool_rounds_simple.py` | 简化版本，用于快速调试 |
+| `analyze_old_records.py` | 分析旧工具记录 | `python scripts/analyze_old_records.py` | 分析旧（round=0）vs 新（round=1-3）工具调用记录的分布 |
+
 ### 概述
 
 系统支持以下自动化计划任务：
@@ -2099,6 +2112,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
 | **[关键测试文件](docs/KEY_TEST_FILES.md)** | 关键测试文件和优先级指南 ⭐ |
 | **[订单数据模式](docs/ORDER_DATA_SCHEMA.md)** | 用于性能分析的标准化订单数据结构 |
 | **[性能 API 指南](docs/PERFORMANCE_API_GUIDE.md)** | 性能分析 API 文档和预期输出 |
+| **[性能优化](docs/PERFORMANCE_OPTIMIZATION.md)** | 长期性能优化（尾部读取、日志轮转、缓存） ⭐ |
+| **[优化影响分析](docs/OPTIMIZATION_IMPACT_ANALYSIS.md)** | 优化对讨论循环和前端工具的影响分析 |
 
 ---
 
@@ -2240,6 +2255,13 @@ pytest tests/ --cov=backend/src --cov-report=html --cov-report=term-missing
 | `test_api_server.py` | 测试 API 端点 | `python scripts/test_api_server.py` | 需要 API 运行 |
 | `test_frontend_features.py` | 测试前端功能 | `python scripts/test_frontend_features.py` | 需要 API 运行 |
 | `test_trading_cycle_quick.py` | 快速交易周期测试（单轮） | `python tests/integration/test_trading_cycle_quick.py` | 强制市场开放，验证订单记录 |
+| `test_performance_optimization.py` | 测试性能优化 | `python scripts/test_performance_optimization.py` | 测试日志轮转、性能监控和尾部读取 |
+| `test_api_tool_response.py` | 测试 API 工具响应 | `python scripts/test_api_tool_response.py` | 验证 API 是否正确返回带 round 字段的工具 |
+| `test_tool_display_with_memory.py` | 测试内存机制下的工具显示 | `python scripts/test_tool_display_with_memory.py` | 测试启用内存机制时工具是否正确显示 |
+| `check_tool_rounds.py` | 检查工具轮次分布 | `python scripts/check_tool_rounds.py` | 分析 discussion_actions.jsonl 中的 round 字段分布 |
+| `check_tool_rounds_simple.py` | 快速检查工具轮次 | `python scripts/check_tool_rounds_simple.py` | 简化版本，用于快速调试 |
+| `analyze_old_records.py` | 分析旧工具记录 | `python scripts/analyze_old_records.py` | 分析旧（round=0）vs 新（round=1-3）工具调用记录的分布 |
+| `check_syntax.py` | 检查 Python 语法 | `python scripts/check_syntax.py` | 验证部署前语法，检查 10 个主要 Python 文件 |
 
 **重要**：使用独立测试脚本（`test_news_tools.py`, `verify_portfolio.py`）进行测试。**不要**使用 `run_daily_trading.py` 进行测试，因为它会覆盖交易记录。
 

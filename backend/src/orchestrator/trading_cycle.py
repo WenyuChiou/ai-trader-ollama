@@ -988,7 +988,8 @@ def execute_daily_trade(
         # CRITICAL FIX: Get actual round number from discussion_history or convo
         # Try to extract round from discussion_history entries
         discussion_history = convo.get("discussion_history", [])
-        tool_round_map = {}  # Map analyst -> round number
+        tool_round_map = {}  # Map analyst -> round number (for fallback)
+        # Build a map of analyst -> latest round number (for fallback if tool_call doesn't have round)
         for entry in discussion_history:
             analyst = entry.get("analyst", "")
             round_num = entry.get("round", 0)
@@ -1764,7 +1765,7 @@ def execute_daily_trade(
                     "timestamp": get_utc_timestamp(),
                     "date": trade_date_str,
                     "agent": "RiskAnalyst",
-                    "round": 0,
+                    "round": 1,  # CRITICAL FIX: RiskAnalyst runs after discussion, use round 1 so tools are visible in frontend
                     "content": f"Tool used: {tool_name}: {result_text}",
                     "type": "tool",
                     "tool_name": tool_name,

@@ -378,8 +378,6 @@ def execute_daily_trade(
         "order_date": order_date,
     }
     
-    if pending_orders or filled_orders:
-    
     # ---- (3) Multi-Analyst discussion layer ----
     # Run multiple specialized analysts: Market, Technical, Fundamental, Sentiment
     # Note: Prepare position information here first (before order settlement), but will update after order settlement
@@ -691,8 +689,8 @@ def execute_daily_trade(
                     
                     if market_updated:
                         convo_file.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
-                except Exception as e:
-                    pass  # Failed to update MarketAnalyst entry
+            except Exception as e:
+                pass  # Failed to update MarketAnalyst entry
         
         # If discussion_history is empty, build from analyst_reports
         if not discussion_history:
@@ -920,6 +918,7 @@ def execute_daily_trade(
         written_analysts = list(transcript_analysts_written)
         missing_analysts = [agent for agent in required_analysts.keys() if agent not in written_analysts]
         if missing_analysts:
+            pass  # Missing analysts logged above
         
         # Write Coordinator synthesis result (write only once, avoid duplicates)
         # If Coordinator already exists in discussion_history, don't write coordinator_summary separately

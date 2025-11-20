@@ -245,6 +245,7 @@ def run_multi_analyst_discussion_parallel(
             # DEBUG: Check if plan_and_scan_news exists in any form
             plan_scan_variants = [name for name in all_tool_names if "plan" in name.lower() or "scan" in name.lower() or "news" in name.lower()]
             if plan_scan_variants:
+                print(f"[PARALLEL]   [DEBUG] Found similar tool names: {plan_scan_variants}")
         
         market_conditions = get_market_conditions(market_view, formatted_tool_calls)
         print(f"[PARALLEL] Updated market conditions (from API + tool calls): VIX={market_conditions.get('vix', 20):.2f}, "

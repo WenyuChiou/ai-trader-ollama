@@ -2637,6 +2637,12 @@ All automation scripts are located in `scripts/` directory and can be run from t
 | `monitor_api_connection.ps1` | Monitor API connection | `.\scripts\monitor_api_connection.ps1` | Continuous monitoring |
 | `check_port.ps1` | Check port availability | `.\scripts\check_port.ps1` | Check if port 8000 is available |
 
+#### Development & Code Quality Scripts
+
+| Script | Purpose | Usage | Notes |
+|--------|---------|-------|-------|
+| `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax before deployment, checks 10 main Python files |
+
 **Note**: All PowerShell scripts use UTF-8 encoding and support Windows PowerShell 5.1+ and PowerShell Core 7+. Some scripts require administrator privileges (indicated in Requirements column).
 
 ### Overview
@@ -3543,6 +3549,31 @@ All setup scripts are located in `scripts/` directory and can be run from the pr
 | `test_discussion_coordinator.py` | Test Discussion Coordinator | `python tests/integration/test_discussion_coordinator.py` | Multi-round discussion tests |
 
 **Important**: Use pytest for running tests. Run all tests with `pytest tests/` or specific test files.
+
+### Development & Code Quality Scripts
+
+| Script | Purpose | Usage | Notes |
+|--------|---------|-------|-------|
+| `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax before deployment, checks 10 main Python files including trading_cycle.py, multi_analyst_system.py, trader_agent.py, and all analyst handlers |
+
+**Usage Example**:
+```powershell
+# Check syntax of all main Python files
+python scripts/check_syntax.py
+
+# Output:
+# [OK] orchestrator/trading_cycle.py
+# [OK] agents/multi_analyst_system.py
+# [OK] agents/trader_agent.py
+# ...
+# [SUCCESS] All 10 files compiled successfully!
+```
+
+**When to Use**:
+- ✅ Before committing code changes
+- ✅ After editing Python files
+- ✅ Before deploying to production
+- ✅ When encountering syntax errors during runtime
 
 See [Test Documentation](tests/README.md) for detailed information.
 

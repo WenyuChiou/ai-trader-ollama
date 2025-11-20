@@ -266,7 +266,6 @@ def run_sentiment_analyst(
                     }
                 else:
                     tool_result = execute_tool(toolbox, tool_call, market_summary)
-                    if tool_name == "plan_and_scan_news":
                 
                 if check_tool_success(tool_result):
                     cache_key = get_tool_cache_key(tool_name, tool_args)

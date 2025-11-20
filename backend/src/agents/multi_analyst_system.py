@@ -512,8 +512,7 @@ def run_multi_analyst_discussion(
             _limit_discussion_history(all_rounds_history, MAX_DISCUSSION_HISTORY_ENTRIES)
             print(f"   [OK] Coordinator Stance: {coordinator_summary.get('stance', 'N/A')}")
             summary_text = coordinator_summary.get('summary', '')
-            if summary_text and len(summary_text.strip()) > 0:
-            else:
+            if not summary_text or len(summary_text.strip()) == 0:
                 print(f"   [WARN] Summary: Empty (using fallback)")
                 # If summary is empty, use fallback
                 fallback = _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
@@ -1343,9 +1342,6 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
     
     # CRITICAL FIX: 如果 agent 请求了 news_scan，建议改用 plan_and_scan_news 以获取文章内容
     # 但为了兼容性，仍然支持 news_scan
-    if tool_name == "news_scan":
-        # 如果可能，建议改用 plan_and_scan_news
-    
     # 处理 news_scan 工具：确保有 keywords
     if tool_name == "news_scan":
         # 检查是否有任何形式的关键词（keywords, tickers, queries, symbols）
@@ -1421,7 +1417,7 @@ def _execute_tool(toolbox: ToolBox, tool_call: Dict[str, Any], market_summary: D
         # 移除不支持的参数
         supported_params = {"tickers", "mview", "preferred_domains", "recency_days", "max_articles", "fetch_body_top"}
         unsupported = [k for k in tool_args.keys() if k not in supported_params]
-            tool_args = {k: v for k, v in tool_args.items() if k in supported_params}
+        tool_args = {k: v for k, v in tool_args.items() if k in supported_params}
     
     try:
         result = toolbox.invoke(tool_name, **tool_args)
@@ -1830,7 +1826,7 @@ def _run_discussion_coordinator(
     
     # Prepare tools information for coordinator (for context, not for execution)
     tools_info = ""
-    if toolbox and use_tools:
+    if toolbox:
         available_tools = toolbox.list()
         tools_info = f"\n\n**Available Tools (for reference only - analysts have already used tools):**\n"
         tools_info += f"Total tools available: {len(available_tools)}\n"
@@ -1848,7 +1844,8 @@ def _run_discussion_coordinator(
     
     try:
         # Log coordinator execution
-        if toolbox and use_tools:
+        if toolbox:
+            pass  # Toolbox available for reference
         
         # Use coordinator's YAML prompt template (loaded from prompts/discussion_agent.yml)
         text_response = coordinator.run(

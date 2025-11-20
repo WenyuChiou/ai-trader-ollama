@@ -3095,6 +3095,31 @@ def execute_daily_trade(
             portfolio_snapshot=portfolio_snapshot,
         )
         print(f"[EQUITY] Recorded equity for {equity_date}: ${portfolio_value:.2f} (cash: ${portfolio.cash:.2f}, equity: ${equity_value:.2f})")
+        
+        # CRITICAL FIX: Save portfolio_state.json again with updated_positions_info (contains current_price and market_value)
+        # This ensures portfolio_state.json always has the latest complete position information
+        if portfolio and updated_positions_info:
+            try:
+                portfolio_file = _get_project_logs_dir() / "portfolio_state.json"
+                
+                portfolio_state = {
+                    "cash": portfolio.cash,
+                    "initial_value": portfolio.initial_value,
+                    "total_value": total_value,
+                    "positions": updated_positions_info,  # Use updated_positions_info with complete price information
+                    "timestamp": get_utc_timestamp(),
+                    "snapshot": {
+                        "cash": portfolio.cash,
+                        "total_value": total_value,
+                        "equity_value": equity_value,
+                        "positions_count": len(portfolio._positions),
+                    }
+                }
+                
+                portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
+                print(f"[TRADING CYCLE] Updated portfolio_state.json with complete position information (including prices)")
+            except Exception as e:
+                print(f"[TRADING CYCLE] ⚠️  Failed to update portfolio_state.json with prices: {e}")
     except Exception as e:
         print(f"[MEMORY WARN] Failed to save memory/equity: {e}")
         # 不影响主流程，继续执行

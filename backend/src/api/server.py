@@ -4,14 +4,14 @@ FastAPI server for AI Trader backend
 import sys
 from pathlib import Path
 
-# CRITICAL FIX: 确保工作目录正确（修复 uvicorn --reload 时的 ModuleNotFoundError）
-# 如果当前工作目录不是 backend 目录，自动切换到 backend 目录
+# CRITICAL FIX: Ensure working directory is correct (fixes ModuleNotFoundError with uvicorn --reload)
+# If current working directory is not backend directory, automatically switch to backend directory
 _current_file = Path(__file__).resolve()
 _backend_dir = _current_file.parent.parent.parent  # backend/src/api/server.py -> backend
 if Path.cwd() != _backend_dir and _backend_dir.exists():
     import os
     os.chdir(_backend_dir)
-    # 确保 backend 目录在 Python 路径中
+    # Ensure backend directory is in Python path
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
@@ -45,12 +45,12 @@ def _get_project_logs_dir() -> Path:
 
 # Helper function to load trading config
 def load_trading_config():
-    """从 config.json 读取交易配置"""
+    """Load trading configuration from config.json"""
     config_path = Path(__file__).parent.parent.parent / "config" / "config.json"
     universe = None
-    tool_budget = 15  # 默认值
+    tool_budget = 15  # Default value
     rounds = 3
-    min_tools = 3  # 默认值
+    min_tools = 3  # Default value
     
     if config_path.exists():
         try:
@@ -58,9 +58,9 @@ def load_trading_config():
                 config_data = json.load(f)
                 if "universe" in config_data and isinstance(config_data["universe"], list):
                     universe = config_data["universe"]
-                # 读取工具预算（优先使用 discussion_tool_budget）
+                # Read tool budget (prefer discussion_tool_budget)
                 tool_budget = config_data.get("discussion_tool_budget", config_data.get("tool_budget", 15))
-                # 确保至少为8，否则工具调用太少
+                # Ensure at least 8, otherwise too few tool calls
                 if tool_budget < 8:
                     tool_budget = 15
                 rounds = config_data.get("discussion_rounds", 3)
@@ -78,7 +78,7 @@ def load_trading_config():
 # Root endpoint
 @app.get("/")
 async def root():
-    """根端点，返回 API 信息和端点列表"""
+    """Root endpoint, returns API information and endpoint list"""
     return {
         "message": "AI Trader API",
         "version": "1.0.0",
@@ -109,7 +109,7 @@ async def health():
 # Verify updates endpoint
 @app.get("/api/verify/updates")
 async def verify_updates():
-    """验证 Trading Cycle 更新是否生效"""
+    """Verify if Trading Cycle updates are effective"""
     logs_dir = _get_project_logs_dir()
     jsonl_file = logs_dir / "discussion_actions.jsonl"
     
@@ -130,7 +130,7 @@ async def verify_updates():
         with jsonl_file.open('r', encoding='utf-8') as f:
             lines = f.readlines()
         
-        # 分析最后50条
+        # Analyze last 50 entries
         for line in lines[-50:]:
             try:
                 entry = json.loads(line.strip())
@@ -169,7 +169,7 @@ async def verify_updates():
             except:
                 pass
         
-        # 诊断
+        # Diagnosis
         if result["stats"]["RiskAnalyst"] > 0:
             result["diagnosis"].append("✅ RiskAnalyst 条目存在")
         else:
@@ -193,25 +193,25 @@ async def verify_updates():
 
 # CRITICAL: Execute trading cycle endpoint
 @app.post("/api/trading/execute-trade")
-@app.get("/api/trading/execute-trade")  # 兼容 GET 方法（不推荐，但前端可能误用）
+@app.get("/api/trading/execute-trade")  # Compatible with GET method (not recommended, but frontend may misuse)
 async def execute_trade_direct():
-    """执行交易循环（直接调用）"""
+    """Execute trading cycle (direct call)"""
     try:
         from src.orchestrator.trading_cycle import execute_daily_trade
         from src.utils.trading_days import is_market_open
         
-        # 加载配置
+        # Load configuration
         config = load_trading_config()
         universe = config["universe"]
         tool_budget = config["tool_budget"]
         rounds = config["rounds"]
         min_tools = config["min_tools"]
         
-        # 检查市场状态
-        # CRITICAL FIX: 传入 None 让函数直接获取美东时间，避免时区转换错误
+        # Check market status
+        # CRITICAL FIX: Pass None to let function directly get ET time, avoid timezone conversion errors
         is_market_open_now = is_market_open(None)
         
-        # 执行交易循环
+        # Execute trading cycle
         result = execute_daily_trade(
             rounds=rounds,
             auto_tools=True,
@@ -279,7 +279,7 @@ async def fetch_conversations_api(
     date: Optional[str] = Query(None),
     include_demo: bool = Query(False)
 ):
-    """获取对话记录"""
+    """Get conversation records"""
     try:
         logs_dir = _get_project_logs_dir()
         log_file = logs_dir / "discussion_actions.jsonl"
@@ -301,7 +301,7 @@ async def fetch_conversations_api(
                 }
             )
         
-        # 读取对话记录
+        # Read conversation records
         conversations = []
         with log_file.open("r", encoding="utf-8") as f:
             # CRITICAL FIX: Read entire file to ensure all discussion entries are included
@@ -348,25 +348,25 @@ async def fetch_conversations_api(
         # CRITICAL FIX: Final sort to ensure newest first (discussions should already be first)
         conversations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         
-        # CRITICAL FIX: 处理每个对话条目，确保有 summary 字段和 tools_used
-        # 同时收集工具结果，按工具类型分类
+        # CRITICAL FIX: Process each conversation entry, ensure summary field and tools_used exist
+        # Also collect tool results, categorized by tool type
         processed_conversations = []
-        all_tool_results = {}  # 按工具名称收集所有工具结果
+        all_tool_results = {}  # Collect all tool results by tool name
         
         for entry in conversations:
             # CRITICAL FIX: 确保 entry 是字典
             if not isinstance(entry, dict):
                 continue
             
-            # CRITICAL FIX: 对于 RiskAnalyst，优先使用 risk_report 中的分析内容
+            # CRITICAL FIX: For RiskAnalyst, prioritize using analysis content from risk_report
             if entry.get("agent") == "RiskAnalyst" and "risk_report" in entry:
                 risk_report = entry.get("risk_report", {})
-                # 从 risk_report 中提取分析内容
+                # Extract analysis content from risk_report
                 risk_analysis = risk_report.get("summary") or risk_report.get("analysis")
                 if risk_analysis and risk_analysis != "No risk analysis provided":
                     entry["summary"] = risk_analysis
                 elif "content" in entry:
-                    # 如果 risk_report 没有分析，使用 content
+                    # If risk_report has no analysis, use content
                     content = entry.get("content", "")
                     if isinstance(content, str) and "Analysis:" in content:
                         summary = content.split("Analysis:")[-1].strip()
@@ -375,29 +375,29 @@ async def fetch_conversations_api(
                     else:
                         entry["summary"] = content if isinstance(content, str) else str(content) if content else ""
             
-            # 如果没有 summary 字段，从 content 中提取
+            # If no summary field, extract from content
             if "summary" not in entry or not entry.get("summary"):
                 content = entry.get("content", "")
-                # CRITICAL FIX: 确保 content 是字符串
+                # CRITICAL FIX: Ensure content is a string
                 if isinstance(content, str):
-                    # 尝试从 content 中提取 summary（通常在 "Analysis:" 之后）
+                    # Try to extract summary from content (usually after "Analysis:")
                     if "Analysis:" in content:
                         summary = content.split("Analysis:")[-1].strip()
                         if summary:
-                            # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                            # CRITICAL FIX: Remove 500 char limit, allow full summary display
                             entry["summary"] = summary
                     else:
-                        # 如果没有 "Analysis:"，使用完整 content 作为 summary（移除500字符限制）
+                        # If no "Analysis:", use full content as summary (remove 500 char limit)
                         entry["summary"] = content
                 else:
-                    # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                    # CRITICAL FIX: Remove 500 char limit, allow full summary display
                     entry["summary"] = str(content) if content else ""
             
-            # 确保 tools_used 字段存在（即使是空数组）
+            # Ensure tools_used field exists (even if empty array)
             if "tools_used" not in entry or not isinstance(entry.get("tools_used"), list):
                 entry["tools_used"] = []
             
-            # CRITICAL FIX: 如果是工具类型的 entry，收集工具结果
+            # CRITICAL FIX: If entry is tool type, collect tool results
             if entry.get("type") == "tool":
                 tool_name = entry.get("tool_name", "")
                 tool_result = entry.get("tool_result", {})
@@ -406,9 +406,9 @@ async def fetch_conversations_api(
             
             processed_conversations.append(entry)
         
-        # CRITICAL FIX: 提取三轮讨论数据（按 round 分组，然后按 agent 分组显示 summary）
+        # CRITICAL FIX: Extract three-round discussion data (group by round, then by agent to show summary)
         discussion_rounds = {}
-        discussion_rounds_by_agent = {}  # CRITICAL FIX: 按 round 和 agent 分组，提取每个 agent 的 summary
+        discussion_rounds_by_agent = {}  # CRITICAL FIX: Group by round and agent, extract each agent's summary
         
         # CRITICAL FIX: Include ALL discussion agents, not just analysts
         # This ensures DiscussionCoordinator, TraderAgent, and RiskAnalyst are also included
@@ -419,7 +419,7 @@ async def fetch_conversations_api(
         
         for entry in processed_conversations:
             round_num = entry.get("round", 0)
-            # CRITICAL FIX: 处理 round_num 可能是字符串或数字的情况
+            # CRITICAL FIX: Handle case where round_num may be string or number
             if isinstance(round_num, str):
                 try:
                     round_num = int(round_num)
@@ -444,11 +444,11 @@ async def fetch_conversations_api(
                     discussion_rounds[round_num] = []
                 discussion_rounds[round_num].append(entry)
                 
-                # CRITICAL FIX: 按 round 和 agent 分组，提取 summary
+                # CRITICAL FIX: Group by round and agent, extract summary
                 if round_num not in discussion_rounds_by_agent:
                     discussion_rounds_by_agent[round_num] = {}
                 
-                # 提取 summary（优先使用 summary 字段，否则从 content 提取）
+                # Extract summary (prefer summary field, otherwise extract from content)
                 summary = entry.get("summary", "")
                 if not summary:
                     content = entry.get("content", "")
@@ -456,13 +456,13 @@ async def fetch_conversations_api(
                         if "Analysis:" in content:
                             summary = content.split("Analysis:")[-1].strip()
                         else:
-                            # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                            # CRITICAL FIX: Remove 500 char limit, allow full summary display
                             summary = content
                     else:
-                        # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+                        # CRITICAL FIX: Remove 500 char limit, allow full summary display
                         summary = str(content) if content else ""
                 
-                # CRITICAL FIX: 确保 tools_used 是列表
+                # CRITICAL FIX: Ensure tools_used is a list
                 tools_used = entry.get("tools_used", [])
                 if not isinstance(tools_used, list):
                     tools_used = []
@@ -568,25 +568,48 @@ async def fetch_conversations_api(
                 if isinstance(tool_result, dict) and tool_result.get("ok") and "result" in tool_result:
                     tool_result = tool_result.get("result", {})
                 
-                # CRITICAL FIX: 确保 tool_result 是可序列化的
-                if not isinstance(tool_result, (dict, list, str, int, float, bool, type(None))):
-                    tool_result = {}
-                
-                # 如果没有 tool_result，尝试从 content 中提取
-                if not tool_result or (isinstance(tool_result, dict) and not tool_result):
-                    content = entry.get("content", "")
-                    if isinstance(content, str) and "Tool used:" in content:
-                        try:
-                            # 尝试从 content 中解析 JSON
-                            result_text = content.split("Tool used:")[-1].split(":", 1)[-1].strip()
-                            if result_text.startswith("{") or result_text.startswith("["):
-                                tool_result = json.loads(result_text)
-                        except:
-                            # CRITICAL FIX: 移除500字符限制，允许完整工具结果显示
-                            tool_result = {"raw": str(content)}
+                # CRITICAL FIX: 对于经济工具（FRED），保留字符串格式
+                if tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator"]:
+                    # FRED 工具返回字符串，直接保存为字符串格式
+                    if isinstance(tool_result, str):
+                        # 已经是字符串，直接使用
+                        pass
+                    elif isinstance(tool_result, dict):
+                        # 如果是字典，尝试提取字符串
+                        if "raw" in tool_result:
+                            tool_result = tool_result.get("raw", "")
+                        elif "result" in tool_result and isinstance(tool_result.get("result"), str):
+                            tool_result = tool_result.get("result")
+                        else:
+                            # 尝试从 content 中提取
+                            content = entry.get("content", "")
+                            if isinstance(content, str) and "Tool used:" in content:
+                                result_text = content.split("Tool used:")[-1].split(":", 1)[-1].strip()
+                                tool_result = result_text if result_text else ""
+                            else:
+                                tool_result = str(tool_result) if tool_result else ""
                     else:
-                        # CRITICAL FIX: 移除500字符限制，允许完整工具结果显示
-                        tool_result = {"raw": str(content) if content else ""}
+                        tool_result = str(tool_result) if tool_result else ""
+                else:
+                    # CRITICAL FIX: 确保 tool_result 是可序列化的
+                    if not isinstance(tool_result, (dict, list, str, int, float, bool, type(None))):
+                        tool_result = {}
+                    
+                    # 如果没有 tool_result，尝试从 content 中提取
+                    if not tool_result or (isinstance(tool_result, dict) and not tool_result):
+                        content = entry.get("content", "")
+                        if isinstance(content, str) and "Tool used:" in content:
+                            try:
+                                # 尝试从 content 中解析 JSON
+                                result_text = content.split("Tool used:")[-1].split(":", 1)[-1].strip()
+                                if result_text.startswith("{") or result_text.startswith("["):
+                                    tool_result = json.loads(result_text)
+                            except:
+                                # CRITICAL FIX: 移除500字符限制，允许完整工具结果显示
+                                tool_result = {"raw": str(content)}
+                        else:
+                            # CRITICAL FIX: 移除500字符限制，允许完整工具结果显示
+                            tool_result = {"raw": str(content) if content else ""}
                 
                 # CRITICAL FIX: 确保所有字段都是可序列化的
                 try:

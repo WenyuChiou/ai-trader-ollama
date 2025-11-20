@@ -35,7 +35,7 @@ def run_multi_analyst_discussion_parallel(
     portfolio_value: Optional[float] = None,
     available_cash: Optional[float] = None,
     enable_parallel: bool = True,
-    historical_memories: Optional[List[Dict[str, Any]]] = None,  # 新增：历史记忆
+    historical_memories: Optional[List[Dict[str, Any]]] = None,  # New: Historical memories
     rounds: int = 1,  # CRITICAL FIX: Add rounds parameter for multi-round discussion
 ) -> Dict[str, Any]:
     """
@@ -179,7 +179,7 @@ def run_multi_analyst_discussion_parallel(
     
     # Use sequential version but with optimizations
     # In the future, this can be replaced with true parallel execution
-    # CRITICAL FIX: 传递 historical_memories 和 rounds 给 sequential version
+    # CRITICAL FIX: Pass historical_memories and rounds to sequential version
     result = run_sequential(
         market_view=market_view,
         use_tools=use_tools,
@@ -188,7 +188,7 @@ def run_multi_analyst_discussion_parallel(
         current_positions=current_positions,
         portfolio_value=portfolio_value,
         available_cash=available_cash,
-        historical_memories=historical_memories,  # 传递历史记忆
+        historical_memories=historical_memories,  # Pass historical memories
         rounds=rounds,  # CRITICAL FIX: Pass rounds parameter for multi-round discussion
     )
     

@@ -288,9 +288,9 @@ def run_multi_analyst_discussion(
             analyst_reports["market"] = market_result
             
             # Add to discussion history
-            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+            # CRITICAL FIX: Deduplicate tools_used, record each tool only once (even for different companies)
             tools_used_names = [tc.get("tool", "") for tc in all_tool_calls if tc.get("analyst") == "MarketAnalyst" and tc.get("tool", "")]
-            tools_used_names = list(dict.fromkeys(tools_used_names))  # 去重但保持順序
+            tools_used_names = list(dict.fromkeys(tools_used_names))  # Deduplicate but maintain order
             discussion_history.append({
                 "analyst": "Market Analyst",
                 "stance": market_result.get("stance", "neutral"),
@@ -616,21 +616,21 @@ def _extract_score(result: Dict[str, Any], score_key: str) -> str | float:
 
 def _limit_discussion_history(discussion_history: List[Dict[str, Any]], max_entries: int = 20) -> None:
     """
-    限制对话历史长度，避免内存累积
-    只保留最近的 N 条记录，删除旧的记录
+    Limit discussion history length to avoid memory accumulation
+    Keep only the most recent N entries, remove old entries
     """
     if len(discussion_history) > max_entries:
         old_len = len(discussion_history)
-        # 只保留最近的 max_entries 条
+        # Keep only the most recent max_entries
         discussion_history[:] = discussion_history[-max_entries:]
         print(f"[MEMORY] Trimmed discussion_history: {old_len} -> {len(discussion_history)} entries")
 
 
 def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
     """
-    格式化对话历史，让下一个analyst能够看到之前的讨论
+    Format discussion history so next analyst can see previous discussions
     
-    格式：
+    Format:
     --- Market Analyst ---
     Stance: risk_on
     Analysis: The market is showing strong bullish signals...
@@ -654,7 +654,7 @@ def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
         
         formatted.append(f"--- {analyst_name} ---")
         formatted.append(f"Stance: {stance}")
-        # 移除长度限制，显示完整分析内容
+        # Remove length limit, show complete analysis content
         formatted.append(f"Analysis: {analysis}")
         
         if tools_used:
@@ -662,7 +662,7 @@ def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
         
         if key_points:
             formatted.append("Key Points:")
-            for point in key_points[:3]:  # 最多3个要点
+            for point in key_points[:3]:  # Max 3 key points
                 formatted.append(f"  - {point}")
         
         formatted.append("")  # 空行分隔
@@ -671,16 +671,16 @@ def _format_discussion_history(discussion_history: List[Dict[str, Any]]) -> str:
 
 
 def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
-    """简化市场数据用于prompt - 优化以支持100+股票"""
+    """Simplify market data for prompt - optimized to support 100+ stocks"""
     stocks = market_view.get("stocks", {})
     symbols_list = list(stocks.keys())
     
-    # 为了支持100+股票，只传递股票的摘要信息，而不是完整数据
-    # 提取前10个股票的简要信息作为样本（显示更多样本以便agent了解数据格式）
+    # To support 100+ stocks, only pass stock summary information, not full data
+    # Extract brief information from first 10 stocks as samples (show more samples so agent understands data format)
     sample_stocks_data = {}
     for symbol in symbols_list[:10]:
         stock_data = stocks.get(symbol, {})
-        # 只提取关键字段，避免prompt过长
+        # Only extract key fields to avoid prompt being too long
         sample_stocks_data[symbol] = {
             "price": stock_data.get("price"),
             "change_pct": stock_data.get("change_pct"),
@@ -688,7 +688,7 @@ def _summarize_market(market_view: Dict[str, Any]) -> Dict[str, Any]:
             "signal_score": stock_data.get("signal_score"),
         }
     
-    # 计算整体市场统计
+    # Calculate overall market statistics
     all_prices = [float(s.get("price", 0)) for s in stocks.values() if s.get("price")]
     all_changes = [float(s.get("change_pct", 0)) for s in stocks.values() if s.get("change_pct")]
     all_scores = [float(s.get("signal_score", 0)) for s in stocks.values() if s.get("signal_score")]
@@ -1773,16 +1773,16 @@ def _run_discussion_coordinator(
     market_view: Dict[str, Any],
     toolbox: Optional[ToolBox] = None,
     tool_budget: int = 5,
-    historical_memories: Optional[List[Dict[str, Any]]] = None,  # 新增：历史记忆
+    historical_memories: Optional[List[Dict[str, Any]]] = None,  # New: Historical memories
 ) -> Optional[Dict[str, Any]]:
     """
-    运行Discussion Coordinator来统整所有analyst的观点
+    Run Discussion Coordinator to synthesize all analyst perspectives
     
-    使用chat方式，让coordinator能够：
-    1. 阅读所有analyst的分析
-    2. 识别共识和分歧
-    3. 统整关键观点
-    4. 形成最终建议
+    Uses chat approach, allowing coordinator to:
+    1. Read all analyst analyses
+    2. Identify consensus and disagreements
+    3. Synthesize key insights
+    4. Form final recommendations
     """
     # Format discussion history
     discussion_text = _format_discussion_history(discussion_history)
@@ -1856,15 +1856,15 @@ def _run_discussion_coordinator(
             expect_json=False
         )
         
-        # 调试：打印原始响应
+        # Debug: Print raw response
         if not text_response:
             print(f"   [WARN] Coordinator returned empty response, using fallback")
             return _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
         
-        # 从文本中提取关键信息（stance, summary等）
+        # Extract key information from text (stance, summary, etc.)
         result = _extract_summary_from_text(str(text_response), analyst_reports)
         
-        # 确保必要字段存在
+        # Ensure required fields exist
         defaults = {
             "stance": "neutral",
             "summary": "",
@@ -1887,14 +1887,14 @@ def _run_discussion_coordinator(
                 summary_value = str(summary_value) if summary_value else ""
             result["summary"] = summary_value
         
-        # 如果summary仍然为空，使用fallback（在返回前确保summary不为空）
+        # If summary is still empty, use fallback (ensure summary is not empty before returning)
         summary_str = str(result.get("summary", "")).strip()
         if not summary_str or summary_str in ["No summary", "No summary...", ""]:
             fallback = _generate_fallback_coordinator_summary(analyst_reports, discussion_history)
             result["summary"] = fallback.get("summary", "Coordinator synthesized all analyst perspectives.")
             result["stance"] = fallback.get("stance", result.get("stance", "neutral"))
             result["key_points"] = fallback.get("key_points", result.get("key_points", []))
-            # 不打印警告，因为fallback是正常的fallback机制
+            # Don't print warning, as fallback is a normal fallback mechanism
         
         return result
     except Exception as e:

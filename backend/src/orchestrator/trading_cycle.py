@@ -626,9 +626,9 @@ def execute_daily_trade(
                     elif line.startswith("Tools Used:"):
                         tools_str = line.replace("Tools Used:", "").strip()
                         if tools_str:
-                            # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+                            # CRITICAL FIX: Deduplicate tools_used, record each tool only once (even for different companies)
                             tools_used = [t.strip() for t in tools_str.split(',') if t.strip()]
-                            tools_used = list(dict.fromkeys(tools_used))  # 去重但保持順序
+                            tools_used = list(dict.fromkeys(tools_used))  # Deduplicate but maintain order
                 
                 # If no analysis extracted, use the full transcript item (minus header)
                 if not analysis:
@@ -694,12 +694,12 @@ def execute_daily_trade(
                 except Exception as e:
                     pass  # Failed to update MarketAnalyst entry
         
-        # 如果 discussion_history 为空，从 analyst_reports 构建
+        # If discussion_history is empty, build from analyst_reports
         if not discussion_history:
             all_tool_calls = convo.get("tool_calls", [])
             for analyst_key, report in analyst_reports.items():
                 if report and isinstance(report, dict):
-                    # 标准化 analyst 名称
+                    # Normalize analyst names
                     analyst_name_map = {
                         "market": "Market Analyst",
                         "technical": "Technical Analyst",
@@ -710,7 +710,7 @@ def execute_daily_trade(
                     
                     # CRITICAL FIX: Extract only successfully used tools by this analyst from tool_calls
                     # Only include tools that were actually executed and succeeded
-                    # CRITICAL FIX: 去重 tools_used，每種工具只記錄一次（即使針對不同公司）
+                    # CRITICAL FIX: Deduplicate tools_used, record each tool only once (even for different companies)
                     tools_used = []
                     for tc in all_tool_calls:
                         if tc.get("analyst", "").lower() == analyst_key:
@@ -720,13 +720,13 @@ def execute_daily_trade(
                                 tool_name = tc.get("tool", "") or tc.get("name", "")
                                 if tool_name:
                                     tools_used.append(tool_name)
-                    # 去重但保持順序（使用 dict.fromkeys 保持首次出現的順序）
+                    # Deduplicate but maintain order (use dict.fromkeys to maintain first occurrence order)
                     tools_used = list(dict.fromkeys(tools_used))
                     
-                    # 确保有 analysis（summary）
+                    # Ensure there is analysis (summary)
                     analysis = report.get("analysis", "No analysis provided")
                     if not analysis or len(analysis.strip()) < 50:
-                        # 如果 analysis 太短，尝试从工具结果生成
+                        # If analysis is too short, try to generate from tool results
                         if tools_used:
                             analysis = f"Analysis based on {', '.join(tools_used[:3])}. {analysis}"
                     
@@ -921,14 +921,14 @@ def execute_daily_trade(
         missing_analysts = [agent for agent in required_analysts.keys() if agent not in written_analysts]
         if missing_analysts:
         
-        # 寫入Coordinator統整結果（只寫一次，避免重複）
-        # 如果 discussion_history 中已经有 Coordinator，就不再单独写入 coordinator_summary
+        # Write Coordinator synthesis result (write only once, avoid duplicates)
+        # If Coordinator already exists in discussion_history, don't write coordinator_summary separately
         coordinator_summary = convo.get("coordinator_summary")
         if coordinator_summary and not coordinator_found_in_history:
             if isinstance(coordinator_summary, dict):
                 stance = coordinator_summary.get("stance", "neutral")
                 summary = coordinator_summary.get("summary", "No summary provided")
-                # 确保 summary 不为空
+                # Ensure summary is not empty
                 if not summary or summary.strip() == "":
                     summary = "Coordinator synthesized all analyst perspectives."
                 
@@ -937,18 +937,18 @@ def execute_daily_trade(
                     "date": trade_date_str,
                     "agent": "DiscussionCoordinator",
                     "round": 0,
-                    "content": f"Stance: {stance}\n\nAnalysis: {summary}",  # 使用 Analysis 而不是 Summary，保持一致性
+                    "content": f"Stance: {stance}\n\nAnalysis: {summary}",  # Use Analysis instead of Summary for consistency
                     "type": "discussion",
                     "stance": stance,
-                    "summary": summary,  # CRITICAL FIX: 添加单独的 summary 字段供前端使用
-                    "tools_used": [],  # Coordinator 不使用工具
+                    "summary": summary,  # CRITICAL FIX: Add separate summary field for frontend use
+                    "tools_used": [],  # Coordinator does not use tools
                 }
                 with convo_file.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         elif coordinator_summary and coordinator_found_in_history:
             print(f"[TRADING CYCLE] Skipped writing coordinator_summary (Coordinator already exists in discussion_history)")
         
-        # 寫入工具使用記錄（從tool_calls中提取）
+        # Write tool usage records (extracted from tool_calls)
         # CRITICAL FIX: Only record tools that were successfully used in the discussion rounds (1-3)
         tool_calls = convo.get("tool_calls", [])
         
@@ -1018,7 +1018,7 @@ def execute_daily_trade(
             
             tool_result = tool_call.get("result", {})
             
-            # 標準化agent名稱
+            # Normalize agent names
             agent_name_map = {
                 "market": "MarketAnalyst",
                 "marketanalyst": "MarketAnalyst",
@@ -1027,20 +1027,20 @@ def execute_daily_trade(
                 "fundamental": "FundamentalAnalyst",
                 "fundamentanalyst": "FundamentalAnalyst",
                 "sentiment": "SentimentAnalyst",
-                "sentimentanalyst": "SentimentAnalyst",  # CRITICAL FIX: 支持完整名称匹配
+                "sentimentanalyst": "SentimentAnalyst",  # CRITICAL FIX: Support full name matching
             }
-            # CRITICAL FIX: 先尝试完整匹配，再尝试小写匹配
+            # CRITICAL FIX: Try full match first, then try lowercase match
             agent_name = agent_name_map.get(analyst_name, agent_name_map.get(analyst_name.lower(), analyst_name))
             
-            # 格式化工具結果
-            # 处理双重嵌套：{"ok": true, "result": {"ok": true, "result": {...}}}
-            # 递归提取实际的 result 数据
+            # Format tool results
+            # Handle double nesting: {"ok": true, "result": {"ok": true, "result": {...}}}
+            # Recursively extract actual result data
             actual_result = tool_result
             if isinstance(tool_result, dict):
                 while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
                     actual_result = actual_result["result"]
             
-            # CRITICAL FIX: 对于新闻工具，先保存完整的 articles 和 hits（在截断之前）
+            # CRITICAL FIX: For news tools, save complete articles and hits first (before truncation)
             news_articles_backup = None
             news_hits_backup = None
             if tool_name in ["plan_and_scan_news", "news_scan"] and isinstance(actual_result, dict):
@@ -1052,20 +1052,20 @@ def execute_daily_trade(
                 if "error" in actual_result:
                     result_text = f"Error: {actual_result.get('error', 'Unknown error')}"
                 else:
-                    # 提取關鍵信息
+                    # Extract key information
                     result_text = json.dumps(actual_result, ensure_ascii=False, indent=2)
-                    # 对于新闻工具，保留更多数据（不截断或只截断到5000字符）
-                    # 对于其他工具，限制在2000字符
+                    # For news tools, keep more data (no truncation or truncate to 5000 chars)
+                    # For other tools, limit to 2000 chars
                     max_length = 5000 if tool_name in ["news_scan", "plan_and_scan_news"] else 2000
                     if len(result_text) > max_length:
-                        # 对于新闻工具，尝试保留完整的 articles 和 hits 数组（即使截断，也要确保数组是完整的）
+                        # For news tools, try to keep complete articles and hits arrays (even if truncated, ensure arrays are complete)
                         if tool_name in ["news_scan", "plan_and_scan_news"]:
-                            # CRITICAL FIX: 优先保留 articles（包含内容），如果没有则保留 hits
+                            # CRITICAL FIX: Prioritize keeping articles (contains content), if not available keep hits
                             articles = actual_result.get("articles", [])
                             hits = actual_result.get("hits", [])
                             queries = actual_result.get("queries", [])
                             
-                            # 构建一个简化的结果，但保留完整的 articles 和 hits
+                            # Build a simplified result but keep complete articles and hits
                             simplified = {}
                             if articles:
                                 simplified["articles"] = articles
@@ -1075,15 +1075,15 @@ def execute_daily_trade(
                                 simplified["queries"] = queries
                             
                             result_text = json.dumps(simplified, ensure_ascii=False, indent=2)
-                            # 如果还是太长，至少保留前几个 articles/hits
+                            # If still too long, at least keep first few articles/hits
                             if len(result_text) > max_length:
-                                # 保留前 N 个 articles（优先）或 hits，确保 JSON 完整
+                                # Keep first N articles (priority) or hits, ensure JSON is complete
                                 if articles:
-                                    max_items = min(len(articles), 10)  # 最多保留10篇文章
+                                    max_items = min(len(articles), 10)  # Keep max 10 articles
                                     simplified["articles"] = articles[:max_items]
                                     simplified["total_articles"] = len(articles)
                                 elif hits:
-                                    max_items = min(len(hits), 10)  # 最多保留10个hits
+                                    max_items = min(len(hits), 10)  # Keep max 10 hits
                                     simplified["hits"] = hits[:max_items]
                                     simplified["total_hits"] = len(hits)
                                 
@@ -1097,7 +1097,7 @@ def execute_daily_trade(
                 if len(result_text) > 2000:
                     result_text = result_text[:2000] + "... (truncated)"
             
-            # CRITICAL FIX: 根据工具类型分类（news, risk, market等）
+            # CRITICAL FIX: Categorize by tool type (news, risk, market, etc.)
             tool_category = "other"
             if tool_name in ["news_scan", "plan_and_scan_news", "web_search", "fetch_url"]:
                 tool_category = "news"
@@ -1112,24 +1112,35 @@ def execute_daily_trade(
             elif tool_name in ["fetch_crypto_batch", "get_crypto_price"]:
                 tool_category = "crypto"
             
-            # CRITICAL FIX: 对于 get_company_fundamentals，确保 tool_result 包含 symbol（即使结果被截断）
-            # CRITICAL FIX: 对于新闻工具，确保保留完整的 articles 和 hits 数组（使用备份数据）
-            tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
+            # CRITICAL FIX: For get_company_fundamentals, ensure tool_result contains symbol (even if result is truncated)
+            # CRITICAL FIX: For news tools, ensure complete articles and hits arrays are preserved (use backup data)
+            # CRITICAL FIX: For economic tools (FRED), preserve string format for frontend to display correctly
+            if tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator"]:
+                # FRED tools return strings, save directly as string format (frontend will handle)
+                if isinstance(actual_result, str):
+                    tool_result_data = actual_result
+                elif isinstance(actual_result, dict) and "raw" in actual_result:
+                    # If already in {"raw": "..."} format, extract string
+                    tool_result_data = actual_result.get("raw", result_text)
+                else:
+                    tool_result_data = result_text if result_text else str(actual_result)
+            else:
+                tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
             
-            # CRITICAL FIX: 对于新闻工具，使用备份的完整数据（即使 result_text 被截断）
+            # CRITICAL FIX: For news tools, use backup complete data (even if result_text is truncated)
             if tool_name in ["plan_and_scan_news", "news_scan"]:
                 # CRITICAL FIX: Ensure tool_result_data is a dict (not nested structure)
                 # The frontend expects tool_result_data to directly contain articles/hits, not wrapped in {ok: true, result: {...}}
                 if not isinstance(tool_result_data, dict):
                     tool_result_data = {}
                 
-                # 使用备份的完整 articles 和 hits（在截断之前保存的）
+                # Use backup complete articles and hits (saved before truncation)
                 if news_articles_backup is not None:
                     tool_result_data["articles"] = news_articles_backup
                 if news_hits_backup is not None:
                     tool_result_data["hits"] = news_hits_backup
                 
-                # 如果备份不存在，尝试从 actual_result 中提取
+                # If backup doesn't exist, try to extract from actual_result
                 if isinstance(actual_result, dict):
                     if "articles" not in tool_result_data and "articles" in actual_result:
                         articles_list = actual_result.get("articles", [])
@@ -1139,7 +1150,7 @@ def execute_daily_trade(
                         hits_list = actual_result.get("hits", [])
                         if isinstance(hits_list, list):
                             tool_result_data["hits"] = hits_list
-                    # 保留其他重要字段
+                    # Preserve other important fields
                     for key in ["queries", "summary", "total_hits", "total_articles"]:
                         if key in actual_result:
                             tool_result_data[key] = actual_result.get(key)
@@ -1156,13 +1167,13 @@ def execute_daily_trade(
                     print(f"[TRADING CYCLE] [NEWS] hits is array: {isinstance(tool_result_data.get('hits'), list)}, length: {hits_count}")
             
             if tool_name == "get_company_fundamentals" and isinstance(actual_result, dict):
-                # 确保 symbol 字段存在（即使结果被截断，也要保留 symbol）
+                # Ensure symbol field exists (even if result is truncated, preserve symbol)
                 if "symbol" not in tool_result_data:
-                    # 尝试从 actual_result 中提取 symbol
+                    # Try to extract symbol from actual_result
                     symbol = actual_result.get("symbol") or actual_result.get("Symbol")
                     if symbol:
                         tool_result_data["symbol"] = symbol
-                    # 如果 actual_result 被截断了，尝试从 content 中提取
+                    # If actual_result is truncated, try to extract from content
                     elif "symbol" in result_text:
                         try:
                             import re
@@ -1181,13 +1192,13 @@ def execute_daily_trade(
             entry = {
                 "timestamp": get_utc_timestamp(),
                 "date": trade_date_str,
-                "agent": agent_name,  # CRITICAL FIX: 使用调用工具的 agent 名称（MarketAnalyst, TechnicalAnalyst等），而不是 ToolSystem
+                "agent": agent_name,  # CRITICAL FIX: Use agent name that called the tool (MarketAnalyst, TechnicalAnalyst, etc.), not ToolSystem
                 "round": tool_round,  # CRITICAL FIX: Use actual discussion round (1-3) instead of 0
                 "content": f"Tool used: {tool_name}: {result_text}",
                 "type": "tool",
                 "tool_name": tool_name,
-                "tool_category": tool_category,  # CRITICAL FIX: 添加工具分类
-                "tool_result": tool_result_data,  # CRITICAL FIX: 添加工具结果（结构化数据，确保包含 symbol）
+                "tool_category": tool_category,  # CRITICAL FIX: Add tool category
+                "tool_result": tool_result_data,  # CRITICAL FIX: Add tool result (structured data, ensure symbol is included)
             }
             with convo_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -1217,37 +1228,37 @@ def execute_daily_trade(
     except Exception as e:
         print(f"[WARN] Failed to write conversations to discussion_actions.jsonl: {e}")
     
-    # 提取 Discussion 的风险信号（用于 Risk Analyst）
+    # Extract risk signals from Discussion (for Risk Analyst)
     discussion_risk_signals = {
         "risk_level": "medium",
         "risk_signals": convo.get("risk_signals", []),
     }
 
-    # NOTE: Risk Analyst 和 Trader Agent 的调用会移到订单结算之后，确保使用最新的仓位状态
+    # NOTE: Risk Analyst and Trader Agent calls will be moved after order settlement to ensure using latest position status
 
-    # ---- (5) 掛單策略：開盤前掛限價單，收盤後檢查成交 ----
+    # ---- (5) Order Strategy: Place limit orders before market open, check fills after market close ----
     from src.data.order_manager import OrderManager
     
     # CRITICAL: Use project root data/logs directory explicitly
     order_manager = OrderManager(root=str(_get_project_logs_dir()))
     
-    # 检查市场是否开盘，决定订单日期（排除周末和节假日）
-    # CRITICAL FIX: 传入 None 让函数直接获取美东时间，避免时区转换错误
+    # Check if market is open, determine order date (exclude weekends and holidays)
+    # CRITICAL FIX: Pass None to let function directly get ET time, avoid timezone conversion errors
     from src.utils.trading_days import is_market_open as check_market_open
     now = datetime.now()
-    is_market_open = check_market_open(None)  # 传入 None 直接获取美东时间
+    is_market_open = check_market_open(None)  # Pass None to directly get ET time
     
-    # 如果市场收盘后，订单日期应该是明天的日期
-    # 注意：如果end参数被传递（用于测试或规划），优先使用end日期
+    # If market is closed, order date should be tomorrow's date
+    # Note: If end parameter is passed (for testing or planning), prioritize using end date
     existing_pending_orders = []
     if end:
-        # end参数优先：用于测试或规划特定日期的交易
-        # 在多日模拟中，订单日期应该使用end日期（当天），而不是"明天"
+        # end parameter priority: for testing or planning trades on specific dates
+        # In multi-day simulation, order date should use end date (same day), not "tomorrow"
         today = end
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         print(f"[TRADING CYCLE] Using end date: {today} (forced date for testing/planning)")
-        # CRITICAL FIX: 即使有end参数，也应该检查实际市场状态
-        # 只有在实际市场开放时，才允许交易；否则只运行分析
+        # CRITICAL FIX: Even with end parameter, should check actual market status
+        # Only allow trading when market is actually open; otherwise run analysis only
         is_market_open_for_simulation = is_market_open
         if not is_market_open:
             print(f"[TRADING CYCLE] Market is actually closed. Will run analysis only (no trading).")
@@ -1257,12 +1268,12 @@ def execute_daily_trade(
         is_market_open_for_simulation = True
         print(f"[TRADING CYCLE] ✅ Market is OPEN - trading allowed")
     else:
-        # CRITICAL FIX: 市场收盘后，允许运行对话（AI分析），但不执行交易
-        # 继续执行对话和分析，但跳过订单创建和执行
+        # CRITICAL FIX: After market close, allow running conversation (AI analysis), but don't execute trades
+        # Continue executing conversation and analysis, but skip order creation and execution
         print(f"[TRADING CYCLE] ⚠️  Market closed. Running conversation/analysis only (no trading).")
-        # 设置标志，后续跳过订单执行
+        # Set flag to skip order execution later
         is_market_open_for_simulation = False
-        # CRITICAL FIX: 打印详细的市场状态信息，帮助调试
+        # CRITICAL FIX: Print detailed market status information for debugging
         import pytz
         et_tz = pytz.timezone('America/New_York')
         et_time = datetime.now(et_tz)
@@ -1274,29 +1285,29 @@ def execute_daily_trade(
         today = date.today().isoformat()
         existing_pending_orders = order_manager.load_pending_orders(order_date=today)
         
-        # CRITICAL FIX: 市场关闭时，立即清理今天的pending订单（因为市场订单不应该有pending状态）
-        # 即使没有运行交易周期，也要清理pending订单
+        # CRITICAL FIX: When market is closed, immediately clean up today's pending orders (market orders should not have pending status)
+        # Even if trading cycle is not run, still clean up pending orders
         if len(existing_pending_orders) > 0:
             print(f"[TRADING CYCLE] Market is closed. Immediately cancelling {len(existing_pending_orders)} today's pending orders (market orders should not be pending when market is closed).")
             cancelled_count = order_manager.cancel_orders(order_date=today)
             if cancelled_count > 0:
                 print(f"[TRADING CYCLE] Cancelled {cancelled_count} today's pending orders")
-                # 重新加载pending订单（应该为空）
+                # Reload pending orders (should be empty)
                 existing_pending_orders = order_manager.load_pending_orders(order_date=today)
     
     executed_trades = []
     execution_errors = []
-    placed_orders = []  # 記錄掛單
-    new_orders_count = 0  # 記錄本次新創建的訂單數量（不包括existing_pending_orders）
+    placed_orders = []  # Record placed orders
+    new_orders_count = 0  # Record number of newly created orders this time (excluding existing_pending_orders)
     
-    # 检查是否有大量pending订单，如果有，取消今日的pending订单，只保留明日的订单
-    # 这个机制可以防止pending订单堆积
-    # CRITICAL: 无论市场是否开放，都要清理旧的pending订单
-    if not end:  # 只在实时模式下执行（不在多日模拟中执行）
-        all_pending_orders = order_manager.load_pending_orders()  # 加载所有pending订单
+    # Check if there are many pending orders, if so, cancel today's pending orders, only keep tomorrow's orders
+    # This mechanism prevents pending order accumulation
+    # CRITICAL: Regardless of market status, always clean up old pending orders
+    if not end:  # Only execute in real-time mode (not in multi-day simulation)
+        all_pending_orders = order_manager.load_pending_orders()  # Load all pending orders
         today_str = date.today().isoformat()
 
-        # 自动清理前几个交易日遗留的订单，防止无限累积
+        # Automatically clean up orders from previous trading days to prevent infinite accumulation
         stale_dates = sorted({
             _get_order_date(o)
             for o in all_pending_orders

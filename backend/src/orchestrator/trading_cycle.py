@@ -534,6 +534,21 @@ def execute_daily_trade(
     logs_dir = _get_project_logs_dir()
     convo_file = logs_dir / "discussion_actions.jsonl"
     
+    # OPTIMIZATION: Check and rotate log file if needed (before writing)
+    try:
+        from src.utils.log_rotation import check_and_rotate
+        archived_file = check_and_rotate(
+            logs_dir,
+            filename="discussion_actions.jsonl",
+            rotation_type="size",  # Rotate when file exceeds 50 MB
+            max_size_mb=50.0
+        )
+        if archived_file:
+            print(f"[LOG ROTATION] Rotated log file to archive: {archived_file.name}")
+    except Exception as e:
+        # Don't fail the trading cycle if rotation fails
+        print(f"[LOG ROTATION] Warning: Failed to check/rotate log file: {e}")
+    
     # Get trade date (use end parameter, if not available use today)
     trade_date = end if end else date.today().isoformat()
     if isinstance(trade_date, str):

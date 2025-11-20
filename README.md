@@ -2754,7 +2754,12 @@ Select option `5` to set up all tasks at once, or choose individual tasks (1-4).
 
 **Setup**:
 ```powershell
-.\scripts\setup_daily_backup.ps1
+# Method 1: Use batch file (Recommended - handles admin privileges automatically)
+# Right-click and select "Run as administrator":
+scripts\setup_daily_backup_admin.bat
+
+# Method 2: Run PowerShell script directly
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_daily_backup.ps1
 # Specify backup time (default: 23:00)
 # Creates scheduled task for automated daily backups
 ```

@@ -33,8 +33,12 @@
 
 **设置定时任务**:
 ```powershell
-# 以管理员身份运行
-.\scripts\setup_daily_backup.ps1
+# 方法 1: 使用批处理文件（推荐）
+# 右键点击 scripts\setup_daily_backup_admin.bat
+# 选择"以管理员身份运行"
+
+# 方法 2: 直接运行 PowerShell 脚本
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_daily_backup.ps1
 ```
 
 **设置步骤**:
@@ -293,8 +297,12 @@ The system automatically backs up the following critical files:
 
 **Setup Scheduled Task**:
 ```powershell
-# Run as administrator
-.\scripts\setup_daily_backup.ps1
+# Method 1: Use batch file (Recommended)
+# Right-click scripts\setup_daily_backup_admin.bat
+# Select "Run as administrator"
+
+# Method 2: Run PowerShell script directly
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_daily_backup.ps1
 ```
 
 **Setup Steps**:

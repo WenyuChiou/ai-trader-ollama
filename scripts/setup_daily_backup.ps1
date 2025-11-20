@@ -1,5 +1,6 @@
 # Setup Daily Backup Scheduled Task
-# Usage: powershell -ExecutionPolicy Bypass -File .\scripts\setup_daily_backup.ps1
+# Usage (Recommended): Right-click setup_daily_backup_admin.bat and select "Run as administrator"
+# Usage (Manual): powershell -ExecutionPolicy Bypass -File .\scripts\setup_daily_backup.ps1
 
 $ErrorActionPreference = "Stop"
 
@@ -111,6 +112,7 @@ Write-Host "  View: Get-ScheduledTask -TaskName $taskName" -ForegroundColor Yell
 Write-Host "  Run: Start-ScheduledTask -TaskName $taskName" -ForegroundColor Yellow
 Write-Host "  Remove: Unregister-ScheduledTask -TaskName $taskName -Confirm:`$false" -ForegroundColor Yellow
 Write-Host ""
+
 
 Read-Host "Press Enter to exit"
 

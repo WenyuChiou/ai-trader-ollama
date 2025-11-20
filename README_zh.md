@@ -1859,7 +1859,12 @@ web: cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
 
 **设置**:
 ```powershell
-.\scripts\setup_daily_backup.ps1
+# 方法 1: 使用批处理文件（推荐 - 自动处理管理员权限）
+# 右键点击并选择"以管理员身份运行"：
+scripts\setup_daily_backup_admin.bat
+
+# 方法 2: 直接运行 PowerShell 脚本
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_daily_backup.ps1
 # 指定备份时间（默认：23:00）
 # 创建定时任务以实现自动每日备份
 ```

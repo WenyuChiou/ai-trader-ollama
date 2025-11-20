@@ -340,21 +340,30 @@ async def fetch_conversations_api(
             
             
             # CRITICAL FIX: Include discussion entries and tool entries, but ensure tool entries are included
-            # Strategy: If limit is small and discussions exceed limit, still include some tools
-            # Priority: Include recent discussions + recent tools (both are important for frontend)
-            if len(discussion_entries) >= limit:
-                # Too many discussions, include top discussions + some tools
-                # Reserve at least 20% of limit for tools (minimum 10 tools)
-                tool_reserve = max(limit // 5, min(10, len(tool_entries)))
-                discussion_limit = limit - tool_reserve
-                recent_discussions = discussion_entries[:discussion_limit]
-                recent_tools = tool_entries[:tool_reserve]
+            # Strategy: Balance discussions and tools, prioritize recent entries
+            # - Limit discussions to prevent them from overwhelming tools
+            # - Ensure tools have adequate space (at least 30% of limit, minimum 15 tools)
+            # - This prevents tools from being squeezed out as discussions grow
+            
+            # Maximum discussions to include (prevent discussions from taking all space)
+            max_discussions = min(limit * 2 // 3, 50)  # At most 2/3 of limit, or 50 (whichever is smaller)
+            # Minimum tools to include (ensure tools are always visible)
+            min_tools = max(limit // 3, 15)  # At least 1/3 of limit, or 15 (whichever is larger)
+            
+            if len(discussion_entries) > max_discussions:
+                # Too many discussions, limit them and reserve space for tools
+                discussion_limit = max_discussions
+                tool_limit = max(min_tools, limit - discussion_limit)
             else:
                 # Normal case: include all discussions + remaining space for tools
                 discussion_limit = len(discussion_entries)
-                tool_limit = max(0, limit - discussion_limit)
-                recent_discussions = discussion_entries
-                recent_tools = tool_entries[:tool_limit]
+                tool_limit = max(min_tools, limit - discussion_limit)
+            
+            # Ensure we don't exceed available entries
+            tool_limit = min(tool_limit, len(tool_entries))
+            
+            recent_discussions = discussion_entries[:discussion_limit]
+            recent_tools = tool_entries[:tool_limit]
             
             conversations = recent_discussions + recent_tools
         

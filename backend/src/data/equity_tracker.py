@@ -88,6 +88,79 @@ class EquityTracker:
             current_equity = float(portfolio_snapshot.get("equity_value", 0.0))
             positions = portfolio_snapshot.get("positions_detail", {})
         
+        # CRITICAL FIX: Ensure positions have current_price and market_value when recording
+        # If positions are missing price information, fetch real-time prices (market open only)
+        positions_need_price_update = False
+        if positions:
+            for symbol, pos_info in positions.items():
+                if isinstance(pos_info, dict):
+                    # Check if current_price is missing or equals avg_cost (indicating stale/cached price)
+                    current_price = pos_info.get("current_price")
+                    avg_cost = pos_info.get("avg_cost", 0)
+                    market_value = pos_info.get("market_value")
+                    
+                    # If price is missing or equals avg_cost, we need to fetch real-time price
+                    if current_price is None or (current_price == avg_cost and avg_cost > 0):
+                        positions_need_price_update = True
+                        print(f"[EQUITY] Position {symbol} missing current_price or using cached price (equals avg_cost)")
+                        break
+        
+        # Fetch real-time prices if needed and market is open
+        if positions_need_price_update:
+            try:
+                from src.utils.trading_days import is_market_open
+                if is_market_open(None):
+                    print(f"[EQUITY] Fetching real-time prices for {len(positions)} positions...")
+                    import yfinance as yf
+                    
+                    symbols = list(positions.keys())
+                    updated_count = 0
+                    
+                    # Fetch prices in batch
+                    try:
+                        tickers = yf.Tickers(" ".join(symbols))
+                        for symbol in symbols:
+                            try:
+                                ticker = tickers.tickers[symbol]
+                                info = ticker.fast_info
+                                
+                                # Get current price (real-time during market hours, close price otherwise)
+                                price = info.get("lastPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+                                
+                                if price and price > 0:
+                                    pos_info = positions[symbol]
+                                    if isinstance(pos_info, dict):
+                                        quantity = pos_info.get("quantity", 0)
+                                        avg_cost = pos_info.get("avg_cost", 0)
+                                        
+                                        # Update position with real-time price
+                                        pos_info["current_price"] = float(price)
+                                        pos_info["market_value"] = quantity * float(price)
+                                        pos_info["unrealized_pnl"] = (float(price) - avg_cost) * quantity
+                                        pos_info["unrealized_pnl_pct"] = ((float(price) - avg_cost) / avg_cost * 100.0) if avg_cost > 0 else 0.0
+                                        
+                                        updated_count += 1
+                                        print(f"[EQUITY] Updated {symbol}: price=${price:.2f}, market_value=${pos_info['market_value']:.2f}")
+                            except Exception as e:
+                                print(f"[EQUITY WARNING] Failed to fetch price for {symbol}: {e}")
+                        
+                        if updated_count > 0:
+                            # Recalculate equity_value and total_value with updated prices
+                            new_equity_value = sum(
+                                pos.get("market_value", 0) 
+                                for pos in positions.values() 
+                                if isinstance(pos, dict)
+                            )
+                            current_equity = new_equity_value
+                            current_value = current_cash + current_equity
+                            print(f"[EQUITY] Recalculated values: equity=${current_equity:.2f}, total=${current_value:.2f} (updated {updated_count}/{len(symbols)} prices)")
+                    except Exception as e:
+                        print(f"[EQUITY WARNING] Failed to fetch batch prices: {e}")
+                else:
+                    print(f"[EQUITY] Market is closed, skipping real-time price fetch (using provided prices)")
+            except Exception as e:
+                print(f"[EQUITY WARNING] Failed to check market status for price update: {e}")
+        
         # CRITICAL FIX: 保留所有时间戳记录，不再按日期去重
         # 每30分钟的记录都会被保留，确保历史数据完整性
         
@@ -191,16 +264,49 @@ class EquityTracker:
             total_pnl = float(portfolio_snapshot.get("total_pnl", 0.0))
             total_pnl_pct = float(portfolio_snapshot.get("total_pnl_pct", 0.0))
         
+        # CRITICAL FIX: Ensure positions record includes current_price and market_value for all positions
+        # This ensures data consistency and enables proper chart display
+        positions_record = {}
+        for symbol, pos_info in positions.items():
+            if isinstance(pos_info, dict):
+                # Include all position details, ensuring current_price and market_value are present
+                positions_record[symbol] = {
+                    "quantity": pos_info.get("quantity", 0),
+                    "avg_cost": pos_info.get("avg_cost", 0),
+                    "total_cost": pos_info.get("total_cost", pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)),
+                    "cost_basis": pos_info.get("cost_basis", pos_info.get("total_cost", 0)),
+                }
+                
+                # Include price information if available
+                if "current_price" in pos_info:
+                    positions_record[symbol]["current_price"] = pos_info["current_price"]
+                if "market_value" in pos_info:
+                    positions_record[symbol]["market_value"] = pos_info["market_value"]
+                if "unrealized_pnl" in pos_info:
+                    positions_record[symbol]["unrealized_pnl"] = pos_info["unrealized_pnl"]
+                if "unrealized_pnl_pct" in pos_info:
+                    positions_record[symbol]["unrealized_pnl_pct"] = pos_info["unrealized_pnl_pct"]
+            else:
+                # Fallback: if pos_info is not a dict, preserve as-is
+                positions_record[symbol] = pos_info
+        
         record = {
             "date": date_str,
-            "timestamp": timestamp_str,  # 使用 UTC 时区，ISO 8601 格式，确保包含 Z
+            "timestamp": timestamp_str,  # Use UTC timezone, ISO 8601 format, ensure Z suffix
             "cash": current_cash,
             "equity_value": current_equity,
             "total_value": current_value,
             "total_pnl": total_pnl,
             "total_pnl_pct": total_pnl_pct,
-            "positions": positions,
+            "positions": positions_record,  # Use processed positions with guaranteed price fields
         }
+        
+        # Log price information status for debugging
+        positions_with_price = sum(
+            1 for pos in positions_record.values() 
+            if isinstance(pos, dict) and "current_price" in pos
+        )
+        print(f"[EQUITY] Recording equity: total_value=${current_value:.2f}, positions={len(positions_record)}, positions_with_price={positions_with_price}/{len(positions_record)}")
         
         # 验证时间戳格式
         if not timestamp_str.endswith('Z'):

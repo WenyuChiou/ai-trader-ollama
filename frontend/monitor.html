@@ -10799,7 +10799,52 @@
                 console.log('[Chart] Generated labels:', labels);
                 
                 // CRITICAL FIX: 优先使用 total_value，然后是 value，最后是 equity_value
-                const values = equityData.map(item => item.total_value || item.value || item.equity_value || item.equity || 0);
+                const values = equityData.map(item => {
+                    const val = item.total_value || item.value || item.equity_value || item.equity || 0;
+                    if (isNaN(val) || val <= 0) {
+                        console.warn('[Chart] Invalid value in equity data:', item);
+                        return 0;
+                    }
+                    return val;
+                });
+                
+                // CRITICAL FIX: 检查是否有有效数据
+                const validValues = values.filter(v => v > 0);
+                if (validValues.length === 0) {
+                    console.warn('[Chart] No valid values found in equity data');
+                    document.getElementById('chartDataPoints').textContent = '0 data points';
+                    if (equityChart) {
+                        equityChart.destroy();
+                        equityChart = null;
+                    }
+                    return;
+                }
+                
+                // CRITICAL FIX: 检查值的变化范围并计算 Y 轴范围
+                const minVal = Math.min(...validValues);
+                const maxVal = Math.max(...validValues);
+                const valueRange = maxVal - minVal;
+                console.log(`[Chart] Value range: min=$${minVal.toFixed(2)}, max=$${maxVal.toFixed(2)}, range=$${valueRange.toFixed(2)}`);
+                
+                // CRITICAL FIX: 计算 Y 轴范围，确保变化可见
+                // 如果范围很小（< $100），设置一个更大的显示范围，让变化更明显
+                let yAxisMin, yAxisMax;
+                if (valueRange < 100 && valueRange > 0) {
+                    // 范围很小，设置一个更大的显示范围（最小值-5%，最大值+5%，但至少 $50 的边距）
+                    const margin = Math.max(valueRange * 0.5, 50);
+                    yAxisMin = Math.max(0, minVal - margin);
+                    yAxisMax = maxVal + margin;
+                    console.log(`[Chart] Small range detected, expanding Y axis: ${yAxisMin.toFixed(2)} - ${yAxisMax.toFixed(2)}`);
+                } else if (valueRange < 0.01) {
+                    // 所有值几乎相同
+                    console.warn('[Chart] All values are nearly identical, chart may appear as a flat line');
+                    yAxisMin = Math.max(0, minVal - minVal * 0.01);
+                    yAxisMax = maxVal + maxVal * 0.01;
+                } else {
+                    // 正常范围，让 Chart.js 自动计算
+                    yAxisMin = undefined;
+                    yAxisMax = undefined;
+                }
                 
                 document.getElementById('chartDataPoints').textContent = `${values.length} data points`;
                 
@@ -10959,12 +11004,26 @@
                                         return '$' + formatNumber(value, 0);
                                     }
                                 },
+                                // CRITICAL FIX: 设置 Y 轴范围，确保变化可见
+                                // 如果范围很小，设置 suggestedMin/Max 让变化更明显
+                                ...(yAxisMin !== undefined && yAxisMax !== undefined ? {
+                                    suggestedMin: yAxisMin,
+                                    suggestedMax: yAxisMax,
+                                } : {}),
                             }
                         }
                     }
                 });
                 
                 console.log(`[Chart] Equity chart rendered with ${values.length} points`);
+                console.log(`[Chart] Data summary:`, {
+                    count: values.length,
+                    min: Math.min(...values).toFixed(2),
+                    max: Math.max(...values).toFixed(2),
+                    range: (Math.max(...values) - Math.min(...values)).toFixed(2),
+                    firstValue: values[0]?.toFixed(2),
+                    lastValue: values[values.length - 1]?.toFixed(2),
+                });
             } catch (error) {
                 console.error('[Chart] Error rendering equity chart:', error);
             }

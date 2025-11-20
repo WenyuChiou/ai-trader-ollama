@@ -73,7 +73,16 @@ def upload_to_railway():
         from pathlib import Path
         
         # Get Railway URL from environment variable or use default
-        RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-b42d6.up.railway.app")
+        RAILWAY_URL = os.environ.get("RAILWAY_URL", "")
+        if not RAILWAY_URL:
+            try:
+                from scripts.config_railway import get_railway_url
+                RAILWAY_URL = get_railway_url()
+            except ImportError:
+                pass
+        if not RAILWAY_URL:
+            print("[ERROR] Railway URL not configured. Please run: python scripts\\config_railway.py")
+            return False
         
         # Find and read data files
         DATA_DIRS = [Path("data/logs"), Path("backend/data/logs")]

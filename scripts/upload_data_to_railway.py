@@ -38,7 +38,10 @@ def upload_to_railway():
             RAILWAY_URL = get_railway_url()
         except ImportError:
             # Fallback if config_railway module not available
-            RAILWAY_URL = os.environ.get("RAILWAY_URL", "https://web-production-b42d6.up.railway.app")
+            RAILWAY_URL = os.environ.get("RAILWAY_URL", "")
+            if not RAILWAY_URL:
+                print("[ERROR] Railway URL not configured. Please run: python scripts\\config_railway.py")
+                return False
         
         # Find and read data files
         DATA_DIRS = [Path("data/logs"), Path("backend/data/logs")]

@@ -62,9 +62,9 @@ powershell -ExecutionPolicy Bypass -File scripts\schedule_railway_upload.ps1
 ### Railway URL
 
 The system checks for Railway URL in this order:
-1. `railway_config.json` file (project root)
+1. `railway_config.json` file (project root) - **Private, not in git**
 2. `RAILWAY_URL` environment variable
-3. Default: `https://web-production-b42d6.up.railway.app`
+3. Default: (configured by user)
 
 ### Upload Time
 

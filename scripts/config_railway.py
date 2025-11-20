@@ -30,8 +30,8 @@ def get_railway_url() -> str:
         except Exception:
             pass
     
-    # Default fallback
-    return "https://web-production-b42d6.up.railway.app"
+    # Default fallback (user should configure their own URL)
+    return ""
 
 def set_railway_url(url: str) -> bool:
     """Set Railway URL in config file"""

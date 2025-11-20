@@ -3414,6 +3414,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 | **[Key Test Files](docs/KEY_TEST_FILES.md)** | Critical test files and priority guide ⭐ |
 | **[Order Data Schema](docs/ORDER_DATA_SCHEMA.md)** | Standardized order data structure for performance analysis |
 | **[Performance API Guide](docs/PERFORMANCE_API_GUIDE.md)** | Performance analysis API documentation and expected output |
+| **[Performance Optimization](docs/PERFORMANCE_OPTIMIZATION.md)** | Long-term performance optimizations (tail reading, log rotation, caching) ⭐ |
+| **[Optimization Impact Analysis](docs/OPTIMIZATION_IMPACT_ANALYSIS.md)** | Analysis of optimization impact on discussion loop and frontend tools |
 
 ## 🧪 Testing
 

@@ -404,12 +404,12 @@ def main():
     today = date.today().isoformat()
     print(f"\nChecking records for: {today}")
     
-    # Try multiple possible locations
+    # Try multiple possible locations (prioritize data/logs as it contains actual data)
     possible_paths = [
-        ROOT / "backend" / "data" / "logs",
         ROOT / "data" / "logs",
-        Path("backend/data/logs"),
+        ROOT / "backend" / "data" / "logs",
         Path("data/logs"),
+        Path("backend/data/logs"),
     ]
     
     logs_dir = None

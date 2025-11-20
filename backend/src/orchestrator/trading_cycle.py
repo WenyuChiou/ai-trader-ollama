@@ -2836,12 +2836,26 @@ def execute_daily_trade(
                 }
             }
             
+            # CRITICAL FIX: Include current_price and market_value in portfolio_state for consistency
+            # This ensures portfolio_state.json contains complete position information
             for symbol, pos in portfolio._positions.items():
-                portfolio_state["positions"][symbol] = {
+                # Get current price from last_prices if available
+                current_price = last_prices.get(symbol) if last_prices else None
+                market_value = (current_price * pos.quantity) if current_price else None
+                
+                position_data = {
                     "quantity": pos.quantity,
                     "avg_cost": pos.avg_cost,
                     "total_cost": pos.total_cost if hasattr(pos, 'total_cost') and pos.total_cost > 0 else pos.avg_cost * pos.quantity,
                 }
+                
+                # Add price information if available
+                if current_price is not None:
+                    position_data["current_price"] = current_price
+                if market_value is not None:
+                    position_data["market_value"] = market_value
+                
+                portfolio_state["positions"][symbol] = position_data
             
             portfolio_file.write_text(json.dumps(portfolio_state, indent=2, ensure_ascii=False), encoding="utf-8")
             if actual_buy_orders_count > 0 or actual_sell_orders_count > 0:

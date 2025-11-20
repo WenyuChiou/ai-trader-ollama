@@ -339,11 +339,24 @@ async def fetch_conversations_api(
             tool_entries = [e for e in all_entries if e.get("type") == "tool"]
             
             
-            # CRITICAL FIX: Include ALL discussion entries (they are important for frontend display)
-            # Then add tool entries up to the limit
-            # If limit is 100 and we have 85 discussions, include all 85 + 15 tools = 100 total
-            # If limit is 100 and we have 200 discussions, include all 200 (exceed limit to ensure all discussions are included)
-            conversations = discussion_entries + tool_entries[:max(0, limit - len(discussion_entries))]
+            # CRITICAL FIX: Include discussion entries and tool entries, but ensure tool entries are included
+            # Strategy: If limit is small and discussions exceed limit, still include some tools
+            # Priority: Include recent discussions + recent tools (both are important for frontend)
+            if len(discussion_entries) >= limit:
+                # Too many discussions, include top discussions + some tools
+                # Reserve at least 20% of limit for tools (minimum 10 tools)
+                tool_reserve = max(limit // 5, min(10, len(tool_entries)))
+                discussion_limit = limit - tool_reserve
+                recent_discussions = discussion_entries[:discussion_limit]
+                recent_tools = tool_entries[:tool_reserve]
+            else:
+                # Normal case: include all discussions + remaining space for tools
+                discussion_limit = len(discussion_entries)
+                tool_limit = max(0, limit - discussion_limit)
+                recent_discussions = discussion_entries
+                recent_tools = tool_entries[:tool_limit]
+            
+            conversations = recent_discussions + recent_tools
         
         # CRITICAL FIX: Final sort to ensure newest first (discussions should already be first)
         conversations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)

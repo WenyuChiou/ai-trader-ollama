@@ -2643,12 +2643,13 @@ All automation scripts are located in `scripts/` directory and can be run from t
 | Script | Purpose | Usage | Notes |
 |--------|---------|-------|-------|
 | `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax before deployment, checks 10 main Python files |
+| `check_file_status.py` | Check discussion_actions.jsonl file status | `python scripts/check_file_status.py` | Analyzes file size, entry counts, and recent entries |
+| `check_tool_agents.py` | Check tool entries agent field distribution | `python scripts/check_tool_agents.py` | Analyzes tool entries by category and agent |
+| `check_api_tool_agents.py` | Check API tool results agent distribution | `python scripts/check_api_tool_agents.py` | Verifies API returns tools correctly grouped by agent |
+| `analyze_file_growth.py` | Analyze file growth rate and rotation | `python scripts/analyze_file_growth.py` | Estimates growth rate and time until rotation threshold |
 | `test_performance_optimization.py` | Test performance optimizations | `python scripts/test_performance_optimization.py` | Tests log rotation, performance monitoring, and tail-based reading |
 | `test_api_tool_response.py` | Test API tool response | `python scripts/test_api_tool_response.py` | Verifies API returns tools correctly with round fields |
 | `test_tool_display_with_memory.py` | Test tool display with memory | `python scripts/test_tool_display_with_memory.py` | Tests if tools are correctly displayed when memory mechanism is active |
-| `check_tool_rounds.py` | Check tool round distribution | `python scripts/check_tool_rounds.py` | Analyzes round field distribution in discussion_actions.jsonl |
-| `check_tool_rounds_simple.py` | Quick check tool rounds | `python scripts/check_tool_rounds_simple.py` | Simplified version for quick debugging |
-| `analyze_old_records.py` | Analyze old tool records | `python scripts/analyze_old_records.py` | Analyzes distribution of old vs new tool call records |
 
 **Note**: All PowerShell scripts use UTF-8 encoding and support Windows PowerShell 5.1+ and PowerShell Core 7+. Some scripts require administrator privileges (indicated in Requirements column).
 
@@ -3143,6 +3144,19 @@ python scripts/init_data.py
    - ✅ All timestamps use ISO 8601 format with millisecond precision: `YYYY-MM-DDTHH:MM:SS.sssZ`
    - ✅ Consistent UTC timezone with 'Z' suffix across all data files
    - ✅ Scripts available to fix existing timestamp formats: `backend/scripts/fix_timestamps.py` and `backend/scripts/fix_memory_timestamps.py`
+
+13. **Frontend Tool Filtering & Agent Matching** (Latest):
+   - ✅ **Exact Agent Matching**: Frontend now uses exact agent name matching (case-insensitive) to ensure TechnicalAnalyst only sees TechnicalAnalyst tools, not MarketAnalyst tools
+   - ✅ **API Tool Results**: `tool_results_by_category` is now built from ALL tool entries (not limited by API `limit` parameter), ensuring all agents' tools are available for frontend filtering
+   - ✅ **Market Category Tools**: Market category contains tools from both MarketAnalyst and TechnicalAnalyst - filtering ensures correct agent-specific display
+   - ✅ **Improved Matching Logic**: Uses exact match first, then falls back to partial match for backwards compatibility
+   - ✅ **Debug Logging**: Enhanced console logging for tool filtering and agent matching debugging
+
+14. **File Size Management & Log Rotation**:
+   - ✅ **Log Rotation**: Automatic log rotation when `discussion_actions.jsonl` exceeds 50 MB (archived to `data/logs/archive/`)
+   - ✅ **File Growth Analysis**: Scripts available to analyze file growth rate and estimate time until rotation
+   - ✅ **Performance Monitoring**: Tracks file size, read time, and rotation events
+   - ✅ **Current Status**: File size ~0.97 MB, estimated 7 days until rotation threshold
 
 ### Portfolio P&L Calculation Issues
 

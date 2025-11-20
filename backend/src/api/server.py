@@ -272,41 +272,6 @@ async def execute_trade_direct():
             }
         )
     
-# OPTIMIZATION: In-memory cache for conversations (reduce file reads)
-_conversations_cache = {
-    "data": None,
-    "file_mtime": 0,
-    "cache_time": 0,
-    "cache_ttl": 300  # 5 minutes TTL
-}
-
-def _get_cache_key(limit: int, date: Optional[str], include_demo: bool) -> str:
-    """Generate cache key from request parameters"""
-    return f"{limit}_{date}_{include_demo}"
-
-def _is_cache_valid(log_file: Path, cache_key: str) -> bool:
-    """Check if cache is still valid"""
-    if _conversations_cache["data"] is None:
-        return False
-    
-    if cache_key not in _conversations_cache["data"]:
-        return False
-    
-    # Check file modification time
-    if not log_file.exists():
-        return False
-    
-    current_mtime = log_file.stat().st_mtime
-    if current_mtime != _conversations_cache["file_mtime"]:
-        return False
-    
-    # Check TTL
-    import time
-    if time.time() - _conversations_cache["cache_time"] > _conversations_cache["cache_ttl"]:
-        return False
-    
-    return True
-
 # CRITICAL: Fetch conversations endpoint
 @app.get("/api/agents/conversations")
 async def fetch_conversations_api(
@@ -336,115 +301,61 @@ async def fetch_conversations_api(
                 }
             )
         
-        # OPTIMIZATION: Check cache first
-        cache_key = _get_cache_key(limit, date, include_demo)
-        if _is_cache_valid(log_file, cache_key):
-            cached_result = _conversations_cache["data"][cache_key]
-            return JSONResponse(
-                status_code=200,
-                content=cached_result,
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                }
-            )
-        
-        # OPTIMIZATION: Performance monitoring
-        try:
-            from src.utils.performance_monitor import get_performance_monitor
-            monitor = get_performance_monitor()
-            monitor.measure_file_size(log_file)
-            read_start_time = time.time()
-        except ImportError:
-            monitor = None
-            read_start_time = None
-        
-        # OPTIMIZATION: Tail-based reading - only read last N lines instead of entire file
-        # This dramatically reduces memory usage and read time for large files
+        # Read conversation records
         conversations = []
-        
-        # Calculate how many entries we need to read
-        # Maximum discussions to include (prevent discussions from taking all space)
-        max_discussions = min(limit * 2 // 3, 50)  # At most 2/3 of limit, or 50 (whichever is smaller)
-        # Minimum tools to include (ensure tools are always visible)
-        min_tools = max(limit // 3, 15)  # At least 1/3 of limit, or 15 (whichever is larger)
-        
-        # Estimate: Read up to 3x the needed entries to account for filtering
-        # This ensures we get enough entries even after filtering by date/demo
-        read_limit = max(max_discussions * 3, min_tools * 3, 200)  # Read at least 200 lines
-        
         with log_file.open("r", encoding="utf-8") as f:
-            # OPTIMIZATION: Read file backwards from end (tail approach)
-            # This is much more efficient than reading entire file for large files
-            try:
-                # Seek to end of file
-                f.seek(0, 2)  # 2 = SEEK_END
-                file_size = f.tell()
-                
-                # If file is small, read normally
-                if file_size < 1024 * 1024:  # < 1 MB
-                    lines = f.readlines()
-                    lines_to_process = reversed(lines)
-                else:
-                    # For large files, read backwards in chunks
-                    # Read last N bytes (estimate ~3KB per line, so read_limit * 3KB)
-                    chunk_size = min(read_limit * 3000, file_size)
-                    f.seek(max(0, file_size - chunk_size))
-                    chunk = f.read(chunk_size)
-                    lines = chunk.split('\n')
-                    # Get last read_limit lines
-                    lines_to_process = reversed(lines[-read_limit:])
-            except (OSError, IOError):
-                # Fallback: read entire file if seek fails
-                f.seek(0)
-                lines = f.readlines()
-                lines_to_process = reversed(lines)
+            # CRITICAL FIX: Read entire file to ensure all discussion entries are included
+            # For large files, we'll process in chunks but read all lines
+            lines = f.readlines()
             
-            # OPTIMIZATION: Stream parsing with early termination
-            # Parse JSON on-the-fly and stop when we have enough entries
-            discussion_entries = []
-            tool_entries = []
-            
-            for line in lines_to_process:
+            # CRITICAL FIX: Process lines in reverse order (newest first) but read all of them
+            # This ensures we don't miss discussion entries that might be earlier in the file
+            # CRITICAL FIX: Collect ALL entries first, then filter and limit
+            all_entries = []
+            for line in reversed(lines):
                 if not line.strip():
                     continue
-                
-                # Early termination: stop if we have enough entries
-                if len(discussion_entries) >= max_discussions and len(tool_entries) >= min_tools:
-                    break
-                
                 try:
                     entry = json.loads(line.strip())
                     
-                    # Filter demo entries
+                    # 过滤 demo 条目
                     if not include_demo and entry.get("type") == "demo":
                         continue
                     
-                    # Filter by date
+                    # 过滤日期
                     if date and entry.get("date") != date:
                         continue
                     
-                    # Categorize entry
-                    entry_type = entry.get("type", "")
-                    if entry_type == "discussion":
-                        if len(discussion_entries) < max_discussions:
-                            discussion_entries.append(entry)
-                    elif entry_type == "tool":
-                        if len(tool_entries) < min_tools * 2:  # Collect extra for final filtering
-                            tool_entries.append(entry)
+                    all_entries.append(entry)
                 except json.JSONDecodeError:
                     continue
             
-            # Sort entries by timestamp (newest first)
-            discussion_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-            tool_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            # CRITICAL FIX: Sort all entries first
+            all_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
             
-            # Finalize limits
+            # CRITICAL FIX: Prioritize discussion entries - collect all discussions first, then add tools
+            # This ensures we don't lose discussion entries when limiting
+            discussion_entries = [e for e in all_entries if e.get("type") == "discussion"]
+            tool_entries = [e for e in all_entries if e.get("type") == "tool"]
+            
+            
+            # CRITICAL FIX: Include discussion entries and tool entries, but ensure tool entries are included
+            # Strategy: Balance discussions and tools, prioritize recent entries
+            # - Limit discussions to prevent them from overwhelming tools
+            # - Ensure tools have adequate space (at least 30% of limit, minimum 15 tools)
+            # - This prevents tools from being squeezed out as discussions grow
+            
+            # Maximum discussions to include (prevent discussions from taking all space)
+            max_discussions = min(limit * 2 // 3, 50)  # At most 2/3 of limit, or 50 (whichever is smaller)
+            # Minimum tools to include (ensure tools are always visible)
+            min_tools = max(limit // 3, 15)  # At least 1/3 of limit, or 15 (whichever is larger)
+            
             if len(discussion_entries) > max_discussions:
+                # Too many discussions, limit them and reserve space for tools
                 discussion_limit = max_discussions
                 tool_limit = max(min_tools, limit - discussion_limit)
             else:
+                # Normal case: include all discussions + remaining space for tools
                 discussion_limit = len(discussion_entries)
                 tool_limit = max(min_tools, limit - discussion_limit)
             
@@ -455,14 +366,6 @@ async def fetch_conversations_api(
             recent_tools = tool_entries[:tool_limit]
             
             conversations = recent_discussions + recent_tools
-        
-        # OPTIMIZATION: Record read time
-        if monitor and read_start_time:
-            read_time_ms = (time.time() - read_start_time) * 1000
-            monitor.record_metric("read_time", read_time_ms, "ms", {
-                "entries_read": len(discussion_entries) + len(tool_entries),
-                "entries_returned": len(conversations)
-            })
         
         # CRITICAL FIX: Final sort to ensure newest first (discussions should already be first)
         conversations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
@@ -626,6 +529,8 @@ async def fetch_conversations_api(
             discussion_rounds_summaries[round_key] = agent_summaries
         
         # CRITICAL FIX: 按工具类型分类工具结果（news, risk, market等）
+        # IMPORTANT: Build tool_results_by_category from ALL tool entries, not just limited conversations
+        # This ensures all agents' tools are available for frontend filtering, regardless of limit
         tool_results_by_category = {
             "news": [],
             "risk": [],
@@ -663,7 +568,12 @@ async def fetch_conversations_api(
             "get_crypto_price": "crypto",
         }
         
-        for entry in processed_conversations:
+        # CRITICAL FIX: Process ALL tool entries (not just limited conversations) for tool_results_by_category
+        # This ensures frontend can filter by agent even if limit is small
+        # Use all tool entries collected earlier, not just the limited ones
+        all_tool_entries_for_category = tool_entries if 'tool_entries' in locals() else []
+        
+        for entry in all_tool_entries_for_category:
             # CRITICAL FIX: 确保 entry 是字典
             if not isinstance(entry, dict):
                 continue
@@ -775,29 +685,18 @@ async def fetch_conversations_api(
                         cleaned_conv[key] = str(value)[:500] if value else ""
                 cleaned_conversations.append(cleaned_conv)
         
-        # Build response
-        response_data = {
-            "ok": True,
-            "conversations": cleaned_conversations,
-            "count": len(cleaned_conversations),
-            "total": len(processed_conversations),
-            "has_more": len(processed_conversations) > limit,
-            "discussion_rounds": {str(k): v for k, v in discussion_rounds.items()},  # CRITICAL FIX: 原始数据（按 round 分组的所有 entry），键转换为字符串
-            "discussion_rounds_summaries": discussion_rounds_summaries,  # CRITICAL FIX: 按 round 和 agent 分组的 summaries
-            "tool_results_by_category": tool_results_by_category,  # CRITICAL FIX: 按工具类型分类的工具结果
-        }
-        
-        # OPTIMIZATION: Update cache
-        import time
-        if _conversations_cache["data"] is None:
-            _conversations_cache["data"] = {}
-        _conversations_cache["data"][cache_key] = response_data
-        _conversations_cache["file_mtime"] = log_file.stat().st_mtime
-        _conversations_cache["cache_time"] = time.time()
-        
         return JSONResponse(
             status_code=200,
-            content=response_data,
+            content={
+                "ok": True,
+                "conversations": cleaned_conversations,
+                "count": len(cleaned_conversations),
+                "total": len(processed_conversations),
+                "has_more": len(processed_conversations) > limit,
+                "discussion_rounds": {str(k): v for k, v in discussion_rounds.items()},  # CRITICAL FIX: 原始数据（按 round 分组的所有 entry），键转换为字符串
+                "discussion_rounds_summaries": discussion_rounds_summaries,  # CRITICAL FIX: 按 round 和 agent 分组的 summaries
+                "tool_results_by_category": tool_results_by_category,  # CRITICAL FIX: 按工具类型分类的工具结果
+            },
             headers={
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, OPTIONS",

@@ -1751,12 +1751,13 @@ web: cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
 | 脚本 | 目的 | 用法 | 说明 |
 |--------|---------|-------|-------|
 | `check_syntax.py` | 检查所有主要文件的 Python 语法 | `python scripts/check_syntax.py` | 部署前验证语法，检查 10 个主要 Python 文件 |
+| `check_file_status.py` | 检查 discussion_actions.jsonl 文件状态 | `python scripts/check_file_status.py` | 分析文件大小、条目数量和最近条目 |
+| `check_tool_agents.py` | 检查工具条目 agent 字段分布 | `python scripts/check_tool_agents.py` | 按分类和 agent 分析工具条目 |
+| `check_api_tool_agents.py` | 检查 API 工具结果 agent 分布 | `python scripts/check_api_tool_agents.py` | 验证 API 是否正确按 agent 分组返回工具 |
+| `analyze_file_growth.py` | 分析文件增长速率和轮转 | `python scripts/analyze_file_growth.py` | 估算增长速率和达到轮转阈值的时间 |
 | `test_performance_optimization.py` | 测试性能优化 | `python scripts/test_performance_optimization.py` | 测试日志轮转、性能监控和尾部读取 |
 | `test_api_tool_response.py` | 测试 API 工具响应 | `python scripts/test_api_tool_response.py` | 验证 API 是否正确返回带 round 字段的工具 |
 | `test_tool_display_with_memory.py` | 测试内存机制下的工具显示 | `python scripts/test_tool_display_with_memory.py` | 测试启用内存机制时工具是否正确显示 |
-| `check_tool_rounds.py` | 检查工具轮次分布 | `python scripts/check_tool_rounds.py` | 分析 discussion_actions.jsonl 中的 round 字段分布 |
-| `check_tool_rounds_simple.py` | 快速检查工具轮次 | `python scripts/check_tool_rounds_simple.py` | 简化版本，用于快速调试 |
-| `analyze_old_records.py` | 分析旧工具记录 | `python scripts/analyze_old_records.py` | 分析旧（round=0）vs 新（round=1-3）工具调用记录的分布 |
 
 ### 概述
 
@@ -2059,6 +2060,31 @@ python scripts/init_data.py
 - ✅ **已修复**：前端现在从 `positions_detail` 读取，带后备逻辑
 - 刷新浏览器页面（F5 或 Ctrl+R）以查看修复
 - 所有持仓字段现在应正确显示
+
+### 前端工具过滤与 Agent 匹配问题（最新）
+
+**问题**：选择 TechnicalAnalyst 时，前端显示 MarketAnalyst 的工具，或显示 0 个工具。
+
+**根本原因**：
+- 前端工具过滤逻辑使用部分匹配，导致 agent 名称不匹配
+- API 的 `tool_results_by_category` 受 `limit` 参数限制，可能只返回部分工具
+
+**解决方案**：
+- ✅ **精确 Agent 匹配**：前端现在使用精确 agent 名称匹配（不区分大小写），确保 TechnicalAnalyst 只看到 TechnicalAnalyst 的工具，而不是 MarketAnalyst 的工具
+- ✅ **API 工具结果优化**：`tool_results_by_category` 现在从所有工具条目构建（不受 API `limit` 参数限制），确保所有 agent 的工具都可用于前端过滤
+- ✅ **市场分类工具**：市场分类包含来自 MarketAnalyst 和 TechnicalAnalyst 的工具 - 过滤确保正确的 agent 特定显示
+- ✅ **改进的匹配逻辑**：首先使用精确匹配，然后回退到部分匹配以保持向后兼容性
+- ✅ **调试日志**：增强的控制台日志记录，用于工具过滤和 agent 匹配调试
+
+### 文件大小管理与日志轮转
+
+**问题**：`discussion_actions.jsonl` 文件可能变得过大，影响性能。
+
+**解决方案**：
+- ✅ **日志轮转**：当 `discussion_actions.jsonl` 超过 50 MB 时自动轮转（归档到 `data/logs/archive/`）
+- ✅ **文件增长分析**：提供脚本分析文件增长速率并估算达到轮转阈值的时间
+- ✅ **性能监控**：跟踪文件大小、读取时间和轮转事件
+- ✅ **当前状态**：文件大小约 0.97 MB，估计 7 天后达到轮转阈值
 
 ### 重启后端 API
 

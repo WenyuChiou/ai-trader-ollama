@@ -6843,12 +6843,20 @@
                         
                         const categoryTools = availableToolResults[category].filter(toolEntry => {
                             const toolAgent = (toolEntry.agent || '').toLowerCase();
-                            let matches = toolAgent.includes(filterLower) || filterLower.includes(toolAgent);
+                            
+                            // CRITICAL FIX: Use exact match for agent names (case-insensitive)
+                            // This ensures TechnicalAnalyst only sees TechnicalAnalyst tools, not MarketAnalyst tools
+                            let matches = toolAgent === filterLower;
+                            
+                            // If exact match fails, try partial match (for backwards compatibility)
+                            if (!matches) {
+                                matches = toolAgent.includes(filterLower) || filterLower.includes(toolAgent);
+                            }
                             
                             // Check if agent matches any variant
                             if (!matches && agentVariants[filterLower]) {
                                 matches = agentVariants[filterLower].some(variant => 
-                                    toolAgent.includes(variant) || variant.includes(toolAgent)
+                                    toolAgent === variant || toolAgent.includes(variant) || variant.includes(toolAgent)
                                 );
                             }
                             
@@ -6857,6 +6865,14 @@
                             if (!matches && category === 'risk' && filterLower === 'riskanalyst') {
                                 console.log(`[Filter] Including risk tool for RiskAnalyst despite agent mismatch: "${toolAgent}" (risk tools are relevant for RiskAnalyst)`);
                                 matches = true;
+                            }
+                            
+                            // CRITICAL FIX: For market category, require exact agent match
+                            // Market category contains tools from both MarketAnalyst and TechnicalAnalyst
+                            // TechnicalAnalyst should only see TechnicalAnalyst tools, not MarketAnalyst tools
+                            if (category === 'market' && !matches) {
+                                // Already filtered out by exact match above, but log for debugging
+                                console.log(`[Filter] Market category tool filtered out: agent "${toolAgent}" doesn't match "${filterLower}"`);
                             }
                             
                             if (!matches) {

@@ -103,3 +103,6 @@ railway_config.json
 .railway/
 *RAILWAY*.md
 RAILWAY*.md
+
+# Tools (NSSM and other binaries)
+tools/

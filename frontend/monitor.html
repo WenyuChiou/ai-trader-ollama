@@ -3683,8 +3683,16 @@
             async function smartAutoTrade() {
                 if (smartAutoTradeBusy) {
                     // Skip if a previous run is still in progress
+                    console.log('[Auto Trade] Previous auto-trade still running, skipping...');
                     return;
                 }
+                
+                // CRITICAL FIX: Check if manual trade is executing, skip if so
+                if (isTradingExecuting) {
+                    console.log('[Auto Trade] Manual trade is executing, skipping auto-trade...');
+                    return;
+                }
+                
                 smartAutoTradeBusy = true;
                 try {
                     // Use cache for auto-trade checks to reduce API load
@@ -3692,10 +3700,12 @@
                     
                     if (isOpen) {
                         // Trading hours: execute trade cycle
+                        console.log('[Auto Trade] Market is open, executing trade cycle...');
                         updateAutoTradeStatus('Trading Hours Running');
                         try {
                             // CRITICAL FIX: Pass isManualTrigger=false for auto-trade
                             await executeTradeCycle(false);
+                            console.log('[Auto Trade] Trade cycle completed successfully');
                             // Update next execution time after successful execution
                             const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
                             nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
@@ -3703,11 +3713,15 @@
                             updateNextTradeTime();
                         } catch (e) {
                             console.error('[Auto Trade] Error during trade cycle:', e);
+                            console.error('[Auto Trade] Error details:', e.message, e.stack);
                             // Continue even if failed, retry next time
+                            // But log the error for debugging
+                            updateAutoTradeStatus('Error - Will Retry');
                         }
                     } else {
                         // Non-trading hours: stop auto-trade (only manual trigger allowed)
                         // Note: Market status monitor will handle stopping/starting automatically
+                        console.log('[Auto Trade] Market is closed, skipping auto-trade');
                         updateAutoTradeStatus('Market Closed - Manual Only');
                         // Stop the timer when market is closed (monitor will restart when market opens)
                         if (tradeCheckTimer) {
@@ -3717,6 +3731,7 @@
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
+                    console.error('[Auto Trade] Error details:', e.message, e.stack);
                     updateAutoTradeStatus('Status Detection Failed');
                     // If unable to check market status, assume market is closed and stop auto-trade
                     stopAutoTrade();

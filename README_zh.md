@@ -2385,6 +2385,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
 | `docs/DATA_STORAGE_GUIDE.md` | 数据存储位置和格式 |
 | `docs/QUICK_SETUP_GUIDE.md` | **后台运行和备份快速设置指南** ⭐ |
 | `docs/BACKUP_GUIDE.md` | **完整的备份和恢复指南** ⭐ |
+| `docs/BACKGROUND_RUNNING_GUIDE.md` | **后台运行指南（Task Scheduler / Windows Service）** ⭐ |
+| `docs/WINDOWS_SERVICE_TROUBLESHOOTING.md` | **Windows Service 故障排除指南** ⭐ |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | 长期操作指南 |
 | **[关键测试文件](docs/KEY_TEST_FILES.md)** | 关键测试文件和优先级指南 ⭐ |
 | **[订单数据模式](docs/ORDER_DATA_SCHEMA.md)** | 用于性能分析的标准化订单数据结构 |

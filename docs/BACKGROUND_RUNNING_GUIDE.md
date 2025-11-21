@@ -380,10 +380,14 @@ scripts\start_api_service_admin.bat
 ```
 
 **Step 2: Follow Prompts**
-- Script will auto-install NSSM if not found
+- Script will auto-download and install NSSM (Non-Sucking Service Manager) if not found
 - Follow prompts to install Windows service
+- Service will be configured with automatic restart on failure
+- Logs will be saved to `logs/api_service.log`
 
 **Done!** Now closing the window won't stop the API.
+
+**Note**: First-time setup may take a few minutes as NSSM needs to be downloaded (~2MB).
 
 ### Management Commands
 

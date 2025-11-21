@@ -153,8 +153,9 @@ if ($LASTEXITCODE -ne 0) {
 # Configure service
 Write-Host "[CONFIG] Configuring service..." -ForegroundColor Cyan
 
-# Set working directory
-& $nssmPath set $serviceName AppDirectory $appDir
+# Set working directory (use project root, not Scripts directory)
+$projectRoot = $ProjectRoot
+& $nssmPath set $serviceName AppDirectory $projectRoot
 
 # Set description
 & $nssmPath set $serviceName Description "AI Trader API Server - Multi-Agent Trading System"

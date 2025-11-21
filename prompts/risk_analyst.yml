@@ -65,9 +65,11 @@ system: |
 user: |
   Context:
   - Market Data: {market_view}
+    **CRITICAL**: The market_view.vix.risk_score field contains the VIX risk score (0-10) which you MUST use as a PRIMARY factor in your overall risk_score calculation. If vix_risk_score >= 6.0, your overall risk_score MUST reflect elevated market volatility (should be at least 5.0-7.0, not 2.92).
   - Current Positions: {current_positions}
   - Portfolio Value: ${portfolio_value}
   - Discussion Risk Signals: {discussion_risk_signals}
+    **CRITICAL**: If discussion_risk_signals.vix_risk_score is provided, use it as the primary market risk indicator.
   - Previous Discussion: {previous_discussion}
   - Tools Context: {tools_context}
   
@@ -108,19 +110,21 @@ user: |
   - Use tools (vix_term, fear_greed, get_correlation_matrix, get_market_breadth) to get comprehensive risk data
   - Focus on portfolio-level risk assessment rather than individual stock analysis
   
-  **CRITICAL: VIX Risk Score Integration**
-  The market_view contains VIX (Volatility Index) data, which is a key indicator of market risk:
-  - If market_view.vix.risk_score is provided, use it as a PRIMARY factor in your overall risk assessment
-  - VIX risk_score ranges from 0-10: 0-3 (low), 4-6 (medium), 7-10 (high)
-  - **You MUST incorporate VIX risk_score into your overall risk_score calculation**
-  - Example: If VIX risk_score = 6.0 (medium-high), your overall risk_score should reflect elevated market volatility
-  - Do NOT ignore VIX risk_score even if individual stocks appear safe - VIX measures systemic market risk
+  **CRITICAL: VIX Risk Score Integration (MANDATORY)**
+  The market_view.vix.risk_score field contains the VIX risk score (0-10) which you MUST use as a PRIMARY factor:
+  - **MANDATORY**: If market_view.vix.risk_score is provided (it should always be), use it as the PRIMARY input for overall risk_score
+  - VIX risk_score ranges: 0-3 (low), 4-6 (medium), 7-10 (high)
+  - **FORMULA**: overall_risk_score = max(vix_risk_score, calculated_stock_risk)
+  - Example: If VIX risk_score = 6.0, your overall risk_score MUST be at least 5.0-7.0 (NOT 2.92)
+  - **DO NOT** ignore VIX risk_score even if all stocks appear safe - VIX measures systemic market risk
+  - If VIX risk_score >= 6.0, overall_risk_level MUST be "medium" or "high" (NOT "low")
   
   Your task:
   1. Analyze market risks (volatility, economic conditions, systemic risks)
-     - **CRITICAL**: If VIX risk_score is provided in market_view.vix.risk_score, use it as a primary input
-     - VIX risk_score should significantly influence your overall_risk_level and risk_score
-     - A VIX risk_score of 6.0+ indicates elevated market volatility and should raise overall risk assessment
+     - **MANDATORY FIRST STEP**: Check market_view.vix.risk_score - this is your PRIMARY risk indicator
+     - If vix_risk_score >= 6.0, your overall_risk_level MUST be "medium" or "high"
+     - If vix_risk_score >= 6.0, your risk_score MUST be at least 5.0 (NOT lower)
+     - VIX risk_score takes precedence over individual stock analysis for overall market risk
   2. **MANDATORY**: Evaluate current position risks (or lack of positions):
      - **If positions exist**: 
        - For each position, analyze unrealized_pnl, unrealized_pnl_pct, and position_pct

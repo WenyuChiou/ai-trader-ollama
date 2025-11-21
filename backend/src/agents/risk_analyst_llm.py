@@ -121,9 +121,18 @@ def run_risk_analyst_llm(
             positions_str = "No positions and no portfolio value information available"
     
     # 格式化市场数据（简化）
+    # CRITICAL FIX: Extract VIX risk_score from market_json.vix.risk_score (forced by trading_cycle)
+    vix_data = market_json.get("vix", {})
+    vix_risk_score_from_market = None
+    if isinstance(vix_data, dict):
+        vix_risk_score_from_market = vix_data.get("risk_score")
+        if vix_risk_score_from_market is not None:
+            print(f"[RISK ANALYST] Found VIX risk_score in market_json: {vix_risk_score_from_market:.1f}")
+    
     market_summary = {
         "stocks_count": len(market_json.get("stocks", {})),
-        "vix": market_json.get("vix"),
+        "vix": vix_data,
+        "vix_risk_score": vix_risk_score_from_market,  # CRITICAL: Explicitly include VIX risk score
         "sample_stocks": list(market_json.get("stocks", {}).keys())[:5],
     }
     

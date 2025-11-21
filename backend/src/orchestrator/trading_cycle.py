@@ -1654,25 +1654,42 @@ def execute_daily_trade(
     # 传递discussion内容让Risk Analyst理解讨论中的风险信号
     previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]  # 限制长度
     
-    # CRITICAL FIX: Add VIX risk score to market_view for Risk Analyst
-    # Risk Analyst needs VIX risk score to properly assess overall market risk
+    # CRITICAL FIX: Force VIX risk score into market_view for Risk Analyst
+    # Risk Analyst MUST use VIX risk score - we force it here to ensure it's always available
     # We already calculated vix_risk_score_value earlier (line 490-518), add it to market_view
     market_view_for_risk = dict(market_view)  # Create a copy to avoid modifying original
+    
+    # CRITICAL: Force VIX risk score into market_view.vix structure
     if "vix" in market_view_for_risk:
         if isinstance(market_view_for_risk["vix"], dict):
             market_view_for_risk["vix"]["risk_score"] = vix_risk_score_value
+            # Also ensure level is present for context
+            if "level" not in market_view_for_risk["vix"]:
+                # Try to get from VIX data
+                vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+                if isinstance(vix_data_from_market, dict):
+                    market_view_for_risk["vix"]["level"] = vix_data_from_market.get("level")
         else:
-            # If vix is not a dict, create one
-            market_view_for_risk["vix"] = {"level": None, "risk_score": vix_risk_score_value}
+            # If vix is not a dict, create one with both level and risk_score
+            vix_level = None
+            vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+            if isinstance(vix_data_from_market, dict):
+                vix_level = vix_data_from_market.get("level")
+            market_view_for_risk["vix"] = {"level": vix_level, "risk_score": vix_risk_score_value}
     else:
-        # If vix doesn't exist, add it
-        market_view_for_risk["vix"] = {"risk_score": vix_risk_score_value}
+        # If vix doesn't exist, create it with risk_score
+        vix_level = None
+        vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+        if isinstance(vix_data_from_market, dict):
+            vix_level = vix_data_from_market.get("level")
+        market_view_for_risk["vix"] = {"level": vix_level, "risk_score": vix_risk_score_value}
     
     # Also add VIX risk score to discussion_risk_signals for additional context
     if discussion_risk_signals is None:
         discussion_risk_signals = {}
     discussion_risk_signals["vix_risk_score"] = vix_risk_score_value
-    print(f"[TRADING CYCLE] Added VIX risk score ({vix_risk_score_value:.1f}) to market_view and discussion_risk_signals for Risk Analyst")
+    discussion_risk_signals["vix_level"] = market_view_for_risk["vix"].get("level")
+    print(f"[TRADING CYCLE] FORCED VIX risk score ({vix_risk_score_value:.1f}) into market_view.vix.risk_score for Risk Analyst")
     
     # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
     # 传递空字典而不是None，这样 Risk Analyst 可以明确知道"没有持仓"的状态

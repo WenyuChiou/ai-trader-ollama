@@ -44,7 +44,7 @@ class ToolBox:
     def __init__(self):
         self._tools: Dict[str, Tool] = {}
         # market / sentiment
-        self.register(Tool("vix_term", self._vix_term_adapter, "Fetch ^VIX & ^VIX3M term structure"))
+        self.register(Tool("vix_term", self._vix_term_adapter, "Fetch ^VIX & ^VIX3M term structure with risk score (returns vix, vix3m, ratio, vix_risk_score 0-10, regime). Use vix_risk_score as primary factor for overall risk assessment."))
         self.register(Tool("vix_close", self._vix_close_adapter, "Fetch ^VIX close series (start,end)"))
         self.register(Tool("fear_greed", fetch_fear_greed, "Fetch Fear & Greed Index from https://feargreedmeter.com/ or CNN (returns value 0-100, label, date info)"))
         
@@ -189,9 +189,27 @@ class ToolBox:
     def _vix_term_adapter(self, **kwargs) -> Dict[str, Any]:
         """
         Adapter: vix_term_structure() does not accept any parameters, ignore all passed parameters.
+        Returns VIX data with risk_score included (same format as /api/vix/term API).
         """
         # Ignore all parameters, call function directly
-        return vix_term_structure()
+        vix_data = vix_term_structure()
+        
+        # CRITICAL FIX: Calculate and include vix_risk_score (same as /api/vix/term API)
+        # This allows agents to directly use the risk score without calling API
+        if vix_data:
+            from src.tools.sentiment_tools import vix_risk_score
+            vix_risk = vix_risk_score(vix_data)
+            vix_data["vix_risk_score"] = vix_risk
+            # Also add regime for consistency with API
+            ratio = vix_data.get("ratio", 0)
+            if ratio and ratio > 1:
+                vix_data["regime"] = "contango"
+            elif ratio and ratio < 1:
+                vix_data["regime"] = "backwardation"
+            else:
+                vix_data["regime"] = "flat"
+        
+        return vix_data
 
     def _vix_close_adapter(self, **kwargs) -> Any:
         """

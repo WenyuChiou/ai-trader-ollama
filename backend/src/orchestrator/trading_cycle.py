@@ -486,7 +486,7 @@ def execute_daily_trade(
     
     # CRITICAL FIX: Calculate VIX risk score and add to convo for trader_agent
     # trader_agent expects vix_risk in convo, but it's not calculated by multi_analyst_system
-    # We need to calculate it from market_view and add it to convo
+    # Note: Agents can now use vix_term tool to get vix_risk_score directly, but we still calculate it here for trader_agent
     vix_risk_score_value = 4.0  # Default value
     try:
         from src.tools.sentiment_tools import vix_term_structure, vix_risk_score
@@ -515,7 +515,7 @@ def execute_daily_trade(
     if not isinstance(convo, dict):
         convo = {}
     convo["vix_risk"] = vix_risk_score_value
-    print(f"[TRADING CYCLE] Added vix_risk={vix_risk_score_value:.1f} to convo for trader_agent")
+    print(f"[TRADING CYCLE] Added vix_risk={vix_risk_score_value:.1f} to convo for trader_agent (agents can also use vix_term tool to get this directly)")
     
     # CRITICAL FIX: Extract recommended stocks from Market Analyst LLM output in multi_analyst_system
     # Prefer LLM recommendations, use fallback if not available

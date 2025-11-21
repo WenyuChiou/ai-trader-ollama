@@ -3123,6 +3123,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start_api_task_scheduler.ps1
 scripts\start_api_service_admin.bat
 ```
 
+**Note**: If you encounter issues with Windows Service (e.g., service won't start, shows "Paused" status), see [`docs/WINDOWS_SERVICE_TROUBLESHOOTING.md`](docs/WINDOWS_SERVICE_TROUBLESHOOTING.md) for troubleshooting guide. **Task Scheduler (Option A) is recommended as it's simpler and more reliable.**
+
 **Option C: Development Mode (Requires window open)**
 
 **With Virtual Environment** (Recommended):

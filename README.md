@@ -3614,6 +3614,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 | `docs/DATA_STORAGE_GUIDE.md` | Data storage locations and formats |
 | `docs/QUICK_SETUP_GUIDE.md` | **Quick setup guide for background running & backup** ⭐ |
 | `docs/BACKUP_GUIDE.md` | **Complete backup and restore guide** ⭐ |
+| `docs/BACKGROUND_RUNNING_GUIDE.md` | **Background running guide (Task Scheduler / Windows Service)** ⭐ |
+| `docs/WINDOWS_SERVICE_TROUBLESHOOTING.md` | **Windows Service troubleshooting guide** ⭐ |
 | `docs/LONG_TERM_RUNNING_GUIDE.md` | Long-term operation guide |
 | **[Key Test Files](docs/KEY_TEST_FILES.md)** | Critical test files and priority guide ⭐ |
 | **[Order Data Schema](docs/ORDER_DATA_SCHEMA.md)** | Standardized order data structure for performance analysis |

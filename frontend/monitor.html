@@ -2827,14 +2827,19 @@
         // Record equity to backend (only during market hours)
         async function recordEquityToBackend(equityData) {
             // CRITICAL: Check if market is open, do not record after market close
+            // This prevents recording with N/A prices that cause chart display issues
             try {
                 const marketOpen = await isMarketOpen(true, true); // Use cache, silent mode
                 if (!marketOpen) {
-                    return; // Market closed, do not record
+                    console.log('[Equity Record] Market is closed, skipping equity recording (will resume at next market open)');
+                    return; // Don't record when market is closed
                 }
             } catch (err) {
                 console.warn('[Equity Record] Failed to check market status:', err.message);
-                // If check fails, continue recording (fallback)
+                // CRITICAL: If check fails, skip recording to prevent data corruption
+                // Better to skip than record with invalid data
+                console.log('[Equity Record] Market status check failed, skipping recording for safety');
+                return;
             }
             
             try {

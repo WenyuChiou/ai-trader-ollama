@@ -3683,14 +3683,24 @@
             let autoTradeErrorCount = 0;
             const MAX_AUTO_TRADE_ERRORS = 3;  // Stop auto-trade after 3 consecutive errors
             
+            // CRITICAL: Auto-trade execution function
+            // 自动交易执行函数
+            // Rules:
+            // 1. Only execute during market hours (9:30 AM - 4:00 PM ET)
+            // 2. Execute every 30 minutes (enforced by setInterval)
+            // 3. Skip if manual trade is executing
+            // 规则：
+            // 1. 只在交易时间内执行（美东时间 9:30 AM - 4:00 PM）
+            // 2. 每30分钟执行一次（由 setInterval 强制执行）
+            // 3. 如果手动交易正在执行，跳过
             async function smartAutoTrade() {
+                // Guard 1: Skip if previous auto-trade is still running
                 if (smartAutoTradeBusy) {
-                    // Skip if a previous run is still in progress
                     console.log('[Auto Trade] Previous auto-trade still running, skipping...');
                     return;
                 }
                 
-                // CRITICAL FIX: Check if manual trade is executing, skip if so
+                // Guard 2: Skip if manual trade is executing (manual trade has priority)
                 if (isTradingExecuting) {
                     console.log('[Auto Trade] Manual trade is executing, skipping auto-trade...');
                     return;
@@ -3698,33 +3708,39 @@
                 
                 smartAutoTradeBusy = true;
                 try {
-                    // Use cache for auto-trade checks to reduce API load
+                    // CRITICAL CHECK 1: Verify market is open (required condition)
+                    // 关键检查1：验证市场是否开放（必要条件）
                     const isOpen = await isMarketOpen(true, true);
                     
                     if (isOpen) {
-                        // Trading hours: execute trade cycle
-                        console.log('[Auto Trade] Market is open, executing trade cycle...');
+                        // Condition 1 met: Market is open
+                        // 条件1满足：市场开放
+                        console.log('[Auto Trade] ✓ Market is open, executing trade cycle...');
                         updateAutoTradeStatus('Trading Hours Running');
+                        
                         try {
-                            // CRITICAL FIX: Pass isManualTrigger=false for auto-trade
+                            // Execute trade cycle (isManualTrigger=false for auto-trade)
+                            // 执行交易周期（isManualTrigger=false 表示自动交易）
                             await executeTradeCycle(false);
-                            console.log('[Auto Trade] Trade cycle completed successfully');
+                            console.log('[Auto Trade] ✓ Trade cycle completed successfully');
                             
                             // Reset error count on success
                             autoTradeErrorCount = 0;
                             
-                            // Update next execution time after successful execution
+                            // CRITICAL: Update next execution time (30 minutes from now)
+                            // 关键：更新下次执行时间（从现在起30分钟后）
                             const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
                             nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
-                            saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
+                            saveNextAutoTradeTime();
                             updateNextTradeTime();
+                            console.log(`[Auto Trade] Next execution scheduled: ${new Date(nextAutoTradeTime).toLocaleString()}`);
                         } catch (e) {
                             autoTradeErrorCount++;
-                            console.error('[Auto Trade] Error during trade cycle:', e);
+                            console.error('[Auto Trade] ✗ Error during trade cycle:', e);
                             console.error('[Auto Trade] Error details:', e.message, e.stack);
                             console.error(`[Auto Trade] Error count: ${autoTradeErrorCount}/${MAX_AUTO_TRADE_ERRORS}`);
                             
-                            // CRITICAL FIX: Stop auto-trade if too many consecutive errors
+                            // Stop auto-trade if too many consecutive errors
                             if (autoTradeErrorCount >= MAX_AUTO_TRADE_ERRORS) {
                                 console.error('[Auto Trade] Too many consecutive errors, stopping auto-trade');
                                 updateAutoTradeStatus(`Error - Stopped (${autoTradeErrorCount} failures)`);
@@ -3732,26 +3748,27 @@
                                     clearInterval(tradeCheckTimer);
                                     tradeCheckTimer = null;
                                 }
-                                // Reset error count after stopping
                                 autoTradeErrorCount = 0;
                             } else {
-                                // Continue even if failed, retry next time
                                 updateAutoTradeStatus(`Error - Will Retry (${autoTradeErrorCount}/${MAX_AUTO_TRADE_ERRORS})`);
                             }
                         }
                     } else {
-                        // Non-trading hours: stop auto-trade (only manual trigger allowed)
-                        // Note: Market status monitor will handle stopping/starting automatically
-                        console.log('[Auto Trade] Market is closed, skipping auto-trade');
+                        // Condition 1 not met: Market is closed
+                        // 条件1不满足：市场关闭
+                        console.log('[Auto Trade] ✗ Market is closed, skipping auto-trade (manual trigger still available)');
                         updateAutoTradeStatus('Market Closed - Manual Only');
+                        
                         // Stop the timer when market is closed (monitor will restart when market opens)
+                        // 市场关闭时停止定时器（监控器会在市场开放时重新启动）
                         if (tradeCheckTimer) {
                             clearInterval(tradeCheckTimer);
                             tradeCheckTimer = null;
+                            console.log('[Auto Trade] Timer stopped (market closed)');
                         }
                     }
                 } catch (e) {
-                    console.error('[Auto Trade] Error checking market status:', e);
+                    console.error('[Auto Trade] ✗ Error checking market status:', e);
                     console.error('[Auto Trade] Error details:', e.message, e.stack);
                     updateAutoTradeStatus('Status Detection Failed');
                     // If unable to check market status, assume market is closed and stop auto-trade
@@ -3766,20 +3783,33 @@
             // 市场状态监控器 - 每分钟检查一次，根据市场状态启动/停止自动交易
             let marketStatusCheckTimer = null;
             
+            // CRITICAL: Market status monitor - checks every minute and manages auto-trade
+            // 关键：市场状态监控器 - 每分钟检查一次并管理自动交易
+            // This function ensures:
+            // 1. Auto-trade only runs during market hours
+            // 2. Auto-trade executes every 30 minutes (enforced by setInterval)
+            // 此函数确保：
+            // 1. 自动交易只在交易时间内运行
+            // 2. 自动交易每30分钟执行一次（由 setInterval 强制执行）
             async function checkMarketStatusAndToggleAutoTrade() {
                 try {
-                    // Use cache for status check to reduce API load
+                    // Check market status (use cache to reduce API load)
+                    // 检查市场状态（使用缓存减少API负载）
                     const isOpen = await isMarketOpen(true, true);
                     
                     if (isOpen) {
-                        // Market is open: ensure auto-trade is running
+                        // Condition 1: Market is open - ensure auto-trade timer is running
+                        // 条件1：市场开放 - 确保自动交易定时器正在运行
                         if (!tradeCheckTimer) {
-                            console.log('[Auto Trade] Market opened, starting auto-trade');
-                            // Trading hours: execute trade cycle every 30 minutes
+                            console.log('[Auto Trade] Market opened, starting auto-trade timer');
+                            // CRITICAL: Set interval to 30 minutes (enforced interval)
+                            // 关键：设置间隔为30分钟（强制间隔）
                             const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
                             
-                            // Start the auto-trade timer
+                            // Start the auto-trade timer (executes smartAutoTrade every 30 minutes)
+                            // 启动自动交易定时器（每30分钟执行 smartAutoTrade）
                             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
+                            console.log(`[Auto Trade] Timer started: executes every ${TRADING_INTERVAL / 60000} minutes`);
                             
                             // Set next execution time
                             if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {

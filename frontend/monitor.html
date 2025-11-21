@@ -3680,6 +3680,9 @@
             // Non-trading hours: manual analysis only (no trading)
             // Concurrency guard to avoid overlapping executions (prevents timeout storms)
             let smartAutoTradeBusy = false;
+            let autoTradeErrorCount = 0;
+            const MAX_AUTO_TRADE_ERRORS = 3;  // Stop auto-trade after 3 consecutive errors
+            
             async function smartAutoTrade() {
                 if (smartAutoTradeBusy) {
                     // Skip if a previous run is still in progress
@@ -3706,17 +3709,35 @@
                             // CRITICAL FIX: Pass isManualTrigger=false for auto-trade
                             await executeTradeCycle(false);
                             console.log('[Auto Trade] Trade cycle completed successfully');
+                            
+                            // Reset error count on success
+                            autoTradeErrorCount = 0;
+                            
                             // Update next execution time after successful execution
                             const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
                             nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
                             saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
                             updateNextTradeTime();
                         } catch (e) {
+                            autoTradeErrorCount++;
                             console.error('[Auto Trade] Error during trade cycle:', e);
                             console.error('[Auto Trade] Error details:', e.message, e.stack);
-                            // Continue even if failed, retry next time
-                            // But log the error for debugging
-                            updateAutoTradeStatus('Error - Will Retry');
+                            console.error(`[Auto Trade] Error count: ${autoTradeErrorCount}/${MAX_AUTO_TRADE_ERRORS}`);
+                            
+                            // CRITICAL FIX: Stop auto-trade if too many consecutive errors
+                            if (autoTradeErrorCount >= MAX_AUTO_TRADE_ERRORS) {
+                                console.error('[Auto Trade] Too many consecutive errors, stopping auto-trade');
+                                updateAutoTradeStatus(`Error - Stopped (${autoTradeErrorCount} failures)`);
+                                if (tradeCheckTimer) {
+                                    clearInterval(tradeCheckTimer);
+                                    tradeCheckTimer = null;
+                                }
+                                // Reset error count after stopping
+                                autoTradeErrorCount = 0;
+                            } else {
+                                // Continue even if failed, retry next time
+                                updateAutoTradeStatus(`Error - Will Retry (${autoTradeErrorCount}/${MAX_AUTO_TRADE_ERRORS})`);
+                            }
                         }
                     } else {
                         // Non-trading hours: stop auto-trade (only manual trigger allowed)
@@ -3763,8 +3784,29 @@
                             // Set next execution time
                             if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
                                 // Use saved time (restored after page refresh)
-                                updateAutoTradeStatus('Active');
-                                startNextTradeCountdown();
+                                // CRITICAL FIX: Check if saved time is reasonable (not more than 30 minutes)
+                                const timeUntilNext = nextAutoTradeTime - Date.now();
+                                const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
+                                
+                                // If saved time is more than 30 minutes away, it's likely stale, execute immediately
+                                if (timeUntilNext > TRADING_INTERVAL) {
+                                    console.log('[Auto Trade] Saved time is stale (>30min), executing immediately');
+                                    nextAutoTradeTime = Date.now() + 2000;
+                                    saveNextAutoTradeTime();
+                                    setTimeout(() => {
+                                        if (tradeCheckTimer) {
+                                            console.log('[Auto Trade] Executing first auto-trade cycle');
+                                            smartAutoTrade();
+                                        }
+                                    }, 2000);
+                                    updateAutoTradeStatus('Active - Starting...');
+                                    startNextTradeCountdown();
+                                } else {
+                                    // Use saved time (valid and reasonable)
+                                    console.log(`[Auto Trade] Using saved time: ${new Date(nextAutoTradeTime).toLocaleString()}`);
+                                    updateAutoTradeStatus('Active');
+                                    startNextTradeCountdown();
+                                }
                             } else {
                                 // Start immediately (2 seconds after initialization)
                                 nextAutoTradeTime = Date.now() + 2000;
@@ -3788,8 +3830,10 @@
                         if (tradeCheckTimer) {
                             console.log('[Auto Trade] Market closed, stopping auto-trade');
                             clearInterval(tradeCheckTimer);
-                            tradeCheckTimer = null;
+                            tradeCheckTimer = null;  // CRITICAL: Ensure variable is reset
                             updateAutoTradeStatus('Market Closed - Manual Only');
+                            // Reset error count when market closes (normal state change)
+                            autoTradeErrorCount = 0;
                         } else {
                             // Already stopped, just update status
                             updateAutoTradeStatus('Market Closed - Manual Only');

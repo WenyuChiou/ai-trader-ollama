@@ -1654,13 +1654,33 @@ def execute_daily_trade(
     # 传递discussion内容让Risk Analyst理解讨论中的风险信号
     previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]  # 限制长度
     
+    # CRITICAL FIX: Add VIX risk score to market_view for Risk Analyst
+    # Risk Analyst needs VIX risk score to properly assess overall market risk
+    # We already calculated vix_risk_score_value earlier (line 490-518), add it to market_view
+    market_view_for_risk = dict(market_view)  # Create a copy to avoid modifying original
+    if "vix" in market_view_for_risk:
+        if isinstance(market_view_for_risk["vix"], dict):
+            market_view_for_risk["vix"]["risk_score"] = vix_risk_score_value
+        else:
+            # If vix is not a dict, create one
+            market_view_for_risk["vix"] = {"level": None, "risk_score": vix_risk_score_value}
+    else:
+        # If vix doesn't exist, add it
+        market_view_for_risk["vix"] = {"risk_score": vix_risk_score_value}
+    
+    # Also add VIX risk score to discussion_risk_signals for additional context
+    if discussion_risk_signals is None:
+        discussion_risk_signals = {}
+    discussion_risk_signals["vix_risk_score"] = vix_risk_score_value
+    print(f"[TRADING CYCLE] Added VIX risk score ({vix_risk_score_value:.1f}) to market_view and discussion_risk_signals for Risk Analyst")
+    
     # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
     # 传递空字典而不是None，这样 Risk Analyst 可以明确知道"没有持仓"的状态
     risk_report = run_risk_analyst_llm(
-        market_json=market_view,
+        market_json=market_view_for_risk,  # CRITICAL FIX: Use market_view with VIX risk score
         current_positions=current_positions_info,  # 传递空字典{}而不是None，表示"没有持仓"的状态
         portfolio_value=portfolio_value,  # 即使没有持仓，也要传递组合净值
-        discussion_risk_signals=discussion_risk_signals,
+        discussion_risk_signals=discussion_risk_signals,  # CRITICAL FIX: Includes vix_risk_score
         previous_discussion=previous_discussion_text,
         use_tools=auto_tools,  # 与discussion使用相同的tool设置
     )

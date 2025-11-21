@@ -2126,6 +2126,14 @@ Get-ScheduledTaskInfo -TaskName "AITraderAPI"
 .\scripts\check_api_status.ps1
 ```
 
+**方法 2: Windows Service（需要 NSSM）**
+```powershell
+# 右键点击并以管理员身份运行：
+scripts\start_api_service_admin.bat
+```
+
+**注意**: 如果遇到 Windows Service 问题（例如服务无法启动、显示"Paused"状态），请参阅 [`docs/WINDOWS_SERVICE_TROUBLESHOOTING.md`](docs/WINDOWS_SERVICE_TROUBLESHOOTING.md) 故障排除指南。**推荐使用 Task Scheduler（方法 1），因为它更简单可靠。**
+
 #### 步骤 2: 设置每日备份
 
 ```powershell

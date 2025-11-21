@@ -3741,32 +3741,29 @@
                             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
                             
                             // Set next execution time
-                            // CRITICAL FIX: 如果已经有保存的时间，使用保存的时间；否则根据情况设置
+                            // CRITICAL FIX: 市场开放时自动开始，不需要等待手动交易
                             if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
                                 // 使用已保存的时间（页面刷新后恢复）
                                 updateAutoTradeStatus('Active');
                                 startNextTradeCountdown();
-                            } else if (hasManualTradeExecuted()) {
-                                // CRITICAL FIX: 如果手动交易已执行，但 nextAutoTradeTime 不存在或已过期，才设置新时间
-                                // 如果 nextAutoTradeTime 存在但已过期，说明应该立即执行，不需要重置
-                                if (!nextAutoTradeTime || nextAutoTradeTime <= Date.now()) {
-                                    // 只有在没有有效时间时才设置新时间
-                                    nextAutoTradeTime = Date.now() + TRADING_INTERVAL;
-                                    saveNextAutoTradeTime(); // CRITICAL FIX: 保存到 localStorage
-                                } else {
-                                    // 时间仍然有效，使用现有时间
-                                }
-                                updateAutoTradeStatus('Active');
-                                startNextTradeCountdown();
                             } else {
-                                // Wait for first manual trade
-                                // CRITICAL FIX: 只有在确实没有手动交易时才清除时间
-                                // 如果 nextAutoTradeTime 存在且有效，保留它（可能是从之前的会话恢复的）
+                                // CRITICAL FIX: 市场开放时立即开始自动交易
+                                // 立即执行第一次自动交易（如果时间已过期或不存在）
                                 if (!nextAutoTradeTime || nextAutoTradeTime <= Date.now()) {
-                                    nextAutoTradeTime = null;
-                                    saveNextAutoTradeTime(); // CRITICAL FIX: Clear localStorage
+                                    // 设置立即执行（2秒后，给页面时间初始化）
+                                    nextAutoTradeTime = Date.now() + 2000;
+                                    saveNextAutoTradeTime();
+                                    console.log('[Auto Trade] Market is open, starting auto-trade immediately');
+                                    // 立即触发第一次自动交易
+                                    setTimeout(() => {
+                                        if (tradeCheckTimer) {
+                                            console.log('[Auto Trade] Executing first auto-trade cycle');
+                                            smartAutoTrade();
+                                        }
+                                    }, 2000);
                                 }
-                                updateAutoTradeStatus('Waiting for First Manual Trade');
+                                updateAutoTradeStatus('Active - Starting...');
+                                startNextTradeCountdown();
                             }
                         } else {
                         }

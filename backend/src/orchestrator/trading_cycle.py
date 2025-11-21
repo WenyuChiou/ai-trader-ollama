@@ -484,6 +484,39 @@ def execute_daily_trade(
     )
     final_stance = convo.get("final_stance", "neutral")
     
+    # CRITICAL FIX: Calculate VIX risk score and add to convo for trader_agent
+    # trader_agent expects vix_risk in convo, but it's not calculated by multi_analyst_system
+    # We need to calculate it from market_view and add it to convo
+    vix_risk_score_value = 4.0  # Default value
+    try:
+        from src.tools.sentiment_tools import vix_term_structure, vix_risk_score
+        # Try to get VIX data from market_view first
+        vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+        if vix_data_from_market and isinstance(vix_data_from_market, dict):
+            # Extract VIX level from market_view
+            vix_level = vix_data_from_market.get("level")
+            if vix_level is not None and not (isinstance(vix_level, float) and (vix_level != vix_level)):  # Check for NaN
+                # Create a dict in the format expected by vix_risk_score
+                vix_dict = {"vix": vix_level}
+                vix_risk_score_value = vix_risk_score(vix_dict)
+                print(f"[TRADING CYCLE] Calculated VIX risk score from market_view: VIX={vix_level:.2f} -> risk_score={vix_risk_score_value:.1f}")
+        else:
+            # Fallback: fetch VIX data directly
+            vix_data = vix_term_structure()
+            if vix_data and vix_data.get("vix"):
+                vix_risk_score_value = vix_risk_score(vix_data)
+                print(f"[TRADING CYCLE] Calculated VIX risk score from vix_term_structure: VIX={vix_data.get('vix'):.2f} -> risk_score={vix_risk_score_value:.1f}")
+            else:
+                print(f"[TRADING CYCLE] ⚠️  VIX data not available, using default risk score: {vix_risk_score_value:.1f}")
+    except Exception as e:
+        print(f"[TRADING CYCLE] ⚠️  Failed to calculate VIX risk score: {e}, using default: {vix_risk_score_value:.1f}")
+    
+    # Add vix_risk to convo so trader_agent can access it
+    if not isinstance(convo, dict):
+        convo = {}
+    convo["vix_risk"] = vix_risk_score_value
+    print(f"[TRADING CYCLE] Added vix_risk={vix_risk_score_value:.1f} to convo for trader_agent")
+    
     # CRITICAL FIX: Extract recommended stocks from Market Analyst LLM output in multi_analyst_system
     # Prefer LLM recommendations, use fallback if not available
     # CRITICAL FIX: Filter out ETFs and invalid symbols from recommended stocks

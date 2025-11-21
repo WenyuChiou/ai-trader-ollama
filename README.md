@@ -3013,6 +3013,34 @@ Register-ScheduledTask -TaskName "AITrader-ConnectionMonitor" -Action $Action -T
 
 ## 🚀 Running the System
 
+### ⚠️ Important: Closing Window Safety
+
+**Question**: If I accidentally close the window, will the system stop?
+
+**Answer**: It depends on how you started the API:
+
+| Startup Method | Impact of Closing Window | Background Running |
+|---------------|-------------------------|-------------------|
+| **Development Mode** (Manual) | ❌ **Will Stop** | ❌ No |
+| **Task Scheduler** | ✅ **Won't Stop** | ✅ Yes |
+| **Windows Service** | ✅ **Won't Stop** | ✅ Yes |
+
+**Quick Check**:
+```powershell
+# Check if it's safe to close window
+.\scripts\check_window_safety.ps1
+```
+
+**If unsafe**: Setup background running:
+```powershell
+# Right-click and run as administrator:
+scripts\start_api_task_admin.bat
+```
+
+**See**: [`docs/BACKGROUND_RUNNING_GUIDE.md`](docs/BACKGROUND_RUNNING_GUIDE.md) for complete guide.
+
+---
+
 ### 🎯 Quick Start: Background Running & Backup Setup
 
 **For first-time users, follow these steps in order:**

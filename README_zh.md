@@ -2067,6 +2067,34 @@ Register-ScheduledTask -TaskName "AITrader-ConnectionMonitor" -Action $Action -T
 
 ## 🚀 运行系统
 
+### ⚠️ 重要：关闭窗口安全性
+
+**问题**：如果我意外关闭窗口，系统会停止吗？
+
+**答案**：取决于您如何启动 API：
+
+| 启动方式 | 关闭窗口的影响 | 后台运行 |
+|---------|--------------|---------|
+| **开发模式**（手动启动） | ❌ **会停止** | ❌ 否 |
+| **Task Scheduler**（任务计划程序） | ✅ **不会停止** | ✅ 是 |
+| **Windows Service**（Windows 服务） | ✅ **不会停止** | ✅ 是 |
+
+**快速检查**：
+```powershell
+# 检查是否可以安全关闭窗口
+.\scripts\check_window_safety.ps1
+```
+
+**如果不安全**：设置后台运行：
+```powershell
+# 右键点击并以管理员身份运行：
+scripts\start_api_task_admin.bat
+```
+
+**详细说明**：请参阅 [`docs/BACKGROUND_RUNNING_GUIDE.md`](docs/BACKGROUND_RUNNING_GUIDE.md) 完整指南。
+
+---
+
 ### 🎯 快速开始：后台运行和备份设置
 
 **首次使用的用户，请按以下步骤操作：**

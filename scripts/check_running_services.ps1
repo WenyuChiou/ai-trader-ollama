@@ -3,6 +3,50 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "检查正在运行的服务" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "⚠️  重要：检查关闭窗口是否会影响 API 运行" -ForegroundColor Yellow
+Write-Host ""
+
+# 0. 检查后台运行方式（Task Scheduler / Windows Service）
+Write-Host "[0] 后台运行方式检查:" -ForegroundColor Yellow
+$task = Get-ScheduledTask -TaskName "AITraderAPI" -ErrorAction SilentlyContinue
+$service = Get-Service -Name "AITraderAPI" -ErrorAction SilentlyContinue
+
+$backgroundRunning = $false
+if ($task) {
+    $taskInfo = Get-ScheduledTaskInfo -TaskName "AITraderAPI" -ErrorAction SilentlyContinue
+    Write-Host "  ✅ 使用 Task Scheduler 运行" -ForegroundColor Green
+    Write-Host "    任务状态: $($task.State)" -ForegroundColor Gray
+    if ($taskInfo) {
+        Write-Host "    最后运行时间: $($taskInfo.LastRunTime)" -ForegroundColor Gray
+        Write-Host "    下次运行时间: $($taskInfo.NextRunTime)" -ForegroundColor Gray
+    }
+    Write-Host "    ✅ 关闭窗口: 不会停止（后台运行）" -ForegroundColor Green
+    $backgroundRunning = $true
+} else {
+    Write-Host "  ⚠️  未使用 Task Scheduler" -ForegroundColor Yellow
+}
+
+if ($service) {
+    Write-Host "  ✅ 使用 Windows Service 运行" -ForegroundColor Green
+    Write-Host "    服务状态: $($service.Status)" -ForegroundColor Gray
+    Write-Host "    ✅ 关闭窗口: 不会停止（后台运行）" -ForegroundColor Green
+    $backgroundRunning = $true
+} else {
+    Write-Host "  ⚠️  未使用 Windows Service" -ForegroundColor Yellow
+}
+
+if (-not $backgroundRunning) {
+    Write-Host ""
+    Write-Host "  ⚠️  警告：当前可能是开发模式" -ForegroundColor Red
+    Write-Host "     ❌ 关闭窗口可能会停止 API" -ForegroundColor Red
+    Write-Host "     💡 建议：使用 Task Scheduler 设置后台运行" -ForegroundColor Yellow
+    Write-Host "        运行: scripts\start_api_task_admin.bat" -ForegroundColor Cyan
+} else {
+    Write-Host ""
+    Write-Host "  ✅ 安全：可以关闭窗口，API 会继续运行" -ForegroundColor Green
+}
+
+Write-Host ""
 
 # 1. 检查 uvicorn (后端 API 服务器)
 Write-Host "[1] 后端 API 服务器 (uvicorn):" -ForegroundColor Yellow

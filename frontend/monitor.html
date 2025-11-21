@@ -14120,73 +14120,23 @@
             // Start order check (trading hours)
             startOrderCheck();
             
-            // Auto Trade automatic management: automatically enable/disable based on market status
-            // No longer depends on checkbox, system automatically detects market status and manages
-            async function checkAndManageAutoTrade() {
-                // Skip auto-trade management in read-only mode
-                if (window.READ_ONLY_MODE) {
-                    return;
-                }
-                
-                try {
-                    const isOpen = await isMarketOpen();
-                    
-                    if (isOpen) {
-                        // Trading hours: if Auto Trade is not running, start it
-                        // CRITICAL FIX: Add additional check to prevent duplicate starts
-                        if (!tradeCheckTimer && !isTradingExecuting) {
-                            console.log('[Auto Refresh] Market is open, starting Auto Trade...');
-                            startAutoTrade();
-                        } else if (tradeCheckTimer) {
-                            console.log('[Auto Refresh] Auto Trade already running, skipping start');
-                        }
-                    } else {
-                        // Non-trading hours: stop auto-trade (manual only)
-                        if (tradeCheckTimer) {
-                            console.log('[Auto Refresh] Market is closed, stopping Auto Trade (manual only)');
-                            stopAutoTrade();
-                            updateAutoTradeStatus('Market Closed - Manual Only');
-                        }
-                    }
-                    
-                    lastMarketStatus = isOpen;
-                } catch (e) {
-                    console.warn('[Auto Refresh] Error checking market status for Auto Trade:', e);
-                }
-            }
+            // CRITICAL: Auto-trade is now managed by checkMarketStatusAndToggleAutoTrade()
+            // This function runs every minute and handles all auto-trade logic
+            // We keep this section for backward compatibility but it's now redundant
+            // 关键：自动交易现在由 checkMarketStatusAndToggleAutoTrade() 管理
+            // 此函数每分钟运行一次，处理所有自动交易逻辑
+            // 我们保留此部分以保持向后兼容，但现在它是冗余的
             
-            // Check immediately once
-            checkAndManageAutoTrade();
-            
-            // Market status monitoring: check every 30 seconds, automatically manage Auto Trade
-            if (marketStatusMonitorTimer) {
-                clearInterval(marketStatusMonitorTimer);
-            }
-            marketStatusMonitorTimer = setInterval(async () => {
-                try {
-                    // Use cache for status monitoring to reduce API load
-                    const isOpen = await isMarketOpen(true, true);
-                    
-                    // If market transitions from closed to open, and Auto Trade is not running, start it
-                    // CRITICAL FIX: Add additional check to prevent duplicate starts
-                    if (isOpen && lastMarketStatus === false && !tradeCheckTimer && !isTradingExecuting) {
-                        console.log('[Auto Refresh] Market transitioned from closed to open, starting Auto Trade...');
-                        startAutoTrade();
-                    } else if (isOpen && lastMarketStatus === false && tradeCheckTimer) {
-                        console.log('[Auto Refresh] Market opened but Auto Trade already running, skipping start');
-                    }
-                    // If market transitions from open to closed, stop auto-trade
-                    if (!isOpen && lastMarketStatus === true && tradeCheckTimer) {
-                        console.log('[Auto Refresh] Market transitioned from open to closed, stopping Auto Trade...');
-                        stopAutoTrade();
-                        updateAutoTradeStatus('Market Closed - Manual Only');
-                    }
-                    
-                    lastMarketStatus = isOpen;
-                } catch (e) {
-                    // Silently handle error
-                }
-            }, 30000);  // Check every 30 seconds
+            // REMOVED: Duplicate auto-trade management logic
+            // The main auto-trade management is handled by checkMarketStatusAndToggleAutoTrade()
+            // which runs every minute and ensures:
+            // 1. Auto-trade only runs during market hours
+            // 2. Auto-trade executes every 30 minutes
+            // 已移除：重复的自动交易管理逻辑
+            // 主要的自动交易管理由 checkMarketStatusAndToggleAutoTrade() 处理
+            // 它每分钟运行一次，确保：
+            // 1. 自动交易只在交易时间内运行
+            // 2. 自动交易每30分钟执行一次
             
             // Agent status check (5 seconds) - always active
             startAgentStatusCheck();

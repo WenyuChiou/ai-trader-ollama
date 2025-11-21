@@ -290,26 +290,49 @@ class EquityTracker:
         
         # CRITICAL FIX: Ensure positions record includes current_price and market_value for all positions
         # This ensures data consistency and enables proper chart display
+        # CRITICAL: If current_price is missing or N/A, use avg_cost as fallback to prevent market_value = 0
         positions_record = {}
         for symbol, pos_info in positions.items():
             if isinstance(pos_info, dict):
-                # Include all position details, ensuring current_price and market_value are present
+                quantity = pos_info.get("quantity", 0)
+                avg_cost = pos_info.get("avg_cost", 0)
+                total_cost = pos_info.get("total_cost", avg_cost * quantity if avg_cost > 0 else 0)
+                
+                # CRITICAL FIX: Ensure current_price is always present (use avg_cost as fallback if missing)
+                current_price = pos_info.get("current_price")
+                if current_price is None or current_price == "N/A" or current_price == 0:
+                    # Use avg_cost as fallback to prevent market_value = 0
+                    current_price = avg_cost
+                    print(f"[EQUITY] Position {symbol} missing current_price, using avg_cost=${avg_cost:.2f} as fallback")
+                
+                # CRITICAL FIX: Ensure market_value is always calculated (never 0 if we have quantity and price)
+                market_value = pos_info.get("market_value", 0)
+                if market_value == 0 and quantity > 0 and current_price > 0:
+                    market_value = quantity * current_price
+                    print(f"[EQUITY] Recalculated market_value for {symbol}: {quantity} * ${current_price:.2f} = ${market_value:.2f}")
+                
+                # Include all position details
                 positions_record[symbol] = {
-                    "quantity": pos_info.get("quantity", 0),
-                    "avg_cost": pos_info.get("avg_cost", 0),
-                    "total_cost": pos_info.get("total_cost", pos_info.get("avg_cost", 0) * pos_info.get("quantity", 0)),
-                    "cost_basis": pos_info.get("cost_basis", pos_info.get("total_cost", 0)),
+                    "quantity": quantity,
+                    "avg_cost": avg_cost,
+                    "total_cost": total_cost,
+                    "cost_basis": pos_info.get("cost_basis", total_cost),
+                    "current_price": current_price,  # Always include (never None/N/A)
+                    "market_value": market_value,  # Always include (never 0 if quantity > 0)
                 }
                 
-                # Include price information if available
-                if "current_price" in pos_info:
-                    positions_record[symbol]["current_price"] = pos_info["current_price"]
-                if "market_value" in pos_info:
-                    positions_record[symbol]["market_value"] = pos_info["market_value"]
+                # Include additional fields if available
                 if "unrealized_pnl" in pos_info:
                     positions_record[symbol]["unrealized_pnl"] = pos_info["unrealized_pnl"]
+                elif quantity > 0 and current_price > 0 and avg_cost > 0:
+                    # Calculate unrealized P&L if missing
+                    positions_record[symbol]["unrealized_pnl"] = (current_price - avg_cost) * quantity
+                
                 if "unrealized_pnl_pct" in pos_info:
                     positions_record[symbol]["unrealized_pnl_pct"] = pos_info["unrealized_pnl_pct"]
+                elif avg_cost > 0:
+                    # Calculate unrealized P&L % if missing
+                    positions_record[symbol]["unrealized_pnl_pct"] = ((current_price - avg_cost) / avg_cost * 100.0) if avg_cost > 0 else 0.0
             else:
                 # Fallback: if pos_info is not a dict, preserve as-is
                 positions_record[symbol] = pos_info

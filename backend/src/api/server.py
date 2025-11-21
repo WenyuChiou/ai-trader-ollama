@@ -1201,6 +1201,9 @@ async def record_equity(equity_data: dict):
     
     CRITICAL: Ensure positions_detail is included with current_price and market_value
     If positions_detail is missing or incomplete, backend will fetch real-time prices
+    
+    NOTE: Market closed check is handled in equity_tracker.record_daily_equity()
+    This endpoint will still accept requests but equity_tracker will skip recording if market is closed
     """
     try:
         from src.data.equity_tracker import EquityTracker
@@ -1208,6 +1211,23 @@ async def record_equity(equity_data: dict):
         
         logs_dir = _get_project_logs_dir()
         equity_tracker = EquityTracker(root=str(logs_dir))
+        
+        # CRITICAL: Check market status before recording (prevent recording after market close)
+        # This prevents recording with N/A prices that cause chart display issues
+        try:
+            from src.utils.trading_days import is_market_open
+            if not is_market_open(None):
+                print(f"[API] Market is closed, skipping equity recording (will resume at next market open)")
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "skipped",
+                        "message": "Market is closed, equity recording skipped (will resume at next market open)",
+                        "market_status": "closed"
+                    }
+                )
+        except Exception as e:
+            print(f"[API WARNING] Failed to check market status: {e}, proceeding with record")
         
         # CRITICAL FIX: Ensure positions_detail is used if available (contains price info)
         # If only positions (old format) is provided, use it but backend will fetch prices

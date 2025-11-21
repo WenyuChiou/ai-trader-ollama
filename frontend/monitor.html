@@ -3707,9 +3707,13 @@
                         }
                     } else {
                         // Non-trading hours: stop auto-trade (only manual trigger allowed)
+                        // Note: Market status monitor will handle stopping/starting automatically
                         updateAutoTradeStatus('Market Closed - Manual Only');
-                        // Stop the timer when market is closed
-                        stopAutoTrade();
+                        // Stop the timer when market is closed (monitor will restart when market opens)
+                        if (tradeCheckTimer) {
+                            clearInterval(tradeCheckTimer);
+                            tradeCheckTimer = null;
+                        }
                     }
                 } catch (e) {
                     console.error('[Auto Trade] Error checking market status:', e);
@@ -3722,69 +3726,81 @@
                 }
             }
             
-            // CRITICAL: Only start auto-trade if market is open
-            // Check market status first before starting timer
-            (async () => {
+            // CRITICAL: Market status monitor - checks every minute and starts/stops auto-trade accordingly
+            // 市场状态监控器 - 每分钟检查一次，根据市场状态启动/停止自动交易
+            let marketStatusCheckTimer = null;
+            
+            async function checkMarketStatusAndToggleAutoTrade() {
                 try {
-                    // Use cache for startup check
+                    // Use cache for status check to reduce API load
                     const isOpen = await isMarketOpen(true, true);
+                    
                     if (isOpen) {
-                        // Trading hours: execute trade cycle every 30 minutes
-                        const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
-                        // CRITICAL: Clear any existing timer first to prevent duplicates
-                        if (tradeCheckTimer) {
-                            clearInterval(tradeCheckTimer);
-                            tradeCheckTimer = null;
-                        }
-                        // CRITICAL FIX: Double-check timer is cleared before starting new one
-                        if (!tradeCheckTimer && !isTradingExecuting) {
+                        // Market is open: ensure auto-trade is running
+                        if (!tradeCheckTimer) {
+                            console.log('[Auto Trade] Market opened, starting auto-trade');
+                            // Trading hours: execute trade cycle every 30 minutes
+                            const TRADING_INTERVAL = 30 * 60 * 1000;  // 30 minutes
+                            
+                            // Start the auto-trade timer
                             tradeCheckTimer = setInterval(smartAutoTrade, TRADING_INTERVAL);
                             
                             // Set next execution time
-                            // CRITICAL FIX: 市场开放时自动开始，不需要等待手动交易
                             if (nextAutoTradeTime && nextAutoTradeTime > Date.now()) {
-                                // 使用已保存的时间（页面刷新后恢复）
+                                // Use saved time (restored after page refresh)
                                 updateAutoTradeStatus('Active');
                                 startNextTradeCountdown();
                             } else {
-                                // CRITICAL FIX: 市场开放时立即开始自动交易
-                                // 立即执行第一次自动交易（如果时间已过期或不存在）
-                                if (!nextAutoTradeTime || nextAutoTradeTime <= Date.now()) {
-                                    // 设置立即执行（2秒后，给页面时间初始化）
-                                    nextAutoTradeTime = Date.now() + 2000;
-                                    saveNextAutoTradeTime();
-                                    console.log('[Auto Trade] Market is open, starting auto-trade immediately');
-                                    // 立即触发第一次自动交易
-                                    setTimeout(() => {
-                                        if (tradeCheckTimer) {
-                                            console.log('[Auto Trade] Executing first auto-trade cycle');
-                                            smartAutoTrade();
-                                        }
-                                    }, 2000);
-                                }
+                                // Start immediately (2 seconds after initialization)
+                                nextAutoTradeTime = Date.now() + 2000;
+                                saveNextAutoTradeTime();
+                                console.log('[Auto Trade] Executing first auto-trade cycle in 2 seconds');
+                                setTimeout(() => {
+                                    if (tradeCheckTimer) {
+                                        console.log('[Auto Trade] Executing first auto-trade cycle');
+                                        smartAutoTrade();
+                                    }
+                                }, 2000);
                                 updateAutoTradeStatus('Active - Starting...');
                                 startNextTradeCountdown();
                             }
                         } else {
+                            // Auto-trade already running, just update status
+                            updateAutoTradeStatus('Active');
                         }
                     } else {
-                        // Market is closed: do not start auto-trade
-                        updateAutoTradeStatus('Market Closed - Manual Only');
-                        // CRITICAL: Ensure timer is cleared if market is closed
+                        // Market is closed: stop auto-trade (manual only)
                         if (tradeCheckTimer) {
+                            console.log('[Auto Trade] Market closed, stopping auto-trade');
                             clearInterval(tradeCheckTimer);
                             tradeCheckTimer = null;
+                            updateAutoTradeStatus('Market Closed - Manual Only');
+                        } else {
+                            // Already stopped, just update status
+                            updateAutoTradeStatus('Market Closed - Manual Only');
                         }
                     }
                 } catch (e) {
-                    console.error('[Auto Trade] Error checking market status on startup:', e);
+                    console.error('[Auto Trade] Error checking market status:', e);
                     updateAutoTradeStatus('Status Check Failed');
-                    // CRITICAL: On error, stop auto-trade to prevent continuous execution
+                    // On error, stop auto-trade to prevent continuous execution
                     if (tradeCheckTimer) {
                         clearInterval(tradeCheckTimer);
                         tradeCheckTimer = null;
                     }
                 }
+            }
+            
+            // CRITICAL: Start market status monitoring on page load
+            // Check market status immediately, then every minute
+            (async () => {
+                // Initial check
+                await checkMarketStatusAndToggleAutoTrade();
+                
+                // Set up periodic check (every 1 minute)
+                const MARKET_STATUS_CHECK_INTERVAL = 60 * 1000;  // 1 minute
+                marketStatusCheckTimer = setInterval(checkMarketStatusAndToggleAutoTrade, MARKET_STATUS_CHECK_INTERVAL);
+                console.log('[Auto Trade] Market status monitor started (checks every 1 minute)');
             })();
         }
         

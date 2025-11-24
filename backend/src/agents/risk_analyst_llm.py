@@ -297,6 +297,14 @@ def run_risk_analyst_llm(
             
             # Priority 1: Use VIX data from API (most reliable, always fresh)
             print(f"[RISK ANALYST] DEBUG: Checking vix_risk_score_from_api: {vix_risk_score_from_api} (type: {type(vix_risk_score_from_api)})")
+            print(f"[RISK ANALYST] DEBUG: vix_api_data exists: {vix_api_data is not None}")
+            if vix_api_data:
+                print(f"[RISK ANALYST] DEBUG: vix_api_data keys: {list(vix_api_data.keys()) if isinstance(vix_api_data, dict) else 'N/A'}")
+                # CRITICAL FIX: Try to extract vix_risk_score directly from vix_api_data if vix_risk_score_from_api is None
+                if vix_risk_score_from_api is None and isinstance(vix_api_data, dict):
+                    vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
+                    print(f"[RISK ANALYST] DEBUG: Re-extracted vix_risk_score_from_api: {vix_risk_score_from_api}")
+            
             if vix_risk_score_from_api is not None:
                 vix_risk_to_use = vix_risk_score_from_api
                 vix_source = "API (vix_term)"
@@ -305,21 +313,28 @@ def run_risk_analyst_llm(
                 print(f"[RISK ANALYST] DEBUG: vix_risk_score_from_api is None, trying fallback sources...")
                 # CRITICAL FIX: Try to extract from tool_results_data as fallback
                 if tool_results_data:
-                    for tool_data in tool_results_data:
+                    print(f"[RISK ANALYST] DEBUG: Checking {len(tool_results_data)} tool_results_data entries...")
+                    for i, tool_data in enumerate(tool_results_data):
                         if tool_data.get("tool") == "vix_term":
+                            print(f"[RISK ANALYST] DEBUG: Found vix_term in tool_results_data[{i}]")
                             tool_result = tool_data.get("result", {})
+                            print(f"[RISK ANALYST] DEBUG: tool_result type: {type(tool_result)}")
                             if isinstance(tool_result, dict):
                                 # Handle nested structure
                                 actual_result = tool_result
                                 while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
                                     actual_result = actual_result["result"]
                                 if isinstance(actual_result, dict):
+                                    print(f"[RISK ANALYST] DEBUG: actual_result keys: {list(actual_result.keys())}")
                                     vix_risk_from_tool = actual_result.get("vix_risk_score")
+                                    print(f"[RISK ANALYST] DEBUG: vix_risk_from_tool: {vix_risk_from_tool}")
                                     if vix_risk_from_tool is not None:
                                         vix_risk_to_use = vix_risk_from_tool
                                         vix_source = "API (vix_term, from tool_results_data)"
-                                        print(f"[RISK ANALYST] DEBUG: Found vix_risk_score={vix_risk_to_use} from tool_results_data")
+                                        print(f"[RISK ANALYST] DEBUG: ✅ Found vix_risk_score={vix_risk_to_use} from tool_results_data")
                                         break
+                    if vix_risk_to_use is None:
+                        print(f"[RISK ANALYST] DEBUG: ⚠️  Could not extract vix_risk_score from tool_results_data")
                 
                 # Priority 2: Try market_json
                 if vix_risk_to_use is None and isinstance(market_json, dict):

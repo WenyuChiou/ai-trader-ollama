@@ -1822,6 +1822,19 @@ def execute_daily_trade(
         }
         
         # CRITICAL FIX: Write tool calls to discussion_actions.jsonl (similar to other analysts)
+        # IMPORTANT: Also write forced VIX API call if it exists in tool_results_data but not in tool_calls
+        vix_tool_in_calls = any(tc.get("tool") == "vix_term" for tc in tool_calls) if tool_calls else False
+        vix_tool_in_results = any(tr.get("tool") == "vix_term" for tr in risk_report.get("tool_calls", [])) if risk_report.get("tool_calls") else False
+        
+        # If VIX tool was called but not in tool_calls, add it
+        if not vix_tool_in_calls and vix_tool_in_results:
+            vix_result = next((tr for tr in risk_report.get("tool_calls", []) if tr.get("tool") == "vix_term"), None)
+            if vix_result:
+                if not tool_calls:
+                    tool_calls = []
+                tool_calls.append(vix_result)
+                print(f"[TRADING CYCLE] Added forced VIX API call to tool_calls for writing")
+        
         if tool_calls:
             print(f"[TRADING CYCLE] Writing {len(tool_calls)} RiskAnalyst tool calls to discussion_actions.jsonl")
             for tool_call_data in tool_calls:

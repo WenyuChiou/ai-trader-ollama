@@ -184,6 +184,8 @@ def run_risk_analyst_llm(
                 vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
                 vix_level = vix_api_data.get("vix")
                 print(f"[RISK ANALYST] ✅ Got VIX data from API: VIX={vix_level}, risk_score={vix_risk_score_from_api}")
+                print(f"[RISK ANALYST] DEBUG: vix_api_data keys: {list(vix_api_data.keys())}")
+                print(f"[RISK ANALYST] DEBUG: vix_risk_score_from_api type: {type(vix_risk_score_from_api)}, value: {vix_risk_score_from_api}")
                 # Add VIX data to tool_results_data for reference (even if use_tools=False)
                 tool_results_data.append({
                     "tool": "vix_term",
@@ -294,10 +296,13 @@ def run_risk_analyst_llm(
             vix_source = None
             
             # Priority 1: Use VIX data from API (most reliable, always fresh)
+            print(f"[RISK ANALYST] DEBUG: Checking vix_risk_score_from_api: {vix_risk_score_from_api} (type: {type(vix_risk_score_from_api)})")
             if vix_risk_score_from_api is not None:
                 vix_risk_to_use = vix_risk_score_from_api
                 vix_source = "API (vix_term)"
+                print(f"[RISK ANALYST] DEBUG: Using vix_risk_score_from_api={vix_risk_to_use} from API")
             else:
+                print(f"[RISK ANALYST] DEBUG: vix_risk_score_from_api is None, trying fallback sources...")
                 # Priority 2: Try market_json
                 if isinstance(market_json, dict):
                     vix_data = market_json.get("vix", {})

@@ -186,13 +186,30 @@ def run_risk_analyst_llm(
                 tool_calls_used.append("vix_term")
             else:
                 print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid result data: {vix_api_data}")
+                print(f"[RISK ANALYST] DEBUG: vix_api_data type={type(vix_api_data)}, value={vix_api_data}")
+                # CRITICAL FIX: Even if data is invalid, add to tool_results_data to track the failure
+                tool_results_data.append({
+                    "tool": "vix_term",
+                    "result": {"error": "Invalid data", "raw": str(vix_api_data)}
+                })
         else:
             print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid response: {vix_api_response}")
+            print(f"[RISK ANALYST] DEBUG: vix_api_response type={type(vix_api_response)}, value={vix_api_response}")
             vix_api_data = None
+            # CRITICAL FIX: Even if response is invalid, add to tool_results_data to track the failure
+            tool_results_data.append({
+                "tool": "vix_term",
+                "result": {"error": "Invalid response", "raw": str(vix_api_response)}
+            })
     except Exception as e:
         print(f"[RISK ANALYST] ❌ ERROR: Failed to call vix_term API: {e}")
         import traceback
         traceback.print_exc()
+        # CRITICAL FIX: Even if exception occurs, add to tool_results_data to track the failure
+        tool_results_data.append({
+            "tool": "vix_term",
+            "result": {"error": str(e), "exception": True}
+        })
     
     try:
         # 调用LLM
@@ -400,6 +417,8 @@ def run_risk_analyst_llm(
             
             # CRITICAL FIX: Add tool calls information to risk_report
             # IMPORTANT: Always add tool_results_data, even if tool_calls_used is empty (forced VIX API call)
+            print(f"[RISK ANALYST] DEBUG: Before adding tool calls - tool_calls_used={tool_calls_used}, tool_results_data count={len(tool_results_data)}")
+            
             if tool_calls_used:
                 risk_report["tools_used"] = tool_calls_used
             # CRITICAL FIX: Always add tool_results_data to risk_report, even if empty
@@ -407,11 +426,16 @@ def run_risk_analyst_llm(
             if tool_results_data:
                 # CRITICAL FIX: Make tool_results_data JSON serializable (handle pandas Series)
                 risk_report["tool_calls"] = make_json_serializable(tool_results_data)
-                print(f"[RISK ANALYST] Added {len(tool_results_data)} tool calls to risk_report (including forced VIX API call)")
-            elif tool_calls_used:
-                # If tool_calls_used exists but tool_results_data is empty, create empty list
+                print(f"[RISK ANALYST] ✅ Added {len(tool_results_data)} tool calls to risk_report (including forced VIX API call)")
+                # Debug: Print first tool call details
+                if tool_results_data:
+                    first_tool = tool_results_data[0]
+                    print(f"[RISK ANALYST] DEBUG: First tool call: {first_tool.get('tool')}, result keys: {list(first_tool.get('result', {}).keys()) if isinstance(first_tool.get('result'), dict) else 'N/A'}")
+            else:
+                # CRITICAL FIX: Even if tool_results_data is empty, add empty list to ensure structure exists
                 risk_report["tool_calls"] = []
-                print(f"[RISK ANALYST] WARNING: tool_calls_used exists but tool_results_data is empty")
+                print(f"[RISK ANALYST] ⚠️  WARNING: tool_results_data is empty - VIX API call may have failed or returned invalid data")
+                print(f"[RISK ANALYST] DEBUG: tool_calls_used={tool_calls_used}, vix_api_data={vix_api_data is not None if 'vix_api_data' in locals() else 'N/A'}")
             
             # CRITICAL FIX: Ensure entire risk_report is JSON serializable
             return make_json_serializable(risk_report)

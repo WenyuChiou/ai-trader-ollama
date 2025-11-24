@@ -1321,6 +1321,32 @@ def execute_daily_trade(
     # Call Risk Analyst (LLM version)
     previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]
     
+    # CRITICAL FIX: Add VIX risk_score emphasis to previous_discussion for Risk Analyst
+    vix_risk_emphasis = f"""
+    
+=== CRITICAL VIX RISK SCORE INFORMATION ===
+**MANDATORY: You MUST use the VIX risk_score in your risk assessment.**
+
+Current VIX Risk Score: {vix_risk_score_value:.1f}/10
+VIX Level: {market_view_for_risk.get('vix', {}).get('level', 'N/A')}
+
+**IMPORTANT RULES:**
+1. The VIX risk_score ({vix_risk_score_value:.1f}/10) is a DIRECT quantification of market volatility risk.
+2. If VIX risk_score >= 6.0, it indicates MODERATE TO HIGH market volatility. Your overall risk_score MUST reflect this.
+3. Even if individual stocks appear safe, a high VIX risk_score suggests SYSTEMIC market risk.
+4. Your final risk_score MUST be at least 5.0 if VIX risk_score >= 6.0.
+5. Your overall_risk_level MUST be at least "medium" if VIX risk_score >= 6.0.
+
+**You MUST:**
+- Include vix_risk_score in your risk_report output
+- Factor vix_risk_score into your overall_risk_level calculation
+- Ensure your risk_score reflects the VIX risk_score appropriately
+- Use the vix_term tool to get the latest VIX data if needed
+
+=== END VIX RISK SCORE INFORMATION ===
+"""
+    previous_discussion_text = vix_risk_emphasis + "\n\n" + previous_discussion_text
+    
     # CRITICAL FIX: Force VIX risk score into market_view for Risk Analyst
     market_view_for_risk = dict(market_view)
     if "vix" in market_view_for_risk:

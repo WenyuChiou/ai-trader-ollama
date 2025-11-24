@@ -1801,6 +1801,10 @@ def execute_daily_trade(
         tools_used = risk_report.get("tools_used", [])
         tool_calls = risk_report.get("tool_calls", [])
         
+        # CRITICAL FIX: Extract VIX risk_score from risk_report for display
+        vix_risk_score_from_report = risk_report.get("vix_risk_score")
+        vix_level_from_report = risk_report.get("vix_level")
+        
         risk_entry = {
                     "timestamp": get_utc_timestamp(),
             "date": trade_date_str,
@@ -1810,6 +1814,9 @@ def execute_daily_trade(
             "type": "discussion",
             "stance": risk_level,  # 使用 risk_level 作为 stance
             "summary": risk_content,  # CRITICAL FIX: 移除500字符限制，允许完整summary显示
+            "risk_score": risk_score,  # CRITICAL FIX: 添加 risk_score 字段供前端显示
+            "vix_risk_score": vix_risk_score_from_report,  # CRITICAL FIX: 添加 vix_risk_score 字段
+            "vix_level": vix_level_from_report,  # CRITICAL FIX: 添加 vix_level 字段
             "tools_used": tools_used,  # CRITICAL FIX: 从 risk_report 中提取 tools_used
             "risk_report": risk_report,  # CRITICAL: 添加完整的 risk_report 数据供前端使用
         }

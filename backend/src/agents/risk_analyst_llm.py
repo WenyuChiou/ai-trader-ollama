@@ -157,28 +157,31 @@ def run_risk_analyst_llm(
     
     # CRITICAL FIX: Force call VIX API before LLM analysis
     # 强制在 LLM 分析之前调用 VIX API 获取最新数据
+    # IMPORTANT: Always call VIX API regardless of use_tools, because VIX risk_score is critical
     vix_api_data = None
     vix_risk_score_from_api = None
-    if use_tools:
-        try:
-            print("[RISK ANALYST] 🔧 FORCING: Calling vix_term API to get latest VIX data...")
-            vix_api_data = toolbox.invoke("vix_term")
-            if vix_api_data and isinstance(vix_api_data, dict):
-                vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
-                vix_level = vix_api_data.get("vix")
-                print(f"[RISK ANALYST] ✅ Got VIX data from API: VIX={vix_level}, risk_score={vix_risk_score_from_api}")
-                # Add VIX data to tool_results_data for reference
-                tool_results_data.append({
-                    "tool": "vix_term",
-                    "result": vix_api_data
-                })
-                tool_calls_used.append("vix_term")
-            else:
-                print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid data: {vix_api_data}")
-        except Exception as e:
-            print(f"[RISK ANALYST] ❌ ERROR: Failed to call vix_term API: {e}")
-            import traceback
-            traceback.print_exc()
+    print(f"[RISK ANALYST] DEBUG: use_tools={use_tools}, but will force call VIX API anyway (VIX risk_score is critical)")
+    # CRITICAL FIX: Always call VIX API, not just when use_tools=True
+    # VIX risk_score is critical for risk assessment, so we always need it
+    try:
+        print("[RISK ANALYST] 🔧 FORCING: Calling vix_term API to get latest VIX data...")
+        vix_api_data = toolbox.invoke("vix_term")
+        if vix_api_data and isinstance(vix_api_data, dict):
+            vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
+            vix_level = vix_api_data.get("vix")
+            print(f"[RISK ANALYST] ✅ Got VIX data from API: VIX={vix_level}, risk_score={vix_risk_score_from_api}")
+            # Add VIX data to tool_results_data for reference (even if use_tools=False)
+            tool_results_data.append({
+                "tool": "vix_term",
+                "result": vix_api_data
+            })
+            tool_calls_used.append("vix_term")
+        else:
+            print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid data: {vix_api_data}")
+    except Exception as e:
+        print(f"[RISK ANALYST] ❌ ERROR: Failed to call vix_term API: {e}")
+        import traceback
+        traceback.print_exc()
     
     try:
         # 调用LLM

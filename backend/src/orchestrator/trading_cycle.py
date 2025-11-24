@@ -1321,6 +1321,12 @@ def execute_daily_trade(
     # Call Risk Analyst (LLM version)
     previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]
     
+    # CRITICAL FIX: Get VIX level from market_view before creating market_view_for_risk
+    vix_level_for_prompt = None
+    vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+    if isinstance(vix_data_from_market, dict):
+        vix_level_for_prompt = vix_data_from_market.get("level")
+    
     # CRITICAL FIX: Add VIX risk_score emphasis to previous_discussion for Risk Analyst
     vix_risk_emphasis = f"""
     
@@ -1328,7 +1334,7 @@ def execute_daily_trade(
 **MANDATORY: You MUST use the VIX risk_score in your risk assessment.**
 
 Current VIX Risk Score: {vix_risk_score_value:.1f}/10
-VIX Level: {market_view_for_risk.get('vix', {}).get('level', 'N/A')}
+VIX Level: {vix_level_for_prompt if vix_level_for_prompt is not None else 'N/A'}
 
 **IMPORTANT RULES:**
 1. The VIX risk_score ({vix_risk_score_value:.1f}/10) is a DIRECT quantification of market volatility risk.

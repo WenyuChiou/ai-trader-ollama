@@ -155,6 +155,31 @@ def run_risk_analyst_llm(
     tool_calls_used = []
     tool_results_data = []
     
+    # CRITICAL FIX: Force call VIX API before LLM analysis
+    # 强制在 LLM 分析之前调用 VIX API 获取最新数据
+    vix_api_data = None
+    vix_risk_score_from_api = None
+    if use_tools:
+        try:
+            print("[RISK ANALYST] 🔧 FORCING: Calling vix_term API to get latest VIX data...")
+            vix_api_data = toolbox.invoke("vix_term")
+            if vix_api_data and isinstance(vix_api_data, dict):
+                vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
+                vix_level = vix_api_data.get("vix")
+                print(f"[RISK ANALYST] ✅ Got VIX data from API: VIX={vix_level}, risk_score={vix_risk_score_from_api}")
+                # Add VIX data to tool_results_data for reference
+                tool_results_data.append({
+                    "tool": "vix_term",
+                    "result": vix_api_data
+                })
+                tool_calls_used.append("vix_term")
+            else:
+                print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid data: {vix_api_data}")
+        except Exception as e:
+            print(f"[RISK ANALYST] ❌ ERROR: Failed to call vix_term API: {e}")
+            import traceback
+            traceback.print_exc()
+    
     try:
         # 调用LLM
         response = agent.run(prompt_vars, expect_json=True)
@@ -226,15 +251,34 @@ def run_risk_analyst_llm(
             if "risk_score" not in risk_report:
                 risk_report["risk_score"] = 5.0
             
-            # CRITICAL FIX: Force VIX risk_score into overall risk_score if provided
-            # This ensures Risk Analyst always considers VIX risk, even if LLM ignores it
-            vix_risk_from_market = None
-            if isinstance(market_json, dict):
-                vix_data = market_json.get("vix", {})
-                if isinstance(vix_data, dict):
-                    vix_risk_from_market = vix_data.get("risk_score")
+            # CRITICAL FIX: Force VIX risk_score into overall risk_score
+            # Priority: 1) API data (most reliable), 2) market_json data, 3) discussion_risk_signals
+            vix_risk_to_use = None
+            vix_source = None
             
-            if vix_risk_from_market is not None:
+            # Priority 1: Use VIX data from API (most reliable, always fresh)
+            if vix_risk_score_from_api is not None:
+                vix_risk_to_use = vix_risk_score_from_api
+                vix_source = "API (vix_term)"
+            else:
+                # Priority 2: Try market_json
+                if isinstance(market_json, dict):
+                    vix_data = market_json.get("vix", {})
+                    if isinstance(vix_data, dict):
+                        vix_risk_from_market = vix_data.get("risk_score")
+                        if vix_risk_from_market is not None:
+                            vix_risk_to_use = vix_risk_from_market
+                            vix_source = "market_json"
+                
+                # Priority 3: Try discussion_risk_signals
+                if vix_risk_to_use is None and discussion_risk_signals:
+                    vix_risk_from_signals = discussion_risk_signals.get("vix_risk_score")
+                    if vix_risk_from_signals is not None:
+                        vix_risk_to_use = vix_risk_from_signals
+                        vix_source = "discussion_risk_signals"
+            
+            if vix_risk_to_use is not None:
+                print(f"[RISK ANALYST] Using VIX risk_score={vix_risk_to_use:.1f} from {vix_source}")
                 current_risk_score = risk_report.get("risk_score", 5.0)
                 # CRITICAL: VIX risk_score should be the minimum for overall risk_score
                 # If VIX risk_score >= 6.0, overall risk_score must be at least 5.0

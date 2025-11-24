@@ -347,6 +347,8 @@ def run_risk_analyst_llm(
                 if vix_api_data:
                     risk_report["vix_level"] = vix_api_data.get("vix")
                 print(f"[RISK ANALYST] ✅ Final: VIX risk_score={vix_risk_to_use:.1f} (from {vix_source}), overall risk_score={risk_report['risk_score']:.1f}, risk_level={risk_report.get('overall_risk_level')}")
+                print(f"[RISK ANALYST] DEBUG: After setting vix_risk_score, risk_report['vix_risk_score'] = {risk_report.get('vix_risk_score')}")
+                print(f"[RISK ANALYST] DEBUG: risk_report keys: {list(risk_report.keys())[:20]}")
             else:
                 print(f"[RISK ANALYST] ⚠️  WARNING: No VIX risk_score available from API, market_json, or discussion_risk_signals")
                 # CRITICAL FIX: Try to get VIX risk_score from market_json one more time

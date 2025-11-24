@@ -1694,6 +1694,8 @@ def execute_daily_trade(
     
     # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
     # 传递空字典而不是None，这样 Risk Analyst 可以明确知道"没有持仓"的状态
+    print(f"[TRADING CYCLE] ===== CALLING run_risk_analyst_llm =====")
+    print(f"[TRADING CYCLE] Parameters: portfolio_value={portfolio_value}, use_tools={auto_tools}")
     risk_report = run_risk_analyst_llm(
         market_json=market_view_for_risk,  # CRITICAL FIX: Use market_view with VIX risk score
         current_positions=current_positions_info,  # 传递空字典{}而不是None，表示"没有持仓"的状态
@@ -1702,6 +1704,7 @@ def execute_daily_trade(
         previous_discussion=previous_discussion_text,
         use_tools=auto_tools,  # 与discussion使用相同的tool设置
     )
+    print(f"[TRADING CYCLE] ===== run_risk_analyst_llm returned =====")
     
     # CRITICAL FIX: 写入 RiskAnalyst 结果到 discussion_actions.jsonl
     try:

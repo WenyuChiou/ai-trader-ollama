@@ -451,7 +451,10 @@ def run_risk_analyst_llm(
                 print(f"[RISK ANALYST] DEBUG: tool_calls_used={tool_calls_used}, vix_api_data={vix_api_data is not None if 'vix_api_data' in locals() else 'N/A'}")
             
             # CRITICAL FIX: Ensure entire risk_report is JSON serializable
-            return make_json_serializable(risk_report)
+            print(f"[RISK ANALYST] DEBUG: Before make_json_serializable, risk_report['vix_risk_score'] = {risk_report.get('vix_risk_score')}")
+            serialized_report = make_json_serializable(risk_report)
+            print(f"[RISK ANALYST] DEBUG: After make_json_serializable, serialized_report['vix_risk_score'] = {serialized_report.get('vix_risk_score') if isinstance(serialized_report, dict) else 'N/A'}")
+            return serialized_report
             
         except json.JSONDecodeError as je:
             print(f"[RISK ANALYST LLM] Failed to parse JSON, using fallback: {je}")

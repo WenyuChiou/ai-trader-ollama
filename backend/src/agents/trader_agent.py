@@ -96,11 +96,16 @@ def _calculate_position_size(
         # Few stocks (<5): larger positions (12-15%)
         
         # Get VIX risk score if available
+        # CRITICAL FIX: risk_report contains vix_risk_score directly, not nested in vix.risk_score
         vix_risk_score = None
         if risk_report:
-            vix_info = risk_report.get("vix", {})
-            if isinstance(vix_info, dict):
-                vix_risk_score = vix_info.get("risk_score")
+            # Priority 1: Direct vix_risk_score field (from Risk Analyst)
+            vix_risk_score = risk_report.get("vix_risk_score")
+            # Priority 2: Fallback to nested vix.risk_score (for backward compatibility)
+            if vix_risk_score is None:
+                vix_info = risk_report.get("vix", {})
+                if isinstance(vix_info, dict):
+                    vix_risk_score = vix_info.get("risk_score")
         
         # Determine base position size based on VIX and number of stocks
         if vix_risk_score is not None:

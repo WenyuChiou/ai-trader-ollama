@@ -282,24 +282,31 @@ def run_risk_analyst_llm(
                 current_risk_score = risk_report.get("risk_score", 5.0)
                 # CRITICAL: VIX risk_score should be the minimum for overall risk_score
                 # If VIX risk_score >= 6.0, overall risk_score must be at least 5.0
-                if vix_risk_from_market >= 6.0:
+                if vix_risk_to_use >= 6.0:
                     # Force minimum risk_score based on VIX
-                    min_risk_score = max(5.0, vix_risk_from_market - 1.0)  # At least 5.0 if VIX=6.0
+                    min_risk_score = max(5.0, vix_risk_to_use - 1.0)  # At least 5.0 if VIX=6.0
                     if current_risk_score < min_risk_score:
-                        print(f"[RISK ANALYST] FORCING: VIX risk_score={vix_risk_from_market:.1f} requires min overall risk_score={min_risk_score:.1f}, but got {current_risk_score:.1f}. Adjusting...")
+                        print(f"[RISK ANALYST] 🔧 FORCING: VIX risk_score={vix_risk_to_use:.1f} (from {vix_source}) requires min overall risk_score={min_risk_score:.1f}, but LLM returned {current_risk_score:.1f}. Adjusting...")
                         risk_report["risk_score"] = min_risk_score
                         # Also adjust risk_level if needed
                         if risk_report.get("overall_risk_level", "").lower() == "low":
                             risk_report["overall_risk_level"] = "medium"
-                elif vix_risk_from_market >= 4.0:
+                            print(f"[RISK ANALYST] 🔧 FORCING: Changed risk_level from 'low' to 'medium' due to high VIX risk")
+                elif vix_risk_to_use >= 4.0:
                     # VIX risk_score 4.0-5.9: ensure risk_score is at least 3.5
-                    min_risk_score = max(3.5, vix_risk_from_market - 0.5)
+                    min_risk_score = max(3.5, vix_risk_to_use - 0.5)
                     if current_risk_score < min_risk_score:
-                        print(f"[RISK ANALYST] ADJUSTING: VIX risk_score={vix_risk_from_market:.1f} requires min overall risk_score={min_risk_score:.1f}, but got {current_risk_score:.1f}. Adjusting...")
+                        print(f"[RISK ANALYST] 🔧 ADJUSTING: VIX risk_score={vix_risk_to_use:.1f} (from {vix_source}) requires min overall risk_score={min_risk_score:.1f}, but LLM returned {current_risk_score:.1f}. Adjusting...")
                         risk_report["risk_score"] = min_risk_score
                 
-                # Store VIX risk_score in risk_report for reference
-                risk_report["vix_risk_score"] = vix_risk_from_market
+                # Store VIX risk_score and source in risk_report for reference
+                risk_report["vix_risk_score"] = vix_risk_to_use
+                risk_report["vix_risk_source"] = vix_source
+                if vix_api_data:
+                    risk_report["vix_level"] = vix_api_data.get("vix")
+                print(f"[RISK ANALYST] ✅ Final: VIX risk_score={vix_risk_to_use:.1f} (from {vix_source}), overall risk_score={risk_report['risk_score']:.1f}, risk_level={risk_report.get('overall_risk_level')}")
+            else:
+                print(f"[RISK ANALYST] ⚠️  WARNING: No VIX risk_score available from API, market_json, or discussion_risk_signals")
                 print(f"[RISK ANALYST] Applied VIX risk_score={vix_risk_from_market:.1f} to overall risk_score={risk_report['risk_score']:.1f}")
             
             if "position_control_report" not in risk_report:

@@ -303,8 +303,26 @@ def run_risk_analyst_llm(
                 print(f"[RISK ANALYST] DEBUG: Using vix_risk_score_from_api={vix_risk_to_use} from API")
             else:
                 print(f"[RISK ANALYST] DEBUG: vix_risk_score_from_api is None, trying fallback sources...")
+                # CRITICAL FIX: Try to extract from tool_results_data as fallback
+                if tool_results_data:
+                    for tool_data in tool_results_data:
+                        if tool_data.get("tool") == "vix_term":
+                            tool_result = tool_data.get("result", {})
+                            if isinstance(tool_result, dict):
+                                # Handle nested structure
+                                actual_result = tool_result
+                                while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                                    actual_result = actual_result["result"]
+                                if isinstance(actual_result, dict):
+                                    vix_risk_from_tool = actual_result.get("vix_risk_score")
+                                    if vix_risk_from_tool is not None:
+                                        vix_risk_to_use = vix_risk_from_tool
+                                        vix_source = "API (vix_term, from tool_results_data)"
+                                        print(f"[RISK ANALYST] DEBUG: Found vix_risk_score={vix_risk_to_use} from tool_results_data")
+                                        break
+                
                 # Priority 2: Try market_json
-                if isinstance(market_json, dict):
+                if vix_risk_to_use is None and isinstance(market_json, dict):
                     vix_data = market_json.get("vix", {})
                     if isinstance(vix_data, dict):
                         vix_risk_from_market = vix_data.get("risk_score")

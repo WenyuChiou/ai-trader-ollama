@@ -2113,7 +2113,7 @@ def execute_daily_trade(
                                     order_time_str = filled_order.get("placed_at") or filled_order.get("filled_at")
                                     if order_time_str:
                                         try:
-                                            from datetime import datetime
+                                            # CRITICAL FIX: datetime already imported at file top, use directly
                                             order_time = datetime.fromisoformat(order_time_str.replace('Z', '+00:00'))
                                             if last_order_time is None or order_time > last_order_time:
                                                 last_order_time = order_time
@@ -2124,7 +2124,7 @@ def execute_daily_trade(
             
             # CRITICAL FIX: 允许在30分钟后创建新订单（支持自动交易每30分钟执行）
             if today_has_any_orders and last_order_time:
-                from datetime import datetime, timezone, timedelta
+                # CRITICAL FIX: datetime, timezone, timedelta already imported at file top, use directly
                 time_since_last_order = datetime.now(timezone.utc) - last_order_time
                 min_interval = timedelta(minutes=30)
                 if time_since_last_order < min_interval:

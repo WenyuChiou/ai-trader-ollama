@@ -1291,7 +1291,164 @@ def execute_daily_trade(
         "risk_signals": convo.get("risk_signals", []),
     }
 
-    # NOTE: Risk Analyst and Trader Agent calls will be moved after order settlement to ensure using latest position status
+    # CRITICAL FIX: Move Risk Analyst and Trader Agent BEFORE Order Strategy
+    # This ensures they are always executed, even if Order Strategy has early returns
+    # ---- (3) Risk Analyst：評估倉位風險 ----
+    # CRITICAL: Prepare position information for Risk Analyst
+    # Even if no positions, pass portfolio info (cash, total value, etc.) to Risk Analyst
+    current_positions_info = {}
+    if portfolio:
+        portfolio_value = portfolio.value(last_prices)
+        for symbol, pos in portfolio._positions.items():
+            current_price = last_prices.get(symbol, pos.avg_cost)
+            market_value = pos.quantity * current_price
+            unrealized_pnl = (current_price - pos.avg_cost) * pos.quantity
+            unrealized_pnl_pct = ((current_price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0
+            position_pct = (market_value / portfolio_value * 100.0) if portfolio_value > 0 else 0.0
+            
+            current_positions_info[symbol] = {
+                "quantity": pos.quantity,
+                "avg_cost": pos.avg_cost,
+                "current_price": current_price,
+                "market_value": market_value,
+                "unrealized_pnl": unrealized_pnl,
+                "unrealized_pnl_pct": unrealized_pnl_pct,
+                "position_pct": position_pct,
+            }
+    else:
+        portfolio_value = 10000.0  # Default initial value
+    
+    # Call Risk Analyst (LLM version)
+    previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]
+    
+    # CRITICAL FIX: Force VIX risk score into market_view for Risk Analyst
+    market_view_for_risk = dict(market_view)
+    if "vix" in market_view_for_risk:
+        if isinstance(market_view_for_risk["vix"], dict):
+            market_view_for_risk["vix"]["risk_score"] = vix_risk_score_value
+            if "level" not in market_view_for_risk["vix"]:
+                vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+                if isinstance(vix_data_from_market, dict):
+                    market_view_for_risk["vix"]["level"] = vix_data_from_market.get("level")
+        else:
+            vix_level = None
+            vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+            if isinstance(vix_data_from_market, dict):
+                vix_level = vix_data_from_market.get("level")
+            market_view_for_risk["vix"] = {"level": vix_level, "risk_score": vix_risk_score_value}
+    else:
+        vix_level = None
+        vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+        if isinstance(vix_data_from_market, dict):
+            vix_level = vix_data_from_market.get("level")
+        market_view_for_risk["vix"] = {"level": vix_level, "risk_score": vix_risk_score_value}
+    
+    if discussion_risk_signals is None:
+        discussion_risk_signals = {}
+    discussion_risk_signals["vix_risk_score"] = vix_risk_score_value
+    discussion_risk_signals["vix_level"] = market_view_for_risk["vix"].get("level")
+    print(f"[TRADING CYCLE] FORCED VIX risk score ({vix_risk_score_value:.1f}) into market_view.vix.risk_score for Risk Analyst")
+    print(f"[TRADING CYCLE] DEBUG: market_view_for_risk.vix = {json.dumps(market_view_for_risk.get('vix', {}), indent=2)}")
+    
+    print(f"[TRADING CYCLE] ===== CALLING run_risk_analyst_llm =====")
+    print(f"[TRADING CYCLE] Parameters: portfolio_value={portfolio_value}, use_tools={auto_tools}")
+    risk_report = run_risk_analyst_llm(
+        market_json=market_view_for_risk,
+        current_positions=current_positions_info,
+        portfolio_value=portfolio_value,
+        discussion_risk_signals=discussion_risk_signals,
+        previous_discussion=previous_discussion_text,
+        use_tools=auto_tools,
+    )
+    print(f"[TRADING CYCLE] ===== run_risk_analyst_llm returned =====")
+    
+    # Write Risk Analyst result to discussion_actions.jsonl
+    try:
+        risk_level = risk_report.get("overall_risk_level", risk_report.get("risk_level", "medium"))
+        risk_score = risk_report.get("risk_score", 5.0)
+        risk_summary = risk_report.get("summary") or risk_report.get("analysis")
+        if not risk_summary or risk_summary == "No risk analysis provided":
+            risk_summary = f"Risk level: {risk_level}, Risk score: {risk_score}/10"
+        
+        tools_used = risk_report.get("tools_used", [])
+        tool_calls = risk_report.get("tool_calls", [])
+        
+        vix_risk_score_from_report = risk_report.get("vix_risk_score")
+        vix_level_from_report = risk_report.get("vix_level")
+        
+        risk_entry = {
+            "timestamp": get_utc_timestamp(),
+            "date": trade_date_str,
+            "agent": "RiskAnalyst",
+            "round": 0,
+            "content": risk_summary,
+            "type": "discussion",
+            "stance": risk_level,
+            "summary": risk_summary,
+            "risk_score": risk_score,
+            "vix_risk_score": vix_risk_score_from_report,
+            "vix_level": vix_level_from_report,
+            "tools_used": tools_used,
+            "risk_report": risk_report,
+        }
+        
+        if tool_calls:
+            for tool_call_data in tool_calls:
+                tool_name = tool_call_data.get("tool", "")
+                tool_result = tool_call_data.get("result", {})
+                actual_result = tool_result
+                if isinstance(tool_result, dict):
+                    while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                        actual_result = actual_result["result"]
+                
+                if isinstance(actual_result, dict):
+                    if "error" in actual_result:
+                        result_text = f"Error: {actual_result.get('error', 'Unknown error')}"
+                    else:
+                        result_text = json.dumps(actual_result, ensure_ascii=False, indent=2)
+                        if len(result_text) > 2000:
+                            result_text = result_text[:2000] + "... (truncated)"
+                else:
+                    result_text = str(actual_result)
+                    if len(result_text) > 2000:
+                        result_text = result_text[:2000] + "... (truncated)"
+                
+                tool_category = "other"
+                if tool_name in ["vix_term", "vix_close", "fear_greed", "get_market_breadth"]:
+                    tool_category = "risk"
+                elif tool_name in ["get_market_indices", "get_sector_rotation", "get_correlation_matrix", "get_advanced_indicators", "get_support_resistance"]:
+                    tool_category = "market"
+                elif tool_name in ["get_company_fundamentals", "get_earnings_history", "get_financial_statements"]:
+                    tool_category = "fundamental"
+                elif tool_name in ["get_economic_summary", "get_labor_market_data", "get_treasury_yield_curve", "fetch_fred_indicator"]:
+                    tool_category = "economic"
+                
+                tool_result_data = actual_result if isinstance(actual_result, dict) else {"raw": result_text}
+                
+                tool_entry = {
+                    "timestamp": get_utc_timestamp(),
+                    "date": trade_date_str,
+                    "agent": "RiskAnalyst",
+                    "round": 1,
+                    "content": f"Tool used: {tool_name}: {result_text}",
+                    "type": "tool",
+                    "tool_name": tool_name,
+                    "tool_category": tool_category,
+                    "tool_result": tool_result_data,
+                }
+                
+                with convo_file.open("a", encoding="utf-8") as f:
+                    f.write(json.dumps(tool_entry, ensure_ascii=False) + "\n")
+        
+        with convo_file.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(risk_entry, ensure_ascii=False) + "\n")
+        print(f"[TRADING CYCLE] Wrote RiskAnalyst conversation entry (risk_level: {risk_level}, risk_score: {risk_score})")
+    except Exception as e:
+        print(f"[TRADING CYCLE] ⚠️  Failed to write RiskAnalyst conversation entry: {e}")
+    
+    # ---- (4) Trader Agent：交易決策 ----
+    # (Trader Agent code will be moved here, but keeping it after Order Strategy for now to maintain compatibility)
+    # Note: Trader Agent code is still at line 1909, but Risk Analyst is now executed before Order Strategy
 
     # ---- (5) Order Strategy: Place limit orders before market open, check fills after market close ----
     from src.data.order_manager import OrderManager
@@ -1619,104 +1776,13 @@ def execute_daily_trade(
             new_orders_count = 0  # 没有创建新订单
             # 继续执行，返回完整结果（包括讨论、分析等）
             # 不要提前返回，让代码继续执行到最后的return语句
+            # NOTE: Risk Analyst has already been executed BEFORE Order Strategy
+            # to ensure it's always called, even if Order Strategy has early returns
     
-    # ---- (3) Risk Analyst：評估倉位風險 ----
-    # CRITICAL: 在订单结算之后准备仓位信息，确保 Risk Analyst 使用最新的仓位状态
-    # 这样在多日模拟中，Risk Analyst 能够正确分析前一天的仓位状态（包括当天已结算的订单）
-    # CRITICAL: 准备完整的持仓信息，包括损益和占比
-    # 即使没有持仓，也要传递组合信息（现金、总净值等）给 Risk Analyst
-    current_positions_info = {}
-    if portfolio:
-        portfolio_value = portfolio.value(last_prices)
-        for symbol, pos in portfolio._positions.items():
-            current_price = last_prices.get(symbol, pos.avg_cost)
-            market_value = pos.quantity * current_price
-            unrealized_pnl = (current_price - pos.avg_cost) * pos.quantity
-            unrealized_pnl_pct = ((current_price - pos.avg_cost) / pos.avg_cost * 100.0) if pos.avg_cost > 0 else 0.0
-            position_pct = (market_value / portfolio_value * 100.0) if portfolio_value > 0 else 0.0
-            
-            current_positions_info[symbol] = {
-                "quantity": pos.quantity,
-                "avg_cost": pos.avg_cost,
-                "current_price": current_price,
-                "market_value": market_value,
-                "unrealized_pnl": unrealized_pnl,  # 未实现损益（金额）
-                "unrealized_pnl_pct": unrealized_pnl_pct,  # 未实现损益（百分比）
-                "position_pct": position_pct,  # 持仓占比（占组合净值的百分比）
-            }
-    else:
-        portfolio_value = 10000.0  # 默认初始净值
-    
-    # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
-    # 这样 Risk Analyst 可以分析"没有持仓"的状态，评估是否应该开始建仓
-    
-    # 调用 Risk Analyst (LLM版本)
-    # 传递discussion内容让Risk Analyst理解讨论中的风险信号
-    previous_discussion_text = "\n".join(convo.get("transcript", []))[:1000]  # 限制长度
-    
-    # CRITICAL FIX: Force VIX risk score into market_view for Risk Analyst
-    # Risk Analyst MUST use VIX risk score - we force it here to ensure it's always available
-    # We already calculated vix_risk_score_value earlier (line 490-518), add it to market_view
-    market_view_for_risk = dict(market_view)  # Create a copy to avoid modifying original
-    
-    # CRITICAL: Force VIX risk score into market_view.vix structure
-    if "vix" in market_view_for_risk:
-        if isinstance(market_view_for_risk["vix"], dict):
-            market_view_for_risk["vix"]["risk_score"] = vix_risk_score_value
-            # Also ensure level is present for context
-            if "level" not in market_view_for_risk["vix"]:
-                # Try to get from VIX data
-                vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
-                if isinstance(vix_data_from_market, dict):
-                    market_view_for_risk["vix"]["level"] = vix_data_from_market.get("level")
-        else:
-            # If vix is not a dict, create one with both level and risk_score
-            vix_level = None
-            vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
-            if isinstance(vix_data_from_market, dict):
-                vix_level = vix_data_from_market.get("level")
-            market_view_for_risk["vix"] = {"level": vix_level, "risk_score": vix_risk_score_value}
-    else:
-        # If vix doesn't exist, create it with risk_score
-        vix_level = None
-        vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
-        if isinstance(vix_data_from_market, dict):
-            vix_level = vix_data_from_market.get("level")
-        market_view_for_risk["vix"] = {"level": vix_level, "risk_score": vix_risk_score_value}
-    
-    # Also add VIX risk score to discussion_risk_signals for additional context
-    if discussion_risk_signals is None:
-        discussion_risk_signals = {}
-    discussion_risk_signals["vix_risk_score"] = vix_risk_score_value
-    discussion_risk_signals["vix_level"] = market_view_for_risk["vix"].get("level")
-    print(f"[TRADING CYCLE] FORCED VIX risk score ({vix_risk_score_value:.1f}) into market_view.vix.risk_score for Risk Analyst")
-    print(f"[TRADING CYCLE] DEBUG: market_view_for_risk.vix = {json.dumps(market_view_for_risk.get('vix', {}), indent=2)}")
-    
-    # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
-    # 传递空字典而不是None，这样 Risk Analyst 可以明确知道"没有持仓"的状态
-    print(f"[TRADING CYCLE] ===== CALLING run_risk_analyst_llm =====")
-    print(f"[TRADING CYCLE] Parameters: portfolio_value={portfolio_value}, use_tools={auto_tools}")
-    risk_report = run_risk_analyst_llm(
-        market_json=market_view_for_risk,  # CRITICAL FIX: Use market_view with VIX risk score
-        current_positions=current_positions_info,  # 传递空字典{}而不是None，表示"没有持仓"的状态
-        portfolio_value=portfolio_value,  # 即使没有持仓，也要传递组合净值
-        discussion_risk_signals=discussion_risk_signals,  # CRITICAL FIX: Includes vix_risk_score
-        previous_discussion=previous_discussion_text,
-        use_tools=auto_tools,  # 与discussion使用相同的tool设置
-    )
-    print(f"[TRADING CYCLE] ===== run_risk_analyst_llm returned =====")
-    
-    # CRITICAL FIX: 写入 RiskAnalyst 结果到 discussion_actions.jsonl
-    try:
-        risk_level = risk_report.get("overall_risk_level", risk_report.get("risk_level", "medium"))
-        risk_score = risk_report.get("risk_score", 5.0)
-        
-        # CRITICAL FIX: 从 risk_report 中提取完整的分析内容
-        # 优先使用 summary 或 analysis 字段，如果没有则从其他字段构建
-        risk_summary = risk_report.get("summary") or risk_report.get("analysis")
-        
-        # 如果没有 summary/analysis，从其他字段构建分析内容
-        if not risk_summary or risk_summary == "No risk analysis provided":
+    # ---- (4) Trader Agent：交易決策 ----
+    # NOTE: Trader Agent code is still here (after Order Strategy) for compatibility
+    # But Risk Analyst has been moved BEFORE Order Strategy to ensure it's always executed
+    # risk_report is already available from the earlier Risk Analyst call
             analysis_parts = []
             
             # 从 market_risks 提取信息

@@ -32,6 +32,12 @@ def run_risk_analyst_llm(
     - position_control_report: 仓位控管报告
     - recommendations: 风险缓解建议
     """
+    # CRITICAL FIX: Add entry log to confirm function is called
+    import sys
+    print(f"[RISK ANALYST] ===== ENTRY: run_risk_analyst_llm called =====", file=sys.stderr)
+    print(f"[RISK ANALYST] ===== ENTRY: run_risk_analyst_llm called =====")
+    sys.stderr.flush()
+    sys.stdout.flush()
     from ..agents.factory import AgentFactory
     from ..agents.base import BaseAgent
     from ..agents.toolbox import ToolBox

@@ -165,19 +165,30 @@ def run_risk_analyst_llm(
     # VIX risk_score is critical for risk assessment, so we always need it
     try:
         print("[RISK ANALYST] 🔧 FORCING: Calling vix_term API to get latest VIX data...")
-        vix_api_data = toolbox.invoke("vix_term")
-        if vix_api_data and isinstance(vix_api_data, dict):
-            vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
-            vix_level = vix_api_data.get("vix")
-            print(f"[RISK ANALYST] ✅ Got VIX data from API: VIX={vix_level}, risk_score={vix_risk_score_from_api}")
-            # Add VIX data to tool_results_data for reference (even if use_tools=False)
-            tool_results_data.append({
-                "tool": "vix_term",
-                "result": vix_api_data
-            })
-            tool_calls_used.append("vix_term")
+        vix_api_response = toolbox.invoke("vix_term")
+        # CRITICAL FIX: toolbox.invoke returns {"ok": True, "result": {...}} structure
+        # Extract the actual result data
+        if vix_api_response and isinstance(vix_api_response, dict):
+            if "result" in vix_api_response:
+                vix_api_data = vix_api_response["result"]
+            else:
+                vix_api_data = vix_api_response
+            
+            if vix_api_data and isinstance(vix_api_data, dict):
+                vix_risk_score_from_api = vix_api_data.get("vix_risk_score")
+                vix_level = vix_api_data.get("vix")
+                print(f"[RISK ANALYST] ✅ Got VIX data from API: VIX={vix_level}, risk_score={vix_risk_score_from_api}")
+                # Add VIX data to tool_results_data for reference (even if use_tools=False)
+                tool_results_data.append({
+                    "tool": "vix_term",
+                    "result": vix_api_data
+                })
+                tool_calls_used.append("vix_term")
+            else:
+                print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid result data: {vix_api_data}")
         else:
-            print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid data: {vix_api_data}")
+            print(f"[RISK ANALYST] ⚠️  WARNING: vix_term API returned invalid response: {vix_api_response}")
+            vix_api_data = None
     except Exception as e:
         print(f"[RISK ANALYST] ❌ ERROR: Failed to call vix_term API: {e}")
         import traceback

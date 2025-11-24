@@ -1690,6 +1690,7 @@ def execute_daily_trade(
     discussion_risk_signals["vix_risk_score"] = vix_risk_score_value
     discussion_risk_signals["vix_level"] = market_view_for_risk["vix"].get("level")
     print(f"[TRADING CYCLE] FORCED VIX risk score ({vix_risk_score_value:.1f}) into market_view.vix.risk_score for Risk Analyst")
+    print(f"[TRADING CYCLE] DEBUG: market_view_for_risk.vix = {json.dumps(market_view_for_risk.get('vix', {}), indent=2)}")
     
     # CRITICAL: 即使没有持仓（current_positions_info为空），也要传递组合信息
     # 传递空字典而不是None，这样 Risk Analyst 可以明确知道"没有持仓"的状态
@@ -2088,10 +2089,11 @@ def execute_daily_trade(
             print(f"[TRADING CYCLE] ⚠️  This may be a timing issue. Continuing with is_market_open_for_simulation=True")
             # 不设置 should_create_orders = False，继续检查其他条件
         elif not existing_pending_orders:
-            # 检查今天是否已经有filled订单
-            # CRITICAL: Use project root data/logs directory explicitly
+            # CRITICAL FIX: 检查今天是否已经有filled订单，但允许在30分钟后创建新订单
+            # 这允许自动交易每30分钟执行一次，而不是一天只执行一次
             filled_file = _get_project_logs_dir() / "filled_orders.jsonl"
             today_has_any_orders = False
+            last_order_time = None
             if filled_file.exists():
                 try:
                     with filled_file.open("r", encoding="utf-8") as f:
@@ -2100,15 +2102,38 @@ def execute_daily_trade(
                                 filled_order = json.loads(line)
                                 if _get_order_date(filled_order) == today:
                                     today_has_any_orders = True
-                                    break
+                                    # Get the most recent order time
+                                    order_time_str = filled_order.get("placed_at") or filled_order.get("filled_at")
+                                    if order_time_str:
+                                        try:
+                                            from datetime import datetime
+                                            order_time = datetime.fromisoformat(order_time_str.replace('Z', '+00:00'))
+                                            if last_order_time is None or order_time > last_order_time:
+                                                last_order_time = order_time
+                                        except Exception:
+                                            pass
                 except Exception:
                     pass
             
-            # 如果今天没有任何订单（pending或filled），才允许创建新订单
-            should_create_orders = not today_has_any_orders
-            if today_has_any_orders:
-                print(f"[TRADING CYCLE] ⚠️ Today already has orders (filled or pending). Skipping new order creation to prevent hourly duplicates.")
+            # CRITICAL FIX: 允许在30分钟后创建新订单（支持自动交易每30分钟执行）
+            if today_has_any_orders and last_order_time:
+                from datetime import datetime, timezone, timedelta
+                time_since_last_order = datetime.now(timezone.utc) - last_order_time
+                min_interval = timedelta(minutes=30)
+                if time_since_last_order < min_interval:
+                    should_create_orders = False
+                    remaining_minutes = (min_interval - time_since_last_order).total_seconds() / 60
+                    print(f"[TRADING CYCLE] ⚠️ Last order was {time_since_last_order.total_seconds()/60:.1f} minutes ago. Need to wait {remaining_minutes:.1f} more minutes before next order (30-min interval).")
+                else:
+                    should_create_orders = True
+                    print(f"[TRADING CYCLE] ✅ Last order was {time_since_last_order.total_seconds()/60:.1f} minutes ago (>30min). Will create new orders.")
+            elif today_has_any_orders:
+                # 有订单但无法确定时间，保守处理：允许创建（可能是旧订单）
+                should_create_orders = True
+                print(f"[TRADING CYCLE] ✅ Today has orders but cannot determine time. Allowing new orders.")
             else:
+                # 今天没有任何订单，允许创建
+                should_create_orders = True
                 print(f"[TRADING CYCLE] ✅ Market is open and no existing orders - will create new orders")
         else:
             # 有pending订单，不创建新订单

@@ -127,7 +127,12 @@ def run_risk_analyst_llm(
     if isinstance(vix_data, dict):
         vix_risk_score_from_market = vix_data.get("risk_score")
         if vix_risk_score_from_market is not None:
-            print(f"[RISK ANALYST] Found VIX risk_score in market_json: {vix_risk_score_from_market:.1f}")
+            print(f"[RISK ANALYST] ✅ Found VIX risk_score in market_json: {vix_risk_score_from_market:.1f}")
+        else:
+            print(f"[RISK ANALYST] ⚠️  WARNING: market_json.vix exists but risk_score is None. vix_data keys: {list(vix_data.keys())}")
+    else:
+        print(f"[RISK ANALYST] ⚠️  WARNING: market_json.vix is not a dict. Type: {type(vix_data)}, Value: {vix_data}")
+        print(f"[RISK ANALYST] DEBUG: market_json keys: {list(market_json.keys())}")
     
     market_summary = {
         "stocks_count": len(market_json.get("stocks", {})),

@@ -14339,6 +14339,9 @@
             
             setupAutoRefresh();
             
+            // CRITICAL FIX: Start auto-trade management
+            startAutoTrade();
+            
             // Only refresh data, do not automatically execute trading cycle
             console.log('[Init] Page loaded, refreshing data...');
             
@@ -14347,7 +14350,7 @@
                 refreshData(true);
             }, 1000);
             
-            // Auto Trade is now automatically managed, no checkbox needed
+            // Auto Trade is now automatically managed by startAutoTrade()
         });
         
         // 页面卸载时清理

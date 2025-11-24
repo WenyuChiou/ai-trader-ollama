@@ -399,10 +399,19 @@ def run_risk_analyst_llm(
                 risk_report["position_control_report"] = position_control
             
             # CRITICAL FIX: Add tool calls information to risk_report
+            # IMPORTANT: Always add tool_results_data, even if tool_calls_used is empty (forced VIX API call)
             if tool_calls_used:
                 risk_report["tools_used"] = tool_calls_used
+            # CRITICAL FIX: Always add tool_results_data to risk_report, even if empty
+            # This ensures forced VIX API call is always included
+            if tool_results_data:
                 # CRITICAL FIX: Make tool_results_data JSON serializable (handle pandas Series)
                 risk_report["tool_calls"] = make_json_serializable(tool_results_data)
+                print(f"[RISK ANALYST] Added {len(tool_results_data)} tool calls to risk_report (including forced VIX API call)")
+            elif tool_calls_used:
+                # If tool_calls_used exists but tool_results_data is empty, create empty list
+                risk_report["tool_calls"] = []
+                print(f"[RISK ANALYST] WARNING: tool_calls_used exists but tool_results_data is empty")
             
             # CRITICAL FIX: Ensure entire risk_report is JSON serializable
             return make_json_serializable(risk_report)

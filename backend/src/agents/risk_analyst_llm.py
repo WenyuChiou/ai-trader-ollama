@@ -483,6 +483,29 @@ def run_risk_analyst_llm(
                 print(f"[RISK ANALYST] ⚠️  WARNING: tool_results_data is empty - VIX API call may have failed or returned invalid data")
                 print(f"[RISK ANALYST] DEBUG: tool_calls_used={tool_calls_used}, vix_api_data={vix_api_data is not None if 'vix_api_data' in locals() else 'N/A'}")
             
+            # CRITICAL FIX: If vix_risk_score is still None, try to extract from tool_calls one more time
+            if risk_report.get("vix_risk_score") is None:
+                print(f"[RISK ANALYST] ⚠️  WARNING: vix_risk_score is still None, trying to extract from tool_calls...")
+                tool_calls_in_report = risk_report.get("tool_calls", [])
+                if tool_calls_in_report:
+                    for tool_call in tool_calls_in_report:
+                        if tool_call.get("tool") == "vix_term":
+                            tool_result = tool_call.get("result", {})
+                            # Handle nested structure
+                            actual_result = tool_result
+                            while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                                actual_result = actual_result["result"]
+                            if isinstance(actual_result, dict):
+                                vix_risk_from_tool_calls = actual_result.get("vix_risk_score")
+                                vix_level_from_tool_calls = actual_result.get("vix")
+                                if vix_risk_from_tool_calls is not None:
+                                    risk_report["vix_risk_score"] = vix_risk_from_tool_calls
+                                    risk_report["vix_risk_source"] = "API (vix_term, from tool_calls)"
+                                    if vix_level_from_tool_calls is not None:
+                                        risk_report["vix_level"] = vix_level_from_tool_calls
+                                    print(f"[RISK ANALYST] ✅ FINAL FIX: Extracted vix_risk_score={vix_risk_from_tool_calls} from tool_calls")
+                                    break
+            
             # CRITICAL FIX: Ensure entire risk_report is JSON serializable
             print(f"[RISK ANALYST] DEBUG: Before make_json_serializable, risk_report['vix_risk_score'] = {risk_report.get('vix_risk_score')}")
             serialized_report = make_json_serializable(risk_report)

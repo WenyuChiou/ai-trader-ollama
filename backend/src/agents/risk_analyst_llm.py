@@ -440,15 +440,27 @@ def run_risk_analyst_llm(
             # CRITICAL FIX: Ensure entire risk_report is JSON serializable
             return make_json_serializable(risk_report)
             
-        except json.JSONDecodeError:
-            print(f"[RISK ANALYST LLM] Failed to parse JSON, using fallback")
-            # Fallback: 使用基础规则
-            return _fallback_risk_analysis(market_json, current_positions, portfolio_value)
+        except json.JSONDecodeError as je:
+            print(f"[RISK ANALYST LLM] Failed to parse JSON, using fallback: {je}")
+            import traceback
+            traceback.print_exc()
+            # CRITICAL FIX: Even in fallback, preserve tool_results_data if available
+            fallback_report = _fallback_risk_analysis(market_json, current_positions, portfolio_value)
+            if tool_results_data:
+                fallback_report["tool_calls"] = make_json_serializable(tool_results_data)
+                print(f"[RISK ANALYST LLM] Added {len(tool_results_data)} tool calls to fallback report")
+            return fallback_report
     
     except Exception as e:
         print(f"[RISK ANALYST LLM] Error: {e}")
-        # Fallback: 使用基础规则
-        return _fallback_risk_analysis(market_json, current_positions, portfolio_value)
+        import traceback
+        traceback.print_exc()
+        # CRITICAL FIX: Even in fallback, preserve tool_results_data if available
+        fallback_report = _fallback_risk_analysis(market_json, current_positions, portfolio_value)
+        if tool_results_data:
+            fallback_report["tool_calls"] = make_json_serializable(tool_results_data)
+            print(f"[RISK ANALYST LLM] Added {len(tool_results_data)} tool calls to fallback report")
+        return fallback_report
 
 
 def _default_position_control(

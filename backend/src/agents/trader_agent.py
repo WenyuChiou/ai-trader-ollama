@@ -1060,6 +1060,10 @@ Write in natural language, approximately 100-150 words."""
         
         # 准备 prompt 变量（用于完整信息传递）
         # CRITICAL FIX: Use safe_json_dumps to handle pandas Series/DataFrame
+        # CRITICAL FIX: Calculate current position count and max_positions
+        current_position_count = len(current_positions) if current_positions else 0
+        max_positions_value = position_config.get("max_positions") if position_config else None
+        
         prompt_vars = {
             "market_status": "OPEN" if is_market_open else "CLOSED",  # ⭐ 关键：传入市场状态
             "quotes_snapshot": safe_json_dumps(market, indent=2, ensure_ascii=False) if market else "{}",
@@ -1077,6 +1081,8 @@ Write in natural language, approximately 100-150 words."""
             "max_position_per_stock": position_config.get("max_position_per_stock", 0.15) * 100 if position_config else 15.0,
             "max_total_position": position_config.get("max_total_position", 0.85) * 100 if position_config else 85.0,
             "min_position_per_stock": position_config.get("min_position_per_stock", 0.03) * 100 if position_config else 3.0,
+            "current_position_count": current_position_count,  # CRITICAL: 当前持仓数量
+            "max_positions": max_positions_value if max_positions_value is not None else "unlimited",  # CRITICAL: 最大持仓数限制
         }
         
         # 调用 LLM 生成 summary（传入完整信息）

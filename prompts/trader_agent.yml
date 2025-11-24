@@ -103,6 +103,14 @@ system: |
   - Available cash for trading: ${available_cash:,.2f} (consider this when calculating total order value)
   - Current portfolio value: ${portfolio_value:,.2f}
   
+  **CRITICAL: Maximum Number of Positions Limit**:
+  - Current number of positions: {current_position_count}
+  - Maximum number of positions allowed: {max_positions}
+  - **IMPORTANT**: If current_position_count >= max_positions, you CANNOT buy new stocks that you don't already own
+  - **You can only**: (1) Buy more shares of stocks you already own (add to existing positions), or (2) Sell existing positions first, then buy new stocks
+  - **You CANNOT**: Buy new stocks when you're already at the maximum number of positions
+  - If you want to buy a new stock but are at the limit, you must first generate a SELL order for an existing position, then you can buy the new stock
+  
   **Your Decision Authority**:
   - You have the authority to decide position sizes within these guidelines
   - You can adjust position sizes based on:

@@ -1826,6 +1826,9 @@ def execute_daily_trade(
         vix_tool_in_calls = any(tc.get("tool") == "vix_term" for tc in tool_calls) if tool_calls else False
         vix_tool_in_results = any(tr.get("tool") == "vix_term" for tr in risk_report.get("tool_calls", [])) if risk_report.get("tool_calls") else False
         
+        print(f"[TRADING CYCLE] DEBUG: vix_tool_in_calls={vix_tool_in_calls}, vix_tool_in_results={vix_tool_in_results}")
+        print(f"[TRADING CYCLE] DEBUG: tool_calls count={len(tool_calls) if tool_calls else 0}, risk_report.tool_calls count={len(risk_report.get('tool_calls', [])) if risk_report.get('tool_calls') else 0}")
+        
         # If VIX tool was called but not in tool_calls, add it
         if not vix_tool_in_calls and vix_tool_in_results:
             vix_result = next((tr for tr in risk_report.get("tool_calls", []) if tr.get("tool") == "vix_term"), None)
@@ -1833,7 +1836,11 @@ def execute_daily_trade(
                 if not tool_calls:
                     tool_calls = []
                 tool_calls.append(vix_result)
-                print(f"[TRADING CYCLE] Added forced VIX API call to tool_calls for writing")
+                print(f"[TRADING CYCLE] ✅ Added forced VIX API call to tool_calls for writing")
+            else:
+                print(f"[TRADING CYCLE] ⚠️  WARNING: vix_tool_in_results=True but vix_result is None")
+        elif not vix_tool_in_calls and not vix_tool_in_results:
+            print(f"[TRADING CYCLE] ⚠️  WARNING: VIX tool not found in tool_calls or risk_report.tool_calls - forced call may have failed")
         
         if tool_calls:
             print(f"[TRADING CYCLE] Writing {len(tool_calls)} RiskAnalyst tool calls to discussion_actions.jsonl")

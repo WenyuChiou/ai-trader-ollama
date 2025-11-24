@@ -487,29 +487,39 @@ def execute_daily_trade(
     # CRITICAL FIX: Calculate VIX risk score and add to convo for trader_agent
     # trader_agent expects vix_risk in convo, but it's not calculated by multi_analyst_system
     # Note: Agents can now use vix_term tool to get vix_risk_score directly, but we still calculate it here for trader_agent
+    print(f"[TRADING CYCLE] ===== STEP: CALCULATING VIX RISK SCORE =====")
     vix_risk_score_value = 4.0  # Default value
     try:
         from src.tools.sentiment_tools import vix_term_structure, vix_risk_score
         # Try to get VIX data from market_view first
         vix_data_from_market = market_view.get("VIX") or market_view.get("vix")
+        print(f"[TRADING CYCLE] DEBUG: Checking market_view for VIX data: {vix_data_from_market is not None}")
         if vix_data_from_market and isinstance(vix_data_from_market, dict):
             # Extract VIX level from market_view
             vix_level = vix_data_from_market.get("level")
+            print(f"[TRADING CYCLE] DEBUG: VIX level from market_view: {vix_level}")
             if vix_level is not None and not (isinstance(vix_level, float) and (vix_level != vix_level)):  # Check for NaN
                 # Create a dict in the format expected by vix_risk_score
                 vix_dict = {"vix": vix_level}
                 vix_risk_score_value = vix_risk_score(vix_dict)
-                print(f"[TRADING CYCLE] Calculated VIX risk score from market_view: VIX={vix_level:.2f} -> risk_score={vix_risk_score_value:.1f}")
+                print(f"[TRADING CYCLE] ✅ Calculated VIX risk score from market_view: VIX={vix_level:.2f} -> risk_score={vix_risk_score_value:.1f}")
+            else:
+                print(f"[TRADING CYCLE] ⚠️  VIX level is None or NaN, trying fallback...")
         else:
+            print(f"[TRADING CYCLE] DEBUG: market_view does not contain VIX data, fetching directly...")
             # Fallback: fetch VIX data directly
             vix_data = vix_term_structure()
+            print(f"[TRADING CYCLE] DEBUG: vix_term_structure() returned: {vix_data is not None}, vix={vix_data.get('vix') if vix_data else None}")
             if vix_data and vix_data.get("vix"):
                 vix_risk_score_value = vix_risk_score(vix_data)
-                print(f"[TRADING CYCLE] Calculated VIX risk score from vix_term_structure: VIX={vix_data.get('vix'):.2f} -> risk_score={vix_risk_score_value:.1f}")
+                print(f"[TRADING CYCLE] ✅ Calculated VIX risk score from vix_term_structure: VIX={vix_data.get('vix'):.2f} -> risk_score={vix_risk_score_value:.1f}")
             else:
                 print(f"[TRADING CYCLE] ⚠️  VIX data not available, using default risk score: {vix_risk_score_value:.1f}")
     except Exception as e:
-        print(f"[TRADING CYCLE] ⚠️  Failed to calculate VIX risk score: {e}, using default: {vix_risk_score_value:.1f}")
+        print(f"[TRADING CYCLE] ❌ ERROR: Failed to calculate VIX risk score: {e}, using default: {vix_risk_score_value:.1f}")
+        import traceback
+        traceback.print_exc()
+    print(f"[TRADING CYCLE] ===== VIX RISK SCORE FINAL: {vix_risk_score_value:.1f}/10 =====")
     
     # Add vix_risk to convo so trader_agent can access it
     if not isinstance(convo, dict):
@@ -1382,8 +1392,15 @@ VIX Level: {vix_level_for_prompt if vix_level_for_prompt is not None else 'N/A'}
     print(f"[TRADING CYCLE] FORCED VIX risk score ({vix_risk_score_value:.1f}) into market_view.vix.risk_score for Risk Analyst")
     print(f"[TRADING CYCLE] DEBUG: market_view_for_risk.vix = {json.dumps(market_view_for_risk.get('vix', {}), indent=2)}")
     
-    print(f"[TRADING CYCLE] ===== CALLING run_risk_analyst_llm =====")
-    print(f"[TRADING CYCLE] Parameters: portfolio_value={portfolio_value}, use_tools={auto_tools}")
+    print(f"[TRADING CYCLE] ===== STEP 3: CALLING RISK ANALYST LLM =====")
+    print(f"[TRADING CYCLE] Parameters:")
+    print(f"  - portfolio_value: ${portfolio_value:,.2f}")
+    print(f"  - use_tools: {auto_tools}")
+    print(f"  - vix_risk_score (passed): {vix_risk_score_value:.1f}/10")
+    print(f"  - vix_level (passed): {market_view_for_risk.get('vix', {}).get('level', 'N/A')}")
+    print(f"  - discussion_risk_signals.vix_risk_score: {discussion_risk_signals.get('vix_risk_score', 'N/A')}")
+    print(f"  - market_view_for_risk.vix.risk_score: {market_view_for_risk.get('vix', {}).get('risk_score', 'N/A')}")
+    print(f"[TRADING CYCLE] Calling run_risk_analyst_llm...")
     risk_report = run_risk_analyst_llm(
         market_json=market_view_for_risk,
         current_positions=current_positions_info,
@@ -1392,7 +1409,13 @@ VIX Level: {vix_level_for_prompt if vix_level_for_prompt is not None else 'N/A'}
         previous_discussion=previous_discussion_text,
         use_tools=auto_tools,
     )
-    print(f"[TRADING CYCLE] ===== run_risk_analyst_llm returned =====")
+    print(f"[TRADING CYCLE] ===== RISK ANALYST LLM RETURNED =====")
+    print(f"[TRADING CYCLE] Risk Report:")
+    print(f"  - overall_risk_level: {risk_report.get('overall_risk_level', 'N/A')}")
+    print(f"  - risk_score: {risk_report.get('risk_score', 'N/A')}")
+    print(f"  - vix_risk_score: {risk_report.get('vix_risk_score', 'N/A')}")
+    print(f"  - vix_level: {risk_report.get('vix_level', 'N/A')}")
+    print(f"  - tool_calls count: {len(risk_report.get('tool_calls', []))}")
     
     # Write Risk Analyst result to discussion_actions.jsonl
     try:

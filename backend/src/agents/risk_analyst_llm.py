@@ -578,7 +578,27 @@ def run_risk_analyst_llm(
                 fallback_report["vix_risk_source"] = "fallback (API/tool_results/market_json)"
                 if fallback_vix_level is not None:
                     fallback_report["vix_level"] = fallback_vix_level
-                print(f"[RISK ANALYST] ✅ Fallback report: Set vix_risk_score={fallback_vix_risk:.1f}, vix_level={fallback_vix_level}")
+                
+                # CRITICAL FIX: Apply VIX risk_score adjustment to fallback report's risk_score
+                current_fallback_risk_score = fallback_report.get("risk_score", 5.0)
+                if fallback_vix_risk >= 6.0:
+                    # Force minimum risk_score based on VIX
+                    min_risk_score = max(5.0, fallback_vix_risk - 1.0)  # At least 5.0 if VIX=6.0
+                    if current_fallback_risk_score < min_risk_score:
+                        print(f"[RISK ANALYST] 🔧 FORCING FALLBACK: VIX risk_score={fallback_vix_risk:.1f} requires min overall risk_score={min_risk_score:.1f}, but fallback returned {current_fallback_risk_score:.1f}. Adjusting...")
+                        fallback_report["risk_score"] = min_risk_score
+                        # Also adjust risk_level if needed
+                        if fallback_report.get("overall_risk_level", "").lower() == "low":
+                            fallback_report["overall_risk_level"] = "medium"
+                            print(f"[RISK ANALYST] 🔧 FORCING FALLBACK: Changed risk_level from 'low' to 'medium' due to high VIX risk")
+                elif fallback_vix_risk >= 4.0:
+                    # VIX risk_score 4.0-5.9: ensure risk_score is at least 3.5
+                    min_risk_score = max(3.5, fallback_vix_risk - 0.5)
+                    if current_fallback_risk_score < min_risk_score:
+                        print(f"[RISK ANALYST] 🔧 ADJUSTING FALLBACK: VIX risk_score={fallback_vix_risk:.1f} requires min overall risk_score={min_risk_score:.1f}, but fallback returned {current_fallback_risk_score:.1f}. Adjusting...")
+                        fallback_report["risk_score"] = min_risk_score
+                
+                print(f"[RISK ANALYST] ✅ Fallback report: Set vix_risk_score={fallback_vix_risk:.1f}, vix_level={fallback_vix_level}, adjusted risk_score={fallback_report.get('risk_score'):.2f}, risk_level={fallback_report.get('overall_risk_level')}")
             else:
                 print(f"[RISK ANALYST] ⚠️  WARNING: Fallback report: Could not extract vix_risk_score from any source")
             
@@ -636,7 +656,27 @@ def run_risk_analyst_llm(
             fallback_report["vix_risk_source"] = "exception fallback (API/tool_results/market_json)"
             if fallback_vix_level is not None:
                 fallback_report["vix_level"] = fallback_vix_level
-            print(f"[RISK ANALYST] ✅ Exception fallback report: Set vix_risk_score={fallback_vix_risk:.1f}, vix_level={fallback_vix_level}")
+            
+            # CRITICAL FIX: Apply VIX risk_score adjustment to exception fallback report's risk_score
+            current_fallback_risk_score = fallback_report.get("risk_score", 5.0)
+            if fallback_vix_risk >= 6.0:
+                # Force minimum risk_score based on VIX
+                min_risk_score = max(5.0, fallback_vix_risk - 1.0)  # At least 5.0 if VIX=6.0
+                if current_fallback_risk_score < min_risk_score:
+                    print(f"[RISK ANALYST] 🔧 FORCING EXCEPTION FALLBACK: VIX risk_score={fallback_vix_risk:.1f} requires min overall risk_score={min_risk_score:.1f}, but fallback returned {current_fallback_risk_score:.1f}. Adjusting...")
+                    fallback_report["risk_score"] = min_risk_score
+                    # Also adjust risk_level if needed
+                    if fallback_report.get("overall_risk_level", "").lower() == "low":
+                        fallback_report["overall_risk_level"] = "medium"
+                        print(f"[RISK ANALYST] 🔧 FORCING EXCEPTION FALLBACK: Changed risk_level from 'low' to 'medium' due to high VIX risk")
+            elif fallback_vix_risk >= 4.0:
+                # VIX risk_score 4.0-5.9: ensure risk_score is at least 3.5
+                min_risk_score = max(3.5, fallback_vix_risk - 0.5)
+                if current_fallback_risk_score < min_risk_score:
+                    print(f"[RISK ANALYST] 🔧 ADJUSTING EXCEPTION FALLBACK: VIX risk_score={fallback_vix_risk:.1f} requires min overall risk_score={min_risk_score:.1f}, but fallback returned {current_fallback_risk_score:.1f}. Adjusting...")
+                    fallback_report["risk_score"] = min_risk_score
+            
+            print(f"[RISK ANALYST] ✅ Exception fallback report: Set vix_risk_score={fallback_vix_risk:.1f}, vix_level={fallback_vix_level}, adjusted risk_score={fallback_report.get('risk_score'):.2f}, risk_level={fallback_report.get('overall_risk_level')}")
         else:
             print(f"[RISK ANALYST] ⚠️  WARNING: Exception fallback report: Could not extract vix_risk_score from any source")
         

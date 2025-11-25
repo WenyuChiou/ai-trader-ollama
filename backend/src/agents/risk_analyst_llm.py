@@ -534,6 +534,54 @@ def run_risk_analyst_llm(
             if tool_results_data:
                 fallback_report["tool_calls"] = make_json_serializable(tool_results_data)
                 print(f"[RISK ANALYST LLM] Added {len(tool_results_data)} tool calls to fallback report")
+            
+            # CRITICAL FIX: Ensure fallback report also includes vix_risk_score
+            # Extract VIX risk_score from the same sources as normal flow
+            fallback_vix_risk = None
+            fallback_vix_level = None
+            
+            # Priority 1: From API data (vix_api_data)
+            if vix_api_data and isinstance(vix_api_data, dict):
+                fallback_vix_risk = vix_api_data.get("vix_risk_score")
+                fallback_vix_level = vix_api_data.get("vix")
+                if fallback_vix_risk is not None:
+                    print(f"[RISK ANALYST] ✅ Fallback: Using vix_risk_score={fallback_vix_risk:.1f} from API")
+            
+            # Priority 2: From tool_results_data
+            if fallback_vix_risk is None and tool_results_data:
+                for tool_data in tool_results_data:
+                    if tool_data.get("tool") == "vix_term":
+                        tool_result = tool_data.get("result", {})
+                        if isinstance(tool_result, dict):
+                            actual_result = tool_result
+                            while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                                actual_result = actual_result["result"]
+                            if isinstance(actual_result, dict):
+                                fallback_vix_risk = actual_result.get("vix_risk_score")
+                                fallback_vix_level = actual_result.get("vix")
+                                if fallback_vix_risk is not None:
+                                    print(f"[RISK ANALYST] ✅ Fallback: Using vix_risk_score={fallback_vix_risk:.1f} from tool_results_data")
+                                    break
+            
+            # Priority 3: From market_json
+            if fallback_vix_risk is None and isinstance(market_json, dict):
+                vix_data = market_json.get("vix", {})
+                if isinstance(vix_data, dict):
+                    fallback_vix_risk = vix_data.get("risk_score")
+                    fallback_vix_level = vix_data.get("level")
+                    if fallback_vix_risk is not None:
+                        print(f"[RISK ANALYST] ✅ Fallback: Using vix_risk_score={fallback_vix_risk:.1f} from market_json")
+            
+            # Set VIX risk_score in fallback report
+            if fallback_vix_risk is not None:
+                fallback_report["vix_risk_score"] = fallback_vix_risk
+                fallback_report["vix_risk_source"] = "fallback (API/tool_results/market_json)"
+                if fallback_vix_level is not None:
+                    fallback_report["vix_level"] = fallback_vix_level
+                print(f"[RISK ANALYST] ✅ Fallback report: Set vix_risk_score={fallback_vix_risk:.1f}, vix_level={fallback_vix_level}")
+            else:
+                print(f"[RISK ANALYST] ⚠️  WARNING: Fallback report: Could not extract vix_risk_score from any source")
+            
             return fallback_report
     
     except Exception as e:
@@ -545,6 +593,53 @@ def run_risk_analyst_llm(
         if tool_results_data:
             fallback_report["tool_calls"] = make_json_serializable(tool_results_data)
             print(f"[RISK ANALYST LLM] Added {len(tool_results_data)} tool calls to fallback report")
+        
+        # CRITICAL FIX: Ensure fallback report also includes vix_risk_score (same logic as JSON decode error)
+        fallback_vix_risk = None
+        fallback_vix_level = None
+        
+        # Priority 1: From API data (vix_api_data)
+        if vix_api_data and isinstance(vix_api_data, dict):
+            fallback_vix_risk = vix_api_data.get("vix_risk_score")
+            fallback_vix_level = vix_api_data.get("vix")
+            if fallback_vix_risk is not None:
+                print(f"[RISK ANALYST] ✅ Exception fallback: Using vix_risk_score={fallback_vix_risk:.1f} from API")
+        
+        # Priority 2: From tool_results_data
+        if fallback_vix_risk is None and tool_results_data:
+            for tool_data in tool_results_data:
+                if tool_data.get("tool") == "vix_term":
+                    tool_result = tool_data.get("result", {})
+                    if isinstance(tool_result, dict):
+                        actual_result = tool_result
+                        while isinstance(actual_result, dict) and "ok" in actual_result and "result" in actual_result:
+                            actual_result = actual_result["result"]
+                        if isinstance(actual_result, dict):
+                            fallback_vix_risk = actual_result.get("vix_risk_score")
+                            fallback_vix_level = actual_result.get("vix")
+                            if fallback_vix_risk is not None:
+                                print(f"[RISK ANALYST] ✅ Exception fallback: Using vix_risk_score={fallback_vix_risk:.1f} from tool_results_data")
+                                break
+        
+        # Priority 3: From market_json
+        if fallback_vix_risk is None and isinstance(market_json, dict):
+            vix_data = market_json.get("vix", {})
+            if isinstance(vix_data, dict):
+                fallback_vix_risk = vix_data.get("risk_score")
+                fallback_vix_level = vix_data.get("level")
+                if fallback_vix_risk is not None:
+                    print(f"[RISK ANALYST] ✅ Exception fallback: Using vix_risk_score={fallback_vix_risk:.1f} from market_json")
+        
+        # Set VIX risk_score in fallback report
+        if fallback_vix_risk is not None:
+            fallback_report["vix_risk_score"] = fallback_vix_risk
+            fallback_report["vix_risk_source"] = "exception fallback (API/tool_results/market_json)"
+            if fallback_vix_level is not None:
+                fallback_report["vix_level"] = fallback_vix_level
+            print(f"[RISK ANALYST] ✅ Exception fallback report: Set vix_risk_score={fallback_vix_risk:.1f}, vix_level={fallback_vix_level}")
+        else:
+            print(f"[RISK ANALYST] ⚠️  WARNING: Exception fallback report: Could not extract vix_risk_score from any source")
+        
         return fallback_report
 
 

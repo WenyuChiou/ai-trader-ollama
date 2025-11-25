@@ -284,6 +284,12 @@ def run_risk_analyst_llm(
                 
                 risk_report = json.loads(json_str)
             
+            # CRITICAL FIX: Check if LLM returned vix_risk_score (may be None or incorrect)
+            llm_vix_risk_score = risk_report.get("vix_risk_score")
+            print(f"[RISK ANALYST] DEBUG: LLM returned risk_report with vix_risk_score: {llm_vix_risk_score}")
+            if llm_vix_risk_score is not None:
+                print(f"[RISK ANALYST] DEBUG: LLM provided vix_risk_score={llm_vix_risk_score}, but we will override with API value")
+            
             # 确保必要字段存在
             if "overall_risk_level" not in risk_report:
                 risk_report["overall_risk_level"] = "medium"
@@ -375,6 +381,7 @@ def run_risk_analyst_llm(
                         risk_report["risk_score"] = min_risk_score
                 
                 # Store VIX risk_score and source in risk_report for reference
+                # CRITICAL FIX: Always set vix_risk_score, even if LLM returned a value (override with API value)
                 risk_report["vix_risk_score"] = vix_risk_to_use
                 risk_report["vix_risk_source"] = vix_source
                 if vix_api_data:
@@ -382,6 +389,12 @@ def run_risk_analyst_llm(
                 print(f"[RISK ANALYST] ✅ Final: VIX risk_score={vix_risk_to_use:.1f} (from {vix_source}), overall risk_score={risk_report['risk_score']:.1f}, risk_level={risk_report.get('overall_risk_level')}")
                 print(f"[RISK ANALYST] DEBUG: After setting vix_risk_score, risk_report['vix_risk_score'] = {risk_report.get('vix_risk_score')}")
                 print(f"[RISK ANALYST] DEBUG: risk_report keys: {list(risk_report.keys())[:20]}")
+                # CRITICAL FIX: Verify vix_risk_score was actually set
+                if risk_report.get("vix_risk_score") != vix_risk_to_use:
+                    print(f"[RISK ANALYST] ❌ ERROR: vix_risk_score mismatch! Expected {vix_risk_to_use}, got {risk_report.get('vix_risk_score')}")
+                    # Force set again
+                    risk_report["vix_risk_score"] = vix_risk_to_use
+                    print(f"[RISK ANALYST] 🔧 FORCED: Re-set vix_risk_score to {vix_risk_to_use}")
             else:
                 print(f"[RISK ANALYST] ⚠️  WARNING: No VIX risk_score available from API, market_json, or discussion_risk_signals")
                 # CRITICAL FIX: Try to get VIX risk_score from market_json one more time

@@ -168,14 +168,6 @@ graph TB
     Risk --> Memory
 ```
 
-### Data Flow
-
-```
-Market Data → Market View → Agent Analysis (4 Analysts) 
-→ Discussion Coordinator → Risk Analyst → Trader Agent 
-→ Order Execution → Portfolio Update → Data Storage
-```
-
 ---
 
 ## 📊 Historical Performance Analysis

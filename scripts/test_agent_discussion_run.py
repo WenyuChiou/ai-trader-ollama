@@ -48,7 +48,7 @@ def run_agent_discussion_test():
     if backend_running:
         print("✅ Backend is running (API endpoints available)")
     else:
-        print("⚠️  Backend API not running - running agent discussion directly")
+        print("[WARNING] Backend API not running - running agent discussion directly")
         print("   (This is fine - agent discussion runs independently)")
     
     print()

@@ -94,6 +94,86 @@ AI-Trader Ollama is a **complete trading platform** that provides both backend t
 
 ---
 
+## 🏗️ System Structure
+
+```mermaid
+graph TB
+    subgraph Frontend["Frontend Layer"]
+        UI[monitor.html<br/>Real-time Dashboard]
+    end
+    
+    subgraph API["API Server Layer"]
+        FastAPI[FastAPI Server<br/>Port 8000]
+        Security[Security Middleware<br/>API Key Auth]
+        RateLimit[Rate Limiter<br/>3-30 req/min]
+        ErrorHandler[Error Handler<br/>No Traceback Leakage]
+    end
+    
+    subgraph Agents["Agent System Layer"]
+        Market[Market Analyst]
+        Technical[Technical Analyst]
+        Fundamental[Fundamental Analyst]
+        Sentiment[Sentiment Analyst]
+        Coordinator[Discussion Coordinator]
+        Risk[Risk Analyst]
+        Trader[Trader Agent]
+    end
+    
+    subgraph Tools["Tools Layer"]
+        MarketTools[Market Tools<br/>21 tools]
+        MemoryTools[Memory/RAG Tools<br/>7 tools]
+    end
+    
+    subgraph Data["Data Storage Layer"]
+        Portfolio[portfolio_state.json]
+        Equity[equity_history.jsonl]
+        Conversations[discussion_actions.jsonl]
+        Trades[trades.jsonl]
+        Memory[memory/]
+    end
+    
+    UI -->|HTTP/REST| FastAPI
+    FastAPI --> Security
+    Security --> RateLimit
+    RateLimit --> ErrorHandler
+    ErrorHandler --> Market
+    ErrorHandler --> Technical
+    ErrorHandler --> Fundamental
+    ErrorHandler --> Sentiment
+    
+    Market --> Coordinator
+    Technical --> Coordinator
+    Fundamental --> Coordinator
+    Sentiment --> Coordinator
+    
+    Coordinator --> Risk
+    Risk --> Trader
+    
+    Market --> MarketTools
+    Technical --> MarketTools
+    Sentiment --> MarketTools
+    Market --> MemoryTools
+    
+    Trader --> Portfolio
+    Trader --> Trades
+    Market --> Conversations
+    Risk --> Conversations
+    Trader --> Conversations
+    Trader --> Equity
+    Market --> Memory
+    Risk --> Memory
+```
+
+### Data Flow
+
+```
+Market Data → Market View → Agent Analysis (4 Analysts) 
+→ Discussion Coordinator → Risk Analyst → Trader Agent 
+→ Order Execution → Portfolio Update → Data Storage
+```
+
+---
+
 ## 📊 Historical Performance Analysis
 
 ### Viewing Trading Performance
@@ -206,10 +286,31 @@ This will:
 - ✅ Check port availability
 - ✅ Start API server (choose from 3 options)
 
+**Or use the auto-start script** (Recommended):
+```powershell
+.\scripts\start_backend_auto.bat
+```
+This automatically handles:
+- ✅ Virtual environment setup
+- ✅ Dependency installation
+- ✅ Port conflict resolution
+- ✅ API server startup
+
 **After Setup:**
 - 🌐 **API Server**: http://localhost:8000
 - 📊 **API Docs**: http://localhost:8000/docs
 - 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
+
+**Security Setup** (Optional but Recommended):
+```powershell
+.\scripts\setup_all_security.bat
+```
+This configures:
+- ✅ Admin API Key authentication
+- ✅ Rate limiting
+- ✅ Secure CORS configuration
+- ✅ Error handling (no traceback leakage)
+- ✅ Unified logging system
 
 **Next Steps - Setup Background Running & Backup**:
 ```powershell
@@ -2617,28 +2718,33 @@ After deployment, verify the backend is working:
 #### Troubleshooting Railway Deployment
 
 **Deployment Fails**:
-- Check Railway deployment logs
+- Check Vercel deployment logs
 - Verify `requirements.txt` includes all dependencies
-- Ensure `Procfile` format is correct (`web: ...`)
-- Check that `railway.json` build command points to correct path
+- Ensure `vercel.json` configuration is correct
+- Check Python version (3.11+ required)
 
 **API Not Responding**:
-- Verify service is "Active" in Railway dashboard
-- Check Railway logs for errors
-- Verify `PORT` environment variable is set (Railway auto-assigns)
-- Test health endpoint: `https://your-app.up.railway.app/api/health`
+- Verify deployment is "Ready" in Vercel dashboard
+- Check Vercel function logs for errors
+- Verify environment variables are set correctly
+- Test health endpoint: `https://your-app.vercel.app/api/health`
 
 **Frontend Cannot Connect**:
-- Verify `frontend/config.js` has correct Railway URL
-- Check CORS settings (backend already configured for `*`)
+- Verify `frontend/config.js` has correct Vercel URL
+- Check CORS settings (`ALLOWED_ORIGINS` environment variable)
 - Check browser console for CORS errors
-- Verify Railway service is running and accessible
+- Verify `ENVIRONMENT=production` is set
+
+**Authentication Errors**:
+- Verify `ADMIN_SECRET` is set in Vercel environment variables
+- Check that protected endpoints include `x-admin-secret` header
+- Verify `ENVIRONMENT=production` (auth disabled in development)
 
 #### Related Documentation
 
-- 📖 [Railway Deployment Steps](RAILWAY_DEPLOYMENT_STEPS.md) - Detailed step-by-step guide (Chinese)
+- 📖 [Vercel Deployment Guide](docs/VERCEL_DEPLOYMENT.md) - Complete Vercel deployment guide
 - 📖 [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment documentation
-- 📖 [Daily Upload Setup](docs/DAILY_UPLOAD_SETUP.md) - Setup daily data upload to Railway
+- 📖 [Security Hardening](#-security-hardening) - Security configuration guide
 
 ### GitHub Pages Frontend Deployment
 

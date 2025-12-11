@@ -15,25 +15,75 @@ if Path.cwd() != _backend_dir and _backend_dir.exists():
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, date
+import uuid
+
+# Import security middleware
+from .security_middleware import AdminAuthMiddleware
+from .rate_limit import setup_rate_limiting, limiter
+from .error_handler import global_exception_handler, http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Initialize FastAPI app
 app = FastAPI(title="AI Trader API", version="1.0.0")
 
-# CORS middleware
+# Setup rate limiting
+setup_rate_limiting(app)
+
+# CORS middleware - configure based on environment
+environment = os.getenv("ENVIRONMENT", "development")
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+
+if environment == "production" and allowed_origins_env:
+    # Production: Use specified origins
+    allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")]
+    # Handle wildcard patterns like "http://localhost:*"
+    processed_origins = []
+    for origin in allowed_origins:
+        if origin.endswith(":*"):
+            # For development, allow localhost with any port
+            base = origin[:-2]
+            processed_origins.append(base)
+            processed_origins.append(f"{base}:*")
+        else:
+            processed_origins.append(origin)
+    allowed_origins = processed_origins
+else:
+    # Development: Allow localhost with any port
+    allowed_origins = ["http://localhost:*", "http://127.0.0.1:*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if environment == "production" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add admin authentication middleware
+app.add_middleware(AdminAuthMiddleware)
+
+# Import error handlers
+from .error_handler import global_exception_handler, http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# Global exception handlers
+@app.exception_handler(Exception)
+async def handle_exception(request: Request, exc: Exception):
+    """Global exception handler - prevents traceback leakage"""
+    return await global_exception_handler(request, exc)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_exception(request: Request, exc: StarletteHTTPException):
+    """HTTP exception handler"""
+    return await http_exception_handler(request, exc)
 
 # Helper function to get project logs directory
 def _get_project_logs_dir() -> Path:
@@ -77,7 +127,8 @@ def load_trading_config():
 
 # Root endpoint
 @app.get("/")
-async def root():
+@limiter.limit("30/minute")
+async def root(request: Request):
     """Root endpoint, returns API information and endpoint list"""
     return {
         "message": "AI Trader API",
@@ -194,7 +245,8 @@ async def verify_updates():
 # CRITICAL: Execute trading cycle endpoint
 @app.post("/api/trading/execute-trade")
 @app.get("/api/trading/execute-trade")  # Compatible with GET method (not recommended, but frontend may misuse)
-async def execute_trade_direct():
+@limiter.limit("3/minute")
+async def execute_trade_direct(request: Request):
     """Execute trading cycle (direct call)"""
     try:
         from src.orchestrator.trading_cycle import execute_daily_trade
@@ -255,22 +307,8 @@ async def execute_trade_direct():
             }
         )
     except Exception as e:
-        import traceback
-        error_msg = str(e)
-        traceback.print_exc()
-        return JSONResponse(
-            status_code=500,
-            content={
-                "ok": False,
-                "error": error_msg,
-                "traceback": traceback.format_exc()
-            },
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "*",
-            }
-        )
+        # Let global exception handler handle this
+        raise
     
 # CRITICAL: Fetch conversations endpoint
 @app.get("/api/agents/conversations")

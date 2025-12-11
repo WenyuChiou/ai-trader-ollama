@@ -149,8 +149,8 @@
     "auto_pull": true,
     "timeout_seconds": 8.0
   },
-  "_comment_fred_api_key": "FRED API key for economic data. Get free API key from https://fred.stlouisfed.org/docs/api/api_key.html. If not set, FRED tools will not be called.",
-  "fred_api_key": "b04875b1abf3f24890b57ea2cee6b5e1",
+  "_comment_fred_api_key": "FRED API key for economic data. Get free API key from https://fred.stlouisfed.org/docs/api/api_key.html. Set via FRED_API_KEY environment variable instead of hardcoding here.",
+  "_fred_api_key_deprecated": "Use FRED_API_KEY environment variable instead",
   "_comment_news_html_sources": "HTML news sources. Add any news website URLs here to scrape news content directly. Examples are provided below - you can add more URLs as needed.",
   "news_html_sources": [
     "https://www.cnbc.com/markets/",

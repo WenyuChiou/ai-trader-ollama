@@ -2649,14 +2649,13 @@ Daily Summary:
 
 📖 **完整对比**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - 详细的部署选项对比和选择指南
 
-### 🚀 Streamlit Frontend Deployment (Recommended)
+### GitHub Pages Frontend Deployment
 
-**Streamlit Cloud** provides a free, modern dashboard for monitoring your AI-Trader system.
+The HTML dashboard (`frontend/monitor.html`) is automatically deployed to **GitHub Pages** via GitHub Actions workflow.
 
-- 📖 **部署指南**: [`docs/STREAMLIT_DEPLOYMENT.md`](docs/STREAMLIT_DEPLOYMENT.md) - Complete Streamlit deployment guide
-- 🔐 **Secrets 配置**: [`docs/STREAMLIT_CLOUD_SECRETS.md`](docs/STREAMLIT_CLOUD_SECRETS.md) - Configure Streamlit Cloud secrets
-- 🌐 **Live Demo**: https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/
-- 📚 **其他部署选项**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - Compare all platforms
+- 🌐 **Live Demo**: [https://WenyuChiou.github.io/ai-trader-ollama/monitor.html](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
+- 📖 **Frontend Guide**: `frontend/README.md` - Frontend development and deployment details
+- 📚 **部署选项**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - Compare all deployment platforms
 
 ### Vercel Backend Deployment (Recommended)
 

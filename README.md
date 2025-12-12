@@ -28,11 +28,13 @@
 [![Ollama](https://img.shields.io/badge/Ollama-deepseek--r1-orange.svg)](https://ollama.ai/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-### 🌐 **Live Demo**
+### 🌐 **Live Demos**
 
-> **View the dashboard online**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
+> **📊 Streamlit Dashboard**: [**https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/**](https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/) ⭐ (Modern UI)
 > 
-> 🔒 **Read-Only Mode**: The public website is in read-only mode for security. Trading controls are disabled. Use localhost for full control.
+> **📈 HTML Dashboard**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html) (Classic UI)
+> 
+> 🔒 **Note**: Public demos are in read-only mode for security. Trading controls are disabled. Use localhost for full control.
 
 ### 🚀 **Quick Start (3 Steps)**
 

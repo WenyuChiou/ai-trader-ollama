@@ -82,23 +82,40 @@ elif API_BASE != "http://localhost:8000":
 st.markdown('<div class="main-header">📈 AI Trader Dashboard</div>', unsafe_allow_html=True)
 st.markdown("---")
 
-# 健康检查
+# 健康检查（带重试逻辑）
 @st.cache_data(ttl=30)
-def check_backend_health():
-    """检查后端连接状态"""
-    try:
-        response = requests.get(f"{API_BASE}/api/health", timeout=5)
-        return response.status_code == 200, response.json() if response.status_code == 200 else None
-    except Exception as e:
-        return False, None
+def check_backend_health(max_retries=2):
+    """检查后端连接状态，带重试逻辑"""
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(f"{API_BASE}/api/health", timeout=5)
+            if response.status_code == 200:
+                return True, response.json()
+            elif attempt < max_retries:
+                time.sleep(1)  # 等待1秒后重试
+        except requests.exceptions.Timeout:
+            if attempt < max_retries:
+                time.sleep(1)
+            else:
+                return False, {"error": "Connection timeout"}
+        except requests.exceptions.ConnectionError:
+            if attempt < max_retries:
+                time.sleep(1)
+            else:
+                return False, {"error": "Connection refused"}
+        except Exception as e:
+            return False, {"error": str(e)}
+    return False, {"error": "Unknown error"}
 
 # 显示连接状态
 health_status, health_data = check_backend_health()
 if health_status:
     st.success("✅ Backend Connected")
 else:
-    st.error("❌ Backend Not Connected - Please check if backend is running")
-    st.info(f"Trying to connect to: `{API_BASE}`")
+    error_msg = health_data.get("error", "Unknown error") if isinstance(health_data, dict) else "Connection failed"
+    st.error(f"❌ Backend Not Connected: {error_msg}")
+    st.info(f"**Trying to connect to:** `{API_BASE}`")
+    st.warning("**Troubleshooting:**\n1. Ensure backend is running\n2. Check if URL is correct\n3. Verify network connectivity")
     st.stop()
 
 # 获取投资组合数据
@@ -111,10 +128,18 @@ def get_portfolio():
             data = response.json()
             if data.get("ok"):
                 return data
+            else:
+                return None
+        elif response.status_code == 404:
+            return None  # 端点不存在，返回 None 而不是错误
+        else:
+            return None
+    except requests.exceptions.Timeout:
+        return None
+    except requests.exceptions.ConnectionError:
         return None
     except Exception as e:
-        st.error(f"Error fetching portfolio: {e}")
-        return None
+        return None  # 静默失败，让调用者处理
 
 # 获取净值历史
 @st.cache_data(ttl=300)
@@ -131,8 +156,9 @@ def get_equity_history(period="week", limit=1000):
             if data.get("ok") and data.get("records"):
                 return data["records"]
         return []
-    except Exception as e:
-        st.error(f"Error fetching equity history: {e}")
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        return []
+    except Exception:
         return []
 
 # 获取交易记录
@@ -146,10 +172,16 @@ def get_trades(limit=100):
             timeout=10
         )
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            elif isinstance(data, dict) and "trades" in data:
+                return data["trades"]
+            return []
         return []
-    except Exception as e:
-        st.error(f"Error fetching trades: {e}")
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        return []
+    except Exception:
         return []
 
 # 获取对话记录
@@ -167,8 +199,9 @@ def get_conversations(limit=50, include_demo=False):
             if data.get("ok"):
                 return data.get("conversations", [])
         return []
-    except Exception as e:
-        st.error(f"Error fetching conversations: {e}")
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        return []
+    except Exception:
         return []
 
 # 获取市场状态
@@ -186,7 +219,7 @@ def get_market_status():
 # 主界面
 portfolio = get_portfolio()
 
-if portfolio:
+if portfolio and portfolio.get("ok") is not False:
     # 投资组合概览
     col1, col2, col3, col4 = st.columns(4)
     

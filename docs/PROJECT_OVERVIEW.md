@@ -41,6 +41,8 @@ Traditional trading systems often rely on single-strategy approaches or manual a
 - Weekly memory compression to maintain efficiency
 
 ### 📈 Real-Time Monitoring
+- **Streamlit Dashboard**: Modern web interface (https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/)
+- **HTML Dashboard**: Classic interface with advanced features
 - Live dashboard showing agent discussions
 - Portfolio performance tracking
 - Trade execution visualization

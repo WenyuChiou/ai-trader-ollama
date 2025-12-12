@@ -6,6 +6,8 @@
 
 ## 🎯 What Is This?
 
+![System Structure Diagram](docs/assets/Structure.png)
+
 **AI-Trader Ollama** is a fully autonomous stock trading system that uses 6 specialized AI agents to analyze markets, make trading decisions, and manage portfolios. The agents collaborate through multi-round discussions, use 28 advanced analysis tools, and learn from historical trading decisions using a RAG memory system.
 
 **Key Capabilities:**
@@ -29,12 +31,6 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
-
-## 🏗️ System Structure
-
-![System Structure Diagram](docs/assets/Structure.png)
-
-*Detailed system architecture diagram showing all components and their relationships.*
 
 ### 🌐 **Live Demo**
 

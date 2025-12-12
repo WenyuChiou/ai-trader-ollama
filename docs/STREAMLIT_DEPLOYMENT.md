@@ -302,12 +302,26 @@ if auto_refresh:
 streamlit run streamlit_app.py
 ```
 
-### 步骤 4: 部署到 Streamlit Cloud
+### 步骤 4: 配置后端 API URL
+
+**更新 `streamlit_app.py` 中的后端 URL**：
+
+1. **本地开发**：使用 `http://localhost:8000`
+2. **生产环境**：更新为您的 Vercel 后端 URL
+   ```python
+   "https://your-app.vercel.app",  # 替换为您的 Vercel URL
+   ```
+
+**或使用环境变量**（推荐）：
+- 设置 `API_BASE_URL` 环境变量
+- Streamlit 会自动使用该变量
+
+### 步骤 5: 部署到 Streamlit Cloud
 
 1. **推送到 GitHub**
    ```bash
-   git add streamlit_app.py
-   git commit -m "feat: Add Streamlit dashboard"
+   git add streamlit_app.py .streamlit/
+   git commit -m "feat: Add Streamlit dashboard with Vercel backend support"
    git push origin main
    ```
 
@@ -315,12 +329,19 @@ streamlit run streamlit_app.py
    - 访问：https://streamlit.io/cloud
    - 使用 GitHub 账号登录
    - 点击 "New app"
-   - 选择仓库和 `streamlit_app.py` 文件
+   - 选择仓库：`WenyuChiou/ai-trader-ollama`
+   - 选择主文件：`streamlit_app.py`
+   - Python 版本：3.11
    - 点击 "Deploy"
 
-3. **配置环境变量**（如果需要）
-   - 在 Streamlit Cloud 设置中添加环境变量
-   - 例如：`API_BASE_URL` 等
+3. **配置环境变量**（在 Streamlit Cloud 设置中）
+   - `API_BASE_URL`: 您的 Vercel 后端 URL（例如：`https://your-app.vercel.app`）
+   - `ADMIN_SECRET`: （可选）用于执行交易的密钥
+
+4. **配置 Secrets**（可选）
+   - 在 Streamlit Cloud 项目设置 → Secrets
+   - 添加 `API_BASE_URL` 和 `ADMIN_SECRET`
+   - 或使用 `.streamlit/secrets.toml` 文件（本地开发）
 
 ---
 

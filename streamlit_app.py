@@ -45,8 +45,8 @@ API_BASE = os.getenv("API_BASE_URL", st.sidebar.selectbox(
     "Backend API",
     [
         "http://localhost:8000",  # 本地开发
-        "https://web-production-b42d6.up.railway.app",  # Railway (legacy)
-        # "https://your-app.vercel.app",  # Vercel (更新后添加)
+        "https://your-app.vercel.app",  # Vercel (更新为您的 Vercel URL)
+        "https://web-production-b42d6.up.railway.app",  # Railway (legacy - 即将过期)
     ],
     index=0,
     key="api_base"

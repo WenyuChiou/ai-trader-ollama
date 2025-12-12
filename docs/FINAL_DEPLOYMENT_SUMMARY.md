@@ -50,22 +50,40 @@
 
 ## 🚀 Next Steps for Deployment
 
-### 1. Push to GitHub
+### Option A: Streamlit Frontend (Recommended)
+
+**1. Deploy Backend to Vercel**
 ```bash
 git push origin main
 ```
+- Connect repository to Vercel
+- Set environment variables:
+  - `ADMIN_SECRET`: Generate secure random string
+  - `ENVIRONMENT`: `production`
+  - `ALLOWED_ORIGINS`: Your Streamlit Cloud domain + GitHub Pages domain
+  - `FRED_API_KEY`: (Optional)
 
-### 2. Deploy to Vercel
-1. Connect repository to Vercel
-2. Set environment variables:
-   - `ADMIN_SECRET`: Generate secure random string
-   - `ENVIRONMENT`: `production`
-   - `ALLOWED_ORIGINS`: Your production domain
-   - `FRED_API_KEY`: (Optional)
-3. Deploy
+**2. Deploy Streamlit to Streamlit Cloud**
+- Visit https://streamlit.io/cloud
+- Connect GitHub repository
+- Select `streamlit_app.py` as main file
+- Set environment variables:
+  - `API_BASE_URL`: Your Vercel backend URL
+  - `ADMIN_SECRET`: (Optional) For executing trades
 
-### 3. Update Frontend
-Update `frontend/config.js` with your Vercel deployment URL.
+**3. Update Streamlit App**
+- Update `streamlit_app.py` with your Vercel backend URL
+- Or use `API_BASE_URL` environment variable
+
+📖 **详细指南**: [`docs/STREAMLIT_DEPLOYMENT_CHECKLIST.md`](STREAMLIT_DEPLOYMENT_CHECKLIST.md)
+
+### Option B: HTML Frontend (Alternative)
+
+**1. Deploy Backend to Vercel** (same as above)
+
+**2. Update Frontend Configuration**
+- Update `frontend/config.js` with your Vercel deployment URL
+- Deploy frontend to GitHub Pages
 
 ### 4. Verify
 - Test all API endpoints

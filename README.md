@@ -90,28 +90,75 @@ After completing the Quick Start, you'll have:
 
 The system records detailed agent discussions and analysis:
 
+**Fundamental Analyst** (analyzing company fundamentals):
 ```json
 {
-  "timestamp": "2025-11-16T14:30:00Z",
-  "agent": "MarketAnalyst",
-  "round": 1,
-  "content": "Current market analysis shows mixed sentiment...",
-  "summary": "Market indices are up 0.5% with technology sector leading gains",
-  "stance": "BULLISH",
-  "tools_used": ["get_market_indices", "get_sector_rotation"]
+  "timestamp": "2025-12-11T23:26:16.426Z",
+  "agent": "FundamentalAnalyst",
+  "round": 2,
+  "type": "tool",
+  "tool_name": "get_company_fundamentals",
+  "tool_result": {
+    "symbol": "NVDA",
+    "company_name": "NVIDIA Corporation",
+    "sector": "Technology",
+    "fundamentals": {
+      "valuation": {
+        "pe_ratio": 44.78,
+        "forward_pe": 24.24,
+        "price_to_book": 36.98
+      },
+      "profitability": {
+        "profit_margins": 0.53,
+        "return_on_equity": 1.07,
+        "revenue": 187141996544
+      },
+      "analyst_ratings": {
+        "target_price": 250.93,
+        "recommendation": "strong_buy",
+        "number_of_analysts": 56
+      }
+    }
+  }
 }
 ```
 
+**Risk Analyst** (assessing market risk):
 ```json
 {
-  "timestamp": "2025-11-16T14:32:00Z",
+  "timestamp": "2025-12-11T23:26:43.331Z",
   "agent": "RiskAnalyst",
-  "round": 1,
-  "content": "Risk assessment indicates moderate market volatility...",
-  "summary": "VIX at 18.5, overall risk score: 4.2/10 (moderate)",
-  "risk_score": 4.2,
-  "vix_risk_score": 3.8,
-  "stance": "NEUTRAL"
+  "round": 0,
+  "type": "discussion",
+  "stance": "low",
+  "risk_score": 3.5,
+  "vix_risk_score": 4.0,
+  "vix_level": 14.85,
+  "summary": "Market analysis shows 0 high-risk stocks and 3 safe stocks. Overall risk score: 3.50/10.",
+  "risk_report": {
+    "overall_risk_level": "low",
+    "risk_score": 3.5,
+    "safe_stocks": ["NVDA", "MSFT", "AAPL"],
+    "high_risk_stocks": []
+  }
+}
+```
+
+**Trader Agent** (making trading decisions):
+```json
+{
+  "timestamp": "2025-12-11T23:26:56.530Z",
+  "agent": "TraderAgent",
+  "round": 0,
+  "type": "discussion",
+  "stance": "NEUTRAL",
+  "decision": {
+    "action": "HOLD",
+    "rationale": "Market is closed. Analysis completed but no trading orders generated.",
+    "buy_orders": [],
+    "sell_orders": []
+  },
+  "vix_risk": 4.0
 }
 ```
 
@@ -122,20 +169,52 @@ Real-time portfolio tracking with historical performance:
 **Current Portfolio**:
 ```json
 {
-  "cash": 8500.00,
+  "cash": 99.37,
   "initial_value": 10000.00,
-  "total_value": 10250.00,
-  "total_pnl": 250.00,
-  "total_pnl_pct": 2.50,
+  "total_value": 3274.29,
+  "timestamp": "2025-12-11T23:27:03.243Z",
   "positions": {
+    "MSFT": {
+      "quantity": 2,
+      "avg_cost": 492.37,
+      "current_price": 478.56,
+      "market_value": 957.12,
+      "total_cost": 984.74
+    },
     "NVDA": {
-      "quantity": 10,
-      "avg_cost": 150.00,
-      "current_price": 155.00,
-      "market_value": 1550.00,
-      "unrealized_pnl": 50.00,
-      "unrealized_pnl_pct": 3.33
+      "quantity": 6,
+      "avg_cost": 193.44,
+      "current_price": 183.78,
+      "market_value": 1102.68,
+      "total_cost": 1160.64
+    },
+    "AAPL": {
+      "quantity": 4,
+      "avg_cost": 274.10,
+      "current_price": 278.78,
+      "market_value": 1115.12,
+      "total_cost": 1096.39
+    },
+    "AMZN": {
+      "quantity": 5,
+      "avg_cost": 225.23,
+      "current_price": 225.23,
+      "market_value": 1126.15,
+      "total_cost": 1126.15
+    },
+    "GOOGL": {
+      "quantity": 3,
+      "avg_cost": 302.17,
+      "current_price": 302.17,
+      "market_value": 906.52,
+      "total_cost": 906.52
     }
+  },
+  "snapshot": {
+    "cash": 99.37,
+    "total_value": 3274.29,
+    "equity_value": 3174.92,
+    "positions_count": 10
   }
 }
 ```
@@ -143,35 +222,66 @@ Real-time portfolio tracking with historical performance:
 **Equity History** (recorded every 30 minutes):
 ```json
 {
-  "date": "2025-11-16",
-  "timestamp": "2025-11-16T14:30:00Z",
-  "cash": 8500.00,
-  "equity_value": 1750.00,
-  "total_value": 10250.00,
-  "total_pnl": 250.00,
-  "total_pnl_pct": 2.50
+  "date": "2025-12-02",
+  "timestamp": "2025-12-02T20:54:37.607Z",
+  "cash": 99.37,
+  "equity_value": 10074.61,
+  "total_value": 10173.99,
+  "total_pnl": 173.99,
+  "total_pnl_pct": 1.74,
+  "positions": {
+    "AAPL": {
+      "quantity": 4,
+      "avg_cost": 274.10,
+      "current_price": 286.10,
+      "market_value": 1144.40,
+      "unrealized_pnl": 48.01,
+      "unrealized_pnl_pct": 4.38
+    },
+    "NVDA": {
+      "quantity": 6,
+      "avg_cost": 193.44,
+      "current_price": 181.64,
+      "market_value": 1089.84,
+      "unrealized_pnl": -70.80,
+      "unrealized_pnl_pct": -6.10
+    }
+  }
 }
 ```
 
-### Trading Decisions
+### Trading Decisions & Filled Orders
 
-Agent trading decisions with detailed rationale:
+Agent trading decisions with detailed rationale and execution records:
+
+**Filled Orders** (actual executed trades):
+```json
+{
+  "order_id": "AAPL_BUY_2025-11-20_1763657202.242376",
+  "symbol": "AAPL",
+  "action": "BUY",
+  "quantity": 1,
+  "limit_price": 270.61,
+  "placed_at": "2025-11-20T16:46:42.242Z",
+  "status": "FILLED",
+  "fill_price": 270.61,
+  "fill_reason": "Market order executed immediately at current price",
+  "filled_at": "2025-11-20T16:46:42.243Z"
+}
+```
 
 ```json
 {
-  "timestamp": "2025-11-16T14:35:00Z",
-  "agent": "TraderAgent",
+  "order_id": "NVDA_BUY_2025-11-20_1763657202.585502",
+  "symbol": "NVDA",
   "action": "BUY",
-  "targets": ["NVDA", "MSFT"],
-  "rationale": "Strong technical indicators and positive sentiment support entry",
-  "buy_orders": [
-    {
-      "symbol": "NVDA",
-      "quantity": 10,
-      "price": 150.00,
-      "status": "FILLED"
-    }
-  ]
+  "quantity": 1,
+  "limit_price": 187.34,
+  "placed_at": "2025-11-20T16:46:42.585Z",
+  "status": "FILLED",
+  "fill_price": 187.34,
+  "fill_reason": "Market order executed immediately at current price",
+  "filled_at": "2025-11-20T16:46:42.586Z"
 }
 ```
 

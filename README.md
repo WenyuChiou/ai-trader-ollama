@@ -28,6 +28,14 @@
 [![Ollama](https://img.shields.io/badge/Ollama-deepseek--r1-orange.svg)](https://ollama.ai/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+---
+
+## 🏗️ System Structure
+
+![System Structure Diagram](docs/assets/Structure.png)
+
+*Detailed system architecture diagram showing all components and their relationships.*
+
 ### 🌐 **Live Demos**
 
 > **📊 Streamlit Dashboard**: [**https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/**](https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/) ⭐ (Modern UI)
@@ -113,14 +121,6 @@ AI-Trader Ollama is a **complete trading platform** that provides both backend t
 7. **Risk-First Approach**: Every decision passes through risk analysis
 8. **Transparency**: All reasoning is logged and visible
 9. **Historical Learning**: Agents learn from past successes and failures
-
----
-
-## 🏗️ System Structure
-
-![System Structure Diagram](docs/assets/Structure.png)
-
-*Detailed system architecture diagram showing all components and their relationships.*
 
 ---
 

@@ -28,4 +28,6 @@ websockets>=13.0
 # Security & Rate Limiting
 slowapi>=0.1.9
 python-multipart>=0.0.6
+streamlit>=1.28.0
+plotly>=5.17.0
 

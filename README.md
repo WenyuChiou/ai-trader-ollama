@@ -96,10 +96,6 @@ AI-Trader Ollama is a **complete trading platform** that provides both backend t
 
 ## 🏗️ System Structure
 
-![System Structure Diagram](docs/assets/Structure.png)
-
-*Detailed system architecture diagram showing all components and their relationships.*
-
 ```mermaid
 graph TB
     subgraph Frontend["Frontend Layer"]

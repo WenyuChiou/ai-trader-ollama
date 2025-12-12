@@ -87,15 +87,66 @@ scripts\start_backend_auto.bat
 
 ## First Run
 
-### 1. Verify System Status
+### 1. Start the System
 
-**Check backend:**
-- Open: http://localhost:8000/api/health
+**Option A: Quick Start (Recommended)**
+```batch
+scripts\quick_start.bat
+```
+This automatically:
+- ✅ Starts backend API server
+- ✅ Waits for backend to be ready
+- ✅ Verifies backend health
+- ✅ Opens frontend in browser
+
+**Option B: Manual Start**
+```batch
+# Step 1: Start backend
+scripts\start_backend_auto.bat
+
+# Step 2: Wait for backend to start (check the window)
+# You should see: "Application startup complete"
+
+# Step 3: Open frontend
+# Double-click: frontend\monitor.html
+# Or open in browser: file:///path/to/frontend/monitor.html
+```
+
+### 2. Verify Backend Connection
+
+**Method 1: Check Health Endpoint**
+- Open in browser: http://localhost:8000/api/health
 - Should return: `{"status":"ok"}`
+- If error or timeout: Backend is not running
 
-**Check frontend:**
-- Open: `frontend\monitor.html`
-- Should show "Connected" status (green dot)
+**Method 2: Check Frontend Connection Status**
+- Open `frontend\monitor.html` in browser
+- Look at **top right corner** for connection indicator:
+  - 🟢 **Green dot** = Connected to backend ✅
+  - 🔴 **Red dot** = Backend not connected ❌
+  - **"Connected"** text = Backend is ready
+  - **"Disconnected"** text = Backend is not running
+
+**Method 3: Check Browser Console**
+- Press **F12** to open Developer Tools
+- Go to **Console** tab
+- Look for:
+  - ✅ No errors = Good connection
+  - ❌ `Failed to fetch` or `Connection refused` = Backend not running
+  - ❌ `CORS error` = Backend CORS configuration issue
+
+**If Backend Not Connected:**
+1. Check if backend is running:
+   ```batch
+   # Check if port 8000 is in use
+   netstat -ano | findstr ":8000"
+   ```
+2. Start backend if not running:
+   ```batch
+   scripts\start_backend_auto.bat
+   ```
+3. Wait for backend to start (check backend window)
+4. Refresh frontend page (F5)
 
 ### 2. Run Trading Cycle
 

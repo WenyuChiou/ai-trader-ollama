@@ -254,6 +254,21 @@ This automatically handles:
 - 📊 **API Docs**: http://localhost:8000/docs
 - 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
 
+**Verify Backend Connection:**
+1. **Check Backend Health**: Open http://localhost:8000/api/health in browser
+   - Should return: `{"status":"ok"}`
+   - If error, backend is not running
+
+2. **Open Frontend**: Double-click `frontend\monitor.html` or open in browser
+   - Look for connection status indicator (top right)
+   - 🟢 **Green dot** = Connected to backend
+   - 🔴 **Red dot** = Backend not connected
+   - If red, check backend is running: `scripts\start_backend_auto.bat`
+
+3. **Check Browser Console** (Press F12):
+   - No errors = Good connection
+   - Connection errors = Backend not running or wrong URL
+
 **Security Setup** (Optional but Recommended):
 ```batch
 scripts\setup_all_security.bat

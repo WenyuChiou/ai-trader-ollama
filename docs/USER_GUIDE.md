@@ -52,8 +52,19 @@ scripts\quick_start.bat
 ```
 
 **Open frontend:**
-- Automatic: Quick start opens it
-- Manual: Open `frontend\monitor.html` in browser
+- Automatic: Quick start opens it automatically
+- Manual: 
+  1. Double-click `frontend\monitor.html` 
+  2. Or open in browser: Right-click → Open with → Browser
+  3. Check connection status (top right corner):
+     - 🟢 Green dot = Connected ✅
+     - 🔴 Red dot = Not connected ❌
+
+**Verify Backend Connection:**
+1. **Check Health Endpoint**: http://localhost:8000/api/health
+   - Should return: `{"status":"ok"}`
+2. **Check Frontend Status**: Look for green/red dot in top right
+3. **Check Browser Console** (F12): No connection errors = Good
 
 ## System Overview
 

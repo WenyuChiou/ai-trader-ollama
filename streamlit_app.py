@@ -41,11 +41,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API 配置
+# 优先使用环境变量，否则显示选择框
 API_BASE = os.getenv("API_BASE_URL", st.sidebar.selectbox(
     "Backend API",
     [
         "http://localhost:8000",  # 本地开发
-        "https://your-app.vercel.app",  # Vercel (更新为您的 Vercel URL)
+        # 添加您的后端 URL 到这里，或设置 API_BASE_URL 环境变量
+        # "https://your-backend-url.com",  # Render/Fly.io/其他平台
         "https://web-production-b42d6.up.railway.app",  # Railway (legacy - 即将过期)
     ],
     index=0,

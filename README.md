@@ -36,13 +36,11 @@
 
 *Detailed system architecture diagram showing all components and their relationships.*
 
-### 🌐 **Live Demos**
+### 🌐 **Live Demo**
 
-> **📊 Streamlit Dashboard**: [**https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/**](https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/) ⭐ (Modern UI)
+> **📈 HTML Dashboard**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html) (Deployed via GitHub Pages)
 > 
-> **📈 HTML Dashboard**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html) (Classic UI)
-> 
-> 🔒 **Note**: Public demos are in read-only mode for security. Trading controls are disabled. Use localhost for full control.
+> 🔒 **Note**: Public demo is in read-only mode for security. Trading controls are disabled. Use localhost for full control.
 
 ### 🚀 **Quick Start (3 Steps)**
 
@@ -2702,34 +2700,32 @@ Vercel provides a free, reliable way to deploy the AI-Trader backend API with ge
 
 📖 **详细部署指南**: [`docs/VERCEL_DEPLOYMENT.md`](docs/VERCEL_DEPLOYMENT.md)
 
-### Streamlit Frontend Deployment
+### GitHub Pages Frontend Deployment
 
-**Streamlit Cloud** provides a free, modern dashboard for monitoring your AI-Trader system.
+The HTML dashboard (`frontend/monitor.html`) is automatically deployed to **GitHub Pages** when you push to the `main` branch.
 
-#### Quick Deployment Steps
+#### How It Works
 
-1. **Deploy to Streamlit Cloud**
-   - Visit [Streamlit Cloud](https://streamlit.io/cloud)
-   - Connect GitHub repository: `WenyuChiou/ai-trader-ollama`
-   - Main file: `streamlit_app.py`
-   - Python version: 3.11
-   - Dependencies: `requirements.txt` (root directory)
+1. **Automatic Deployment**
+   - GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) automatically deploys on push
+   - Deploys from `/frontend` folder
+   - URL: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
 
-2. **Configure Secrets**
-   - In Streamlit Cloud → Settings → Secrets
-   - Add your backend API URL:
-     ```toml
-     API_BASE_URL = "https://your-backend-url.com"
-     ```
-   - For local deployment with Cloudflare Tunnel, use your Tunnel URL
+2. **Configuration**
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`
+   - **Folder**: `/frontend`
+   - **Workflow**: `.github/workflows/deploy-pages.yml`
 
-3. **Access Your Dashboard**
-   - Streamlit Cloud provides a public URL
-   - Example: `https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/`
+3. **Update Process**
+   - Make changes to `frontend/monitor.html` or `frontend/config.js`
+   - Commit and push to `main` branch
+   - GitHub Pages automatically deploys (1-2 minutes)
+   - Access updated frontend at GitHub Pages URL
 
-📖 **详细部署指南**: [`docs/STREAMLIT_DEPLOYMENT.md`](docs/STREAMLIT_DEPLOYMENT.md)  
-🔐 **Secrets 配置**: [`docs/STREAMLIT_CLOUD_SECRETS.md`](docs/STREAMLIT_CLOUD_SECRETS.md)  
-🏠 **本地部署**: [`docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md`](docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md) - Free local deployment with Cloudflare Tunnel
+**Note**: The frontend is in read-only mode on GitHub Pages for security. Full trading controls are only available when running locally.
+
+📖 **Frontend Guide**: See `frontend/README.md` for frontend development details
 
 ### GitHub Pages Frontend Deployment
 

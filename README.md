@@ -250,41 +250,66 @@ See [Data Format Documentation](docs/DATA_FORMAT.md) for detailed file formats.
 
 ---
 
-### 🎯 Quick Setup (3 Steps)
+### 🎯 Quick Setup (New User-Friendly Scripts)
 
-**Step 1: Install Dependencies**
-```powershell
-# Run from project root directory
-.\scripts\setup_step1_install_dependencies.ps1
+**One-Click Installation** (Recommended for new users):
+```batch
+scripts\install.bat
 ```
 This will:
-- ✅ Check Python installation
+- ✅ Check Python 3.10+ installation
 - ✅ Check Ollama installation and pull deepseek-r1 model
 - ✅ Create virtual environment
 - ✅ Install all Python dependencies
+- ✅ Initialize data directories
+- ✅ Create default configuration files
 
-**Step 2: Configure System**
-```powershell
-.\scripts\setup_step2_configure.ps1
+**Interactive Configuration** (First time only):
+```batch
+scripts\setup_wizard.bat
 ```
 This will:
-- ✅ Validate configuration files (config.json, agents.yaml)
-- ✅ Initialize data directory
-- ✅ Initialize portfolio state
-- ✅ Check environment variables
+- ✅ Guide you through configuration setup
+- ✅ Generate secure ADMIN_SECRET
+- ✅ Configure CORS settings
+- ✅ Set up environment variables
+- ✅ Optional API keys (FRED_API_KEY)
 
-**Step 3: Start Services**
-```powershell
-.\scripts\setup_step3_start_services.ps1
+**Verify Installation**:
+```batch
+scripts\verify_environment.bat
 ```
 This will:
-- ✅ Check Ollama service
-- ✅ Check port availability
-- ✅ Start API server (choose from 3 options)
+- ✅ Check all prerequisites
+- ✅ Verify installed components
+- ✅ Generate environment report
 
-**Or use the auto-start script** (Recommended):
-```powershell
-.\scripts\start_backend_auto.bat
+**Test System** (Recommended before first use):
+```batch
+# Test backend first (required)
+scripts\test_backend.bat
+
+# Then test frontend (requires backend running)
+scripts\test_frontend.bat
+
+# Or test everything at once
+scripts\test_system.bat
+```
+
+**Quick Start** (Start everything):
+```batch
+scripts\quick_start.bat
+```
+This will:
+- ✅ Check environment
+- ✅ Start Ollama (if needed)
+- ✅ Start backend API server
+- ✅ Verify backend is ready
+- ✅ Open frontend in browser
+
+**Alternative: Manual Start**:
+```batch
+scripts\start_backend_auto.bat
 ```
 This automatically handles:
 - ✅ Virtual environment setup
@@ -298,8 +323,8 @@ This automatically handles:
 - 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
 
 **Security Setup** (Optional but Recommended):
-```powershell
-.\scripts\setup_all_security.bat
+```batch
+scripts\setup_all_security.bat
 ```
 This configures:
 - ✅ Admin API Key authentication
@@ -307,6 +332,15 @@ This configures:
 - ✅ Secure CORS configuration
 - ✅ Error handling (no traceback leakage)
 - ✅ Unified logging system
+
+**Troubleshooting**:
+```batch
+scripts\diagnose.bat
+```
+This will:
+- ✅ Automatically detect common issues
+- ✅ Provide specific fixes
+- ✅ Generate diagnosis report
 
 **Next Steps - Setup Background Running & Backup**:
 ```powershell
@@ -317,21 +351,18 @@ This configures:
 # Right-click scripts\setup_daily_backup_admin.bat → Run as administrator
 ```
 
-**📖 Complete Setup Guide**: See [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) for detailed instructions on:
-- ✅ Background running setup (Task Scheduler / Windows Service)
-- ✅ Daily backup configuration
-- ✅ Verification and troubleshooting
+**📖 Complete Documentation**:
+- [`docs/INSTALLATION.md`](docs/INSTALLATION.md) - Detailed installation guide
+- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) - Complete user guide
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) - Troubleshooting guide
+- [`docs/SETUP_CHECKLIST.md`](docs/SETUP_CHECKLIST.md) - Installation checklist
+- [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) - Background running & backup setup
 
 **Optional: Setup Scheduled Tasks**:
 ```powershell
 .\scripts\setup_scheduled_tasks.ps1
 ```
 This will configure automated tasks for trading, equity recording, and data updates.
-
-**Or run all steps at once:**
-```powershell
-.\scripts\setup_all_steps.ps1
-```
 
 ---
 

@@ -14,6 +14,11 @@
   ],
   "env": {
     "PYTHON_VERSION": "3.11"
+  },
+  "functions": {
+    "backend/src/api/server.py": {
+      "maxDuration": 60
+    }
   }
 }
 

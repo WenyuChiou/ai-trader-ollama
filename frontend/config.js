@@ -7,7 +7,9 @@ const API_CONFIG = {
     
     // Production environment (backend API URL)
     // This URL is automatically used when accessing via GitHub Pages
-    production: 'https://web-production-b42d6.up.railway.app',
+    // TODO: Update this to your Vercel deployment URL after migrating from Railway
+    // Example: 'https://ai-trader-ollama.vercel.app'
+    production: 'https://web-production-b42d6.up.railway.app',  // Railway (legacy - migrate to Vercel)
     
     // Auto-detect environment
     get apiUrl() {

@@ -2636,8 +2636,9 @@ Daily Summary:
 - 📖 **迁移指南**: [`docs/RAILWAY_TO_VERCEL_MIGRATION.md`](docs/RAILWAY_TO_VERCEL_MIGRATION.md)
 - ✅ **推荐**: Vercel（最简单）或 Render（传统服务器）
 - 📚 **部署文档**: 
-  - [Vercel 部署](docs/VERCEL_DEPLOYMENT.md)
-  - [部署选项对比](docs/DEPLOYMENT_OPTIONS.md)
+  - [Vercel 部署](docs/VERCEL_DEPLOYMENT.md) - 英文版详细指南
+  - [部署选项对比](docs/DEPLOYMENT_OPTIONS.md) - 所有平台对比
+  - [Streamlit 部署](docs/STREAMLIT_DEPLOYMENT.md) - Streamlit 仪表板
 
 ### Vercel Backend Deployment (Recommended)
 

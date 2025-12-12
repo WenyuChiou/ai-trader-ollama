@@ -1,144 +1,116 @@
-# 📚 Documentation Index
+# Documentation Index
 
-> **Complete documentation index for AI-Trader Ollama system**
+Complete documentation for AI-Trader Ollama project.
 
-This directory contains all detailed documentation for the AI-Trader Ollama system. The main [README.md](../README.md) provides a quick start guide, while this index provides links to all detailed documentation.
+## 📚 Getting Started
 
----
+New to the project? Start here:
 
-## 📋 Table of Contents
+- **[Project Overview](PROJECT_OVERVIEW.md)** - What is this project? What does it do?
+- **[Quick Start Guide](QUICK_START.md)** - Get up and running in minutes
+- **[Installation Guide](INSTALLATION.md)** - Detailed installation instructions
+- **[Setup Checklist](SETUP_CHECKLIST.md)** - Step-by-step setup verification
 
-- [Core Documentation](#-core-documentation)
-- [Trading-Related Documentation](#-trading-related-documentation)
-- [API Documentation](#-api-documentation)
-- [Trading Hours Logic](#-trading-hours-logic)
-- [Archived Documentation](#-archived-documentation)
+## 👤 User Guides
 
----
+For end users and operators:
 
-## 📖 Core Documentation
+- **[User Guide](USER_GUIDE.md)** - Complete user manual
+- **[Configuration Guide](CONFIGURATION.md)** - System configuration options
+- **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
 
-### Getting Started
-- **[Backend README](../backend/README.md)** - Complete backend documentation
-  - API endpoints, Agents, Tools, Scripts, Testing
-  - Installation and configuration guide
-  
-- **[Frontend README](../frontend/README.md)** - Complete frontend documentation
-  - Features, Usage, Configuration, Troubleshooting
-  - Real-time monitoring dashboard guide
+## 🚀 Deployment
 
-### System Architecture
-- **[Complete System Flow](archive/root_files/COMPLETE_SYSTEM_FLOW.md)** - Complete frontend-backend flow documentation
-  - System architecture overview
-  - Frontend/backend processes
-  - Data flow and trading hours logic
-  - API endpoint mapping
-  - Key component interactions
+Deploy the system to production:
 
-- **[User Perspective Review](archive/root_files/USER_PERSPECTIVE_REVIEW.md)** - User-centric flow review and improvements
-  - User expectations during trading/non-trading hours
-  - Continuous trading logic
-  - Net value display improvements
+- **[Deployment Options](DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms
+- **[Railway to Vercel Migration](RAILWAY_TO_VERCEL_MIGRATION.md)** - Migrate from Railway to Vercel
+- **[Streamlit Deployment](STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend alternative
 
----
+## 🏗️ Architecture & Development
 
-## 💼 Trading-Related Documentation
+For developers and contributors:
 
-### Strategy Guides
-- **[Hedging Strategy Guide](archive/HEDGING_STRATEGY.md)** - Inverse ETF hedging strategy explanation
-  - Inverse ETF list and configuration
-  - Use cases and risk management
-  - Position sizing recommendations
+- **[Architecture Documentation](ARCHITECTURE.md)** - System architecture details
+- **[Agent System](AGENTS.md)** - Agent architecture and behavior
+- **[Tool Suite](TOOLS.md)** - Available tools and their usage
+- **[API Reference](API_REFERENCE.md)** - Complete API documentation
+- **[Data Format](DATA_FORMAT.md)** - Data storage formats and schemas
 
-- **[Leveraged ETF Usage Guide](archive/LEVERAGED_ETF_GUIDE.md)** - Leveraged ETF usage and risk warnings
-  - Leveraged ETF list and configuration
-  - Use cases and position limits
-  - Risk warnings and best practices
+## 📊 Analysis & Performance
 
-- **[Market Indices Integration](archive/MARKET_INDICES_INTEGRATION.md)** - US market three major indices technical analysis integration
-  - S&P 500, NASDAQ, Dow Jones integration
-  - Technical analysis implementation
-  - Market sentiment indicators
+Understanding system behavior:
 
----
+- **[Performance Optimization](PERFORMANCE_OPTIMIZATION.md)** - Performance improvements
+- **[Risk Analyst Scoring](RISK_ANALYST_SCORING_MECHANISM.md)** - Risk analysis details
+- **[Fundamental Analysis](FUNDAMENTAL_ANALYSIS.md)** - Fundamental analysis approach
+- **[Stock Selection Logic](STOCK_SELECTION_LOGIC.md)** - How stocks are selected
 
-## 🔌 API Documentation
+## 🧪 Testing
 
-### API Endpoints
-- **[API Endpoints Documentation](archive/API_ENDPOINTS.md)** - Complete API endpoint list and descriptions
-  - All available endpoints
-  - Request/response formats
-  - Authentication and usage examples
+Testing and quality assurance:
 
-### Integration Guides
-- **[Frontend-Backend Integration](archive/FRONTEND_BACKEND_INTEGRATION.md)** - Frontend-backend data flow and integration guide
-  - Data flow verification
-  - Integration checklist
-  - Common issues and solutions
+- **[Testing Guide](TESTING.md)** - Testing overview
+- **[Test Scripts Guide](TEST_SCRIPTS_GUIDE.md)** - Available test scripts
+- **[Full Stack Test Guide](FULL_STACK_TEST_GUIDE.md)** - End-to-end testing
 
-- **[Portfolio Update Flow](archive/PORTFOLIO_UPDATE_FLOW.md)** - Portfolio state update mechanism
-  - Order execution flow
-  - Portfolio update process
-  - State persistence
+## 🔧 Operations & Maintenance
 
----
+Running and maintaining the system:
 
-## ⏰ Trading Hours Logic
+- **[Background Running Guide](BACKGROUND_RUNNING_GUIDE.md)** - Run system in background
+- **[Backup Guide](BACKUP_GUIDE.md)** - Backup and restore procedures
+- **[Long-Term Running Guide](LONG_TERM_RUNNING_GUIDE.md)** - Long-term operation
+- **[Portfolio Restore](PORTFOLIO_RESTORE.md)** - Restore portfolio state
 
-- **[Market Status Mechanism](MARKET_STATUS_MECHANISM.md)** - Pre-market, market hours, and after-hours logic
-  - Pre-market behavior (00:00 - 9:30 AM)
-  - Market hours behavior (9:30 AM - 4:00 PM)
-  - After-hours behavior (4:00 PM - 00:00)
-  - Data updates and order execution timing
+## 📝 Additional Documentation
 
----
+Specialized topics:
 
-## 📦 Archived Documentation
+- **[Data Storage Guide](DATA_STORAGE_GUIDE.md)** - Data storage details
+- **[Market Hours Auto Trade](MARKET_HOURS_AUTO_TRADE.md)** - Automated trading during market hours
+- **[RAG Optimization](RAG_OPTIMIZATION.md)** - RAG system optimization
+- **[Contributing](CONTRIBUTING.md)** - Contribution guidelines
 
-All historical and detailed documentation has been moved to the [archive](archive/) directory for reference:
+## 🔍 Quick Reference
 
-- **Backend Documentation**: [archive/backend/](archive/backend/) - Backend-specific guides and fixes
-- **Root Files**: [archive/root_files/](archive/root_files/) - Historical root-level documentation
-- **Scripts**: [archive/scripts/](archive/scripts/) - Test scripts and utilities
-- **Source Code Archive**: [archive/src/](archive/src/) - Legacy source code structure
+| Topic | Document |
+|-------|----------|
+| **What is this?** | [Project Overview](PROJECT_OVERVIEW.md) |
+| **Quick setup** | [Quick Start](QUICK_START.md) |
+| **Installation** | [Installation Guide](INSTALLATION.md) |
+| **Configuration** | [Configuration Guide](CONFIGURATION.md) |
+| **Troubleshooting** | [Troubleshooting](TROUBLESHOOTING.md) |
+| **Deployment** | [Deployment Options](DEPLOYMENT_OPTIONS.md) |
+| **API Docs** | [API Reference](API_REFERENCE.md) |
+| **Architecture** | [Architecture](ARCHITECTURE.md) |
 
-Includes:
-- Fix guides and troubleshooting documents
-- Verification reports and summaries
-- Performance optimization notes
-- Testing guides and simulation documentation
-- Legacy test scripts and utilities
+## 📖 Documentation by Category
 
----
-
-## 🔍 Quick Links
-
-### Most Frequently Used
-1. [Backend README](../backend/README.md) - Backend setup and API documentation
-2. [Frontend README](../frontend/README.md) - Frontend setup and usage
-3. [Trading Hours Logic](../backend/docs/TRADING_HOURS_LOGIC.md) - Understanding trading hours behavior
-4. [Complete System Flow](../COMPLETE_SYSTEM_FLOW.md) - Complete system architecture
+### For New Users
+1. Read [Project Overview](PROJECT_OVERVIEW.md)
+2. Follow [Quick Start Guide](QUICK_START.md)
+3. Complete [Setup Checklist](SETUP_CHECKLIST.md)
+4. Read [User Guide](USER_GUIDE.md)
 
 ### For Developers
-- [API Endpoints](archive/API_ENDPOINTS.md) - Complete API reference
-- [Frontend-Backend Integration](archive/FRONTEND_BACKEND_INTEGRATION.md) - Integration guide
-- [Portfolio Update Flow](archive/PORTFOLIO_UPDATE_FLOW.md) - Data flow documentation
+1. Read [Architecture](ARCHITECTURE.md)
+2. Review [Agent System](AGENTS.md)
+3. Study [API Reference](API_REFERENCE.md)
+4. Check [Contributing](CONTRIBUTING.md)
 
-### For Traders
-- [Hedging Strategy Guide](archive/HEDGING_STRATEGY.md) - Inverse ETF strategies
-- [Leveraged ETF Guide](archive/LEVERAGED_ETF_GUIDE.md) - Leveraged ETF usage
-- [Market Indices Integration](archive/MARKET_INDICES_INTEGRATION.md) - Market analysis
+### For Operators
+1. Read [User Guide](USER_GUIDE.md)
+2. Configure [Configuration Guide](CONFIGURATION.md)
+3. Set up [Background Running](BACKGROUND_RUNNING_GUIDE.md)
+4. Monitor [Long-Term Running](LONG_TERM_RUNNING_GUIDE.md)
+
+### For Deployment
+1. Compare [Deployment Options](DEPLOYMENT_OPTIONS.md)
+2. Follow [Vercel Migration](RAILWAY_TO_VERCEL_MIGRATION.md)
+3. Configure environment variables
+4. Test deployment
 
 ---
 
-## 📝 License
-
-MIT License © 2025 Wenyu Chiou
-
----
-
-## 👤 Author
-
-**Wenyu Chiou**  
-Lehigh University  
-📧 wec324@lehigh.edu
+**Last Updated**: 2025-12-11

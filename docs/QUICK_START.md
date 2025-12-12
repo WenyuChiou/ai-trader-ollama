@@ -3,6 +3,24 @@
 
 Get up and running in minutes with the new user-friendly scripts.
 
+## What You'll Get
+
+After completing this guide, you'll have:
+
+- ✅ **Fully functional trading system** with 6 AI agents
+- ✅ **Real-time dashboard** for monitoring agent discussions and portfolio
+- ✅ **Automated trading capability** with risk management
+- ✅ **28 analysis tools** for comprehensive market coverage
+- ✅ **RAG memory system** that learns from historical decisions
+- ✅ **Performance analytics** with detailed metrics and charts
+
+**System Capabilities:**
+- Analyze 118+ NASDAQ-100 stocks simultaneously
+- Multi-agent collaborative decision making
+- Real-time market data integration
+- Automated portfolio management
+- Historical performance tracking
+
 ## Prerequisites
 
 - ✅ Python 3.10+ installed
@@ -10,6 +28,14 @@ Get up and running in minutes with the new user-friendly scripts.
 - ✅ Git (for cloning repository)
 
 ## Installation (3 Steps)
+
+**Visual Flow:**
+```
+Install → Configure → Test → Start → Use
+   ↓         ↓          ↓       ↓       ↓
+install.bat setup_wizard verify  quick   monitor
+                        test    start   dashboard
+```
 
 ### Step 1: Install Everything
 
@@ -27,6 +53,13 @@ scripts\install.bat
 
 **Time:** ~5-10 minutes (depending on internet speed)
 
+**Expected Results:**
+- ✅ Virtual environment created in `venv/`
+- ✅ All Python packages installed
+- ✅ Ollama model `deepseek-r1` downloaded
+- ✅ Data directories created
+- ✅ Default `.env` file generated
+
 ### Step 2: Configure (First Time Only)
 
 ```batch
@@ -40,6 +73,12 @@ scripts\setup_wizard.bat
 - API Keys: Optional (FRED_API_KEY)
 
 **Time:** ~2 minutes
+
+**Expected Results:**
+- ✅ `.env` file created with configuration
+- ✅ `ADMIN_SECRET` generated and saved
+- ✅ CORS settings configured
+- ✅ Environment variables set
 
 ### Step 3: Verify & Test
 
@@ -58,6 +97,12 @@ scripts\test_system.bat
 ```
 
 **Expected:** All tests pass ✅
+
+**Test Results:**
+- ✅ Backend: All API endpoints working
+- ✅ Agents: All 6 agents can be created
+- ✅ Tools: All 28 tools available
+- ✅ Frontend: Connects to backend successfully
 
 ## Starting the System
 

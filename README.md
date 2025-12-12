@@ -4,6 +4,18 @@
 
 ---
 
+## 🎯 What Is This?
+
+**AI-Trader Ollama** is a fully autonomous stock trading system that uses 6 specialized AI agents to analyze markets, make trading decisions, and manage portfolios. The agents collaborate through multi-round discussions, use 28 advanced analysis tools, and learn from historical trading decisions using a RAG memory system.
+
+**Key Capabilities:**
+- 🤖 **6 AI Agents**: Market Analyst, Technical Analyst, Fundamental Analyst, Sentiment Analyst, Risk Analyst, and Trader Agent
+- 📊 **28 Analysis Tools**: Real-time market data, technical indicators, fundamental metrics, news sentiment, and historical memory retrieval
+- 🧠 **RAG Memory System**: Agents learn from past trading decisions and market patterns
+- 📈 **NASDAQ-100 Coverage**: Analyzes 118+ stocks with comprehensive multi-perspective analysis
+- 🎨 **Real-time Dashboard**: Live monitoring of agent discussions, portfolio performance, and trading decisions
+- ⚡ **Fast Execution**: Optimized to complete trading cycles in 6-7 minutes
+
 > **A Multi-Agent Trading System with 29 Advanced Tools + 6 Specialized LLM Agents**  
 > 📈 Analyzing **NASDAQ-100** (118+ symbols) with comprehensive fundamental, technical, and sentiment analysis  
 > 🧠 Fully autonomous agent collaboration with real-time market data integration  
@@ -21,6 +33,14 @@
 > **View the dashboard online**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
 > 
 > 🔒 **Read-Only Mode**: The public website is in read-only mode for security. Trading controls are disabled. Use localhost for full control.
+
+### 🚀 **Quick Start (3 Steps)**
+
+1. **Install**: Run `scripts\install.bat` (sets up Python, dependencies, and Ollama model)
+2. **Configure**: Run `scripts\setup_wizard.bat` (creates `.env` and config files)
+3. **Start**: Run `scripts\quick_start.bat` (starts backend and opens frontend)
+
+**That's it!** See [Quick Start Guide](docs/QUICK_START.md) for detailed instructions.
 
 ---
 
@@ -3762,12 +3782,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 
 ### Core Documentation
 
+- **[Documentation Index](docs/README.md)** - Complete documentation index and quick reference ⭐
+- **[Project Overview](docs/PROJECT_OVERVIEW.md)** - What is this project? What does it do? ⭐
 - **[Quick Start Guide](docs/QUICK_START.md)** - Installation and first run
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed installation instructions
+- **[Setup Checklist](docs/SETUP_CHECKLIST.md)** - Step-by-step setup verification
+- **[User Guide](docs/USER_GUIDE.md)** - Complete user manual
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Complete configuration reference
 - **[API Reference](docs/API_REFERENCE.md)** - All API endpoints and usage
 - **[Architecture Documentation](docs/ARCHITECTURE.md)** - System architecture overview
 - **[Testing Guide](docs/TESTING.md)** - Running and writing tests
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Deployment Readiness Checklist](docs/DEPLOYMENT_READINESS_CHECKLIST.md)** - Pre-deployment verification ⭐
+
+### Deployment Documentation
+
+- **[Deployment Options](docs/DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms (Vercel, Render, Fly.io, etc.)
+- **[Railway to Vercel Migration](docs/RAILWAY_TO_VERCEL_MIGRATION.md)** - Complete migration guide ⭐
+- **[Streamlit Deployment](docs/STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend alternative
 
 ### Additional Documentation
 

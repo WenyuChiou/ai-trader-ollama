@@ -2795,7 +2795,7 @@ All automation scripts are located in `scripts/` directory and can be run from t
 
 | Script | Purpose | Usage | Notes |
 |--------|---------|-------|-------|
-| `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax before deployment, checks 10 main Python files |
+| `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax, checks 10 main Python files |
 | `check_file_status.py` | Check discussion_actions.jsonl file status | `python scripts/check_file_status.py` | Analyzes file size, entry counts, and recent entries |
 | `check_tool_agents.py` | Check tool entries agent field distribution | `python scripts/check_tool_agents.py` | Analyzes tool entries by category and agent |
 | `check_api_tool_agents.py` | Check API tool results agent distribution | `python scripts/check_api_tool_agents.py` | Verifies API returns tools correctly grouped by agent |
@@ -3854,7 +3854,7 @@ All setup scripts are located in `scripts/` directory and can be run from the pr
 
 | Script | Purpose | Usage | Notes |
 |--------|---------|-------|-------|
-| `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax before deployment, checks 10 main Python files including trading_cycle.py, multi_analyst_system.py, trader_agent.py, and all analyst handlers |
+| `check_syntax.py` | Check Python syntax of all main files | `python scripts/check_syntax.py` | Validates syntax, checks 10 main Python files including trading_cycle.py, multi_analyst_system.py, trader_agent.py, and all analyst handlers |
 
 **Usage Example**:
 ```powershell

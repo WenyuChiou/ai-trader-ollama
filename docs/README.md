@@ -24,8 +24,12 @@ For end users and operators:
 Deploy the system to production:
 
 - **[Deployment Options](DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms
+- **[Railway Deployment](RAILWAY_DEPLOYMENT.md)** - Deploy backend to Railway
+- **[Existing Railway Setup](EXISTING_RAILWAY_SETUP.md)** - Connect Streamlit to existing Railway backend ⭐
+- **[Local Deployment](LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Local deployment with Cloudflare Tunnel
+- **[Streamlit Deployment](STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend
+- **[Streamlit Cloud Secrets](STREAMLIT_CLOUD_SECRETS.md)** - Configure Streamlit Cloud secrets ⭐
 - **[Railway to Vercel Migration](RAILWAY_TO_VERCEL_MIGRATION.md)** - Migrate from Railway to Vercel
-- **[Streamlit Deployment](STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend alternative
 
 ## 🏗️ Architecture & Development
 
@@ -107,8 +111,11 @@ Specialized topics:
 
 ### For Deployment
 1. Compare [Deployment Options](DEPLOYMENT_OPTIONS.md)
-2. Follow [Vercel Migration](RAILWAY_TO_VERCEL_MIGRATION.md)
-3. Configure environment variables
+2. Choose platform:
+   - **Railway**: [Railway Deployment](RAILWAY_DEPLOYMENT.md) or [Existing Railway Setup](EXISTING_RAILWAY_SETUP.md)
+   - **Local**: [Local Deployment](LOCAL_CLOUDFLARE_DEPLOYMENT.md)
+   - **Vercel**: [Railway to Vercel Migration](RAILWAY_TO_VERCEL_MIGRATION.md)
+3. Deploy Streamlit: [Streamlit Deployment](STREAMLIT_DEPLOYMENT.md) + [Secrets Config](STREAMLIT_CLOUD_SECRETS.md)
 4. Test deployment
 
 ---

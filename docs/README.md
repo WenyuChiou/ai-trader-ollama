@@ -24,9 +24,9 @@ For end users and operators:
 Deploy the system to production:
 
 - **[Deployment Options](DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms
+- **[Local Deployment](LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Local deployment with Cloudflare Tunnel ⭐ (推荐，免费)
 - **[Railway Deployment](RAILWAY_DEPLOYMENT.md)** - Deploy backend to Railway
-- **[Existing Railway Setup](EXISTING_RAILWAY_SETUP.md)** - Connect Streamlit to existing Railway backend ⭐
-- **[Local Deployment](LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Local deployment with Cloudflare Tunnel
+- **[Railway Shutdown Guide](RAILWAY_SHUTDOWN_GUIDE.md)** - How to close Railway deployment ⭐
 - **[Streamlit Deployment](STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend
 - **[Streamlit Cloud Secrets](STREAMLIT_CLOUD_SECRETS.md)** - Configure Streamlit Cloud secrets ⭐
 - **[Railway to Vercel Migration](RAILWAY_TO_VERCEL_MIGRATION.md)** - Migrate from Railway to Vercel

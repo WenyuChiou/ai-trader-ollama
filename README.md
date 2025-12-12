@@ -2616,7 +2616,59 @@ Daily Summary:
 
 ## 🚀 Deployment
 
-### Railway Backend Deployment
+### ⚠️ Railway Migration Notice
+
+**Railway 免费额度即将过期，建议迁移到 Vercel。**
+
+- 📖 **迁移指南**: [`docs/RAILWAY_TO_VERCEL_MIGRATION.md`](docs/RAILWAY_TO_VERCEL_MIGRATION.md)
+- ✅ **推荐**: 使用 Vercel 部署（免费额度更慷慨）
+- 📚 **Vercel 部署文档**: [`docs/VERCEL_DEPLOYMENT.md`](docs/VERCEL_DEPLOYMENT.md)
+
+### Vercel Backend Deployment (Recommended)
+
+Vercel provides a free, reliable way to deploy the AI-Trader backend API with generous free tier.
+
+#### Quick Deployment Steps
+
+1. **Connect Repository to Vercel**
+   - Visit [Vercel Dashboard](https://vercel.com/)
+   - Click "Add New Project" → Import GitHub repository
+   - Select `WenyuChiou/ai-trader-ollama`
+   - Vercel will automatically detect Python project
+
+2. **Configuration Files**
+   - ✅ `vercel.json` - Vercel deployment configuration
+   - ✅ `backend/requirements.txt` - Python dependencies
+
+3. **Environment Variables** (Set in Vercel Dashboard)
+   - `ADMIN_SECRET` - Admin API key (required)
+   - `ENVIRONMENT` - Set to `production`
+   - `ALLOWED_ORIGINS` - CORS allowed origins (e.g., `https://wenyuchiou.github.io`)
+   - `FRED_API_KEY` - Optional, for economic data
+   - `LOG_LEVEL` - Optional, default: `INFO`
+
+4. **Deployment Process**
+   - Vercel automatically builds and deploys on push to `main` branch
+   - Check deployment logs in Vercel dashboard
+   - Deployment typically takes 2-5 minutes
+
+5. **Get Public URL**
+   - After deployment, Vercel provides a public URL (e.g., `https://ai-trader-ollama.vercel.app`)
+   - Copy the deployment URL
+
+6. **Update Frontend Configuration**
+   - Edit `frontend/config.js`
+   - Update `production` URL to your Vercel backend URL:
+     ```javascript
+     production: 'https://your-app.vercel.app',
+     ```
+   - Commit and push to GitHub
+
+📖 **详细部署指南**: [`docs/VERCEL_DEPLOYMENT.md`](docs/VERCEL_DEPLOYMENT.md)
+
+### Railway Backend Deployment (Legacy - Migrating to Vercel)
+
+⚠️ **注意**: Railway 免费额度即将过期，建议迁移到 Vercel。
 
 Railway provides a simple and reliable way to deploy the AI-Trader backend API to the cloud.
 

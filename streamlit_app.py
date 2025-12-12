@@ -41,18 +41,37 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API 配置
-# 优先使用环境变量，否则显示选择框
-API_BASE = os.getenv("API_BASE_URL", st.sidebar.selectbox(
+# 优先使用环境变量（Streamlit Cloud 设置），否则显示选择框
+default_api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
+api_options = [
+    "http://localhost:8000",  # 本地开发
+]
+
+# 如果环境变量设置了 URL，添加到选项中
+if os.getenv("API_BASE_URL") and os.getenv("API_BASE_URL") not in api_options:
+    api_options.append(os.getenv("API_BASE_URL"))
+
+# 添加其他选项
+api_options.extend([
+    "https://web-production-b42d6.up.railway.app",  # Railway (legacy - 即将过期)
+])
+
+# 确定默认索引
+try:
+    default_index = api_options.index(default_api_url)
+except ValueError:
+    default_index = 0
+
+API_BASE = st.sidebar.selectbox(
     "Backend API",
-    [
-        "http://localhost:8000",  # 本地开发
-        # 添加您的后端 URL 到这里，或设置 API_BASE_URL 环境变量
-        # "https://your-backend-url.com",  # Render/Fly.io/其他平台
-        "https://web-production-b42d6.up.railway.app",  # Railway (legacy - 即将过期)
-    ],
-    index=0,
+    api_options,
+    index=default_index,
     key="api_base"
-))
+)
+
+# 显示当前使用的 URL
+if os.getenv("API_BASE_URL"):
+    st.sidebar.info(f"🌐 Using: {os.getenv('API_BASE_URL')}")
 
 # 标题
 st.markdown('<div class="main-header">📈 AI Trader Dashboard</div>', unsafe_allow_html=True)

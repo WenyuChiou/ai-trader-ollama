@@ -2765,6 +2765,121 @@
             }
         }
 
+        // Local storage keys
+        const STORAGE_KEY_PORTFOLIO = 'ai_trader_portfolio_cache';
+        const STORAGE_KEY_EQUITY_HISTORY = 'ai_trader_equity_history_cache';
+        const STORAGE_KEY_CACHE_TIMESTAMP = 'ai_trader_cache_timestamp';
+
+        // Save portfolio to local storage
+        function savePortfolioToCache(portfolio) {
+            try {
+                const cacheData = {
+                    portfolio: portfolio,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem(STORAGE_KEY_PORTFOLIO, JSON.stringify(cacheData));
+                localStorage.setItem(STORAGE_KEY_CACHE_TIMESTAMP, new Date().toISOString());
+            } catch (err) {
+                console.warn('[Cache] Failed to save portfolio to cache:', err.message);
+            }
+        }
+
+        // Load portfolio from local storage
+        function loadPortfolioFromCache() {
+            try {
+                const cached = localStorage.getItem(STORAGE_KEY_PORTFOLIO);
+                if (!cached) return null;
+                
+                const cacheData = JSON.parse(cached);
+                const cacheAge = new Date() - new Date(cacheData.timestamp);
+                const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+                
+                if (cacheAge > maxAge) {
+                    console.log('[Cache] Portfolio cache expired, clearing');
+                    localStorage.removeItem(STORAGE_KEY_PORTFOLIO);
+                    return null;
+                }
+                
+                return cacheData.portfolio;
+            } catch (err) {
+                console.warn('[Cache] Failed to load portfolio from cache:', err.message);
+                return null;
+            }
+        }
+
+        // Save equity history to local storage
+        function saveEquityHistoryToCache(history) {
+            try {
+                const cacheData = {
+                    history: history,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem(STORAGE_KEY_EQUITY_HISTORY, JSON.stringify(cacheData));
+            } catch (err) {
+                console.warn('[Cache] Failed to save equity history to cache:', err.message);
+            }
+        }
+
+        // Load equity history from local storage
+        function loadEquityHistoryFromCache() {
+            try {
+                const cached = localStorage.getItem(STORAGE_KEY_EQUITY_HISTORY);
+                if (!cached) return null;
+                
+                const cacheData = JSON.parse(cached);
+                const cacheAge = new Date() - new Date(cacheData.timestamp);
+                const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+                
+                if (cacheAge > maxAge) {
+                    console.log('[Cache] Equity history cache expired, clearing');
+                    localStorage.removeItem(STORAGE_KEY_EQUITY_HISTORY);
+                    return null;
+                }
+                
+                return cacheData.history;
+            } catch (err) {
+                console.warn('[Cache] Failed to load equity history from cache:', err.message);
+                return null;
+            }
+        }
+
+        // Calculate portfolio value from cached equity history
+        function calculatePortfolioFromHistory(history) {
+            if (!history || history.length === 0) return null;
+            
+            // Get the latest entry
+            const latest = history[history.length - 1];
+            if (!latest) return null;
+            
+            // Calculate portfolio from latest equity history entry
+            const portfolio = {
+                total_value: latest.total_value || latest.value || 0,
+                equity_value: latest.equity_value || latest.value || 0,
+                cash: latest.cash || 0,
+                total_pnl: latest.total_pnl || 0,
+                total_pnl_pct: latest.total_pnl_pct || 0,
+                positions: latest.positions || {},
+                positions_detail: latest.positions_detail || latest.positions || {},
+                positions_pnl: {},
+                initial_value: 10000, // Default initial value
+                timestamp: latest.timestamp || latest.date
+            };
+            
+            // Calculate positions_pnl from positions_detail if available
+            if (portfolio.positions_detail && Object.keys(portfolio.positions_detail).length > 0) {
+                Object.entries(portfolio.positions_detail).forEach(([symbol, pos]) => {
+                    if (pos && typeof pos === 'object') {
+                        portfolio.positions_pnl[symbol] = {
+                            unrealized_pnl: pos.unrealized_pnl || 0,
+                            unrealized_pnl_pct: pos.unrealized_pnl_pct || 0
+                        };
+                    }
+                });
+            }
+            
+            return portfolio;
+        }
+
         // Fetch portfolio data
         async function fetchPortfolio(options = {}) {
             try {
@@ -2807,12 +2922,22 @@
                         data.positions_detail = data.positions;
                     }
 
+                    // Save to cache for offline use
+                    savePortfolioToCache(data);
+
                     return data;
                 } catch (fetchErr) {
                     clearTimeout(timeoutId);
                     throw fetchErr;
                 }
             } catch (err) {
+                // If API fails, try to load from cache
+                const cachedPortfolio = loadPortfolioFromCache();
+                if (cachedPortfolio) {
+                    console.log('[Cache] Using cached portfolio data (API unavailable)');
+                    return cachedPortfolio;
+                }
+                
                 if (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message.includes('timeout')) {
                     throw new Error('Request timeout, please check your network connection');
                 }
@@ -2899,16 +3024,28 @@
 
                 if (!response.ok) {
                     console.warn('[Equity History] Failed to fetch:', response.status, response.statusText);
+                    // Try to load from cache
+                    const cachedHistory = loadEquityHistoryFromCache();
+                    if (cachedHistory) {
+                        console.log('[Cache] Using cached equity history (API unavailable)');
+                        return cachedHistory;
+                    }
                     return [];
                 }
 
                 const data = await response.json();
                 
                 if (!data.ok || data.error) {
+                    // Try to load from cache
+                    const cachedHistory = loadEquityHistoryFromCache();
+                    if (cachedHistory) {
+                        console.log('[Cache] Using cached equity history (API error)');
+                        return cachedHistory;
+                    }
                     return [];
                 }
 
-                return (data.records || []).map(item => ({
+                const history = (data.records || []).map(item => ({
                     date: item.date || item.timestamp?.split('T')[0] || '',
                     timestamp: item.timestamp || null,  // CRITICAL: Keep timestamp field for time display
                     total_value: item.total_value || 0,  // CRITICAL FIX: Use total_value field name (consistent with renderEquityValueChart)
@@ -2916,7 +3053,19 @@
                     value: item.total_value || item.equity_value || 0,  // Compatible with old field name
                     pnl: item.total_pnl || 0,
                 }));
+
+                // Save to cache for offline use
+                saveEquityHistoryToCache(history);
+
+                return history;
             } catch (err) {
+                // Try to load from cache on error
+                const cachedHistory = loadEquityHistoryFromCache();
+                if (cachedHistory) {
+                    console.log('[Cache] Using cached equity history (API error)');
+                    return cachedHistory;
+                }
+                
                 // Silently handle errors to avoid console noise
                 if (err.name !== 'AbortError') {
                     // If error is connection reset or timeout, server may be processing request, use debug level
@@ -13513,10 +13662,40 @@
                         // Only log when truly failed (don't log during non-trading hours)
                     }
                 } else if (results[0].status === 'rejected') {
-                    // Promise 被拒绝
+                    // Promise 被拒绝，尝试从缓存加载
+                    const cachedPortfolio = loadPortfolioFromCache();
+                    if (cachedPortfolio) {
+                        console.log('[Cache] Using cached portfolio (API failed)');
+                        portfolio = cachedPortfolio;
+                    }
                 }
                 
                 let history = results[1].status === 'fulfilled' ? results[1].value : [];
+                
+                // If portfolio is null but we have history, calculate portfolio from history
+                if (!portfolio && history && history.length > 0) {
+                    portfolio = calculatePortfolioFromHistory(history);
+                    if (portfolio) {
+                        console.log('[Cache] Calculated portfolio from equity history');
+                    }
+                }
+                
+                // If history is empty, try to load from cache
+                if (!history || history.length === 0) {
+                    const cachedHistory = loadEquityHistoryFromCache();
+                    if (cachedHistory && cachedHistory.length > 0) {
+                        console.log('[Cache] Using cached equity history');
+                        history = cachedHistory;
+                        
+                        // If portfolio is still null, calculate from cached history
+                        if (!portfolio) {
+                            portfolio = calculatePortfolioFromHistory(history);
+                            if (portfolio) {
+                                console.log('[Cache] Calculated portfolio from cached equity history');
+                            }
+                        }
+                    }
+                }
                 const backendStatus = results[2].status === 'fulfilled' ? results[2].value : null;
                 const systemInfo = results[3].status === 'fulfilled' ? results[3].value : null;
                 const convData = results[4].status === 'fulfilled' ? results[4].value : { conversations: [], total: 0, has_more: false, tool_results_by_category: {}, discussion_rounds_summaries: {} };

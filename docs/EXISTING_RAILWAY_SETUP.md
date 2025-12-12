@@ -6,6 +6,7 @@
 
 您已经有 Railway 后端部署：
 - **Railway URL**: `https://web-production-b42d6.up.railway.app`
+- **Streamlit Cloud URL**: `https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/` ✅
 - **需要**: 配置 Streamlit Cloud 连接到这个现有后端
 
 ## 🚀 快速配置（3 步）
@@ -34,7 +35,7 @@
    - Project → Variables
    - 添加或更新：
      ```
-     ALLOWED_ORIGINS=https://your-app.streamlit.app,https://WenyuChiou.github.io
+     ALLOWED_ORIGINS=https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app,https://WenyuChiou.github.io
      ENVIRONMENT=production
      ```
 

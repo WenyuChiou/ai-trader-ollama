@@ -3702,9 +3702,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 ### Deployment Documentation
 
 - **[Deployment Options](docs/DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms (Vercel, Render, Fly.io, etc.)
-- **[Streamlit Deployment](docs/STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend ⭐
-- **[Streamlit Cloud Secrets](docs/STREAMLIT_CLOUD_SECRETS.md)** - Configure Streamlit Cloud secrets ⭐
 - **[Local Deployment](docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Free local deployment with Cloudflare Tunnel ⭐
+- **[GitHub Pages Deployment](#github-pages-frontend-deployment)** - Automatic frontend deployment
 
 ### Additional Documentation
 

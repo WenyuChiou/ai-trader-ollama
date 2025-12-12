@@ -316,12 +316,26 @@ streamlit run streamlit_app.py
 - 设置 `API_BASE_URL` 环境变量
 - Streamlit 会自动使用该变量
 
-### 步骤 5: 部署到 Streamlit Cloud
+### 步骤 5: 配置依赖文件
+
+**重要**：Streamlit Cloud 需要从项目根目录读取 `requirements.txt`。
+
+确保根目录的 `requirements.txt` 包含 Streamlit 依赖：
+```txt
+streamlit>=1.28.0
+plotly>=5.17.0
+requests>=2.32.3
+pandas>=2.2.2
+```
+
+如果根目录没有 `requirements.txt`，Streamlit Cloud 会尝试自动检测，但可能无法找到所有依赖。
+
+### 步骤 6: 部署到 Streamlit Cloud
 
 1. **推送到 GitHub**
    ```bash
-   git add streamlit_app.py .streamlit/
-   git commit -m "feat: Add Streamlit dashboard with Vercel backend support"
+   git add streamlit_app.py .streamlit/ requirements.txt
+   git commit -m "feat: Add Streamlit dashboard with dependencies"
    git push origin main
    ```
 
@@ -332,16 +346,20 @@ streamlit run streamlit_app.py
    - 选择仓库：`WenyuChiou/ai-trader-ollama`
    - 选择主文件：`streamlit_app.py`
    - Python 版本：3.11
+   - **Dependencies**: 选择 `requirements.txt`（根目录）
    - 点击 "Deploy"
 
 3. **配置环境变量**（在 Streamlit Cloud 设置中）
-   - `API_BASE_URL`: 您的 Vercel 后端 URL（例如：`https://your-app.vercel.app`）
-   - `ADMIN_SECRET`: （可选）用于执行交易的密钥
+   - 进入应用设置 → Secrets
+   - 添加 TOML 格式的配置：
+     ```toml
+     API_BASE_URL = "https://your-backend-url.com"
+     ```
+   - 点击 "Save"
 
-4. **配置 Secrets**（可选）
-   - 在 Streamlit Cloud 项目设置 → Secrets
-   - 添加 `API_BASE_URL` 和 `ADMIN_SECRET`
-   - 或使用 `.streamlit/secrets.toml` 文件（本地开发）
+4. **等待部署完成**
+   - 部署通常需要 1-3 分钟
+   - 查看部署日志确认所有依赖安装成功
 
 ---
 

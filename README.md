@@ -2616,13 +2616,28 @@ Daily Summary:
 
 ## 🚀 Deployment
 
+### 🎯 部署选项对比
+
+**多种部署方案可选，根据需求选择：**
+
+| 平台 | 免费额度 | 推荐度 | 适用场景 |
+|------|---------|--------|----------|
+| **Vercel** ⭐ | 100GB/月 | ⭐⭐⭐⭐⭐ | 生产环境，预算有限 |
+| **Render** | 750小时/月 | ⭐⭐⭐⭐ | 需要持久化存储 |
+| **Fly.io** | 3个VM免费 | ⭐⭐⭐⭐ | Docker 环境，多区域 |
+| **本地+Cloudflare** | 完全免费 | ⭐⭐⭐ | 开发/测试/个人展示 |
+
+📖 **完整对比**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - 详细的部署选项对比和选择指南
+
 ### ⚠️ Railway Migration Notice
 
-**Railway 免费额度即将过期，建议迁移到 Vercel。**
+**Railway 免费额度即将过期，建议迁移到其他平台。**
 
 - 📖 **迁移指南**: [`docs/RAILWAY_TO_VERCEL_MIGRATION.md`](docs/RAILWAY_TO_VERCEL_MIGRATION.md)
-- ✅ **推荐**: 使用 Vercel 部署（免费额度更慷慨）
-- 📚 **Vercel 部署文档**: [`docs/VERCEL_DEPLOYMENT.md`](docs/VERCEL_DEPLOYMENT.md)
+- ✅ **推荐**: Vercel（最简单）或 Render（传统服务器）
+- 📚 **部署文档**: 
+  - [Vercel 部署](docs/VERCEL_DEPLOYMENT.md)
+  - [部署选项对比](docs/DEPLOYMENT_OPTIONS.md)
 
 ### Vercel Backend Deployment (Recommended)
 

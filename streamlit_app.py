@@ -41,13 +41,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # API 配置
-# 优先使用环境变量（Streamlit Cloud 设置），否则使用现有 Railway URL 或显示选择框
+# 优先使用环境变量（Streamlit Cloud 设置），否则使用 localhost
 
-# 读取现有的 Railway URL（如果存在）
-RAILWAY_URL = "https://web-production-b42d6.up.railway.app"  # 您现有的 Railway URL
-
-# 默认 URL：环境变量 > Railway URL > localhost
-default_api_url = os.getenv("API_BASE_URL", RAILWAY_URL if RAILWAY_URL else "http://localhost:8000")
+# 默认 URL：环境变量 > localhost
+default_api_url = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 api_options = [
     "http://localhost:8000",  # 本地开发
@@ -56,10 +53,6 @@ api_options = [
 # 如果环境变量设置了 URL，添加到选项中
 if os.getenv("API_BASE_URL") and os.getenv("API_BASE_URL") not in api_options:
     api_options.append(os.getenv("API_BASE_URL"))
-
-# 添加 Railway URL（如果不在选项中）
-if RAILWAY_URL and RAILWAY_URL not in api_options:
-    api_options.append(RAILWAY_URL)
 
 # 添加其他选项
 # api_options.extend([

@@ -2649,16 +2649,14 @@ Daily Summary:
 
 📖 **完整对比**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - 详细的部署选项对比和选择指南
 
-### ⚠️ Railway Migration Notice
+### 🚀 Streamlit Frontend Deployment (Recommended)
 
-**Railway 免费额度即将过期，建议迁移到其他平台。**
+**Streamlit Cloud** provides a free, modern dashboard for monitoring your AI-Trader system.
 
-- 📖 **迁移指南**: [`docs/RAILWAY_TO_VERCEL_MIGRATION.md`](docs/RAILWAY_TO_VERCEL_MIGRATION.md)
-- ✅ **推荐**: Vercel（最简单）或 Render（传统服务器）
-- 📚 **部署文档**: 
-  - [Vercel 部署](docs/VERCEL_DEPLOYMENT.md) - 英文版详细指南
-  - [部署选项对比](docs/DEPLOYMENT_OPTIONS.md) - 所有平台对比
-  - [Streamlit 部署](docs/STREAMLIT_DEPLOYMENT.md) - Streamlit 仪表板
+- 📖 **部署指南**: [`docs/STREAMLIT_DEPLOYMENT.md`](docs/STREAMLIT_DEPLOYMENT.md) - Complete Streamlit deployment guide
+- 🔐 **Secrets 配置**: [`docs/STREAMLIT_CLOUD_SECRETS.md`](docs/STREAMLIT_CLOUD_SECRETS.md) - Configure Streamlit Cloud secrets
+- 🌐 **Live Demo**: https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/
+- 📚 **其他部署选项**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - Compare all platforms
 
 ### Vercel Backend Deployment (Recommended)
 
@@ -2702,125 +2700,34 @@ Vercel provides a free, reliable way to deploy the AI-Trader backend API with ge
 
 📖 **详细部署指南**: [`docs/VERCEL_DEPLOYMENT.md`](docs/VERCEL_DEPLOYMENT.md)
 
-### Railway Backend Deployment (Legacy - Migrating to Vercel)
+### Streamlit Frontend Deployment
 
-⚠️ **注意**: Railway 免费额度即将过期，建议迁移到 Vercel。
-
-Railway provides a simple and reliable way to deploy the AI-Trader backend API to the cloud.
+**Streamlit Cloud** provides a free, modern dashboard for monitoring your AI-Trader system.
 
 #### Quick Deployment Steps
 
-1. **Connect Repository to Railway**
-   - Visit [Railway Dashboard](https://railway.app/)
-   - Click "New Project" → "Deploy from GitHub repo"
-   - Select `WenyuChiou/ai-trader-ollama` repository
-   - Railway will automatically detect Python project and deploy
+1. **Deploy to Streamlit Cloud**
+   - Visit [Streamlit Cloud](https://streamlit.io/cloud)
+   - Connect GitHub repository: `WenyuChiou/ai-trader-ollama`
+   - Main file: `streamlit_app.py`
+   - Python version: 3.11
+   - Dependencies: `requirements.txt` (root directory)
 
-2. **Configuration Files**
-   - ✅ `railway.json` - Railway deployment configuration
-   - ✅ `Procfile` - Process start command
-   - ✅ `backend/requirements.txt` - Python dependencies
-
-3. **Environment Variables** (Optional but Recommended)
-   - `FRED_API_KEY` - For economic data (free API key from [FRED](https://fred.stlouisfed.org/docs/api/api_key.html))
-   - `OLLAMA_BASE_URL` - If using remote Ollama instance (default: `http://localhost:11434`)
-   - `PORT` - Railway auto-assigns (no need to set manually)
-
-4. **Deployment Process**
-   - Railway automatically builds and deploys on push to `main` branch
-   - Check deployment logs in Railway dashboard
-   - Deployment typically takes 2-5 minutes
-
-5. **Get Public URL**
-   - After deployment, Railway provides a public URL (e.g., `https://your-app.up.railway.app`)
-   - Go to Project → Settings → Networking → Generate Domain
-   - Copy the generated URL
-
-6. **Update Frontend Configuration**
-   - Edit `frontend/config.js`
-   - Update `production` URL to your Railway backend URL:
-     ```javascript
-     production: 'https://your-app.up.railway.app',
+2. **Configure Secrets**
+   - In Streamlit Cloud → Settings → Secrets
+   - Add your backend API URL:
+     ```toml
+     API_BASE_URL = "https://your-backend-url.com"
      ```
-   - Commit and push to GitHub
+   - For local deployment with Cloudflare Tunnel, use your Tunnel URL
 
-#### Railway Configuration
+3. **Access Your Dashboard**
+   - Streamlit Cloud provides a public URL
+   - Example: `https://ai-trader-ollama-smw8trcv4ypnyay7tsx5wy.streamlit.app/`
 
-**`railway.json`**:
-```json
-{
-  "$schema": "https://railway.app/railway.schema.json",
-  "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd backend && pip install -r requirements.txt"
-  },
-  "deploy": {
-    "startCommand": "cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT",
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  }
-}
-```
-
-**`Procfile`**:
-```
-web: cd backend && uvicorn src.api.server:app --host 0.0.0.0 --port $PORT
-```
-
-**Note**: Both `railway.json` and `Procfile` use `cd backend` to ensure commands run from the correct directory.
-
-#### Verification
-
-After deployment, verify the backend is working:
-
-1. **API Documentation**: `https://your-app.up.railway.app/docs`
-   - Should display FastAPI Swagger UI
-
-2. **Health Check**: `https://your-app.up.railway.app/api/health`
-   - Should return: `{"status": "ok"}`
-
-3. **Frontend Connection**: 
-   - Open GitHub Pages: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
-   - Check browser console (F12) for API connection status
-   - Should see successful API requests
-
-#### Railway Free Tier
-
-- **Free Tier**: $5/month credit (usually sufficient for small applications)
-- **Auto-scaling**: Railway automatically scales based on traffic
-- **Auto-restart**: Railway restarts service on failure (configured in `railway.json`)
-- **Logs**: View deployment and runtime logs in Railway dashboard
-
-#### Troubleshooting Railway Deployment
-
-**Deployment Fails**:
-- Check Vercel deployment logs
-- Verify `requirements.txt` includes all dependencies
-- Ensure `vercel.json` configuration is correct
-- Check Python version (3.11+ required)
-
-**API Not Responding**:
-- Verify deployment is "Ready" in Vercel dashboard
-- Check Vercel function logs for errors
-- Verify environment variables are set correctly
-- Test health endpoint: `https://your-app.vercel.app/api/health`
-
-**Frontend Cannot Connect**:
-- Verify `frontend/config.js` has correct Vercel URL
-- Check CORS settings (`ALLOWED_ORIGINS` environment variable)
-- Check browser console for CORS errors
-- Verify `ENVIRONMENT=production` is set
-
-**Authentication Errors**:
-- Verify `ADMIN_SECRET` is set in Vercel environment variables
-- Check that protected endpoints include `x-admin-secret` header
-- Verify `ENVIRONMENT=production` (auth disabled in development)
-
-#### Related Documentation
-
-- 📖 [Vercel Deployment Guide](docs/VERCEL_DEPLOYMENT.md) - Complete Vercel deployment guide
-- 📖 [Deployment Guide](docs/DEPLOYMENT.md) - Complete deployment documentation
-- 📖 [Security Hardening](#-security-hardening) - Security configuration guide
+📖 **详细部署指南**: [`docs/STREAMLIT_DEPLOYMENT.md`](docs/STREAMLIT_DEPLOYMENT.md)  
+🔐 **Secrets 配置**: [`docs/STREAMLIT_CLOUD_SECRETS.md`](docs/STREAMLIT_CLOUD_SECRETS.md)  
+🏠 **本地部署**: [`docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md`](docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md) - Free local deployment with Cloudflare Tunnel
 
 ### GitHub Pages Frontend Deployment
 
@@ -3760,7 +3667,7 @@ Write-Host "Data directory size: $([math]::Round($dataSize, 2)) GB"
 - ✅ **Protection Mechanisms**: System prevents overselling (selling more than holdings) and overbuying (buying more than available cash)
 - ✅ **Auto-Restart**: System automatically restarts on crash
 - ✅ **Log Rotation**: Logs are automatically cleaned up to prevent disk space issues
-- ✅ **Data Backup**: Daily upload to Railway ensures data is backed up remotely
+- ✅ **Data Backup**: Regular backups to local storage (configure in backup scripts)
 - ✅ **Memory Management**: Automatic garbage collection and conversation history limiting
 - ✅ **File Optimization**: API only reads last 80-100KB of large files for better performance
 - ⚠️ **Monitor Weekly**: Check logs and disk space weekly (use `check_long_term_health.ps1`)
@@ -3798,8 +3705,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 ### Deployment Documentation
 
 - **[Deployment Options](docs/DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms (Vercel, Render, Fly.io, etc.)
-- **[Railway to Vercel Migration](docs/RAILWAY_TO_VERCEL_MIGRATION.md)** - Complete migration guide ⭐
-- **[Streamlit Deployment](docs/STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend alternative
+- **[Streamlit Deployment](docs/STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend ⭐
+- **[Streamlit Cloud Secrets](docs/STREAMLIT_CLOUD_SECRETS.md)** - Configure Streamlit Cloud secrets ⭐
+- **[Local Deployment](docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Free local deployment with Cloudflare Tunnel ⭐
 
 ### Additional Documentation
 

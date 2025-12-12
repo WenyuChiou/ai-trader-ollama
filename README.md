@@ -317,20 +317,34 @@ This will configure automated tasks for trading, equity recording, and data upda
 
 After completing the setup:
 
-1. **Start Ollama** (if not already running):
-```powershell
-   ollama serve
+1. **Start Backend** (Required):
+   ```batch
+   scripts\quick_start.bat
+   ```
+   Or manually:
+   ```batch
+   scripts\start_backend_auto.bat
    ```
 
-2. **Open Frontend**:
-   - Open `frontend/monitor.html` in your browser
-   - Or access via: http://localhost:3000/monitor.html
+2. **Verify Backend is Running**:
+   - Open: http://localhost:8000/api/health
+   - Should see: `{"status":"ok"}`
+   - If error: Backend is not running, check backend window
 
-3. **Execute First Trade Cycle**:
-   - Click "▶️ Start Trading" or "▶️ Run Analysis" button
-   - Wait for agents to analyze (~6-7 minutes for full 3-round discussion)
-   - **Performance Note**: System uses intelligent budget management to optimize execution time
-   - View results in the dashboard
+3. **Open Frontend**:
+   - **Quick Start**: Automatically opens in browser
+   - **Manual**: Double-click `frontend\monitor.html`
+   - **Check Connection**: Look for 🟢 green dot (top right) = Connected
+
+4. **Confirm Connection Status**:
+   - 🟢 **Green dot** = Backend connected ✅
+   - 🔴 **Red dot** = Backend not connected ❌
+   - If red: Start backend with `scripts\start_backend_auto.bat`
+
+5. **Execute First Trade Cycle**:
+   - Click "▶️ Execute Trade Cycle" button
+   - Wait for agents to analyze (~6-7 minutes)
+   - View results in dashboard
 
 4. **View Results**:
    - **Portfolio**: Current positions and P&L

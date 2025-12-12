@@ -18,9 +18,36 @@
 
 ### 🌐 **在线演示**
 
-> **在线查看仪表板**：[**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
+> **📈 HTML 仪表板**：[**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
 > 
-> 🔒 **只读模式**：公共网站处于只读模式以确保安全。交易控制已禁用。使用 localhost 获得完全控制。
+> 🔒 **注意**：公共演示处于只读模式以确保安全。交易控制已禁用。使用 localhost 获得完全控制。
+
+### 🚀 **快速开始（3 步）**
+
+> 📖 **详细说明请参阅：[快速开始指南](docs/QUICK_START.md)**
+
+1. **安装**：运行 `scripts\install.bat`（设置 Python、依赖项和 Ollama 模型）
+2. **配置**：运行 `scripts\setup_wizard.bat`（创建 `.env` 和配置文件）
+3. **启动**：运行 `scripts\quick_start.bat`（启动后端并打开前端）
+
+**就这么简单！** 您的交易系统将运行，仪表板会自动打开。
+
+### 🎯 **您将获得什么**
+
+完成快速开始后，您将拥有：
+- ✅ **功能完整的交易系统**，6 个 AI 代理协同工作
+- ✅ **实时仪表板**，显示代理讨论、投资组合表现和交易
+- ✅ **自动化交易能力**，具有智能风险管理
+- ✅ **28 个分析工具**，涵盖技术、基本面和情绪分析
+- ✅ **RAG 内存系统**，从历史交易决策中学习
+- ✅ **性能分析**，包含详细指标和净值图表
+
+**系统能力：**
+- 同时分析 118+ 个 NASDAQ-100 股票
+- 多代理协作决策
+- 实时市场数据集成
+- 自动化投资组合管理
+- 历史表现跟踪
 
 ---
 
@@ -28,21 +55,222 @@
 
 - [系统概述](#-系统概述)
 - [快速开始](#-快速开始)
-- [后台运行和备份设置](#-快速开始后台运行和备份设置)
+- [示例输出](#-示例输出)
 - [历史性能分析](#-历史性能分析)
 - [计划任务与自动化](#-计划任务与自动化)
-- [API 连接监控](#-api-连接监控)
-- [运行系统](#-运行系统)
 - [配置](#-配置)
 - [数据存储与记录](#-数据存储与记录)
 - [多代理架构](#-多代理架构)
 - [工具套件（28 个工具）](#-工具套件28-个工具)
 - [交易工作流程](#-交易工作流程)
 - [API 端点](#-api-端点)
-- [部署](#-部署)
 - [故障排除](#-故障排除)
 - [文档](#-文档)
 - [测试](#-测试)
+- [贡献](#-贡献)
+
+---
+
+## 📊 示例输出
+
+### 代理对话
+
+系统记录详细的代理讨论和分析：
+
+**基本面分析师**（分析公司基本面）：
+```json
+{
+  "timestamp": "2025-12-11T23:26:16.426Z",
+  "agent": "FundamentalAnalyst",
+  "round": 2,
+  "type": "tool",
+  "tool_name": "get_company_fundamentals",
+  "tool_result": {
+    "symbol": "NVDA",
+    "company_name": "NVIDIA Corporation",
+    "sector": "Technology",
+    "fundamentals": {
+      "valuation": {
+        "pe_ratio": 44.78,
+        "forward_pe": 24.24,
+        "price_to_book": 36.98
+      },
+      "profitability": {
+        "profit_margins": 0.53,
+        "return_on_equity": 1.07,
+        "revenue": 187141996544
+      },
+      "analyst_ratings": {
+        "target_price": 250.93,
+        "recommendation": "strong_buy",
+        "number_of_analysts": 56
+      }
+    }
+  }
+}
+```
+
+**风险分析师**（评估市场风险）：
+```json
+{
+  "timestamp": "2025-12-11T23:26:43.331Z",
+  "agent": "RiskAnalyst",
+  "round": 0,
+  "type": "discussion",
+  "stance": "low",
+  "risk_score": 3.5,
+  "vix_risk_score": 4.0,
+  "vix_level": 14.85,
+  "summary": "Market analysis shows 0 high-risk stocks and 3 safe stocks. Overall risk score: 3.50/10.",
+  "risk_report": {
+    "overall_risk_level": "low",
+    "risk_score": 3.5,
+    "safe_stocks": ["NVDA", "MSFT", "AAPL"],
+    "high_risk_stocks": []
+  }
+}
+```
+
+**交易代理**（做出交易决策）：
+```json
+{
+  "timestamp": "2025-12-11T23:26:56.530Z",
+  "agent": "TraderAgent",
+  "round": 0,
+  "type": "discussion",
+  "stance": "NEUTRAL",
+  "decision": {
+    "action": "HOLD",
+    "rationale": "Market is closed. Analysis completed but no trading orders generated.",
+    "buy_orders": [],
+    "sell_orders": []
+  },
+  "vix_risk": 4.0
+}
+```
+
+### 投资组合与净值历史
+
+实时投资组合跟踪和历史表现：
+
+**当前投资组合**：
+```json
+{
+  "cash": 99.37,
+  "initial_value": 10000.00,
+  "total_value": 3274.29,
+  "timestamp": "2025-12-11T23:27:03.243Z",
+  "positions": {
+    "MSFT": {
+      "quantity": 2,
+      "avg_cost": 492.37,
+      "current_price": 478.56,
+      "market_value": 957.12,
+      "total_cost": 984.74
+    },
+    "NVDA": {
+      "quantity": 6,
+      "avg_cost": 193.44,
+      "current_price": 183.78,
+      "market_value": 1102.68,
+      "total_cost": 1160.64
+    },
+    "AAPL": {
+      "quantity": 4,
+      "avg_cost": 274.10,
+      "current_price": 278.78,
+      "market_value": 1115.12,
+      "total_cost": 1096.39
+    },
+    "AMZN": {
+      "quantity": 5,
+      "avg_cost": 225.23,
+      "current_price": 225.23,
+      "market_value": 1126.15,
+      "total_cost": 1126.15
+    },
+    "GOOGL": {
+      "quantity": 3,
+      "avg_cost": 302.17,
+      "current_price": 302.17,
+      "market_value": 906.52,
+      "total_cost": 906.52
+    }
+  },
+  "snapshot": {
+    "cash": 99.37,
+    "total_value": 3274.29,
+    "equity_value": 3174.92,
+    "positions_count": 10
+  }
+}
+```
+
+**净值历史**（每 30 分钟记录一次）：
+```json
+{
+  "date": "2025-12-02",
+  "timestamp": "2025-12-02T20:54:37.607Z",
+  "cash": 99.37,
+  "equity_value": 10074.61,
+  "total_value": 10173.99,
+  "total_pnl": 173.99,
+  "total_pnl_pct": 1.74,
+  "positions": {
+    "AAPL": {
+      "quantity": 4,
+      "avg_cost": 274.10,
+      "current_price": 286.10,
+      "market_value": 1144.40,
+      "unrealized_pnl": 48.01,
+      "unrealized_pnl_pct": 4.38
+    },
+    "NVDA": {
+      "quantity": 6,
+      "avg_cost": 193.44,
+      "current_price": 181.64,
+      "market_value": 1089.84,
+      "unrealized_pnl": -70.80,
+      "unrealized_pnl_pct": -6.10
+    }
+  }
+}
+```
+
+### 交易决策与已成交订单
+
+代理交易决策，包含详细理由和执行记录：
+
+**已成交订单**（实际执行的交易）：
+```json
+{
+  "order_id": "AAPL_BUY_2025-11-20_1763657202.242376",
+  "symbol": "AAPL",
+  "action": "BUY",
+  "quantity": 1,
+  "limit_price": 270.61,
+  "placed_at": "2025-11-20T16:46:42.242Z",
+  "status": "FILLED",
+  "fill_price": 270.61,
+  "fill_reason": "Market order executed immediately at current price",
+  "filled_at": "2025-11-20T16:46:42.243Z"
+}
+```
+
+```json
+{
+  "order_id": "NVDA_BUY_2025-11-20_1763657202.585502",
+  "symbol": "NVDA",
+  "action": "BUY",
+  "quantity": 1,
+  "limit_price": 187.34,
+  "placed_at": "2025-11-20T16:46:42.585Z",
+  "status": "FILLED",
+  "fill_price": 187.34,
+  "fill_reason": "Market order executed immediately at current price",
+  "filled_at": "2025-11-20T16:46:42.586Z"
+}
+```
 
 ---
 
@@ -160,111 +388,43 @@ curl "http://localhost:8000/api/performance/symbol-analysis?symbol=NVDA"
 
 ## 🚀 快速开始
 
-### 前置要求
+> 📖 **完整设置说明请参阅：[快速开始指南](docs/QUICK_START.md)**
 
-**1. Python 环境**
-- 需要 Python 3.10 或更高版本
-- 从以下地址下载：https://www.python.org/downloads/
+本节提供快速概述。有关详细的分步说明、前置要求、故障排除和高级配置，请参阅[快速开始指南](docs/QUICK_START.md)。
 
-**2. Ollama 设置**
-- 从以下地址安装 Ollama：https://ollama.ai/
-- 拉取 LLM 模型：`ollama pull deepseek-r1`
+### 快速概述
 
-**3. API 密钥（可选但推荐）**
-- FRED API 用于经济数据（免费）：https://fred.stlouisfed.org/docs/api/api_key.html
-- 设置环境变量：`$env:FRED_API_KEY="your_api_key_here"`
+**安装与设置：**
+- 运行 `scripts\install.bat` - 设置 Python、依赖项和 Ollama 模型
+- 运行 `scripts\setup_wizard.bat` - 交互式配置向导
+- 运行 `scripts\verify_environment.bat` - 验证安装
 
----
+**启动系统：**
+- 运行 `scripts\quick_start.bat` - 自动启动后端并打开前端
+- 或手动：`scripts\start_backend_auto.bat` - 仅启动后端
 
-### 🎯 快速设置（3 步）
-
-**步骤 1：安装依赖**
-```powershell
-# 从项目根目录运行
-.\scripts\setup_step1_install_dependencies.ps1
-```
-这将：
-- ✅ 检查 Python 安装
-- ✅ 检查 Ollama 安装并拉取 deepseek-r1 模型
-- ✅ 创建虚拟环境
-- ✅ 安装所有 Python 依赖
-
-**步骤 2：配置系统**
-```powershell
-.\scripts\setup_step2_configure.ps1
-```
-这将：
-- ✅ 验证配置文件（config.json, agents.yaml）
-- ✅ 初始化数据目录
-- ✅ 初始化投资组合状态
-- ✅ 检查环境变量
-
-**步骤 3：启动服务**
-```powershell
-.\scripts\setup_step3_start_services.ps1
-```
-这将：
-- ✅ 检查 Ollama 服务
-- ✅ 检查端口可用性
-- ✅ 启动 API 服务器（从 3 个选项中选择）
-
-**设置后**：
+**访问点：**
 - 🌐 **API 服务器**：http://localhost:8000
 - 📊 **API 文档**：http://localhost:8000/docs
-- 🎨 **前端**：在浏览器中打开 `frontend/monitor.html`
+- 🎨 **前端仪表板**：自动在浏览器中打开，或手动打开 `frontend/monitor.html`
 
-**下一步 - 设置后台运行和备份**：
-```powershell
-# 步骤 4: 设置后台运行（推荐用于长期使用）
-# 右键点击 scripts\start_api_task_admin.bat → 以管理员身份运行
-
-# 步骤 5: 设置每日备份（推荐用于数据安全）
-# 右键点击 scripts\setup_daily_backup_admin.bat → 以管理员身份运行
-```
-
-**📖 完整设置指南**: 查看 [`docs/QUICK_SETUP_GUIDE.md`](docs/QUICK_SETUP_GUIDE.md) 获取详细说明：
-- ✅ 后台运行设置（任务计划程序 / Windows 服务）
-- ✅ 每日备份配置
-- ✅ 验证和故障排除
-
-**可选：设置计划任务**：
-```powershell
-.\scripts\setup_scheduled_tasks.ps1
-```
-这将配置交易、净值记录和数据更新的自动化任务。
-
-**或一次性运行所有步骤**：
-```powershell
-.\scripts\setup_all_steps.ps1
-```
+**连接状态：**
+- 🟢 **绿点**（右上角）= 后端已连接 ✅
+- 🔴 **红点** = 后端未连接 ❌
 
 ---
 
 ### 🎬 首次运行
 
-完成设置后：
+> 📖 **详细首次运行说明请参阅：[快速开始指南](docs/QUICK_START.md)**
 
-1. **启动 Ollama**（如果尚未运行）：
-```powershell
-   ollama serve
-   ```
+**快速步骤：**
+1. 运行 `scripts\quick_start.bat` - 自动启动所有内容
+2. 仪表板在浏览器中打开 - 查找 🟢 绿色连接指示器
+3. 点击 "▶️ 执行交易周期" - 等待约 6-7 分钟进行分析
+4. 在仪表板中查看结果 - 投资组合、对话、交易、图表
 
-2. **打开前端**：
-   - 在浏览器中打开 `frontend/monitor.html`
-   - 或通过以下地址访问：http://localhost:3000/monitor.html
-
-3. **执行首次交易周期**：
-   - 点击 "▶️ 开始交易" 或 "▶️ 运行分析" 按钮
-   - 等待代理分析（完整 3 轮讨论约需 6-7 分钟）
-   - **性能说明**：系统使用智能预算管理优化执行时间
-   - 在仪表板中查看结果
-
-4. **查看结果**：
-   - **投资组合**：当前持仓和 P&L
-   - **对话**：代理讨论和分析
-   - **交易**：交易历史
-   - **图表**：带时间范围选择器（日/周/月/自定义）的净值曲线
-   - **内存**：历史交易决策和学习
+有关故障排除和详细说明，请参阅[快速开始指南](docs/QUICK_START.md)。
 
 ---
 

@@ -40,11 +40,13 @@
 
 ### 🚀 **Quick Start (3 Steps)**
 
+> 📖 **For detailed instructions, see: [Quick Start Guide](docs/QUICK_START.md)**
+
 1. **Install**: Run `scripts\install.bat` (sets up Python, dependencies, and Ollama model)
 2. **Configure**: Run `scripts\setup_wizard.bat` (creates `.env` and config files)
 3. **Start**: Run `scripts\quick_start.bat` (starts backend and opens frontend)
 
-**That's it!** See [Quick Start Guide](docs/QUICK_START.md) for detailed instructions.
+**That's it!** Your trading system will be running and the dashboard will open automatically.
 
 ### 🎯 **What You'll Get**
 
@@ -401,102 +403,29 @@ See [Data Format Documentation](docs/DATA_FORMAT.md) for detailed file formats.
 
 ## 🚀 Quick Start
 
-### Prerequisites
+> 📖 **For complete setup instructions, see: [Quick Start Guide](docs/QUICK_START.md)**
 
-**1. Python Environment**
-- Python 3.10 or higher required
-- Download from: https://www.python.org/downloads/
+This section provides a quick overview. For detailed step-by-step instructions, prerequisites, troubleshooting, and advanced configuration, please refer to the [Quick Start Guide](docs/QUICK_START.md).
 
-**2. Ollama Setup**
-- Install Ollama from: https://ollama.ai/
-- Pull LLM model: `ollama pull deepseek-r1`
+### Quick Overview
 
-**3. API Keys (Optional but Recommended)**
-- FRED API for economic data (free): https://fred.stlouisfed.org/docs/api/api_key.html
-- Set environment variable: `$env:FRED_API_KEY="your_api_key_here"`
+**Installation & Setup:**
+- Run `scripts\install.bat` - Sets up Python, dependencies, and Ollama model
+- Run `scripts\setup_wizard.bat` - Interactive configuration wizard
+- Run `scripts\verify_environment.bat` - Verify installation
 
----
+**Starting the System:**
+- Run `scripts\quick_start.bat` - Starts backend and opens frontend automatically
+- Or manually: `scripts\start_backend_auto.bat` - Starts backend only
 
-### 🎯 Quick Setup (New User-Friendly Scripts)
-
-**One-Click Installation** (Recommended for new users):
-```batch
-scripts\install.bat
-```
-This will:
-- ✅ Check Python 3.10+ installation
-- ✅ Check Ollama installation and pull deepseek-r1 model
-- ✅ Create virtual environment
-- ✅ Install all Python dependencies
-- ✅ Initialize data directories
-- ✅ Create default configuration files
-
-**Interactive Configuration** (First time only):
-```batch
-scripts\setup_wizard.bat
-```
-This will:
-- ✅ Guide you through configuration setup
-- ✅ Generate secure ADMIN_SECRET
-- ✅ Configure CORS settings
-- ✅ Set up environment variables
-- ✅ Optional API keys (FRED_API_KEY)
-
-**Verify Installation**:
-```batch
-scripts\verify_environment.bat
-```
-This will:
-- ✅ Check all prerequisites
-- ✅ Verify installed components
-- ✅ Generate environment report
-
-**Test System** (Recommended before first use):
-```batch
-# Test backend first (required)
-scripts\test_backend.bat
-
-# Then test frontend (requires backend running)
-scripts\test_frontend.bat
-
-# Or test everything at once
-scripts\test_system.bat
-```
-
-**Quick Start** (Start everything):
-```batch
-scripts\quick_start.bat
-```
-This will:
-- ✅ Check environment
-- ✅ Start Ollama (if needed)
-- ✅ Start backend API server
-- ✅ Verify backend is ready
-- ✅ Open frontend in browser
-
-**Alternative: Manual Start**:
-```batch
-scripts\start_backend_auto.bat
-```
-This automatically handles:
-- ✅ Virtual environment setup
-- ✅ Dependency installation
-- ✅ Port conflict resolution
-- ✅ API server startup
-
-**After Setup:**
+**Access Points:**
 - 🌐 **API Server**: http://localhost:8000
 - 📊 **API Docs**: http://localhost:8000/docs
-- 🎨 **Frontend**: Open `frontend/monitor.html` in your browser
+- 🎨 **Frontend Dashboard**: Automatically opens in browser, or open `frontend/monitor.html` manually
 
-**Verify Backend Connection:**
-1. **Check Backend Health**: Open http://localhost:8000/api/health in browser
-   - Should return: `{"status":"ok"}`
-   - If error, backend is not running
-
-2. **Open Frontend**: Double-click `frontend\monitor.html` or open in browser
-   - Look for connection status indicator (top right)
-   - 🟢 **Green dot** = Connected to backend
+**Connection Status:**
+- 🟢 **Green dot** (top right) = Backend connected ✅
+- 🔴 **Red dot** = Backend not connected ❌
    - 🔴 **Red dot** = Backend not connected
    - If red, check backend is running: `scripts\start_backend_auto.bat`
 
@@ -550,43 +479,15 @@ This will configure automated tasks for trading, equity recording, and data upda
 
 ### 🎬 First Run
 
-After completing the setup:
+> 📖 **For detailed first-run instructions, see: [Quick Start Guide](docs/QUICK_START.md)**
 
-1. **Start Backend** (Required):
-   ```batch
-   scripts\quick_start.bat
-   ```
-   Or manually:
-   ```batch
-   scripts\start_backend_auto.bat
-   ```
+**Quick Steps:**
+1. Run `scripts\quick_start.bat` - Starts everything automatically
+2. Dashboard opens in browser - Look for 🟢 green connection indicator
+3. Click "▶️ Execute Trade Cycle" - Wait ~6-7 minutes for analysis
+4. View results in dashboard - Portfolio, conversations, trades, charts
 
-2. **Verify Backend is Running**:
-   - Open: http://localhost:8000/api/health
-   - Should see: `{"status":"ok"}`
-   - If error: Backend is not running, check backend window
-
-3. **Open Frontend**:
-   - **Quick Start**: Automatically opens in browser
-   - **Manual**: Double-click `frontend\monitor.html`
-   - **Check Connection**: Look for 🟢 green dot (top right) = Connected
-
-4. **Confirm Connection Status**:
-   - 🟢 **Green dot** = Backend connected ✅
-   - 🔴 **Red dot** = Backend not connected ❌
-   - If red: Start backend with `scripts\start_backend_auto.bat`
-
-5. **Execute First Trade Cycle**:
-   - Click "▶️ Execute Trade Cycle" button
-   - Wait for agents to analyze (~6-7 minutes)
-   - View results in dashboard
-
-4. **View Results**:
-   - **Portfolio**: Current positions and P&L
-   - **Conversations**: Agent discussions and analysis
-   - **Trades**: Trading history
-   - **Charts**: Equity curve with time range selector (Day/Week/Month/Custom)
-   - **Memory**: Historical trading decisions and learning
+For troubleshooting and detailed instructions, see the [Quick Start Guide](docs/QUICK_START.md).
 
 ---
 

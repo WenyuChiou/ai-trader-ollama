@@ -32,8 +32,6 @@ scripts/
 ### Deployment & Upload
 - `daily_upload_and_deploy.ps1` - Daily data upload and deployment
 - `schedule_daily_upload_only.ps1` - Schedule daily upload
-- `upload_data_to_railway.py` - Upload data to Railway
-- `run_cycle_and_upload_to_railway.py` - Run cycle and upload
 
 ### Data Management
 - `init_data.py` - Initialize data directories

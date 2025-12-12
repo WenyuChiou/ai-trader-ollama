@@ -51,9 +51,10 @@ api_options = [
 if os.getenv("API_BASE_URL") and os.getenv("API_BASE_URL") not in api_options:
     api_options.append(os.getenv("API_BASE_URL"))
 
-# 添加其他选项
+# 添加其他选项（Railway、其他平台）
 api_options.extend([
-    "https://web-production-b42d6.up.railway.app",  # Railway (legacy - 即将过期)
+    "https://web-production-b42d6.up.railway.app",  # Railway (更新为您的 Railway URL)
+    # 添加其他后端 URL 到这里
 ])
 
 # 确定默认索引
@@ -72,6 +73,8 @@ API_BASE = st.sidebar.selectbox(
 # 显示当前使用的 URL
 if os.getenv("API_BASE_URL"):
     st.sidebar.info(f"🌐 Using: {os.getenv('API_BASE_URL')}")
+elif API_BASE != "http://localhost:8000":
+    st.sidebar.info(f"🌐 Using: {API_BASE}")
 
 # 标题
 st.markdown('<div class="main-header">📈 AI Trader Dashboard</div>', unsafe_allow_html=True)

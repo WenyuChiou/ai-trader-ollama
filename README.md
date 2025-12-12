@@ -46,6 +46,116 @@
 
 **That's it!** See [Quick Start Guide](docs/QUICK_START.md) for detailed instructions.
 
+### 🎯 **What You'll Get**
+
+After completing the Quick Start, you'll have:
+- ✅ **Fully functional trading system** with 6 AI agents working together
+- ✅ **Real-time dashboard** showing agent discussions, portfolio performance, and trades
+- ✅ **Automated trading capability** with intelligent risk management
+- ✅ **28 analysis tools** covering technical, fundamental, and sentiment analysis
+- ✅ **RAG memory system** that learns from historical trading decisions
+- ✅ **Performance analytics** with detailed metrics and equity charts
+
+**System Capabilities:**
+- Analyzes 118+ NASDAQ-100 stocks simultaneously
+- Multi-agent collaborative decision making
+- Real-time market data integration
+- Automated portfolio management
+- Historical performance tracking
+
+---
+
+## 📊 Example Output
+
+### Agent Conversations
+
+The system records detailed agent discussions and analysis:
+
+```json
+{
+  "timestamp": "2025-11-16T14:30:00Z",
+  "agent": "MarketAnalyst",
+  "round": 1,
+  "content": "Current market analysis shows mixed sentiment...",
+  "summary": "Market indices are up 0.5% with technology sector leading gains",
+  "stance": "BULLISH",
+  "tools_used": ["get_market_indices", "get_sector_rotation"]
+}
+```
+
+```json
+{
+  "timestamp": "2025-11-16T14:32:00Z",
+  "agent": "RiskAnalyst",
+  "round": 1,
+  "content": "Risk assessment indicates moderate market volatility...",
+  "summary": "VIX at 18.5, overall risk score: 4.2/10 (moderate)",
+  "risk_score": 4.2,
+  "vix_risk_score": 3.8,
+  "stance": "NEUTRAL"
+}
+```
+
+### Portfolio & Equity History
+
+Real-time portfolio tracking with historical performance:
+
+**Current Portfolio**:
+```json
+{
+  "cash": 8500.00,
+  "initial_value": 10000.00,
+  "total_value": 10250.00,
+  "total_pnl": 250.00,
+  "total_pnl_pct": 2.50,
+  "positions": {
+    "NVDA": {
+      "quantity": 10,
+      "avg_cost": 150.00,
+      "current_price": 155.00,
+      "market_value": 1550.00,
+      "unrealized_pnl": 50.00,
+      "unrealized_pnl_pct": 3.33
+    }
+  }
+}
+```
+
+**Equity History** (recorded every 30 minutes):
+```json
+{
+  "date": "2025-11-16",
+  "timestamp": "2025-11-16T14:30:00Z",
+  "cash": 8500.00,
+  "equity_value": 1750.00,
+  "total_value": 10250.00,
+  "total_pnl": 250.00,
+  "total_pnl_pct": 2.50
+}
+```
+
+### Trading Decisions
+
+Agent trading decisions with detailed rationale:
+
+```json
+{
+  "timestamp": "2025-11-16T14:35:00Z",
+  "agent": "TraderAgent",
+  "action": "BUY",
+  "targets": ["NVDA", "MSFT"],
+  "rationale": "Strong technical indicators and positive sentiment support entry",
+  "buy_orders": [
+    {
+      "symbol": "NVDA",
+      "quantity": 10,
+      "price": 150.00,
+      "status": "FILLED"
+    }
+  ]
+}
+```
+
 ---
 
 ## 📚 Table of Contents

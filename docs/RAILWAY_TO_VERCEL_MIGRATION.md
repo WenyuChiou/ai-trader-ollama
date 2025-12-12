@@ -3,6 +3,8 @@
 
 由于 Railway 免费额度即将过期，本指南将帮助您将后端部署从 Railway 迁移到 Vercel。
 
+> 📖 **完整部署指南**: 请参考 [`docs/VERCEL_SETUP_GUIDE.md`](VERCEL_SETUP_GUIDE.md) 获取详细的 Vercel 部署步骤
+
 ## 为什么迁移到 Vercel？
 
 **Vercel 优势：**

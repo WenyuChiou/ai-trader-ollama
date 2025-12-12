@@ -19,15 +19,6 @@ For end users and operators:
 - **[Configuration Guide](CONFIGURATION.md)** - System configuration options
 - **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
 
-## 🚀 Deployment
-
-Deploy the system to production:
-
-- **[Deployment Options](DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms
-- **[Local Deployment](LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Local deployment with Cloudflare Tunnel ⭐ (推荐，免费)
-- **[Streamlit Deployment](STREAMLIT_DEPLOYMENT.md)** - Deploy Streamlit frontend ⭐
-- **[Streamlit Cloud Secrets](STREAMLIT_CLOUD_SECRETS.md)** - Configure Streamlit Cloud secrets ⭐
-
 ## 🏗️ Architecture & Development
 
 For developers and contributors:
@@ -82,7 +73,6 @@ Specialized topics:
 | **Installation** | [Installation Guide](INSTALLATION.md) |
 | **Configuration** | [Configuration Guide](CONFIGURATION.md) |
 | **Troubleshooting** | [Troubleshooting](TROUBLESHOOTING.md) |
-| **Deployment** | [Deployment Options](DEPLOYMENT_OPTIONS.md) |
 | **API Docs** | [API Reference](API_REFERENCE.md) |
 | **Architecture** | [Architecture](ARCHITECTURE.md) |
 
@@ -105,14 +95,6 @@ Specialized topics:
 2. Configure [Configuration Guide](CONFIGURATION.md)
 3. Set up [Background Running](BACKGROUND_RUNNING_GUIDE.md)
 4. Monitor [Long-Term Running](LONG_TERM_RUNNING_GUIDE.md)
-
-### For Deployment
-1. Compare [Deployment Options](DEPLOYMENT_OPTIONS.md)
-2. Choose platform:
-   - **Local (Free)**: [Local Deployment](LOCAL_CLOUDFLARE_DEPLOYMENT.md) with Cloudflare Tunnel
-   - **Streamlit Cloud**: [Streamlit Deployment](STREAMLIT_DEPLOYMENT.md) + [Secrets Config](STREAMLIT_CLOUD_SECRETS.md)
-3. Configure backend connection
-4. Test deployment
 
 ---
 

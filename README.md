@@ -34,7 +34,7 @@
 
 ### 🌐 **Live Demo**
 
-> **📈 HTML Dashboard**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html) (Deployed via GitHub Pages)
+> **📈 HTML Dashboard**: [**https://WenyuChiou.github.io/ai-trader-ollama/monitor.html**](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
 > 
 > 🔒 **Note**: Public demo is in read-only mode for security. Trading controls are disabled. Use localhost for full control.
 
@@ -170,7 +170,6 @@ Agent trading decisions with detailed rationale:
 - [Tool Suite (28 Tools)](#-tool-suite-28-tools)
 - [Trading Workflow](#-trading-workflow)
 - [API Endpoints](#-api-endpoints)
-- [Deployment](#-deployment)
 - [Troubleshooting](#-troubleshooting)
 - [Documentation](#-documentation)
 - [Testing](#-testing)
@@ -2740,118 +2739,6 @@ Daily Summary:
 
 ---
 
-## 🚀 Deployment
-
-### 🎯 部署选项对比
-
-**多种部署方案可选，根据需求选择：**
-
-| 平台 | 免费额度 | 推荐度 | 适用场景 |
-|------|---------|--------|----------|
-| **Vercel** ⭐ | 100GB/月 | ⭐⭐⭐⭐⭐ | 生产环境，预算有限 |
-| **Render** | 750小时/月 | ⭐⭐⭐⭐ | 需要持久化存储 |
-| **Fly.io** | 3个VM免费 | ⭐⭐⭐⭐ | Docker 环境，多区域 |
-| **本地+Cloudflare** | 完全免费 | ⭐⭐⭐ | 开发/测试/个人展示 |
-
-📖 **完整对比**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - 详细的部署选项对比和选择指南
-
-### GitHub Pages Frontend Deployment
-
-The HTML dashboard (`frontend/monitor.html`) is automatically deployed to **GitHub Pages** via GitHub Actions workflow.
-
-- 🌐 **Live Demo**: [https://WenyuChiou.github.io/ai-trader-ollama/monitor.html](https://WenyuChiou.github.io/ai-trader-ollama/monitor.html)
-- 📖 **Frontend Guide**: `frontend/README.md` - Frontend development and deployment details
-- 📚 **部署选项**: [`docs/DEPLOYMENT_OPTIONS.md`](docs/DEPLOYMENT_OPTIONS.md) - Compare all deployment platforms
-
-### Vercel Backend Deployment (Recommended)
-
-Vercel provides a free, reliable way to deploy the AI-Trader backend API with generous free tier.
-
-#### Quick Deployment Steps
-
-1. **Connect Repository to Vercel**
-   - Visit [Vercel Dashboard](https://vercel.com/)
-   - Click "Add New Project" → Import GitHub repository
-   - Select `WenyuChiou/ai-trader-ollama`
-   - Vercel will automatically detect Python project
-
-2. **Configuration Files**
-   - ✅ `vercel.json` - Vercel deployment configuration
-   - ✅ `backend/requirements.txt` - Python dependencies
-
-3. **Environment Variables** (Set in Vercel Dashboard)
-   - `ADMIN_SECRET` - Admin API key (required)
-   - `ENVIRONMENT` - Set to `production`
-   - `ALLOWED_ORIGINS` - CORS allowed origins (e.g., `https://wenyuchiou.github.io`)
-   - `FRED_API_KEY` - Optional, for economic data
-   - `LOG_LEVEL` - Optional, default: `INFO`
-
-4. **Deployment Process**
-   - Vercel automatically builds and deploys on push to `main` branch
-   - Check deployment logs in Vercel dashboard
-   - Deployment typically takes 2-5 minutes
-
-5. **Get Public URL**
-   - After deployment, Vercel provides a public URL (e.g., `https://ai-trader-ollama.vercel.app`)
-   - Copy the deployment URL
-
-6. **Update Frontend Configuration**
-   - Edit `frontend/config.js`
-   - Update `production` URL to your Vercel backend URL:
-     ```javascript
-     production: 'https://your-app.vercel.app',
-     ```
-   - Commit and push to GitHub
-
-📖 **详细部署指南**: [`docs/VERCEL_DEPLOYMENT.md`](docs/VERCEL_DEPLOYMENT.md)
-
-### GitHub Pages Frontend Deployment
-
-The HTML dashboard (`frontend/monitor.html`) is automatically deployed to **GitHub Pages** when you push to the `main` branch.
-
-#### How It Works
-
-1. **Automatic Deployment**
-   - GitHub Actions workflow (`.github/workflows/deploy-pages.yml`) automatically deploys on push
-   - Deploys from `/frontend` folder
-   - URL: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
-
-2. **Configuration**
-   - **Source**: `Deploy from a branch`
-   - **Branch**: `main`
-   - **Folder**: `/frontend`
-   - **Workflow**: `.github/workflows/deploy-pages.yml`
-
-3. **Update Process**
-   - Make changes to `frontend/monitor.html` or `frontend/config.js`
-   - Commit and push to `main` branch
-   - GitHub Pages automatically deploys (1-2 minutes)
-   - Access updated frontend at GitHub Pages URL
-
-**Note**: The frontend is in read-only mode on GitHub Pages for security. Full trading controls are only available when running locally.
-
-📖 **Frontend Guide**: See `frontend/README.md` for frontend development details
-
-### GitHub Pages Frontend Deployment
-
-The frontend is automatically deployed to GitHub Pages when you push to the `main` branch.
-
-**Configuration**:
-- **Source**: `Deploy from a branch`
-- **Branch**: `main`
-- **Folder**: `/frontend`
-- **URL**: `https://WenyuChiou.github.io/ai-trader-ollama/monitor.html`
-
-**Update Process**:
-1. Make changes to frontend files
-2. Commit and push to `main` branch
-3. GitHub Pages automatically deploys (1-2 minutes)
-4. Access updated frontend at GitHub Pages URL
-
-**Note**: The frontend is in read-only mode on GitHub Pages for security. Full trading controls are only available when running locally.
-
----
-
 ## ⏰ Scheduled Tasks & Automation
 
 ### PowerShell Scripts for Automation
@@ -3803,14 +3690,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check_long_term_health.ps1
 - **[Architecture Documentation](docs/ARCHITECTURE.md)** - System architecture overview
 - **[Testing Guide](docs/TESTING.md)** - Running and writing tests
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Deployment Readiness Checklist](docs/DEPLOYMENT_READINESS_CHECKLIST.md)** - Pre-deployment verification ⭐
-
-### Deployment Documentation
-
-- **[Deployment Options](docs/DEPLOYMENT_OPTIONS.md)** - Compare deployment platforms (Vercel, Render, Fly.io, etc.)
-- **[Local Deployment](docs/LOCAL_CLOUDFLARE_DEPLOYMENT.md)** - Free local deployment with Cloudflare Tunnel ⭐
-- **[GitHub Pages Deployment](#github-pages-frontend-deployment)** - Automatic frontend deployment
-
 ### Additional Documentation
 
 | File | Description |

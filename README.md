@@ -177,25 +177,6 @@ Agent trading decisions with detailed rationale:
 
 ---
 
-## 📚 Table of Contents
-
-- [System Overview](#-system-overview)
-- [Quick Start](#-quick-start)
-- [Historical Performance Analysis](#-historical-performance-analysis)
-- [Scheduled Tasks & Automation](#-scheduled-tasks--automation)
-- [Configuration](#-configuration)
-- [Data Storage & Records](#-data-storage--records)
-- [Multi-Agent Architecture](#-multi-agent-architecture)
-- [Tool Suite (28 Tools)](#-tool-suite-28-tools)
-- [Trading Workflow](#-trading-workflow)
-- [API Endpoints](#-api-endpoints)
-- [Troubleshooting](#-troubleshooting)
-- [Documentation](#-documentation)
-- [Testing](#-testing)
-- [Contributing](#-contributing)
-
----
-
 ## 🌟 System Overview
 
 ### What is AI-Trader Ollama?

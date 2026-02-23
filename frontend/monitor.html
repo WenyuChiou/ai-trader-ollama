@@ -1884,7 +1884,74 @@
             } else {
                 window.READ_ONLY_MODE = false;
             }
-            
+
+            // --- Backend Trading Mode Badge ---
+            // Fetch the server-side trading mode and display a prominent badge.
+            (async function fetchTradingModeBadge() {
+                try {
+                    const base = getApiBase ? getApiBase() : API_BASE;
+                    const resp = await fetch(`${base}/api/trading/mode`, { signal: AbortSignal.timeout(5000) });
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    const mode = data.trading_mode || 'UNKNOWN';
+                    const disabled = data.trading_disabled;
+
+                    // Store for other components
+                    window.BACKEND_TRADING_MODE = mode;
+
+                    const headerControls = document.querySelector('.header-controls');
+                    if (!headerControls) return;
+
+                    const badge = document.createElement('span');
+                    badge.id = 'tradingModeBadge';
+                    badge.style.cssText = 'font-size: 11px; margin-left: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px;';
+
+                    if (disabled) {
+                        badge.textContent = 'TRADING DISABLED';
+                        badge.style.background = '#991b1b';
+                        badge.style.color = '#fecaca';
+                        badge.title = 'Kill-switch active: TRADING_DISABLED=1';
+                    } else if (mode === 'READ_ONLY') {
+                        badge.textContent = 'READ-ONLY';
+                        badge.style.background = '#1e3a5f';
+                        badge.style.color = '#93c5fd';
+                        badge.title = 'Safe mode: no orders will be placed';
+                    } else if (mode === 'PAPER') {
+                        badge.textContent = 'PAPER';
+                        badge.style.background = '#854d0e';
+                        badge.style.color = '#fde68a';
+                        badge.title = 'Paper trading: orders are simulated, no real money';
+                    } else if (mode === 'LIVE') {
+                        badge.textContent = 'LIVE TRADING';
+                        badge.style.background = '#dc2626';
+                        badge.style.color = '#ffffff';
+                        badge.title = 'LIVE MODE: Real orders will be placed!';
+                        // Add pulsing warning for LIVE
+                        badge.style.animation = 'pulse 2s infinite';
+                    }
+
+                    // Remove any existing badge first
+                    const existing = document.getElementById('tradingModeBadge');
+                    if (existing) existing.remove();
+                    headerControls.insertBefore(badge, headerControls.firstChild);
+
+                    // Show warning banner for LIVE mode
+                    if (mode === 'LIVE' && !disabled) {
+                        const banner = document.createElement('div');
+                        banner.id = 'liveWarningBanner';
+                        banner.style.cssText = 'background: #dc2626; color: white; text-align: center; padding: 8px; font-weight: 700; font-size: 14px; position: sticky; top: 0; z-index: 9999;';
+                        banner.textContent = 'WARNING: LIVE TRADING MODE — Real orders will be placed with real money!';
+                        const existingBanner = document.getElementById('liveWarningBanner');
+                        if (!existingBanner) {
+                            document.body.insertBefore(banner, document.body.firstChild);
+                        }
+                    }
+                } catch (e) {
+                    // Silently fail — badge is informational only
+                    console.log('[TradingMode] Could not fetch trading mode:', e.message);
+                }
+            })();
+
             // CRITICAL FIX: 启动净值更新倒计时
             startEquityUpdateCountdown();
         });
@@ -3558,7 +3625,24 @@
                     console.error('[Trade Cycle] Response parse failed:', parseErr);
                     throw new Error('Failed to parse response');
                 }
-                
+
+                // Handle trading mode violations (403)
+                if (response.status === 403 && data.error) {
+                    const errCode = data.error.code || '';
+                    const errMsg = data.error.message || 'Trading not permitted';
+                    if (errCode === 'mode_violation') {
+                        alert(`Trading Mode: ${errMsg}\n\nCurrent mode: ${data.trading_mode || 'READ_ONLY'}\nTo enable trading, set TRADING_MODE=PAPER or TRADING_MODE=LIVE in your environment.`);
+                    } else if (errCode === 'trading_disabled') {
+                        alert(`Kill-Switch Active: ${errMsg}\n\nRemove TRADING_DISABLED=1 from environment to re-enable.`);
+                    } else {
+                        alert(`Trading blocked: ${errMsg}`);
+                    }
+                    isTradingExecuting = false;
+                    updateConversationStatus(false);
+                    if (btn) btn.textContent = '▶️ Start Trading';
+                    return;
+                }
+
                 if (response.ok && data.ok) {
                     const orderCount = data.result?.placed_orders?.length || 0;
                     const convCount = data.result?.conversations_count || 0;

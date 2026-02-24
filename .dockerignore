@@ -1,0 +1,25 @@
+# .dockerignore — keep the build context small
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+.github/
+.ai/
+.claude/
+data/logs/
+*.log
+*.db
+*.sqlite
+node_modules/
+tools/
+.env
+.env.*
+!.env.example
+docs/
+tests/
+*.md
+!backend/README.md
+.pytest_cache/
+htmlcov/
+.coverage

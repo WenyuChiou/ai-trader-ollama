@@ -1,0 +1,56 @@
+# docker-compose.yml — AI Trader local development stack
+#
+# Usage:
+#   docker compose up              # Start backend (Ollama must be running on host)
+#   docker compose up --build      # Rebuild and start
+#   docker compose down            # Stop all
+#
+# Ollama is NOT included — it runs on the host machine.
+# The backend connects to it via OLLAMA_HOST.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - TRADING_MODE=${TRADING_MODE:-READ_ONLY}
+      - TRADING_DISABLED=${TRADING_DISABLED:-0}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+    volumes:
+      # Persist trading data across container restarts
+      - trader-data:/app/data/logs
+      # Mount config for easy editing (read-only)
+      - ./backend/config:/app/backend/config:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # Optional: serve frontend static files via nginx
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - with-frontend
+
+volumes:
+  trader-data:
+    driver: local

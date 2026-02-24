@@ -13,16 +13,23 @@ from datetime import date, datetime, timedelta, time as dt_time, timezone
 import pandas as pd
 import yfinance as yf
 
+from src.utils.trading_mode import (
+    TradingMode,
+    TradingModeError,
+    assert_can_trade,
+    resolve_trading_mode,
+)
+
 
 class OrderManager:
     """挂单管理器"""
-    
+
     def __init__(self, root: str | Path = "data/logs"):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self.pending_orders_file = self.root / "pending_orders.jsonl"
         self.filled_orders_file = self.root / "filled_orders.jsonl"
-    
+
     def place_order(
         self,
         symbol: str,
@@ -35,17 +42,30 @@ class OrderManager:
         挂单（创建限价单）
         注意：如果同一日期已有相同symbol和action的订单，会先删除旧订单再创建新订单
         确保同一日期、同一symbol和action只保留一份订单
-        
+
+        Safety: This method enforces trading mode gating.
+        - READ_ONLY: raises TradingModeError
+        - PAPER: order is logged and simulated (no real broker call)
+        - LIVE: order is placed (requires confirmation phrase + no kill-switch)
+
         参数:
         - symbol: 股票代码
         - action: BUY 或 SELL
         - quantity: 数量
         - limit_price: 限价（使用价格范围边界）
         - price_range: 价格范围 {"min": ..., "max": ...}
-        
+
         返回:
         - 挂单信息
         """
+        # --- SAFETY GATE: check trading mode before any order logic ---
+        effective_mode = assert_can_trade(
+            action=action,
+            symbol=symbol,
+            quantity=quantity,
+            price=limit_price,
+        )
+
         # 加载所有订单
         all_orders = self.load_pending_orders()
         
@@ -80,6 +100,7 @@ class OrderManager:
             "price_range": price_range,
             "placed_at": placed_at,
             "status": "PENDING",  # PENDING -> FILLED / REJECTED
+            "trading_mode": effective_mode.value,  # Track which mode placed this order
         }
         
         # 添加新订单

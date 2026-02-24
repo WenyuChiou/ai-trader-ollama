@@ -3,6 +3,36 @@
 ## Overview
 This guide explains all configuration options for the AI-Trader system.
 
+## Trading Mode (v1.1.0+)
+
+The most important setting — controls whether the system can place real orders.
+
+| Mode | Orders? | How to Set |
+|------|---------|------------|
+| `READ_ONLY` (default) | No | Default — no action needed |
+| `PAPER` | Simulated | `set TRADING_MODE=PAPER` or in config.json |
+| `LIVE` | Real | Requires TWO env vars (see [Security Modes](SECURITY_MODES.md)) |
+
+**Sample configs** are provided for each mode:
+- `backend/config/config.readonly.json`
+- `backend/config/config.paper.json`
+- `backend/config/config.live.template.json`
+
+## Schema Validation (v1.1.0+)
+
+Config files are validated against a Pydantic schema (`config_schema.py`). To validate:
+
+```python
+from src.utils.config_schema import validate_config_file
+validate_config_file("backend/config/config.json")  # raises on error
+```
+
+Or use the loader with validation:
+```python
+from src.utils.config_loader import load_config
+config = load_config(validate=True)  # raises pydantic.ValidationError on error
+```
+
 ## Configuration Files
 
 ### 1. `backend/config/config.json`
@@ -67,17 +97,31 @@ technical_analyst:
 
 ## Environment Variables
 
-### FRED_API_KEY
-Economic data API key (optional but recommended)
-```powershell
-$env:FRED_API_KEY="your_api_key_here"
-```
+### Trading Safety (v1.1.0+)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TRADING_MODE` | `READ_ONLY` | `READ_ONLY`, `PAPER`, or `LIVE` |
+| `TRADING_DISABLED` | `0` | `1` = kill-switch, blocks all orders |
+| `I_UNDERSTAND_LIVE_TRADING` | (not set) | Must be `YES` for LIVE mode |
 
-### OLLAMA_BASE_URL
-Custom Ollama server URL (default: http://localhost:11434)
-```powershell
-$env:OLLAMA_BASE_URL="http://localhost:11434"
-```
+### LLM / Ollama
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.1` | Default model name |
+
+### Observability (v1.1.0+)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `LOG_FORMAT` | `text` | `text` or `json` (JSON for log aggregation) |
+
+### Other
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FRED_API_KEY` | (not set) | Economic data API key (optional) |
+| `ADMIN_TOKEN` | (not set) | Admin API authentication token |
+| `ENVIRONMENT` | `development` | `development` or `production` |
 
 ## Data Directory Structure
 
@@ -165,6 +209,8 @@ This will validate:
 - Cash reserve: Must be between 0 and 1
 
 ## See Also
+- [Security Modes](SECURITY_MODES.md) — Trading mode safety system
+- [Deployment Guide](DEPLOYMENT.md) — Docker, Windows scripts, manual setup
 - [Quick Start Guide](QUICK_START.md)
 - [API Reference](API_REFERENCE.md)
 - [Architecture Documentation](ARCHITECTURE.md)

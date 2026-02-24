@@ -28,10 +28,27 @@ import uuid
 from .security_middleware import AdminAuthMiddleware
 from .rate_limit import setup_rate_limiting, limiter
 from .error_handler import global_exception_handler, http_exception_handler
+from .response_models import (
+    ErrorResponse, ErrorDetail,
+    HealthResponse, TradingModeResponse, RootResponse,
+    ExecuteTradeResponse, PendingOrdersResponse, RecentTradesResponse,
+    PortfolioRealtimeResponse, EquityHistoryResponse, RecordEquityResponse,
+    ConversationsResponse, MarketOpenResponse, VixTermResponse, FearGreedResponse,
+    SystemInitResponse, SystemInfoResponse, DataUploadResponse,
+    AgentsStatusResponse, ToolsListResponse, VerifyUpdatesResponse,
+    PerformanceStatisticsResponse, TradesByDateResponse, SymbolAnalysisResponse,
+)
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-# Initialize FastAPI app
-app = FastAPI(title="AI Trader API", version="1.0.0")
+# Initialize FastAPI app with OpenAPI documentation enabled
+app = FastAPI(
+    title="AI Trader API",
+    version="1.1.0",
+    description="AI-powered stock trading system with multi-agent analysis",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
 
 # Setup rate limiting
 setup_rate_limiting(app)
@@ -68,6 +85,27 @@ app.add_middleware(
 
 # Add admin authentication middleware
 app.add_middleware(AdminAuthMiddleware)
+
+
+# ---------------------------------------------------------------------------
+# Correlation ID middleware — generates a per-request ID and stores it in
+# contextvars so that all downstream log messages include the same ID.
+# ---------------------------------------------------------------------------
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class CorrelationIDMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        from src.utils.correlation import new_correlation_id, get_correlation_id
+        # Accept incoming header or generate a new one
+        cid = request.headers.get("X-Correlation-ID") or new_correlation_id()
+        from src.utils.correlation import set_correlation_id
+        set_correlation_id(cid)
+        response = await call_next(request)
+        response.headers["X-Correlation-ID"] = cid
+        return response
+
+app.add_middleware(CorrelationIDMiddleware)
+
 
 # Import error handlers
 from .error_handler import global_exception_handler, http_exception_handler
@@ -132,9 +170,12 @@ async def root(request: Request):
     """Root endpoint, returns API information and endpoint list"""
     return {
         "message": "AI Trader API",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "endpoints": {
             "health": "/api/health",
+            "health_deps": "/api/health/deps",
+            "docs": "/api/docs",
+            "openapi_json": "/api/openapi.json",
             "conversations": "/api/agents/conversations",
             "portfolio_realtime": "/api/portfolio/real-time",
             "portfolio_history": "/api/portfolio/equity-history",
@@ -153,9 +194,63 @@ async def root(request: Request):
     }
 
 # Health check
-@app.get("/api/health")
+@app.get("/api/health", response_model=HealthResponse)
 async def health():
-    return {"status": "ok"}
+    from src.utils.trading_mode import resolve_trading_mode, is_kill_switch_active
+    mode = resolve_trading_mode()
+    return {
+        "status": "ok",
+        "trading_mode": mode.value,
+        "trading_disabled": is_kill_switch_active(),
+        "version": app.version,
+    }
+
+
+# Dependency health check — verifies external services are reachable
+@app.get("/api/health/deps")
+async def health_deps():
+    """Check connectivity to external dependencies (Ollama, data directory)."""
+    from src.utils.config_loader import get_llm_config
+    import httpx
+
+    llm_cfg = get_llm_config()
+    ollama_url = llm_cfg["base_url"]
+
+    deps = {}
+
+    # Check Ollama
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{ollama_url}/api/tags")
+            deps["ollama"] = {
+                "status": "ok" if resp.status_code == 200 else "degraded",
+                "url": ollama_url,
+                "models_available": len(resp.json().get("models", [])) if resp.status_code == 200 else 0,
+            }
+    except Exception as e:
+        deps["ollama"] = {"status": "unreachable", "url": ollama_url, "error": str(e)}
+
+    # Check data directory
+    logs_dir = _get_project_logs_dir()
+    deps["data_dir"] = {
+        "status": "ok" if logs_dir.exists() else "missing",
+        "path": str(logs_dir),
+    }
+
+    all_ok = all(d.get("status") == "ok" for d in deps.values())
+    return {"status": "ok" if all_ok else "degraded", "dependencies": deps}
+
+
+# Trading mode endpoint — frontend queries this to display mode badge
+@app.get("/api/trading/mode", response_model=TradingModeResponse)
+async def trading_mode_info():
+    from src.utils.trading_mode import resolve_trading_mode, is_kill_switch_active, is_live_confirmed
+    mode = resolve_trading_mode()
+    return {
+        "trading_mode": mode.value,
+        "trading_disabled": is_kill_switch_active(),
+        "live_confirmed": is_live_confirmed(),
+    }
 
 # Verify updates endpoint
 @app.get("/api/verify/updates")
@@ -251,6 +346,26 @@ async def execute_trade_direct(request: Request):
     try:
         from src.orchestrator.trading_cycle import execute_daily_trade
         from src.utils.trading_days import is_market_open
+        from src.utils.trading_mode import resolve_trading_mode, is_kill_switch_active, TradingMode, TradingModeError
+
+        # Pre-flight safety check: block at the API layer for READ_ONLY and kill-switch
+        mode = resolve_trading_mode()
+        if is_kill_switch_active():
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "ok": False,
+                    "error": {"code": "trading_disabled", "message": "Trading is disabled via kill-switch (TRADING_DISABLED=1)."},
+                },
+            )
+        if mode == TradingMode.READ_ONLY:
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "ok": False,
+                    "error": {"code": "mode_violation", "message": "Cannot execute trades in READ_ONLY mode. Set TRADING_MODE to PAPER or LIVE."},
+                },
+            )
         
         # Load configuration
         config = load_trading_config()
@@ -298,6 +413,7 @@ async def execute_trade_direct(request: Request):
             content={
                 "ok": True,
                 "message": message,
+                "trading_mode": mode.value,
                 "result": serializable_result
             },
             headers={
@@ -305,6 +421,15 @@ async def execute_trade_direct(request: Request):
                 "Access-Control-Allow-Methods": "POST, OPTIONS",
                 "Access-Control-Allow-Headers": "*",
             }
+        )
+    except TradingModeError as e:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "ok": False,
+                "error": {"code": "mode_violation", "message": str(e)},
+                "trading_mode": e.mode.value,
+            },
         )
     except Exception as e:
         # Let global exception handler handle this
@@ -2037,7 +2162,7 @@ async def get_system_info():
             "ok": True,
                 "llm_model": llm_config.get("default_model") if llm_config.get("default_model") else (config_data.get("llm_model") or config_data.get("default_model") or "Unknown"),
                 "llm_base_url": llm_config.get("ollama_host") if llm_config.get("ollama_host") else (config_data.get("llm_base_url") or config_data.get("ollama_host") or "Unknown"),
-                "version": "1.0.0",
+                "version": "1.1.0",
                 "position_limits": {
                     "enabled": has_position_limits,
                     "limits": position_limits if has_position_limits else None,

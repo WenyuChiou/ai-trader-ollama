@@ -1,0 +1,23 @@
+# ruff.toml — Python linter configuration
+# See: https://docs.astral.sh/ruff/rules/
+
+[lint]
+# Start with essential rules; expand over time
+select = ["E", "F", "W"]
+
+# Baseline ignores — existing code has these; remove as we clean up
+ignore = [
+    "E501",   # line too long (many existing long lines)
+    "E402",   # module-level import not at top (server.py path setup)
+    "F401",   # unused imports (some are re-exports)
+    "W605",   # invalid escape sequence (some regex patterns)
+]
+
+[lint.per-file-ignores]
+# Test files can have broader imports
+"tests/**/*.py" = ["E402", "F401"]
+
+[format]
+# Don't auto-format yet — defer to a future phase
+quote-style = "double"
+indent-style = "space"

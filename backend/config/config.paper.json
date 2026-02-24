@@ -1,0 +1,32 @@
+{
+  "_comment": "PAPER mode config — orders are logged and simulated, no real money.",
+  "trading_mode": "PAPER",
+  "universe_source": "custom",
+  "universe": ["NVDA", "MSFT", "AAPL", "GOOGL", "AMZN"],
+  "initial_cash": 10000,
+  "position_limit_mode": "auto",
+  "discussion_rounds": 3,
+  "discussion_auto_tools": true,
+  "discussion_tool_budget": 15,
+  "max_orders_per_cycle": 20,
+  "trade_cooldown_hours": 24.0,
+  "llm": {
+    "default_model": "deepseek-r1",
+    "ollama_host": "http://localhost:11434",
+    "auto_pull": true,
+    "timeout_seconds": 8.0
+  },
+  "rag": {
+    "short_term_days": 7,
+    "medium_term_days": 30,
+    "long_term_days": 90,
+    "embedding_model": "nomic-embed-text",
+    "embedding_dimension": 384,
+    "use_ollama_embedding": true,
+    "fallback_embedding_model": "all-MiniLM-L6-v2",
+    "vector_search_top_k": 10,
+    "enable_semantic_search": true,
+    "enable_cache": true,
+    "cache_size": 100
+  }
+}

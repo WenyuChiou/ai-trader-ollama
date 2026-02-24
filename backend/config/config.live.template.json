@@ -1,0 +1,38 @@
+{
+  "_comment": "LIVE mode template — REAL ORDERS with real money. Read ADR-0001 before using.",
+  "_warning": "LIVE mode requires BOTH this config AND env var I_UNDERSTAND_LIVE_TRADING=YES",
+  "trading_mode": "LIVE",
+  "universe_source": "custom",
+  "universe": ["NVDA", "MSFT", "AAPL", "GOOGL", "AMZN"],
+  "initial_cash": 10000,
+  "_comment_position_limits": "Strongly recommended: use 'configured' mode with limits for LIVE trading.",
+  "position_limit_mode": "configured",
+  "_position_limit_per_stock": 0.15,
+  "_position_limit_total": 0.80,
+  "_position_limit_min_per_stock": 0.03,
+  "min_cash_reserve_ratio": 0.20,
+  "discussion_rounds": 3,
+  "discussion_auto_tools": true,
+  "discussion_tool_budget": 15,
+  "max_orders_per_cycle": 10,
+  "trade_cooldown_hours": 24.0,
+  "llm": {
+    "default_model": "deepseek-r1",
+    "ollama_host": "http://localhost:11434",
+    "auto_pull": true,
+    "timeout_seconds": 8.0
+  },
+  "rag": {
+    "short_term_days": 7,
+    "medium_term_days": 30,
+    "long_term_days": 90,
+    "embedding_model": "nomic-embed-text",
+    "embedding_dimension": 384,
+    "use_ollama_embedding": true,
+    "fallback_embedding_model": "all-MiniLM-L6-v2",
+    "vector_search_top_k": 10,
+    "enable_semantic_search": true,
+    "enable_cache": true,
+    "cache_size": 100
+  }
+}

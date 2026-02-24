@@ -14,27 +14,38 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "config.j
 DEFAULT_AGENTS_PATH = Path(__file__).resolve().parents[2] / "config" / "agents.yaml"
 
 
-def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
+def load_config(config_path: Optional[Path] = None, *, validate: bool = False) -> Dict[str, Any]:
     """
     Load config.json
-    
+
+    Args:
+        config_path: Path to config file. Defaults to backend/config/config.json.
+        validate: If True, run Pydantic schema validation and raise on errors.
+                  If False (default), load raw dict for backward compatibility.
+
     Returns:
         Dict with all config values
     """
     try:
         if config_path is None:
             config_path = DEFAULT_CONFIG_PATH
-        
+
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {config_path}")
-        
+
         with config_path.open("r", encoding="utf-8") as f:
             config = json.load(f)
-        
+
+        if validate:
+            from src.utils.config_schema import validate_config
+            validate_config(config)  # raises pydantic.ValidationError on failure
+
         return config
     except Exception as e:
+        if validate:
+            # In validate mode, propagate errors so caller sees actionable messages
+            raise
         # 如果读取失败，打印警告并返回空字典，让调用者使用默认值
-        # 确保错误消息不包含Path变量引用问题
         error_msg = str(e).replace("cannot access local variable 'Path'", "Path variable error")
         print(f"[WARN] Failed to load config.json: {error_msg}, using default config")
         return {}

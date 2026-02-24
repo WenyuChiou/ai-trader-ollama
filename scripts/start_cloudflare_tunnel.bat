@@ -28,22 +28,42 @@ if errorlevel 1 (
     pause >nul
 )
 
-echo.
-echo ========================================
-echo Starting Cloudflare Tunnel...
-echo ========================================
-echo.
-echo IMPORTANT: Copy the Tunnel URL shown below!
-echo.
-echo Then set it as API_BASE_URL in Streamlit Cloud:
-echo   1. Go to your Streamlit Cloud app settings
-echo   2. Add Secret: API_BASE_URL = <your-tunnel-url>
-echo.
-echo Press Ctrl+C to stop the tunnel
-echo ========================================
-echo.
+REM Determine tunnel mode: Named Tunnel (preferred) or Ad-Hoc (fallback)
+set "TUNNEL_CONFIG=%~dp0..\config\tunnel_config.json"
 
-cloudflared tunnel --url http://localhost:8000
+if exist "%TUNNEL_CONFIG%" (
+    echo.
+    echo ========================================
+    echo Starting Named Tunnel...
+    echo ========================================
+    echo.
+    echo Using persistent named tunnel with stable URL.
+    echo The tunnel URL is configured in config\tunnel_config.json.
+    echo.
+    echo Press Ctrl+C to stop the tunnel
+    echo ========================================
+    echo.
+
+    REM Named tunnel uses the config.yml in %USERPROFILE%\.cloudflared\
+    cloudflared tunnel run ai-trader
+) else (
+    echo.
+    echo ========================================
+    echo WARNING: Named tunnel not configured!
+    echo ========================================
+    echo.
+    echo Falling back to ad-hoc tunnel (random URL, changes on restart).
+    echo.
+    echo To set up a persistent named tunnel with a stable URL, run:
+    echo   powershell -ExecutionPolicy Bypass -File scripts\setup_cloudflare_tunnel.ps1
+    echo.
+    echo IMPORTANT: Copy the Tunnel URL shown below!
+    echo.
+    echo Press Ctrl+C to stop the tunnel
+    echo ========================================
+    echo.
+
+    cloudflared tunnel --url http://localhost:8000
+)
 
 pause
-

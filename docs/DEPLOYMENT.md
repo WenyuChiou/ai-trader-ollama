@@ -7,6 +7,7 @@
 | Windows `.bat` scripts | Primary UX, local trading | Low |
 | Docker Compose | Consistent environments | Medium |
 | Manual Python | Custom setups, debugging | Medium |
+| Hybrid (Local + Cloudflare Tunnel) | 24/7 online dashboard | Medium |
 
 ---
 
@@ -102,7 +103,28 @@ Ollama runs on your host machine, not inside Docker. The backend connects via:
 
 ---
 
-## Option 3: Manual Python
+## Option 3: Hybrid (Local + Cloudflare Tunnel + GitHub Pages)
+
+Run the backend locally and expose it to the internet via Cloudflare Tunnel. GitHub Pages serves the read-only dashboard that connects to the tunnel URL for live data.
+
+**Best for**: 24/7 portfolio monitoring, sharing a read-only dashboard with others.
+
+```powershell
+# 1. One-time tunnel setup (interactive)
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_cloudflare_tunnel.ps1
+
+# 2. Set up auto-start on boot
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_autostart.ps1
+
+# 3. (Optional) Schedule daily data sync for GitHub Pages
+powershell -ExecutionPolicy Bypass -File .\scripts\daily_data_sync.ps1
+```
+
+See [Online Deployment Guide](ONLINE_DEPLOYMENT.md) for full setup instructions, security notes, and troubleshooting.
+
+---
+
+## Option 4: Manual Python
 
 ```bash
 # 1. Create virtual environment
